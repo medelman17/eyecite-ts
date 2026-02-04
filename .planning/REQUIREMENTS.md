@@ -138,13 +138,85 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (To be filled during roadmap creation) | | |
+| DET-01 | Phase 2 | Pending |
+| DET-02 | Phase 2 | Pending |
+| DET-03 | Phase 2 | Pending |
+| DET-04 | Phase 2 | Pending |
+| DET-05 | Phase 2 | Pending |
+| DET-06 | Phase 2 | Pending |
+| DET-07 | Phase 2 | Pending |
+| DET-08 | Phase 2 | Pending |
+| DET-09 | Phase 2 | Pending |
+| DET-10 | Phase 4 | Pending |
+| DET-11 | Phase 4 | Pending |
+| DET-12 | Phase 4 | Pending |
+| DET-13 | Phase 4 | Pending |
+| DET-14 | Phase 4 | Pending |
+| DET-15 | Phase 4 | Pending |
+| DET-16 | Phase 2 | Pending |
+| DET-17 | Phase 2 | Pending |
+| DET-18 | Phase 2 | Pending |
+| DET-19 | Phase 2 | Pending |
+| DET-20 | Phase 2 | Pending |
+| DET-21 | Phase 2 | Pending |
+| DET-22 | Phase 2 | Pending |
+| META-01 | Phase 2 | Pending |
+| META-02 | Phase 2 | Pending |
+| META-03 | Phase 2 | Pending |
+| META-04 | Phase 2 | Pending |
+| META-05 | Phase 2 | Pending |
+| META-06 | Phase 2 | Pending |
+| META-07 | Phase 2 | Pending |
+| META-08 | Phase 2 | Pending |
+| RES-01 | Phase 4 | Pending |
+| RES-02 | Phase 4 | Pending |
+| RES-03 | Phase 4 | Pending |
+| RES-04 | Phase 4 | Pending |
+| RES-05 | Phase 4 | Pending |
+| RES-06 | Phase 4 | Pending |
+| ANN-01 | Phase 3 | Pending |
+| ANN-02 | Phase 3 | Pending |
+| ANN-03 | Phase 3 | Pending |
+| ANN-04 | Phase 3 | Pending |
+| CLN-01 | Phase 2 | Pending |
+| CLN-02 | Phase 2 | Pending |
+| CLN-03 | Phase 2 | Pending |
+| CLN-04 | Phase 2 | Pending |
+| CLN-05 | Phase 2 | Pending |
+| CLN-06 | Phase 2 | Pending |
+| DATA-01 | Phase 3 | Pending |
+| DATA-02 | Phase 3 | Pending |
+| DATA-03 | Phase 3 | Pending |
+| DATA-04 | Phase 3 | Pending |
+| DATA-05 | Phase 3 | Pending |
+| PLAT-01 | Phase 1 | Pending |
+| PLAT-02 | Phase 1 | Pending |
+| PLAT-03 | Phase 1 | Pending |
+| PLAT-04 | Phase 1 | Pending |
+| PLAT-05 | Phase 1 | Pending |
+| PLAT-06 | Phase 1 | Pending |
+| PLAT-07 | Phase 1 | Pending |
+| PLAT-08 | Phase 1 | Pending |
+| PLAT-09 | Phase 1 | Pending |
+| PERF-01 | Phase 3 | Pending |
+| PERF-02 | Phase 3 | Pending |
+| PERF-03 | Phase 1 | Pending |
+| DX-01 | Phase 1 | Pending |
+| DX-02 | Phase 1 | Pending |
+| DX-03 | Phase 4 | Pending |
+| DX-04 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 56 total
-- Mapped to phases: 0
-- Unmapped: 56
+- Mapped to phases: 56
+- Unmapped: 0
+
+**Phase Distribution:**
+- Phase 1 (Foundation & Architecture): 12 requirements
+- Phase 2 (Core Parsing): 30 requirements
+- Phase 3 (Reporter Database & Annotation): 9 requirements
+- Phase 4 (Short-Form Resolution & Integration): 12 requirements
 
 ---
 *Requirements defined: 2025-02-04*
-*Last updated: 2025-02-04 after initial definition*
+*Last updated: 2026-02-04 after roadmap creation*
