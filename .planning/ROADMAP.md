@@ -82,12 +82,11 @@ Plans:
   3. Existing span field unchanged (core only) for backward compatibility
   4. Parentheticals containing month/day dates extract court and structured date (year, month, day)
   5. Parentheticals work correctly with court only, date only, or both
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 06-01: TBD
-- [ ] 06-02: TBD
-- [ ] 06-03: TBD
+- [ ] 06-01-PLAN.md — Date parsing utilities (TDD: parseMonth, parseDate, toIsoDate)
+- [ ] 06-02-PLAN.md — Case name extraction, unified parenthetical parser, fullSpan calculation
 
 #### Phase 7: Party Name Extraction
 **Goal**: Extract plaintiff and defendant from case names for improved supra resolution
@@ -134,6 +133,6 @@ Phases execute in numeric order: 5 → 6 → 7 → 8
 | 3. Other Citation Types | v1.0-alpha | 4/4 | Complete | 2026-02-05 |
 | 4. Resolution & Annotation | v1.0-alpha | 6/6 | Complete | 2026-02-05 |
 | 5. Type System & Blank Pages | v1.1 | 2/2 | Complete | 2026-02-05 |
-| 6. Full Span & Complex Parentheticals | v1.1 | 0/3 | Not started | - |
+| 6. Full Span & Complex Parentheticals | v1.1 | 0/2 | Not started | - |
 | 7. Party Name Extraction | v1.1 | 0/2 | Not started | - |
 | 8. Parallel Linking & Quality Validation | v1.1 | 0/2 | Not started | - |
