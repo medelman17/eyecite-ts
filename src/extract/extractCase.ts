@@ -25,8 +25,8 @@ function parseVolume(raw: string): number | string {
 	return String(num) === raw ? num : raw
 }
 
-/** Month abbreviations found in legal citation parentheticals */
-const MONTH_PATTERN = /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?/
+/** Month abbreviations and full names found in legal citation parentheticals */
+const MONTH_PATTERN = /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)\.?/
 
 /**
  * Strips date components (month, day, year) from parenthetical content
@@ -34,13 +34,16 @@ const MONTH_PATTERN = /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\
  * E.g., "2d Cir. Jan. 15, 2020" → "2d Cir."
  *        "C.D. Cal. Feb. 9, 2015" → "C.D. Cal."
  *        "D. Mass. Mar. 2020" → "D. Mass."
+ *        "D. Mass. 1/15/2020" → "D. Mass."
  */
 function stripDateFromCourt(content: string): string | undefined {
+	// Strip trailing numeric date format first (1/15/2020)
+	let court = content.replace(/\s*\d{1,2}\/\d{1,2}\/\d{4}\s*$/, '').trim()
 	// Strip trailing year
-	let court = content.replace(/\s*\d{4}\s*$/, '').trim()
-	// Strip trailing date components: optional day+comma, month abbreviation
-	court = court.replace(new RegExp(`\\s*,?\\s*\\d{1,2}\\s*,?\\s*$`), '').trim()
-	court = court.replace(new RegExp(`\\s*${MONTH_PATTERN.source}\\s*$`), '').trim()
+	court = court.replace(/\s*\d{4}\s*$/, '').trim()
+	// Strip trailing date components: optional day+comma, month abbreviation or full name
+	court = court.replace(/\s*,?\s*\d{1,2}\s*,?\s*$/, '').trim()
+	court = court.replace(new RegExp(`\\s*${MONTH_PATTERN.source}\\s*$`, 'i'), '').trim()
 	// Strip any trailing commas left over
 	court = court.replace(/,\s*$/, '').trim()
 	return court && /[A-Za-z]/.test(court) ? court : undefined
