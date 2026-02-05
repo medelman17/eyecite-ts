@@ -10,13 +10,13 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 ## Current Position
 
 Phase: 7 of 8 (Party Name Extraction)
-Plan: Ready to plan Phase 7
-Status: Ready to plan
-Last activity: 2026-02-05 — Phase 6 complete, verified
+Plan: 1 of 2 complete
+Status: In progress
+Last activity: 2026-02-05 — Completed 07-01-PLAN.md
 
-Progress: ███████████░░░░░ 62% (21/26 plans total, 17/17 v1.0 complete, 4/9 v1.1 complete)
+Progress: ████████████░░░░ 65% (22/26 plans total, 17/17 v1.0 complete, 5/9 v1.1 complete)
 
-**Phase 6 verified:** 11/11 must-haves passed, 5/5 success criteria passed
+**Phase 7 Plan 01 complete:** 2/2 tasks, 6 min, 461 tests passing
 
 Config:
 {
@@ -57,9 +57,9 @@ Config:
 | 4. Resolution & Annotation | 6 | ~35 min | ~6 min |
 
 **Velocity (v1.1-alpha):**
-- Total plans completed: 4
-- Average duration: ~3.5 min
-- Total execution time: ~14 min
+- Total plans completed: 5
+- Average duration: ~4 min
+- Total execution time: ~20 min
 
 **By Phase (v1.1-alpha):**
 
@@ -67,6 +67,7 @@ Config:
 |-------|-------|-------|----------|
 | 5. Type System & Blank Pages | 2/2 | ~5 min | ~2.5 min |
 | 6. Full Span & Complex Parentheticals | 2/2 | ~7.4 min | ~3.7 min |
+| 7. Party Name Extraction | 1/2 | ~6 min | ~6 min |
 
 ## Accumulated Context
 
@@ -88,6 +89,11 @@ Config:
 | 06-02 | Backward search up to 150 chars for case name | Standard 'v.' format most common; procedural prefixes need special handling | Handles 95%+ of real-world case citations |
 | 06-02 | Depth tracking for chained parentheticals | Handles nested parens correctly, supports '(2020) (en banc)' patterns | Robust parenthetical boundary detection |
 | 06-02 | Extract only 'en banc' and 'per curiam' as disposition | Most common procedural statuses; others can be added incrementally | Phase 6 scope limited to high-value dispositions |
+| 07-01 | Do not lower citation confidence for missing party names | Backward compatibility - existing citations maintain original scores; party quality reflected in supra resolution confidence instead | Citation confidence scoring unchanged from Phase 6 |
+| 07-01 | Government entities are plaintiffs, not procedural prefixes | "United States v. Jones" is adversarial litigation, not a case type like "In re" | extractPartyNames splits on "v." for government entity cases |
+| 07-01 | Strip d/b/a and aka plus everything after | Alternative business names and aliases are noise for matching; "Smith d/b/a Smith Industries" should match "Smith" | Normalization removes alternative name variations |
+| 07-01 | Support '/' character in backward search regex | Party names contain "d/b/a" with slash; original regex truncated at slash | Updated extractCaseName regex to include '/' in character class |
+| 07-01 | Iteratively strip multiple corporate suffixes | Names like "Smith Corp., Inc." have multiple suffixes; single-pass leaves "Corp." | While loop strips suffixes until no more matches |
 
 Recent decisions from v1.0-alpha affecting v1.1:
 - Dual position tracking (Span) enables accurate fullSpan calculation
@@ -107,6 +113,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-05 (phase execution)
-Stopped at: Phase 6 complete, verified
-Resume file: .planning/phases/06-full-span-complex-parentheticals/06-VERIFICATION.md
+Last session: 2026-02-05 (plan execution)
+Stopped at: Completed 07-01-PLAN.md
+Resume file: .planning/phases/07-party-name-extraction/07-01-SUMMARY.md
