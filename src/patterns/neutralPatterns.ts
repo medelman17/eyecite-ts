@@ -44,4 +44,10 @@ export const neutralPatterns: Pattern[] = [
     description: 'Statutes at Large citations (e.g., "124 Stat. 119")',
     type: 'statutesAtLarge',
   },
+  {
+    id: 'compact-law-review',
+    regex: /\b(\d+)\s+([A-Z][A-Za-z.]+L\.(?:Rev|J|Q)\.)\s+(\d+)\b/g,
+    description: 'Compact law review citations without spaces (e.g., "93 Harv.L.Rev. 752")',
+    type: 'journal',
+  },
 ]
