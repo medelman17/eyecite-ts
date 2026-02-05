@@ -55,7 +55,7 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          slug: medelman17/eyecitets
+          slug: medelman17/eyecite-ts
 
   build:
     name: Build & Size Check
