@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Developers can extract, resolve, and annotate legal citations from text without Python infrastructure
-**Current focus:** v1.0-alpha shipped — planning next milestone
+**Current focus:** v1.1 Extraction Accuracy — parallel cites, full spans, party names, blank pages, complex parentheticals
 
 ## Current Position
 
-Phase: 4 of 4 (all complete)
-Plan: All complete
-Status: v1.0-alpha milestone shipped
-Last activity: 2026-02-05 — Milestone archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-05 — Milestone v1.1 started
 
-Progress: [████████████████] 100% (v1.0-alpha)
+Progress: ░░░░░░░░░░░░░░░░ 0% (v1.1)
 
 ## Milestone History
 
@@ -22,6 +22,6 @@ Progress: [████████████████] 100% (v1.0-alpha)
 
 ## Session Continuity
 
-Last session: 2026-02-05 (milestone completion)
-Stopped at: v1.0-alpha milestone archived
+Last session: 2026-02-05 (milestone initialization)
+Stopped at: Defining requirements for v1.1
 Resume file: None

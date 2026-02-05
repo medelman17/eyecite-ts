@@ -55,7 +55,12 @@ Developers can extract, resolve, and annotate legal citations from text without 
 
 ### Active
 
-(No active requirements — next milestone not yet planned)
+**Extraction Accuracy** — v1.1
+- Link parallel citations into groups (#8)
+- Full citation span from case name through parenthetical (#9)
+- Expose plaintiff/defendant as citation fields (#12)
+- Support partial citations with blank page numbers (#6)
+- Complex parenthetical parsing with dates (#5)
 
 ### Out of Scope
 
@@ -106,4 +111,4 @@ Developers can extract, resolve, and annotate legal citations from text without 
 | Auto-escape annotation by default | XSS prevention out of the box | ✓ Good — secure defaults |
 
 ---
-*Last updated: 2026-02-05 after v1.0-alpha milestone*
+*Last updated: 2026-02-05 after v1.1 milestone start*
