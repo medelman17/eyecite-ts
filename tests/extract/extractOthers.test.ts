@@ -4,6 +4,7 @@ import {
 	extractNeutral,
 	extractPublicLaw,
 	extractFederalRegister,
+	extractCitations,
 } from '@/extract'
 import type { Token } from '@/tokenize'
 import type { TransformationMap } from '@/types/span'
@@ -322,5 +323,37 @@ describe('Other extraction functions', () => {
 			expect(citation.span.cleanStart).toBe(10)
 			expect(citation.span.originalStart).toBe(15)
 		})
+	})
+})
+
+describe('compact journal citations (integration)', () => {
+	it('should classify compact L.Rev. as journal, not case', () => {
+		const cases = [
+			{ text: '58 N.Y.U.L.Rev. 299', journal: 'N.Y.U.L.Rev.' },
+			{ text: '83 Colum.L.Rev. 1544', journal: 'Colum.L.Rev.' },
+			{ text: '93 Harv.L.Rev. 752', journal: 'Harv.L.Rev.' },
+			{ text: '50 U.Chi.L.Rev. 138', journal: 'U.Chi.L.Rev.' },
+		]
+
+		for (const { text, journal } of cases) {
+			const citations = extractCitations(text)
+			expect(citations).toHaveLength(1)
+			expect(citations[0].type).toBe('journal')
+			if (citations[0].type === 'journal') {
+				expect(citations[0].journal).toBe(journal)
+			}
+		}
+	})
+
+	it('should classify compact L.J. as journal', () => {
+		const citations = extractCitations('75 Yale L.J. 789')
+		expect(citations).toHaveLength(1)
+		expect(citations[0].type).toBe('journal')
+	})
+
+	it('should not affect case citation classification', () => {
+		const citations = extractCitations('500 F.2d 123')
+		expect(citations).toHaveLength(1)
+		expect(citations[0].type).toBe('case')
 	})
 })
