@@ -628,6 +628,276 @@ describe('backward compatibility (QUAL-01)', () => {
 	})
 })
 
+describe('case name extraction (Phase 6)', () => {
+	it('extracts standard case name with v.', () => {
+		const citations = extractCitations('Smith v. Jones, 500 F.2d 123 (2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].caseName).toBe('Smith v. Jones')
+			expect(citations[0].volume).toBe(500)
+		}
+	})
+
+	it('extracts case name with multi-word parties', () => {
+		const citations = extractCitations('United States v. Jones, 500 F.2d 123 (2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].caseName).toBe('United States v. Jones')
+		}
+	})
+
+	it('extracts procedural prefix: In re', () => {
+		const citations = extractCitations('In re Smith, 410 U.S. 113 (1973)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].caseName).toBe('In re Smith')
+		}
+	})
+
+	it('extracts procedural prefix: Ex parte', () => {
+		const citations = extractCitations('Ex parte Young, 209 U.S. 123 (1908)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].caseName).toBe('Ex parte Young')
+		}
+	})
+
+	it('extracts procedural prefix: Matter of', () => {
+		const citations = extractCitations('Matter of ABC, 500 F.2d 123 (2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].caseName).toBe('Matter of ABC')
+		}
+	})
+
+	it('returns undefined caseName when no case name present', () => {
+		const citations = extractCitations('500 F.2d 123 (2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].caseName).toBeUndefined()
+		}
+	})
+
+	it('handles case name with Inc. and abbreviations', () => {
+		const citations = extractCitations('Acme Corp., Inc. v. Doe, 500 F.2d 123 (2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].caseName).toContain('Inc.')
+		}
+	})
+})
+
+describe('fullSpan calculation (Phase 6)', () => {
+	it('fullSpan covers case name through parenthetical', () => {
+		const text = 'Smith v. Jones, 500 F.2d 123 (2020)'
+		const citations = extractCitations(text)
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].fullSpan).toBeDefined()
+			expect(citations[0].fullSpan?.originalStart).toBe(0)
+			expect(citations[0].fullSpan?.originalEnd).toBe(text.length)
+		}
+	})
+
+	it('fullSpan includes chained parentheticals', () => {
+		const text = 'Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc)'
+		const citations = extractCitations(text)
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].fullSpan).toBeDefined()
+			expect(citations[0].fullSpan?.originalEnd).toBe(text.length)
+		}
+	})
+
+	it('fullSpan undefined when no case name', () => {
+		const citations = extractCitations('500 F.2d 123 (2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].fullSpan).toBeUndefined()
+		}
+	})
+
+	it('existing span unchanged (core only)', () => {
+		const text = 'Smith v. Jones, 500 F.2d 123 (2020)'
+		const citations = extractCitations(text)
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			// span should point only to "500 F.2d 123" portion
+			const coreStart = text.indexOf('500')
+			const coreEnd = text.indexOf(' (')
+			expect(citations[0].span.originalStart).toBe(coreStart)
+			expect(citations[0].span.originalEnd).toBe(coreEnd)
+			// fullSpan should cover entire citation
+			expect(citations[0].fullSpan?.originalStart).toBe(0)
+			expect(citations[0].fullSpan?.originalEnd).toBe(text.length)
+		}
+	})
+
+	it('fullSpan includes subsequent history', () => {
+		const text = 'Smith v. Jones, 500 F.2d 123 (2d Cir. 1990), aff\'d, 501 U.S. 1 (1991)'
+		const citations = extractCitations(text)
+		// Should extract two citations (main + subsequent history)
+		expect(citations.length).toBeGreaterThanOrEqual(1)
+		// First citation should include subsequent history signal in fullSpan
+		if (citations[0].type === 'case') {
+			expect(citations[0].caseName).toBe('Smith v. Jones')
+			// fullSpan should extend past the first citation's parenthetical
+			const firstParenEnd = text.indexOf(') (') !== -1 ? text.indexOf(')') + 1 : text.indexOf('),') + 1
+			expect(citations[0].fullSpan?.originalEnd).toBeGreaterThanOrEqual(firstParenEnd)
+		}
+	})
+})
+
+describe('unified parenthetical parser (Phase 6)', () => {
+	it('extracts court and year from standard parenthetical', () => {
+		const citations = extractCitations('500 F.2d 100 (9th Cir. 2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('9th Cir.')
+			expect(citations[0].year).toBe(2020)
+		}
+	})
+
+	it('extracts court and full date: abbreviated month', () => {
+		const citations = extractCitations('500 F.3d 100 (2d Cir. Jan. 15, 2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('2d Cir.')
+			expect(citations[0].year).toBe(2020)
+			expect(citations[0].date?.iso).toBe('2020-01-15')
+			expect(citations[0].date?.parsed.year).toBe(2020)
+			expect(citations[0].date?.parsed.month).toBe(1)
+			expect(citations[0].date?.parsed.day).toBe(15)
+		}
+	})
+
+	it('extracts court and full date: full month name', () => {
+		const citations = extractCitations('500 F.3d 100 (D. Mass. January 15, 2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('D. Mass.')
+			expect(citations[0].date?.iso).toBe('2020-01-15')
+		}
+	})
+
+	it('extracts court and full date: numeric format', () => {
+		const citations = extractCitations('500 F.3d 100 (D. Mass. 1/15/2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('D. Mass.')
+			expect(citations[0].date?.iso).toBe('2020-01-15')
+		}
+	})
+
+	it('handles year-only parenthetical', () => {
+		const citations = extractCitations('500 F.2d 123 (2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].year).toBe(2020)
+			expect(citations[0].date?.iso).toBe('2020')
+			expect(citations[0].date?.parsed.year).toBe(2020)
+		}
+	})
+
+	it('handles court-only with year', () => {
+		const citations = extractCitations('500 F.2d 123 (9th Cir. 2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('9th Cir.')
+			expect(citations[0].year).toBe(2020)
+		}
+	})
+
+	it('structured date for year-only', () => {
+		const citations = extractCitations('410 U.S. 113 (1973)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].date?.parsed.year).toBe(1973)
+			expect(citations[0].date?.parsed.month).toBeUndefined()
+			expect(citations[0].date?.parsed.day).toBeUndefined()
+		}
+	})
+
+	it('structured date for full date', () => {
+		const citations = extractCitations('500 F.3d 100 (2d Cir. Jan. 15, 2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].date?.parsed.year).toBe(2020)
+			expect(citations[0].date?.parsed.month).toBe(1)
+			expect(citations[0].date?.parsed.day).toBe(15)
+		}
+	})
+})
+
+describe('disposition extraction (Phase 6)', () => {
+	it('extracts en banc from chained paren', () => {
+		const citations = extractCitations('500 F.2d 123 (9th Cir. 2020) (en banc)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].disposition).toBe('en banc')
+		}
+	})
+
+	it('extracts per curiam', () => {
+		const citations = extractCitations('500 F.2d 123 (per curiam)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].disposition).toBe('per curiam')
+		}
+	})
+
+	it('no disposition when not present', () => {
+		const citations = extractCitations('500 F.2d 123 (2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].disposition).toBeUndefined()
+		}
+	})
+})
+
+describe('backward compatibility (Phase 6)', () => {
+	it('year-only extraction still works', () => {
+		const citations = extractCitations('410 U.S. 113 (1973)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].year).toBe(1973)
+		}
+	})
+
+	it('court extraction still works', () => {
+		const citations = extractCitations('500 F.2d 123 (9th Cir. 2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('9th Cir.')
+		}
+	})
+
+	it('pincite extraction unchanged', () => {
+		const citations = extractCitations('500 F.2d 123, 125 (2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].pincite).toBe(125)
+		}
+	})
+
+	it('scotus inference from reporter unchanged', () => {
+		const citations = extractCitations('410 U.S. 113 (1973)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('scotus')
+		}
+	})
+
+	it('blank page citations still work', () => {
+		const citations = extractCitations('500 F.2d ___ (2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].hasBlankPage).toBe(true)
+			expect(citations[0].page).toBeUndefined()
+		}
+	})
+})
+
 describe('blank page placeholders (BLANK-01 through BLANK-04)', () => {
 	describe('triple underscore placeholder', () => {
 		it('should extract federal reporter citation with ___ as blank page', () => {
