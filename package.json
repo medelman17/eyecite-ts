@@ -1,0 +1,63 @@
+{
+  "name": "eyecite-ts",
+  "version": "0.1.0",
+  "description": "TypeScript port of eyecite - extract, resolve, and annotate legal citations",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./data": {
+      "types": "./dist/data/index.d.ts",
+      "import": "./dist/data/index.mjs",
+      "require": "./dist/data/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint src tests",
+    "format": "biome format --write src tests",
+    "size": "size-limit"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.0",
+    "@vitest/coverage-v8": "^4.0.0",
+    "size-limit": "^11.1.6",
+    "tsdown": "^0.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
+  },
+  "size-limit": [
+    {
+      "path": "dist/index.mjs",
+      "limit": "50 KB"
+    }
+  ],
+  "keywords": [
+    "legal",
+    "citation",
+    "extraction",
+    "typescript",
+    "eyecite"
+  ],
+  "license": "MIT",
+  "author": "medelman17",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/medelman17/eyecitets.git"
+  }
+}
