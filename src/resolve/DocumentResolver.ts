@@ -291,9 +291,10 @@ export class DocumentResolver {
   /**
    * Strips citation signal words that may precede party names.
    * E.g., "In Smith" → "Smith", "See Also Jones" → "Jones"
+   * Preserves "In re" which is a case name format, not a signal word.
    */
   private stripSignalWords(name: string): string {
-    const stripped = name.replace(/^(?:In|See(?:\s+[Aa]lso)?|Compare|But(?:\s+[Ss]ee)?|Cf\.?|Also)\s+/i, '').trim()
+    const stripped = name.replace(/^(?:In(?!\s+re\b)|See(?:\s+[Aa]lso)?|Compare|But(?:\s+[Ss]ee)?|Cf\.?|Also)\s+/i, '').trim()
     // Only return stripped version if something remains
     return stripped.length > 0 ? stripped : name
   }

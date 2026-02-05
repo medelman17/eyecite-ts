@@ -336,6 +336,17 @@ Second paragraph: Id. at 125.`
 			expect(citations[1].type).toBe('supra')
 			expect(citations[1].resolution?.resolvedTo).toBe(0)
 		})
+
+		it('preserves "In re" as part of party name (not a signal word)', () => {
+			const text =
+				'In re Goo, 500 F.2d 123 (2020). In re Goo, supra, at 130.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+			expect(citations).toHaveLength(2)
+			expect(citations[1].type).toBe('supra')
+			expect(citations[1].resolution?.resolvedTo).toBe(0)
+		})
 	})
 
 	describe('Mixed Citation Types', () => {
