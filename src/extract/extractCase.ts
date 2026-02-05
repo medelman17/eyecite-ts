@@ -74,11 +74,12 @@ function extractCaseName(
 	let adjustedSearchStart = searchStart
 
 	// Split at last sentence boundary to avoid crossing citation boundaries
-	// Find last occurrence of ". " followed by a capital letter or digit (start of new sentence/citation)
-	const sentenceBoundaryRegex = /\.\s+(?=[A-Z0-9])/g
+	// Find last occurrence of digit-period-space pattern (end of reporter page like "10. Jones")
+	// This is more specific than generic ". [A-Z]" which would match "v." or "United States v."
+	const citationBoundaryRegex = /\d\.\s+/g
 	let lastBoundaryIndex = -1
 	let match: RegExpExecArray | null
-	while ((match = sentenceBoundaryRegex.exec(precedingText)) !== null) {
+	while ((match = citationBoundaryRegex.exec(precedingText)) !== null) {
 		lastBoundaryIndex = match.index + match[0].length
 	}
 
@@ -372,11 +373,16 @@ function extractPartyNames(caseName: string): {
 	const vRegex = /^(.+?)\s+v\.?\s+(.+)$/i
 	const vMatch = vRegex.exec(caseName)
 	if (vMatch) {
-		const plaintiff = vMatch[1].trim()
+		let plaintiff = vMatch[1].trim()
 		const defendant = vMatch[2].trim()
+
+		// Strip signal words from plaintiff (e.g., "In Smith" → "Smith", "See Jones" → "Jones")
+		// Preserve "In re" which is a procedural prefix, not a signal word
+		plaintiff = plaintiff.replace(/^(?:In(?!\s+re\b)|See(?:\s+[Aa]lso)?|Compare|But(?:\s+[Ss]ee)?|Cf\.?|Also)\s+/i, '').trim()
+
 		return {
-			plaintiff,
-			plaintiffNormalized: normalizePartyName(plaintiff),
+			plaintiff: plaintiff || vMatch[1].trim(), // Fallback to original if strip leaves nothing
+			plaintiffNormalized: normalizePartyName(plaintiff || vMatch[1].trim()),
 			defendant,
 			defendantNormalized: normalizePartyName(defendant),
 		}

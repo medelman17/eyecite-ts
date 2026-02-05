@@ -349,6 +349,106 @@ Second paragraph: Id. at 125.`
 		})
 	})
 
+	describe('Party Name Supra Resolution (#21)', () => {
+		it('resolves supra using defendant name (exact match)', () => {
+			const text = 'Smith v. Jones, 500 F.2d 123 (2020). Jones, supra, at 130.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+			expect(citations).toHaveLength(2)
+			expect(citations[1].type).toBe('supra')
+			expect(citations[1].resolution?.resolvedTo).toBe(0)
+			expect(citations[1].resolution?.confidence).toBeGreaterThanOrEqual(0.95)
+		})
+
+		it('resolves supra using plaintiff name (exact match)', () => {
+			const text = 'Smith v. Jones, 500 F.2d 123 (2020). Smith, supra, at 130.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+			expect(citations).toHaveLength(2)
+			expect(citations[1].type).toBe('supra')
+			expect(citations[1].resolution?.resolvedTo).toBe(0)
+			expect(citations[1].resolution?.confidence).toBeGreaterThanOrEqual(0.95)
+		})
+
+		it('resolves supra for government entity defendant', () => {
+			const text = 'United States v. Jones, 500 F.2d 123 (2020). Jones, supra, at 130.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+			expect(citations).toHaveLength(2)
+			expect(citations[1].type).toBe('supra')
+			expect(citations[1].resolution?.resolvedTo).toBe(0)
+			expect(citations[1].resolution?.failureReason).toBeUndefined()
+		})
+
+		it('resolves supra for government entity plaintiff (state)', () => {
+			const text = 'People v. Smith, 200 F.3d 50 (2015). Smith, supra, at 55.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+			expect(citations).toHaveLength(2)
+			expect(citations[1].type).toBe('supra')
+			expect(citations[1].resolution?.resolvedTo).toBe(0)
+			expect(citations[1].resolution?.failureReason).toBeUndefined()
+		})
+
+		it('resolves supra for procedural case using plaintiff normalized', () => {
+			const text = 'In re Smith, 500 F.2d 123 (2020). Smith, supra, at 130.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+			expect(citations).toHaveLength(2)
+			expect(citations[1].type).toBe('supra')
+			expect(citations[1].resolution?.resolvedTo).toBe(0)
+			expect(citations[1].resolution?.failureReason).toBeUndefined()
+		})
+
+		it('exact party name match has high confidence', () => {
+			const text = 'Smith v. Jones, 500 F.2d 123 (2020). Smith, supra, at 130.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+			expect(citations).toHaveLength(2)
+			expect(citations[1].resolution?.confidence).toBeGreaterThanOrEqual(0.95)
+		})
+
+		it('fuzzy match has lower confidence', () => {
+			const text = 'Smith v. Jones, 500 F.2d 123 (2020). Smyth, supra, at 130.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+			expect(citations).toHaveLength(2)
+			expect(citations[1].resolution?.resolvedTo).toBe(0)
+			expect(citations[1].resolution?.confidence).toBeLessThan(1.0)
+			expect(citations[1].resolution?.confidence).toBeGreaterThanOrEqual(0.8)
+		})
+
+		it('resolves supra to correct citation among multiple', () => {
+			const text = 'Smith v. A, 100 F.2d 10. Jones v. B, 200 F.2d 20. Jones, supra.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+			expect(citations).toHaveLength(3)
+			expect(citations[2].type).toBe('supra')
+			expect(citations[2].resolution?.resolvedTo).toBe(1) // Jones v. B, not Smith v. A
+		})
+
+		it('maintains backward compatibility when party names unavailable', () => {
+			// This tests the fallback to backward text search
+			// In reality, Phase 7 extracts party names, but if extraction fails,
+			// the DocumentResolver still uses the old extractPartyName method
+			const text = 'See Smith v. Jones, 500 F.2d 123 (2020). Smith, supra, at 130.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+			expect(citations).toHaveLength(2)
+			expect(citations[1].type).toBe('supra')
+			expect(citations[1].resolution?.resolvedTo).toBe(0)
+		})
+	})
+
 	describe('Mixed Citation Types', () => {
 		it('resolves short-form citations alongside full citations', () => {
 			const text = `Smith v. Jones, 500 F.2d 123 (2020).
