@@ -627,3 +627,140 @@ describe('backward compatibility (QUAL-01)', () => {
 		}
 	})
 })
+
+describe('blank page placeholders (BLANK-01 through BLANK-04)', () => {
+	describe('triple underscore placeholder', () => {
+		it('should extract federal reporter citation with ___ as blank page', () => {
+			const citations = extractCitations('500 F.2d ___')
+			expect(citations).toHaveLength(1)
+			if (citations[0].type === 'case') {
+				expect(citations[0].volume).toBe(500)
+				expect(citations[0].reporter).toBe('F.2d')
+				expect(citations[0].page).toBeUndefined()
+				expect(citations[0].hasBlankPage).toBe(true)
+				expect(citations[0].confidence).toBe(0.8)
+			}
+		})
+
+		it('should extract supreme court citation with ___ as blank page', () => {
+			const citations = extractCitations('410 U.S. ___')
+			expect(citations).toHaveLength(1)
+			if (citations[0].type === 'case') {
+				expect(citations[0].volume).toBe(410)
+				expect(citations[0].reporter).toBe('U.S.')
+				expect(citations[0].page).toBeUndefined()
+				expect(citations[0].hasBlankPage).toBe(true)
+				expect(citations[0].confidence).toBe(0.8)
+			}
+		})
+
+		it('should extract state reporter citation with ___ as blank page', () => {
+			const citations = extractCitations('100 Cal.App.4th ___')
+			expect(citations).toHaveLength(1)
+			if (citations[0].type === 'case') {
+				expect(citations[0].volume).toBe(100)
+				expect(citations[0].reporter).toBe('Cal.App.4th')
+				expect(citations[0].page).toBeUndefined()
+				expect(citations[0].hasBlankPage).toBe(true)
+				expect(citations[0].confidence).toBe(0.8)
+			}
+		})
+
+		it('should extract citation with ____ (4 underscores) as blank page', () => {
+			const citations = extractCitations('410 U.S. ____')
+			expect(citations).toHaveLength(1)
+			if (citations[0].type === 'case') {
+				expect(citations[0].volume).toBe(410)
+				expect(citations[0].reporter).toBe('U.S.')
+				expect(citations[0].page).toBeUndefined()
+				expect(citations[0].hasBlankPage).toBe(true)
+				expect(citations[0].confidence).toBe(0.8)
+			}
+		})
+	})
+
+	describe('triple dash placeholder', () => {
+		it('should extract citation with --- as blank page', () => {
+			const citations = extractCitations('500 F.2d ---')
+			expect(citations).toHaveLength(1)
+			if (citations[0].type === 'case') {
+				expect(citations[0].volume).toBe(500)
+				expect(citations[0].reporter).toBe('F.2d')
+				expect(citations[0].page).toBeUndefined()
+				expect(citations[0].hasBlankPage).toBe(true)
+				expect(citations[0].confidence).toBe(0.8)
+			}
+		})
+
+		it('should extract citation with ---- (4 dashes) as blank page', () => {
+			const citations = extractCitations('410 U.S. ----')
+			expect(citations).toHaveLength(1)
+			if (citations[0].type === 'case') {
+				expect(citations[0].volume).toBe(410)
+				expect(citations[0].reporter).toBe('U.S.')
+				expect(citations[0].page).toBeUndefined()
+				expect(citations[0].hasBlankPage).toBe(true)
+				expect(citations[0].confidence).toBe(0.8)
+			}
+		})
+	})
+
+	describe('blank page with parenthetical', () => {
+		it('should extract blank page citation with year in parenthetical', () => {
+			const citations = extractCitations('500 F.2d ___ (2020)')
+			expect(citations).toHaveLength(1)
+			if (citations[0].type === 'case') {
+				expect(citations[0].volume).toBe(500)
+				expect(citations[0].reporter).toBe('F.2d')
+				expect(citations[0].page).toBeUndefined()
+				expect(citations[0].hasBlankPage).toBe(true)
+				expect(citations[0].year).toBe(2020)
+				expect(citations[0].confidence).toBe(0.8)
+			}
+		})
+
+		it('should extract blank page citation with court and year', () => {
+			const citations = extractCitations('500 F.2d ___ (9th Cir. 2020)')
+			expect(citations).toHaveLength(1)
+			if (citations[0].type === 'case') {
+				expect(citations[0].volume).toBe(500)
+				expect(citations[0].reporter).toBe('F.2d')
+				expect(citations[0].page).toBeUndefined()
+				expect(citations[0].hasBlankPage).toBe(true)
+				expect(citations[0].court).toBe('9th Cir.')
+				expect(citations[0].year).toBe(2020)
+				expect(citations[0].confidence).toBe(0.8)
+			}
+		})
+	})
+
+	describe('edge cases', () => {
+		it('should not match single underscore as blank page', () => {
+			const citations = extractCitations('500 F.2d _')
+			// Should not match - single underscore is not a valid placeholder
+			expect(citations).toHaveLength(0)
+		})
+
+		it('should not match single dash as blank page', () => {
+			const citations = extractCitations('500 F.2d -')
+			// Should not match - single dash is not a valid placeholder
+			expect(citations).toHaveLength(0)
+		})
+
+		it('should not match double underscore as blank page', () => {
+			const citations = extractCitations('500 F.2d __')
+			// Should not match - need at least 3 for valid placeholder
+			expect(citations).toHaveLength(0)
+		})
+
+		it('should not set hasBlankPage for normal numeric page', () => {
+			const citations = extractCitations('500 F.2d 123')
+			expect(citations).toHaveLength(1)
+			if (citations[0].type === 'case') {
+				expect(citations[0].page).toBe(123)
+				expect(citations[0].hasBlankPage).toBeUndefined()
+				expect(citations[0].confidence).toBeGreaterThanOrEqual(0.8)
+			}
+		})
+	})
+})
