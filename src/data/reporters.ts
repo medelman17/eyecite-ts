@@ -101,7 +101,7 @@ export async function loadReporters(): Promise<ReportersDatabase> {
   >
 
   // Build fast lookup index with lowercase normalization
-  for (const [canonicalAbbr, reporters] of Object.entries(reportersData)) {
+  for (const [_canonicalAbbr, reporters] of Object.entries(reportersData)) {
     for (const reporter of reporters) {
       all.push(reporter)
 
@@ -111,18 +111,18 @@ export async function loadReporters(): Promise<ReportersDatabase> {
         if (!byAbbreviation.has(key)) {
           byAbbreviation.set(key, [])
         }
-        byAbbreviation.get(key)!.push(reporter)
+        byAbbreviation.get(key)?.push(reporter)
       }
 
       // Index all variations for fuzzy matching
-      for (const [variant, canonical] of Object.entries(
+      for (const [variant, _canonical] of Object.entries(
         reporter.variations || {},
       )) {
         const variantKey = variant.toLowerCase()
         if (!byAbbreviation.has(variantKey)) {
           byAbbreviation.set(variantKey, [])
         }
-        byAbbreviation.get(variantKey)!.push(reporter)
+        byAbbreviation.get(variantKey)?.push(reporter)
       }
     }
   }

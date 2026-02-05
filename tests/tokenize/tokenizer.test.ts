@@ -33,13 +33,13 @@ describe('tokenize', () => {
     // Find the federal reporter token
     const federalToken = tokens.find((t) => t.patternId === 'federal-reporter')
     expect(federalToken).toBeDefined()
-    expect(federalToken!.text).toBe('500 F.2d 123')
-    expect(federalToken!.type).toBe('case')
+    expect(federalToken?.text).toBe('500 F.2d 123')
+    expect(federalToken?.type).toBe('case')
 
     // Check span positions point to the citation
-    expect(federalToken!.span.cleanStart).toBe(14) // Position of "500"
-    expect(federalToken!.span.cleanEnd).toBe(26) // Position after "123"
-    expect(input.substring(federalToken!.span.cleanStart, federalToken!.span.cleanEnd)).toBe('500 F.2d 123')
+    expect(federalToken?.span.cleanStart).toBe(14) // Position of "500"
+    expect(federalToken?.span.cleanEnd).toBe(26) // Position after "123"
+    expect(input.substring(federalToken?.span.cleanStart, federalToken?.span.cleanEnd)).toBe('500 F.2d 123')
   })
 
   it('should tokenize statute citation', () => {
@@ -68,16 +68,16 @@ describe('tokenize', () => {
     // Find the federal reporter token
     const caseToken = tokens.find((t) => t.patternId === 'federal-reporter')
     expect(caseToken).toBeDefined()
-    expect(caseToken!.text).toBe('500 F.2d 123')
-    expect(caseToken!.type).toBe('case')
-    expect(caseToken!.span.cleanStart).toBe(17) // Position of "500"
+    expect(caseToken?.text).toBe('500 F.2d 123')
+    expect(caseToken?.type).toBe('case')
+    expect(caseToken?.span.cleanStart).toBe(17) // Position of "500"
 
     // Find the statute token
     const statuteToken = tokens.find((t) => t.patternId === 'usc')
     expect(statuteToken).toBeDefined()
-    expect(statuteToken!.text).toBe('42 U.S.C. § 1983')
-    expect(statuteToken!.type).toBe('statute')
-    expect(statuteToken!.span.cleanStart).toBe(47) // Position of "42"
+    expect(statuteToken?.text).toBe('42 U.S.C. § 1983')
+    expect(statuteToken?.type).toBe('statute')
+    expect(statuteToken?.span.cleanStart).toBe(47) // Position of "42"
 
     // Verify tokens are sorted by position
     for (let i = 1; i < tokens.length; i++) {
@@ -120,8 +120,8 @@ describe('tokenize', () => {
     // Find the WestLaw token (may also match journal pattern)
     const westlawToken = tokens.find((t) => t.patternId === 'westlaw')
     expect(westlawToken).toBeDefined()
-    expect(westlawToken!.text).toBe('2021 WL 123456')
-    expect(westlawToken!.type).toBe('neutral')
+    expect(westlawToken?.text).toBe('2021 WL 123456')
+    expect(westlawToken?.type).toBe('neutral')
   })
 
   it('should tokenize LexisNexis citations', () => {
@@ -131,8 +131,8 @@ describe('tokenize', () => {
     // Find the LexisNexis token (may also match supreme-court pattern)
     const lexisToken = tokens.find((t) => t.patternId === 'lexis')
     expect(lexisToken).toBeDefined()
-    expect(lexisToken!.text).toBe('2021 U.S. LEXIS 5000')
-    expect(lexisToken!.type).toBe('neutral')
+    expect(lexisToken?.text).toBe('2021 U.S. LEXIS 5000')
+    expect(lexisToken?.type).toBe('neutral')
   })
 
   it('should tokenize Public Law citations', () => {
@@ -152,8 +152,8 @@ describe('tokenize', () => {
     // Find the Federal Register token (may also match state-reporter/journal patterns)
     const fedRegToken = tokens.find((t) => t.patternId === 'federal-register')
     expect(fedRegToken).toBeDefined()
-    expect(fedRegToken!.text).toBe('86 Fed. Reg. 12345')
-    expect(fedRegToken!.type).toBe('federalRegister')
+    expect(fedRegToken?.text).toBe('86 Fed. Reg. 12345')
+    expect(fedRegToken?.type).toBe('federalRegister')
   })
 
   it('should handle complex text with multiple citation types', () => {

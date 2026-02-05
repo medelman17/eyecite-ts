@@ -197,7 +197,7 @@ describe('ReDoS protection', () => {
     'Smith, supra, '.repeat(500), // Repeated supra
     '500 F.2d at 125 '.repeat(500), // Repeated short-form
     'a'.repeat(10000), // Long non-matching text
-    'Id. at '.repeat(500) + '123', // Incomplete patterns
+    `${'Id. at '.repeat(500)}123`, // Incomplete patterns
   ]
 
   for (const { name, pattern } of patterns) {
@@ -207,7 +207,7 @@ describe('ReDoS protection', () => {
       for (const input of pathologicalInputs) {
         pattern.lastIndex = 0 // Reset regex state
         // matchAll returns an iterator - spread to array to force execution
-        const matches = [...input.matchAll(pattern)]
+        const _matches = [...input.matchAll(pattern)]
         // We don't care about results, just that it completes quickly
       }
 

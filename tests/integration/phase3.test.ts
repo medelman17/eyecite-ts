@@ -68,7 +68,7 @@ describe('Phase 3 Integration Tests', () => {
 
 		let doc = ''
 		while (doc.length < targetSize) {
-			doc += baseCitation + 'The court held that plaintiffs failed to state a claim. '
+			doc += `${baseCitation}The court held that plaintiffs failed to state a claim. `
 		}
 
 		expect(doc.length).toBeGreaterThanOrEqual(targetSize)
@@ -178,7 +178,7 @@ describe('Phase 3 Integration Tests', () => {
 		expect(caseCitation).toHaveProperty('reporterMatch')
 
 		// Confidence should be adjusted (either boosted or penalized)
-		expect(caseCitation!.confidence).toBeGreaterThan(0)
-		expect(caseCitation!.confidence).toBeLessThanOrEqual(1.0)
+		expect(caseCitation?.confidence).toBeGreaterThan(0)
+		expect(caseCitation?.confidence).toBeLessThanOrEqual(1.0)
 	})
 })

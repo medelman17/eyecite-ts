@@ -332,7 +332,7 @@ describe('citation validation', () => {
 			expect(caseCitation).toBeDefined()
 
 			// Get the base confidence
-			const baseConfidence = caseCitation!.confidence
+			const baseConfidence = caseCitation?.confidence
 
 			// Now test with custom scoring (this would require passing options through)
 			// For now, we verify that default scoring was applied

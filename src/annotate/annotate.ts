@@ -123,5 +123,5 @@ function escapeHtmlEntities(text: string): string {
     "'": '&#39;',
     '/': '&#x2F;',
   }
-  return text.replace(/[&<>"'\/]/g, (char) => map[char])
+  return text.replace(/[&<>"'/]/g, (char) => map[char])
 }

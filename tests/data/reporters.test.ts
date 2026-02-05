@@ -33,10 +33,10 @@ describe("Reporter Database - Lazy Loading", () => {
 })
 
 describe("Reporter Database - Lookup by Abbreviation", () => {
-  let db: ReportersDatabase
+  let _db: ReportersDatabase
 
   beforeEach(async () => {
-    db = await loadReporters()
+    _db = await loadReporters()
   })
 
   it("should find Federal Reporter, Second Series by F.2d", async () => {

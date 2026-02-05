@@ -36,7 +36,7 @@ export const casePatterns: Pattern[] = [
   },
   {
     id: 'state-reporter',
-    regex: /\b(\d+)\s+([A-Z][A-Za-z\.]+(?:\s?2d|\s?3d)?)\s+(\d+)\b/g,
+    regex: /\b(\d+)\s+([A-Z][A-Za-z.]+(?:\s?2d|\s?3d)?)\s+(\d+)\b/g,
     description: 'State reporters (broad pattern, validated against reporters-db in Phase 3)',
     type: 'case',
   },

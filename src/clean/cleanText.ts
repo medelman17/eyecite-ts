@@ -105,7 +105,7 @@ function rebuildPositionMaps(
 	beforeText: string,
 	afterText: string,
 	oldCleanToOriginal: Map<number, number>,
-	oldOriginalToClean: Map<number, number>,
+	_oldOriginalToClean: Map<number, number>,
 ): {
 	newCleanToOriginal: Map<number, number>
 	newOriginalToClean: Map<number, number>

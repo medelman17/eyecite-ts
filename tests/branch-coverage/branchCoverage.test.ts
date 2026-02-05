@@ -19,7 +19,6 @@ import { extractId, extractSupra, extractShortFormCase } from '@/extract/extract
 import { extractStatute } from '@/extract/extractStatute'
 import {
 	validateAndScore,
-	extractWithValidation,
 } from '@/extract/validation'
 import { loadReporters, getReportersSync } from '@/data/reporters'
 import { cleanText } from '@/clean'
@@ -407,9 +406,9 @@ describe('validation.ts — ambiguous reporter and degraded mode', () => {
 				2,
 			)
 			expect(validated.reporterMatches).toBeDefined()
-			expect(validated.reporterMatches!.length).toBe(ambiguousMatches)
+			expect(validated.reporterMatches?.length).toBe(ambiguousMatches)
 			expect(validated.warnings).toBeDefined()
-			expect(validated.warnings![0].message).toContain('Ambiguous reporter')
+			expect(validated.warnings?.[0].message).toContain('Ambiguous reporter')
 		}
 	})
 

@@ -5,15 +5,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm test                          # Run all tests (vitest, watch mode)
-npx vitest run                    # Run all tests once (no watch)
-npx vitest run tests/extract/extractCase.test.ts  # Run a single test file
-npx vitest run -t "extracts volume"               # Run tests matching name pattern
-npm run build                     # Build with tsdown (ESM + CJS + DTS)
-npm run typecheck                 # Type-check with tsc --noEmit
-npm run lint                      # Lint with Biome
-npm run format                    # Format with Biome (auto-fix)
-npm run size                      # Check bundle size limits
+pnpm test                         # Run all tests (vitest, watch mode)
+pnpm exec vitest run              # Run all tests once (no watch)
+pnpm exec vitest run tests/extract/extractCase.test.ts  # Run a single test file
+pnpm exec vitest run -t "extracts volume"               # Run tests matching name pattern
+pnpm build                        # Build with tsdown (ESM + CJS + DTS)
+pnpm typecheck                    # Type-check with tsc --noEmit
+pnpm lint                         # Lint with Biome
+pnpm format                       # Format with Biome (auto-fix)
+pnpm size                         # Check bundle size limits
 ```
 
 ## Architecture

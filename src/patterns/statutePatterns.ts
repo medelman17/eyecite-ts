@@ -22,7 +22,7 @@ export const statutePatterns: Pattern[] = [
   },
   {
     id: 'state-code',
-    regex: /\b([A-Z][a-z]+\.?\s+[A-Za-z\.]+\s+Code)\s+§\s*(\d+)\b/g,
+    regex: /\b([A-Z][a-z]+\.?\s+[A-Za-z.]+\s+Code)\s+§\s*(\d+)\b/g,
     description: 'State code citations (broad pattern, e.g., "Cal. Penal Code § 187")',
     type: 'statute',
   },

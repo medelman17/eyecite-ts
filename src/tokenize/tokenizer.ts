@@ -116,7 +116,6 @@ export function tokenize(
         `Pattern ${pattern.id} threw error, skipping:`,
         error instanceof Error ? error.message : String(error)
       )
-      continue
     }
   }
 

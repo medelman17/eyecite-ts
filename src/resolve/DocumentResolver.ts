@@ -130,7 +130,7 @@ export class DocumentResolver {
   /**
    * Resolves Id. citation to immediately preceding full case citation.
    */
-  private resolveId(citation: IdCitation): ResolutionResult | undefined {
+  private resolveId(_citation: IdCitation): ResolutionResult | undefined {
     const currentIndex = this.context.citationIndex
 
     // Find most recent full case citation (Id. only resolves to case citations, not statutes/journals)

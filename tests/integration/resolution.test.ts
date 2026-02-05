@@ -278,8 +278,8 @@ Second paragraph: Id. at 125.`
 			expect(citations2[1].resolution?.resolvedTo).toBe(0)
 
 			// Verify no cross-document contamination
-			const doc1Full = citations1[0] as any
-			const doc2Full = citations2[0] as any
+			const doc1Full = citations1[0] as unknown as { volume: number }
+			const doc2Full = citations2[0] as unknown as { volume: number }
 			expect(doc1Full.volume).toBe(100) // Smith
 			expect(doc2Full.volume).toBe(200) // Brown
 		})

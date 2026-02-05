@@ -71,15 +71,15 @@ describe('Full Pipeline Integration Tests', () => {
 			// Future: Extend patterns to include optional parenthetical matching.
 
 			// Verify position points to citation text in original
-			expect(caseCitation!.span.originalStart).toBeGreaterThanOrEqual(0)
-			expect(caseCitation!.span.originalEnd).toBeLessThanOrEqual(
+			expect(caseCitation?.span.originalStart).toBeGreaterThanOrEqual(0)
+			expect(caseCitation?.span.originalEnd).toBeLessThanOrEqual(
 				CLEAN_CASE_TEXT.length,
 			)
 
 			// Extract matched region from original
 			const matched = CLEAN_CASE_TEXT.substring(
-				caseCitation!.span.originalStart,
-				caseCitation!.span.originalEnd,
+				caseCitation?.span.originalStart,
+				caseCitation?.span.originalEnd,
 			)
 			expect(matched).toContain('500')
 			expect(matched).toContain('F.2d')
@@ -105,8 +105,8 @@ describe('Full Pipeline Integration Tests', () => {
 			})
 
 			// Citation should be found after HTML stripping
-			expect(caseCitation!.span.originalStart).toBeGreaterThanOrEqual(0)
-			expect(caseCitation!.span.originalEnd).toBeLessThanOrEqual(
+			expect(caseCitation?.span.originalStart).toBeGreaterThanOrEqual(0)
+			expect(caseCitation?.span.originalEnd).toBeLessThanOrEqual(
 				HTML_CASE_TEXT.length,
 			)
 		})
@@ -165,8 +165,8 @@ describe('Full Pipeline Integration Tests', () => {
 
 			// Extract the matched region from original text
 			const matched = POSITION_ACCURACY_TEXT.substring(
-				caseCitation!.span.originalStart,
-				caseCitation!.span.originalEnd,
+				caseCitation?.span.originalStart,
+				caseCitation?.span.originalEnd,
 			)
 
 			// Should match the citation text (volume reporter page)
@@ -175,12 +175,12 @@ describe('Full Pipeline Integration Tests', () => {
 			expect(matched).toContain('123')
 
 			// Verify positions are within bounds
-			expect(caseCitation!.span.originalStart).toBeGreaterThanOrEqual(0)
-			expect(caseCitation!.span.originalEnd).toBeLessThanOrEqual(
+			expect(caseCitation?.span.originalStart).toBeGreaterThanOrEqual(0)
+			expect(caseCitation?.span.originalEnd).toBeLessThanOrEqual(
 				POSITION_ACCURACY_TEXT.length,
 			)
-			expect(caseCitation!.span.originalEnd).toBeGreaterThan(
-				caseCitation!.span.originalStart,
+			expect(caseCitation?.span.originalEnd).toBeGreaterThan(
+				caseCitation?.span.originalStart,
 			)
 		})
 	})
