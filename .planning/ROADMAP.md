@@ -66,10 +66,13 @@ Plans:
   3. Library processes 10KB legal document in <100ms
   4. Developer can annotate citations with before/after markup or custom functions
   5. Annotation preserves HTML/XML markup and handles entities correctly with accurate position tracking
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] TBD (filled during planning)
+- [ ] 03-01-PLAN.md — Reporter database loader with lazy loading and Map-based O(1) lookup
+- [ ] 03-02-PLAN.md — Annotation API with callback and template modes, auto-escaping
+- [ ] 03-03-PLAN.md — Citation validation with confidence scoring and degraded mode
+- [ ] 03-04-PLAN.md — Bundle optimization, performance validation, integration tests
 
 ### Phase 4: Short-Form Resolution & Integration
 **Goal**: Resolve Id., Supra, and short-form citations to antecedents with document-scoped state, complete testing and documentation
@@ -96,5 +99,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation & Architecture | 3/3 | ✓ Complete | 2026-02-05 |
 | 2. Core Parsing | 6/6 | ✓ Complete | 2026-02-05 |
-| 3. Reporter Database & Annotation | 0/TBD | Not started | - |
+| 3. Reporter Database & Annotation | 0/4 | Not started | - |
 | 4. Short-Form Resolution & Integration | 0/TBD | Not started | - |
