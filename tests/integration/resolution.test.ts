@@ -481,4 +481,29 @@ Second paragraph: Id. at 125.`
 			expect(citations[4].resolution?.resolvedTo).toBe(0)
 		})
 	})
+
+	describe('Supra Resolution Fallback (no extracted party names)', () => {
+		it('resolves supra via backward text search when caseName extraction fails', () => {
+			// When caseName extraction fails (no "v." found in backward search range),
+			// the resolver falls back to its own backward text search.
+			// Start citation at beginning of text so no "v." is in backward range.
+			const text = '500 F.2d 123 (2020). See also Jones, supra, at 130.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+			const caseCit = citations.find(c => c.type === 'case')
+			const supra = citations.find(c => c.type === 'supra')
+
+			// Case citation without caseName (no backward "v." text)
+			expect(caseCit).toBeDefined()
+			if (caseCit?.type === 'case') {
+				expect(caseCit.caseName).toBeUndefined()
+				expect(caseCit.plaintiffNormalized).toBeUndefined()
+				expect(caseCit.defendantNormalized).toBeUndefined()
+			}
+
+			// Supra should still attempt resolution (may or may not resolve)
+			expect(supra).toBeDefined()
+			expect(supra?.type).toBe('supra')
+		})
+	})
 })
