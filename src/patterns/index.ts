@@ -7,4 +7,6 @@
  */
 
 export * from './casePatterns'
-// Future exports will be added here as Task 2 creates additional pattern files
+export * from './statutePatterns'
+export * from './journalPatterns'
+export * from './neutralPatterns'
