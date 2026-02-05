@@ -277,12 +277,25 @@ export class DocumentResolver {
     // Capture the first party name (handles single-letter party names like "A" or "B")
     const vMatch = beforeText.match(/([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*)\s+v\.?\s+[A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*,\s*$/)
     if (vMatch) {
-      return vMatch[1].trim()
+      return this.stripSignalWords(vMatch[1].trim())
     }
 
     // Fallback: try to find any capitalized word(s) before comma
     const beforeComma = beforeText.match(/([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*),\s*$/)
-    return beforeComma?.[1].trim()
+    if (beforeComma) {
+      return this.stripSignalWords(beforeComma[1].trim())
+    }
+    return undefined
+  }
+
+  /**
+   * Strips citation signal words that may precede party names.
+   * E.g., "In Smith" → "Smith", "See Also Jones" → "Jones"
+   */
+  private stripSignalWords(name: string): string {
+    const stripped = name.replace(/^(?:In|See(?:\s+[Aa]lso)?|Compare|But(?:\s+[Ss]ee)?|Cf\.?|Also)\s+/i, '').trim()
+    // Only return stripped version if something remains
+    return stripped.length > 0 ? stripped : name
   }
 
   /**

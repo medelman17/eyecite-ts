@@ -285,6 +285,59 @@ Second paragraph: Id. at 125.`
 		})
 	})
 
+	describe('Signal Word Stripping (#21)', () => {
+		it('resolves supra when antecedent has "In" signal word', () => {
+			const text = 'In Smith v. Jones, 500 F.2d 123 (2020). Smith, supra, at 130.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+			expect(citations).toHaveLength(2)
+			expect(citations[1].type).toBe('supra')
+			expect(citations[1].resolution?.resolvedTo).toBe(0)
+			expect(citations[1].resolution?.failureReason).toBeUndefined()
+		})
+
+		it('resolves supra when antecedent has "See" signal word', () => {
+			const text = 'See Brown v. Board, 347 U.S. 483 (1954). Brown, supra, at 495.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+			expect(citations).toHaveLength(2)
+			expect(citations[1].type).toBe('supra')
+			expect(citations[1].resolution?.resolvedTo).toBe(0)
+		})
+
+		it('resolves supra when antecedent has "Compare" signal word', () => {
+			const text = 'Compare Adams v. Clark, 200 F.3d 100 (2010). Adams, supra, at 105.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+			expect(citations).toHaveLength(2)
+			expect(citations[1].type).toBe('supra')
+			expect(citations[1].resolution?.resolvedTo).toBe(0)
+		})
+
+		it('resolves supra when antecedent has "But see" signal word', () => {
+			const text = 'But see Davis v. Miller, 300 F.2d 50 (2015). Davis, supra, at 55.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+			expect(citations).toHaveLength(2)
+			expect(citations[1].type).toBe('supra')
+			expect(citations[1].resolution?.resolvedTo).toBe(0)
+		})
+
+		it('resolves supra when antecedent has "See also" signal word', () => {
+			const text = 'See also Wilson v. Taylor, 400 F.2d 200 (2018). Wilson, supra, at 210.'
+
+			const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+			expect(citations).toHaveLength(2)
+			expect(citations[1].type).toBe('supra')
+			expect(citations[1].resolution?.resolvedTo).toBe(0)
+		})
+	})
+
 	describe('Mixed Citation Types', () => {
 		it('resolves short-form citations alongside full citations', () => {
 			const text = `Smith v. Jones, 500 F.2d 123 (2020).
