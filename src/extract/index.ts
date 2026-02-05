@@ -15,3 +15,8 @@
  */
 
 export * from './extractCase'
+export * from './extractStatute'
+export * from './extractJournal'
+export * from './extractNeutral'
+export * from './extractPublicLaw'
+export * from './extractFederalRegister'
