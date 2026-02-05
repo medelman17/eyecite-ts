@@ -104,9 +104,9 @@ export function extractCase(
 	const { text, span } = token
 
 	// Parse volume-reporter-page using regex
-	// Pattern: volume (digits) + reporter (letters/periods/spaces/numbers) + page (digits)
+	// Pattern: volume (digits) + reporter (letters/periods/spaces/numbers) + page (digits or blank placeholder)
 	// Use greedy matching for reporter to capture full abbreviation including spaces
-	const volumeReporterPageRegex = /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s]+)\s+(\d+)/
+	const volumeReporterPageRegex = /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s]+)\s+(\d+|_{3,}|-{3,})/
 	const match = volumeReporterPageRegex.exec(text)
 
 	if (!match) {
@@ -116,7 +116,12 @@ export function extractCase(
 
 	const volume = parseVolume(match[1])
 	const reporter = match[2].trim()
-	const page = Number.parseInt(match[3], 10)
+
+	// Check if page is a blank placeholder
+	const pageStr = match[3]
+	const isBlankPage = /^[_-]{3,}$/.test(pageStr)
+	const page = isBlankPage ? undefined : Number.parseInt(pageStr, 10)
+	const hasBlankPage = isBlankPage ? true : undefined
 
 	// Extract optional pincite (page reference after comma)
 	// Pattern: ", digits" (e.g., ", 125")
@@ -227,6 +232,11 @@ export function extractCase(
 	// Cap at 1.0
 	confidence = Math.min(confidence, 1.0)
 
+	// Override confidence for blank page citations
+	if (hasBlankPage) {
+		confidence = 0.8
+	}
+
 	return {
 		type: 'case',
 		text,
@@ -246,5 +256,6 @@ export function extractCase(
 		pincite,
 		court,
 		year,
+		hasBlankPage,
 	}
 }
