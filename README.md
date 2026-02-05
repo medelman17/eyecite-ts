@@ -1,5 +1,14 @@
 # eyecite-ts
 
+[![CI](https://github.com/medelman17/eyecitets/actions/workflows/ci.yml/badge.svg)](https://github.com/medelman17/eyecitets/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/medelman17/eyecitets/branch/main/graph/badge.svg)](https://codecov.io/gh/medelman17/eyecitets)
+[![npm version](https://img.shields.io/npm/v/eyecite-ts.svg)](https://www.npmjs.com/package/eyecite-ts)
+[![npm bundle size](https://img.shields.io/bundlephobia/minzip/eyecite-ts)](https://bundlephobia.com/package/eyecite-ts)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/node/v/eyecite-ts.svg)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
+[![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://www.npmjs.com/package/eyecite-ts)
+
 TypeScript legal citation extraction library — port of Python [eyecite](https://github.com/freelawproject/eyecite).
 
 Extract, resolve, and annotate legal citations from court opinions and legal documents with zero runtime dependencies.
@@ -322,13 +331,13 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 ## Development
 
 ```bash
-npm install          # Install dependencies
-npm test             # Run tests (vitest, watch mode)
-npx vitest run       # Run tests once
-npm run typecheck    # Type-check with tsc
-npm run build        # Build (ESM + CJS + DTS)
-npm run lint         # Lint with Biome
-npm run format       # Format with Biome
+pnpm install         # Install dependencies
+pnpm test            # Run tests (vitest, watch mode)
+pnpm exec vitest run # Run tests once
+pnpm typecheck       # Type-check with tsc
+pnpm build           # Build (ESM + CJS + DTS)
+pnpm lint            # Lint with Biome
+pnpm format          # Format with Biome
 ```
 
 304 tests, 97% statement coverage, 91% branch coverage.
