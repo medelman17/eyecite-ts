@@ -22,6 +22,7 @@ import {
   journalPatterns,
   neutralPatterns,
 } from '@/patterns'
+import { shortFormPatterns } from '@/patterns/shortForm'
 
 /**
  * A token representing a potential citation found in cleaned text.
@@ -87,6 +88,7 @@ export function tokenize(
     ...statutePatterns,
     ...journalPatterns,
     ...neutralPatterns,
+    ...shortFormPatterns,
   ]
 ): Token[] {
   const tokens: Token[] = []
