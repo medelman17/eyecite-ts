@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2025-02-04)
 ## Current Position
 
 Phase: 4 of 4 (Short-form Resolution)
-Plan: 3 of 3 complete
-Status: Phase complete
-Last activity: 2026-02-05 — Completed 04-03-PLAN.md (document-scoped resolution engine)
+Plan: 4 of 4 complete
+Status: Phase complete — v1.0 milestone achieved
+Last activity: 2026-02-05 — Completed 04-04-PLAN.md (pipeline integration, tests, documentation)
 
-Progress: [██████████] 100%
+Progress: [████████████████] 100%
 
 ## Phase 1 Plans (Complete)
 
@@ -51,13 +51,14 @@ Progress: [██████████] 100%
 | 04-01 | 1 | Short-form citation types and patterns (Id., Ibid., supra) | Complete ✅ |
 | 04-02 | 2 | Short-form extraction integration (tokenizer + extractors) | Complete ✅ |
 | 04-03 | 2 | Document-scoped resolution engine (Id./supra/short-form case) | Complete ✅ |
+| 04-04 | 3 | Pipeline integration, integration tests, README documentation | Complete ✅ |
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15
-- Average duration: 177s
-- Total execution time: 0.74 hours
+- Total plans completed: 16
+- Average duration: 181s
+- Total execution time: 0.80 hours
 
 **By Phase:**
 
@@ -66,11 +67,11 @@ Progress: [██████████] 100%
 | Phase 1 | 3/3 | 4 min | 80s |
 | Phase 2 | 6/6 | 23.3 min | 233s |
 | Phase 3 | 4/4 | 11.0 min | 165s |
-| Phase 4 | 3/3 | 12.1 min | 242s |
+| Phase 4 | 4/4 | 38.1 min | 571s |
 
 **Recent Trend:**
-- Last 5 plans: 03-03 (181s), 03-04 (137s), 04-01 (237s), 04-02 (222s), 04-03 (270s)
-- Trend: Phase 4 plans averaging ~243s (complex resolution logic and comprehensive testing)
+- Last 5 plans: 03-04 (137s), 04-01 (237s), 04-02 (222s), 04-03 (270s), 04-04 (1560s)
+- Note: 04-04 included 6 bug fixes discovered during integration testing (token deduplication, pattern ordering, party name extraction)
 
 *Updated after each plan completion*
 
@@ -217,6 +218,16 @@ Recent decisions affecting current work:
 | RES-03 | Normalize reporter abbreviations by removing spaces and periods | Flexible short-form case matching handles reporter abbreviation variations |
 | RES-04 | Fuzzy party matching enabled by default with 0.8 threshold | More robust supra resolution at cost of potential false positives |
 
+**From 04-04 execution:**
+
+| ID | Decision | Impact |
+|----|----------|--------|
+| RESOLVE-01 | Convenience API via resolve option in extractCitations() | Single-function call for common use case (extract + resolve); power-user API still available |
+| RESOLVE-02 | Token deduplication by span position (first match wins) | Multiple patterns can match same text; prevents duplicate citations in output |
+| RESOLVE-03 | Pattern ordering: neutral > short-form > case > statute > journal | More specific patterns before broad patterns ensures correct citation type detection |
+| RESOLVE-04 | Party name extraction via lookback algorithm (100 chars before span) | Resolution engine extracts "Smith v. Jones" from text before citation for supra matching |
+| RESOLVE-05 | Id. only resolves to case citations (not statutes/journals) | Matches legal convention; prevents false matches like Id. resolving to statute |
+
 ### Pending Todos
 
 None yet.
@@ -232,11 +243,36 @@ None yet.
 
 **From 02-06 execution:**
 - Parenthetical extraction (court, year) requires enhanced patterns with ReDoS protection — Phase 3 should add optional parenthetical matching
-- Duplicate citation filtering (overlapping pattern matches) deferred to Phase 3 annotation layer
+- Duplicate citation filtering (overlapping pattern matches) deferred to Phase 3 annotation layer ✅ Done (04-04: token deduplication)
 - Unicode position accuracy edge cases (emoji, combining characters, RTL) need validation corpus in Phase 3
+
+**From 04-04 execution:**
+- All Phase 4 goals achieved ✅
+- v1.0 milestone complete
+- Ready for NPM publication and public release
 
 ## Session Continuity
 
-Last session: 2026-02-05 (04-03 execution)
-Stopped at: Completed 04-03-PLAN.md - Document-scoped resolution engine (Phase 4: All plans complete)
+Last session: 2026-02-05 (04-04 execution)
+Stopped at: Completed 04-04-PLAN.md - Pipeline integration and testing (Phase 4: Complete, v1.0 milestone achieved)
 Resume file: None
+
+## v1.0 Milestone Complete
+
+**All phases complete:**
+- Phase 1: Foundation and architecture ✅
+- Phase 2: Core parsing pipeline ✅
+- Phase 3: Reporter database and annotation ✅
+- Phase 4: Short-form resolution ✅
+
+**Stats:**
+- 16 plans executed
+- 235 tests passing
+- 48 minutes total execution time
+- Zero runtime dependencies
+- <50KB bundle size achieved
+
+**Ready for:**
+- NPM publication
+- Public release
+- Community feedback
