@@ -39,6 +39,7 @@ export type {
 	NeutralCitation,
 	PublicLawCitation,
 	FederalRegisterCitation,
+	StatutesAtLargeCitation,
 	IdCitation,
 	SupraCitation,
 	ShortFormCaseCitation,
@@ -78,6 +79,7 @@ export {
 	extractNeutral,
 	extractPublicLaw,
 	extractFederalRegister,
+	extractStatutesAtLarge,
 } from './extract'
 
 // ============================================================================

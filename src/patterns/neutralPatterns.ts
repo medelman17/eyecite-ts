@@ -38,4 +38,10 @@ export const neutralPatterns: Pattern[] = [
     description: 'Federal Register citations (e.g., "86 Fed. Reg. 12345")',
     type: 'federalRegister',
   },
+  {
+    id: 'statutes-at-large',
+    regex: /\b(\d+)\s+Stat\.\s+(\d+)\b/g,
+    description: 'Statutes at Large citations (e.g., "124 Stat. 119")',
+    type: 'statutesAtLarge',
+  },
 ]

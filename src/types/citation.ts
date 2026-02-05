@@ -3,7 +3,7 @@ import type { Span } from "./span"
 /**
  * Citation type discriminator for type-safe pattern matching.
  */
-export type CitationType = "case" | "statute" | "journal" | "neutral" | "publicLaw" | "federalRegister" | "id" | "supra" | "shortFormCase"
+export type CitationType = "case" | "statute" | "journal" | "neutral" | "publicLaw" | "federalRegister" | "statutesAtLarge" | "id" | "supra" | "shortFormCase"
 
 /**
  * Warning generated during citation parsing.
@@ -202,6 +202,17 @@ export interface FederalRegisterCitation extends CitationBase {
   year?: number
 }
 
+/** Citation to the Statutes at Large (session law compilation) */
+export interface StatutesAtLargeCitation extends CitationBase {
+  type: 'statutesAtLarge'
+  /** Statutes at Large volume */
+  volume: number
+  /** Page number */
+  page: number
+  /** Publication year (if extracted) */
+  year?: number
+}
+
 /**
  * Id. citation (refers to immediately preceding citation).
  *
@@ -265,6 +276,7 @@ export type Citation =
   | NeutralCitation
   | PublicLawCitation
   | FederalRegisterCitation
+  | StatutesAtLargeCitation
   | IdCitation
   | SupraCitation
   | ShortFormCaseCitation
@@ -272,13 +284,13 @@ export type Citation =
 /**
  * Citation type discriminators grouped by category.
  */
-export type FullCitationType = 'case' | 'statute' | 'journal' | 'neutral' | 'publicLaw' | 'federalRegister'
+export type FullCitationType = 'case' | 'statute' | 'journal' | 'neutral' | 'publicLaw' | 'federalRegister' | 'statutesAtLarge'
 export type ShortFormCitationType = 'id' | 'supra' | 'shortFormCase'
 
 /**
  * Union of all full citation types (not short-form references).
  */
-export type FullCitation = FullCaseCitation | StatuteCitation | JournalCitation | NeutralCitation | PublicLawCitation | FederalRegisterCitation
+export type FullCitation = FullCaseCitation | StatuteCitation | JournalCitation | NeutralCitation | PublicLawCitation | FederalRegisterCitation | StatutesAtLargeCitation
 
 /**
  * Union of all short-form citation types (Id., supra, short-form case).

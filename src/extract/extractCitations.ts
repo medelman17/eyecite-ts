@@ -20,6 +20,7 @@ import {
 	extractNeutral,
 	extractPublicLaw,
 	extractFederalRegister,
+	extractStatutesAtLarge,
 } from '@/extract'
 import { extractId, extractSupra, extractShortFormCase } from './extractShortForms'
 import {
@@ -231,6 +232,9 @@ export function extractCitations(
 				break
 			case 'federalRegister':
 				citation = extractFederalRegister(token, transformationMap)
+				break
+			case 'statutesAtLarge':
+				citation = extractStatutesAtLarge(token, transformationMap)
 				break
 			default:
 				// Unknown type - skip

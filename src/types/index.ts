@@ -11,6 +11,7 @@ export type {
   NeutralCitation,
   PublicLawCitation,
   FederalRegisterCitation,
+  StatutesAtLargeCitation,
   IdCitation,
   SupraCitation,
   ShortFormCaseCitation,

@@ -10,6 +10,7 @@ export function isFullCitation(citation: Citation): citation is FullCitation {
     || citation.type === 'neutral'
     || citation.type === 'publicLaw'
     || citation.type === 'federalRegister'
+    || citation.type === 'statutesAtLarge'
 }
 
 /**
