@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
+pnpm install                      # Install dependencies (uses corepack, pinned in packageManager field)
 pnpm test                         # Run all tests (vitest, watch mode)
 pnpm exec vitest run              # Run all tests once (no watch)
 pnpm exec vitest run tests/extract/extractCase.test.ts  # Run a single test file
@@ -14,6 +15,7 @@ pnpm typecheck                    # Type-check with tsc --noEmit
 pnpm lint                         # Lint with Biome
 pnpm format                       # Format with Biome (auto-fix)
 pnpm size                         # Check bundle size limits
+pnpm changeset                    # Create a changeset for the next release
 ```
 
 ## Architecture
@@ -52,7 +54,8 @@ Three package entry points configured in `tsdown.config.ts` and `package.json`:
 
 ## Code Style
 
-- **Formatter/Linter**: Biome — spaces, 100-char line width, double quotes, trailing commas, semicolons as needed
+- **Formatter/Linter**: Biome 2.x — spaces, 100-char line width, double quotes, trailing commas, semicolons as needed
+- `noAssignInExpressions: off` — regex exec loops use assignment-in-while pattern
 - `noExplicitAny: error` and `noImplicitAnyLet: error` — strict typing enforced
 - `noForEach: off` — forEach is allowed
 - Patterns are defined in `src/patterns/` with a `Pattern` interface (`id`, `regex`, `description`, `type`)
@@ -61,3 +64,10 @@ Three package entry points configured in `tsdown.config.ts` and `package.json`:
 ## Test Structure
 
 Tests mirror source in `tests/` with the same directory structure. Integration tests live in `tests/integration/`. Vitest 4 is used — test options go as the second argument: `it(name, { timeout }, fn)`.
+
+## CI & Releases
+
+- **CI**: GitHub Actions — lint, typecheck, test (Node 18/20/22 matrix), build + size check
+- **Coverage**: Vitest `--coverage` requires Node 20+ (`node:inspector/promises`). CI only runs coverage on Node 22.
+- **Releases**: Changesets — `pnpm changeset` to add, merge to main creates "Version Packages" PR, merging that publishes to npm with provenance
+- **Package manager**: pnpm 10 via corepack. Build script allowlist in `pnpm-workspace.yaml`.
