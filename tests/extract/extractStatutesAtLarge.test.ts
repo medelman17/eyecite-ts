@@ -45,6 +45,18 @@ describe("extractStatutesAtLarge", () => {
 		expect(result.year).toBe(2010)
 	})
 
+	it("should throw on malformed token text", () => {
+		const token: Token = {
+			text: "not a stat citation",
+			span: { cleanStart: 0, cleanEnd: 19 },
+			type: "statutesAtLarge",
+			patternId: "statutes-at-large",
+		}
+		expect(() => extractStatutesAtLarge(token, createIdentityMap())).toThrow(
+			"Failed to parse Statutes at Large citation",
+		)
+	})
+
 	it("should handle various Statutes at Large volumes", () => {
 		const cases = [
 			{ text: "79 Stat. 911", volume: 79, page: 911 },
