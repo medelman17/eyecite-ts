@@ -532,3 +532,59 @@ describe('parenthetical year and court extraction (integration)', () => {
 		}
 	})
 })
+
+describe('court extraction with date in parenthetical (#5)', () => {
+	it('extracts court when parenthetical contains month and day', () => {
+		const citations = extractCitations('500 F.3d 100 (2d Cir. Jan. 15, 2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('2d Cir.')
+			expect(citations[0].year).toBe(2020)
+		}
+	})
+
+	it('extracts court with different month abbreviation', () => {
+		const citations = extractCitations('347 U.S. 483 (C.D. Cal. Feb. 9, 2015)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('C.D. Cal.')
+			expect(citations[0].year).toBe(2015)
+		}
+	})
+
+	it('extracts court when parenthetical has month without day', () => {
+		const citations = extractCitations('500 F.3d 100 (D. Mass. Mar. 2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('D. Mass.')
+			expect(citations[0].year).toBe(2020)
+		}
+	})
+
+	it('still extracts court with simple year-only parenthetical', () => {
+		const citations = extractCitations('500 F.3d 100 (2d Cir. 2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('2d Cir.')
+			expect(citations[0].year).toBe(2020)
+		}
+	})
+
+	it('handles Sept. abbreviation', () => {
+		const citations = extractCitations('100 F.2d 50 (5th Cir. Sept. 30, 2019)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('5th Cir.')
+			expect(citations[0].year).toBe(2019)
+		}
+	})
+
+	it('handles district court with full date', () => {
+		const citations = extractCitations('200 F. Supp. 2d 300 (S.D.N.Y. Dec. 1, 2018)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('S.D.N.Y.')
+			expect(citations[0].year).toBe(2018)
+		}
+	})
+})

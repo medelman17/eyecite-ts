@@ -24,6 +24,27 @@ function parseVolume(raw: string): number | string {
 	return String(num) === raw ? num : raw
 }
 
+/** Month abbreviations found in legal citation parentheticals */
+const MONTH_PATTERN = /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?/
+
+/**
+ * Strips date components (month, day, year) from parenthetical content
+ * to isolate the court abbreviation.
+ * E.g., "2d Cir. Jan. 15, 2020" → "2d Cir."
+ *        "C.D. Cal. Feb. 9, 2015" → "C.D. Cal."
+ *        "D. Mass. Mar. 2020" → "D. Mass."
+ */
+function stripDateFromCourt(content: string): string | undefined {
+	// Strip trailing year
+	let court = content.replace(/\s*\d{4}\s*$/, '').trim()
+	// Strip trailing date components: optional day+comma, month abbreviation
+	court = court.replace(new RegExp(`\\s*,?\\s*\\d{1,2}\\s*,?\\s*$`), '').trim()
+	court = court.replace(new RegExp(`\\s*${MONTH_PATTERN.source}\\s*$`), '').trim()
+	// Strip any trailing commas left over
+	court = court.replace(/,\s*$/, '').trim()
+	return court && /[A-Za-z]/.test(court) ? court : undefined
+}
+
 /**
  * Extracts case citation metadata from a tokenized citation.
  *
@@ -113,7 +134,7 @@ export function extractCase(
 	// Pattern: "(text)" where text contains letters (captures full parenthetical)
 	const courtRegex = /\(([^)]*[A-Za-z][^)]*)\)/
 	const courtMatch = courtRegex.exec(text)
-	let court = courtMatch ? courtMatch[1].replace(/\s*\d{4}\s*$/, '').trim() || undefined : undefined
+	let court = courtMatch ? stripDateFromCourt(courtMatch[1]) : undefined
 
 	// Look ahead in cleaned text for parenthetical after the token
 	// Tokenization patterns only capture volume-reporter-page, so parentheticals
@@ -131,9 +152,9 @@ export function extractCase(
 				year = Number.parseInt(laYearMatch[1], 10)
 			}
 
-			// Extract court from parenthetical (strip trailing year)
-			const courtContent = parenContent.replace(/\s*\d{4}\s*$/, '').trim()
-			if (courtContent && /[A-Za-z]/.test(courtContent)) {
+			// Extract court from parenthetical (strip date components)
+			const courtContent = stripDateFromCourt(parenContent)
+			if (courtContent) {
 				court = courtContent
 			}
 
