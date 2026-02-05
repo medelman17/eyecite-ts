@@ -46,10 +46,15 @@ Plans:
   3. All extracted citations include matched text, span positions, and structured metadata (volume, reporter, page, etc.)
   4. Developer can clean text (strip HTML, normalize whitespace, remove OCR artifacts) with custom functions
   5. No citation pattern triggers >100ms parse time (ReDoS protection validated)
-**Plans**: TBD
+**Plans**: 6 plans
 
 Plans:
-- [ ] TBD (filled during planning)
+- [ ] 02-01-PLAN.md — Text cleaning layer with position tracking (cleanText, built-in cleaners)
+- [ ] 02-02-PLAN.md — Regex patterns for all citation types with ReDoS protection
+- [ ] 02-03-PLAN.md — Tokenization layer applying patterns to cleaned text
+- [ ] 02-04-PLAN.md — Citation type system extension (journal, neutral, public law, federal register)
+- [ ] 02-05-PLAN.md — Citation extraction with metadata parsing and confidence scoring
+- [ ] 02-06-PLAN.md — Main pipeline (extractCitations API) with integration tests
 
 ### Phase 3: Reporter Database & Annotation
 **Goal**: Integrate reporter database, optimize bundle size, implement position-aware annotation, validate performance constraints
@@ -90,6 +95,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Architecture | 3/3 | ✓ Complete | 2026-02-05 |
-| 2. Core Parsing | 0/TBD | Not started | - |
+| 2. Core Parsing | 0/6 | Not started | - |
 | 3. Reporter Database & Annotation | 0/TBD | Not started | - |
 | 4. Short-Form Resolution & Integration | 0/TBD | Not started | - |
