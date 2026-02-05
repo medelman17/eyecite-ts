@@ -61,7 +61,8 @@ export interface FullCaseCitation extends CitationBase {
   type: "case"
   volume: number | string
   reporter: string
-  page: number
+  /** Page number — optional for blank page placeholder citations (e.g., "___" or "---") */
+  page?: number
   pincite?: number
   court?: string
   year?: number
@@ -106,6 +107,41 @@ export interface FullCaseCitation extends CitationBase {
     confidence: number
     reason: string
   }>
+
+  /**
+   * Full span covering citation from case name through closing parenthetical.
+   * Populated by Phase 6 (Full Span extraction).
+   * @example For "Smith v. Doe, 500 F.2d 123 (2020)", fullSpan covers entire text.
+   */
+  fullSpan?: Span
+
+  /**
+   * Extracted case name (party names around "v.").
+   * Populated by Phase 6 (Full Span extraction).
+   * @example "Smith v. Doe" or "United States v. Jones"
+   */
+  caseName?: string
+
+  /**
+   * Plaintiff party name (text before "v." or procedural prefix).
+   * Populated by Phase 7 (Party Name extraction).
+   * @example "Smith" from "Smith v. Doe" or "Jones" from "In re Jones"
+   */
+  plaintiff?: string
+
+  /**
+   * Defendant party name (text after "v.").
+   * Populated by Phase 7 (Party Name extraction).
+   * @example "Doe" from "Smith v. Doe"
+   */
+  defendant?: string
+
+  /**
+   * True when page position contains a blank placeholder ("___" or "---").
+   * Populated by Phase 5 (Blank Page support).
+   * When true, page field will be undefined and confidence reduced to 0.8.
+   */
+  hasBlankPage?: boolean
 }
 
 /**
