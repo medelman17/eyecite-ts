@@ -30,7 +30,7 @@ export const casePatterns: Pattern[] = [
   },
   {
     id: 'supreme-court',
-    regex: /\b(\d+)\s+(U\.S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?2d)?)\s+(\d+)\b/g,
+    regex: /\b(\d+)\s+(U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?2d)?)\s+(\d+)\b/g,
     description: 'U.S. Supreme Court reporters',
     type: 'case',
   },

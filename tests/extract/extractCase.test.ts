@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractCase } from '@/extract'
+import { extractCase, extractCitations } from '@/extract'
 import type { Token } from '@/tokenize'
 import type { TransformationMap } from '@/types/span'
 
@@ -391,5 +391,27 @@ describe('extractCase', () => {
 
 			expect(citation.patternsChecked).toBe(1)
 		})
+	})
+})
+
+describe('reporter with internal spaces (integration)', () => {
+	it('should recognize "U. S." with space as case citation', () => {
+		const citations = extractCitations('506 U. S. 534')
+		expect(citations).toHaveLength(1)
+		expect(citations[0].type).toBe('case')
+		if (citations[0].type === 'case') {
+			expect(citations[0].reporter).toBe('U. S.')
+			expect(citations[0].volume).toBe(506)
+			expect(citations[0].page).toBe(534)
+		}
+	})
+
+	it('should still recognize "U.S." without space', () => {
+		const citations = extractCitations('506 U.S. 534')
+		expect(citations).toHaveLength(1)
+		expect(citations[0].type).toBe('case')
+		if (citations[0].type === 'case') {
+			expect(citations[0].reporter).toBe('U.S.')
+		}
 	})
 })
