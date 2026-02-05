@@ -21,14 +21,15 @@ export function extractStatutesAtLarge(
 	const { text, span } = token
 
 	// Parse volume-Stat.-page
-	const statRegex = /^(\d+)\s+Stat\.\s+(\d+)/
+	const statRegex = /^(\d+(?:-\d+)?)\s+Stat\.\s+(\d+)/
 	const match = statRegex.exec(text)
 
 	if (!match) {
 		throw new Error(`Failed to parse Statutes at Large citation: ${text}`)
 	}
 
-	const volume = Number.parseInt(match[1], 10)
+	const rawVolume = match[1]
+	const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
 	const page = Number.parseInt(match[2], 10)
 
 	// Extract optional year in parentheses

@@ -416,6 +416,40 @@ describe('reporter with internal spaces (integration)', () => {
 	})
 })
 
+describe('hyphenated volume (integration)', () => {
+	it('should extract full hyphenated volume from Trade Cases', () => {
+		const citations = extractCitations('1984-1 Trade Cas. 66')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case' || citations[0].type === 'journal') {
+			expect(citations[0].volume).toBe('1984-1')
+		}
+	})
+
+	it('should still extract numeric volumes as numbers', () => {
+		const citations = extractCitations('500 F.2d 123')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].volume).toBe(500)
+			expect(typeof citations[0].volume).toBe('number')
+		}
+	})
+
+	it('should handle multiple hyphenated volume examples', () => {
+		const examples = [
+			{ text: '1998-2 Trade Cas. 72', volume: '1998-2' },
+			{ text: '2020-1 Trade Cas. 81', volume: '2020-1' },
+		]
+		for (const { text, volume } of examples) {
+			const citations = extractCitations(text)
+			expect(citations).toHaveLength(1)
+			const c = citations[0]
+			if (c.type === 'case' || c.type === 'journal') {
+				expect(c.volume).toBe(volume)
+			}
+		}
+	})
+})
+
 describe('parenthetical year and court extraction (integration)', () => {
 	it('should extract year from parenthetical', () => {
 		const citations = extractCitations('491 U.S. 397 (1989)')

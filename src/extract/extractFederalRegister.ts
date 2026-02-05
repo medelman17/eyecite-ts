@@ -52,14 +52,15 @@ export function extractFederalRegister(
 
 	// Parse volume-page using regex
 	// Pattern: volume (digits) + "Fed. Reg." + page (digits)
-	const federalRegisterRegex = /^(\d+)\s+Fed\.\s?Reg\.\s+(\d+)/
+	const federalRegisterRegex = /^(\d+(?:-\d+)?)\s+Fed\.\s?Reg\.\s+(\d+)/
 	const match = federalRegisterRegex.exec(text)
 
 	if (!match) {
 		throw new Error(`Failed to parse Federal Register citation: ${text}`)
 	}
 
-	const volume = Number.parseInt(match[1], 10)
+	const rawVolume = match[1]
+	const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
 	const page = Number.parseInt(match[2], 10)
 
 	// Extract optional year in parentheses

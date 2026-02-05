@@ -34,19 +34,19 @@ export const neutralPatterns: Pattern[] = [
   },
   {
     id: 'federal-register',
-    regex: /\b(\d+)\s+Fed\.\s?Reg\.\s+(\d+)\b/g,
+    regex: /\b(\d+(?:-\d+)?)\s+Fed\.\s?Reg\.\s+(\d+)\b/g,
     description: 'Federal Register citations (e.g., "86 Fed. Reg. 12345")',
     type: 'federalRegister',
   },
   {
     id: 'statutes-at-large',
-    regex: /\b(\d+)\s+Stat\.\s+(\d+)\b/g,
+    regex: /\b(\d+(?:-\d+)?)\s+Stat\.\s+(\d+)\b/g,
     description: 'Statutes at Large citations (e.g., "124 Stat. 119")',
     type: 'statutesAtLarge',
   },
   {
     id: 'compact-law-review',
-    regex: /\b(\d+)\s+([A-Z][A-Za-z.]+L\.(?:Rev|J|Q)\.)\s+(\d+)\b/g,
+    regex: /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.]+L\.(?:Rev|J|Q)\.)\s+(\d+)\b/g,
     description: 'Compact law review citations without spaces (e.g., "93 Harv.L.Rev. 752")',
     type: 'journal',
   },

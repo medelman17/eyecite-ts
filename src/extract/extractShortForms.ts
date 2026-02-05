@@ -205,14 +205,15 @@ export function extractShortFormCase(
 
 	// Parse volume-reporter-at-page
 	// Pattern: number space abbreviation space "at" space number
-	const shortFormRegex = /(\d+)\s+([A-Z][A-Za-z.\s]+?(?:\d[a-z])?)\s+at\s+(\d+)/
+	const shortFormRegex = /(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.\s]+?(?:\d[a-z])?)\s+at\s+(\d+)/
 	const match = shortFormRegex.exec(text)
 
 	if (!match) {
 		throw new Error(`Failed to parse short-form case citation: ${text}`)
 	}
 
-	const volume = Number.parseInt(match[1], 10)
+	const rawVolume = match[1]
+	const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
 	const reporter = match[2].trim() // Remove trailing spaces
 	const pincite = Number.parseInt(match[3], 10)
 

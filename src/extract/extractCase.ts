@@ -18,6 +18,12 @@ import type { Token } from '@/tokenize'
 import type { FullCaseCitation } from '@/types/citation'
 import type { TransformationMap } from '@/types/span'
 
+/** Parse a volume string as number when purely numeric, string when hyphenated */
+function parseVolume(raw: string): number | string {
+	const num = Number.parseInt(raw, 10)
+	return String(num) === raw ? num : raw
+}
+
 /**
  * Extracts case citation metadata from a tokenized citation.
  *
@@ -79,7 +85,7 @@ export function extractCase(
 	// Parse volume-reporter-page using regex
 	// Pattern: volume (digits) + reporter (letters/periods/spaces/numbers) + page (digits)
 	// Use greedy matching for reporter to capture full abbreviation including spaces
-	const volumeReporterPageRegex = /^(\d+)\s+([A-Za-z0-9.\s]+)\s+(\d+)/
+	const volumeReporterPageRegex = /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s]+)\s+(\d+)/
 	const match = volumeReporterPageRegex.exec(text)
 
 	if (!match) {
@@ -87,7 +93,7 @@ export function extractCase(
 		throw new Error(`Failed to parse case citation: ${text}`)
 	}
 
-	const volume = Number.parseInt(match[1], 10)
+	const volume = parseVolume(match[1])
 	const reporter = match[2].trim()
 	const page = Number.parseInt(match[3], 10)
 

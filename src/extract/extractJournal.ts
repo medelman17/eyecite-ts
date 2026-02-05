@@ -57,14 +57,15 @@ export function extractJournal(
 
 	// Parse volume-journal-page using regex
 	// Pattern: volume (digits) + journal (letters/periods/spaces) + page (digits)
-	const journalRegex = /^(\d+)\s+([A-Za-z.\s]+?)\s+(\d+)/
+	const journalRegex = /^(\d+(?:-\d+)?)\s+([A-Za-z.\s]+?)\s+(\d+)/
 	const match = journalRegex.exec(text)
 
 	if (!match) {
 		throw new Error(`Failed to parse journal citation: ${text}`)
 	}
 
-	const volume = Number.parseInt(match[1], 10)
+	const rawVolume = match[1]
+	const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
 	const journal = match[2].trim()
 	const page = Number.parseInt(match[3], 10)
 

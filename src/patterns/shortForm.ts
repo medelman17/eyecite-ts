@@ -31,7 +31,7 @@ export const SUPRA_PATTERN: RegExp = /\b([A-Z][a-zA-Z]+(?:(?:\s+v\.?\s+|\s+)[A-Z
  * Pattern: number space abbreviation space "at" space number
  * Simplified detection; full parsing in extraction layer
  */
-export const SHORT_FORM_CASE_PATTERN: RegExp = /\b(\d+)\s+([A-Z][A-Za-z.\s]+?(?:\d[a-z])?)\s+at\s+(\d+)\b/g
+export const SHORT_FORM_CASE_PATTERN: RegExp = /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.\s]+?(?:\d[a-z])?)\s+at\s+(\d+)\b/g
 
 /** All short-form patterns for tokenization */
 export const SHORT_FORM_PATTERNS: readonly RegExp[] = [

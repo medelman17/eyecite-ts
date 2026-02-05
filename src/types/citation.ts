@@ -59,7 +59,7 @@ export interface CitationBase {
  */
 export interface FullCaseCitation extends CitationBase {
   type: "case"
-  volume: number
+  volume: number | string
   reporter: string
   page: number
   pincite?: number
@@ -71,7 +71,7 @@ export interface FullCaseCitation extends CitationBase {
 
   /** Parallel citations for same case in different reporters */
   parallelCitations?: Array<{
-    volume: number
+    volume: number | string
     reporter: string
     page: number
   }>
@@ -100,7 +100,7 @@ export interface FullCaseCitation extends CitationBase {
    * Used when reporter abbreviation matches multiple reporters or format is unclear.
    */
   possibleInterpretations?: Array<{
-    volume: number
+    volume: number | string
     reporter: string
     page: number
     confidence: number
@@ -134,8 +134,8 @@ export interface JournalCitation extends CitationBase {
   author?: string
   /** Article title (if extracted) */
   title?: string
-  /** Volume number */
-  volume?: number
+  /** Volume number (string for hyphenated volumes like "1984-1") */
+  volume?: number | string
   /** Full journal name */
   journal: string
   /** Standard journal abbreviation (e.g., "Harv. L. Rev.") */
@@ -195,7 +195,7 @@ export interface PublicLawCitation extends CitationBase {
 export interface FederalRegisterCitation extends CitationBase {
   type: 'federalRegister'
   /** Federal Register volume */
-  volume: number
+  volume: number | string
   /** Page number */
   page: number
   /** Publication year (if extracted) */
@@ -206,7 +206,7 @@ export interface FederalRegisterCitation extends CitationBase {
 export interface StatutesAtLargeCitation extends CitationBase {
   type: 'statutesAtLarge'
   /** Statutes at Large volume */
-  volume: number
+  volume: number | string
   /** Page number */
   page: number
   /** Publication year (if extracted) */
@@ -246,7 +246,7 @@ export interface SupraCitation extends CitationBase {
  */
 export interface ShortFormCaseCitation extends CitationBase {
   type: "shortFormCase"
-  volume: number
+  volume: number | string
   reporter: string
   page?: number
   pincite?: number
