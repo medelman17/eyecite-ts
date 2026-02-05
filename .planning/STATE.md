@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2025-02-04)
 Phase: 2 of 4 (Core Parsing)
 Plan: 2 of 6 complete
 Status: In progress
-Last activity: 2026-02-05 — Completed 02-02-PLAN.md (citation regex patterns with ReDoS protection)
+Last activity: 2026-02-04 — Completed 02-01-PLAN.md (text cleaning layer with position tracking)
 
 Progress: [███░░░░░░░] 33%
 
@@ -28,7 +28,7 @@ Progress: [███░░░░░░░] 33%
 
 | Plan | Wave | Description | Status |
 |------|------|-------------|--------|
-| 02-01 | 1 | Text cleaners (HTML stripping, Unicode normalization, whitespace) | Not started |
+| 02-01 | 1 | Text cleaners (HTML stripping, Unicode normalization, whitespace) | Complete ✅ |
 | 02-02 | 1 | Citation regex patterns (case, statute, journal, neutral) with ReDoS protection | Complete ✅ |
 | 02-03 | 2 | Tokenizer (pattern matching, candidate extraction) | Not started |
 | 02-04 | 2 | TransformationMap implementation (position tracking) | Not started |
@@ -38,19 +38,19 @@ Progress: [███░░░░░░░] 33%
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: 113s
-- Total execution time: 0.13 hours
+- Total plans completed: 5
+- Average duration: 146s
+- Total execution time: 0.20 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | Phase 1 | 3/3 | 4 min | 80s |
-| Phase 2 | 2/6 | 7 min | 214s |
+| Phase 2 | 2/6 | 8.6 min | 258s |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (80s), 01-03 (120s), 01-02 (60s), 02-02 (214s)
+- Last 5 plans: 01-01 (80s), 01-03 (120s), 01-02 (60s), 02-01 (306s), 02-02 (214s)
 - Trend: Phase 2 plans taking longer (more complex implementation)
 
 *Updated after each plan completion*
@@ -93,6 +93,14 @@ Recent decisions affecting current work:
 | TEST-01 | 10-second Vitest timeout | Enables Phase 2 ReDoS performance validation (<100ms per citation) |
 | TEST-02 | Exclude src/types/** from coverage | Type definition files don't need test coverage |
 
+**From 02-01 execution:**
+
+| ID | Decision | Impact |
+|----|----------|--------|
+| CLEAN-01 | Simplified position tracking using lookahead algorithm (maxLookAhead=20) | Character-by-character diff handles multi-char deletions; conservative approach for MVP |
+| CLEAN-02 | Default cleaners: stripHtmlTags, normalizeWhitespace, normalizeUnicode, fixSmartQuotes (not removeOcrArtifacts) | OCR artifacts less common; developers can opt-in when needed |
+| CLEAN-03 | Conservative position mapping prioritizes correctness over performance | Phase 2 focus is correctness; Phase 3 can optimize if needed |
+
 **From 02-02 execution:**
 
 | ID | Decision | Impact |
@@ -109,18 +117,14 @@ None yet.
 ### Blockers/Concerns
 
 **From Research (SUMMARY.md):**
+- Phase 1: Regex pattern audit needed — inventory all Python eyecite patterns, flag ES incompatibilities
 - Phase 1: Bundle strategy decision required — inline vs. tree-shake vs. CDN for reporters (affects architecture)
-- Phase 2: ✅ ReDoS testing infrastructure — COMPLETE (02-02: all patterns <100ms, validated with pathological inputs)
+- Phase 2: ReDoS testing infrastructure — integrate analyzer, establish baseline (<100ms per citation)
 - Phase 3: Reporter database optimization — measure tree-shaking vs. compression trade-offs with actual bundle
 - Phase 3: Position accuracy validation — requires access to diverse legal document corpus with HTML/Unicode
 
-**From 02-02 execution:**
-- State reporter and journal patterns are very broad - will produce false positives (validated by extraction layer in Plan 02-05)
-- No pincite support yet (e.g., "500 F.2d 123, 125") - out of scope for tokenization patterns
-- No short-form citation support yet (Id., supra, etc.) - requires context, may add in later phases
-
 ## Session Continuity
 
-Last session: 2026-02-05 (02-02 execution)
-Stopped at: Completed 02-02-PLAN.md - Citation regex patterns with ReDoS protection
+Last session: 2026-02-04 (02-01 execution)
+Stopped at: Completed 02-01-PLAN.md - Text cleaning layer with position tracking
 Resume file: None
