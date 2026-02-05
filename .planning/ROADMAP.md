@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation & Architecture** - Project scaffolding, TypeScript config, architectural design ✓
 - [x] **Phase 2: Core Parsing** - Tokenization, citation extraction, metadata, text cleaning ✓
 - [x] **Phase 3: Reporter Database & Annotation** - Reporter data integration, bundle optimization, annotation ✓
-- [ ] **Phase 4: Short-Form Resolution & Integration** - Id./Supra resolution, comprehensive testing, documentation
+- [x] **Phase 4: Short-Form Resolution & Integration** - Id./Supra resolution, comprehensive testing, documentation ✓
 
 ## Phase Details
 
@@ -88,10 +88,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Short-form detection patterns (Id./Ibid./supra) with types and ReDoS protection
-- [ ] 04-02-PLAN.md — Short-form extraction functions and tokenizer integration
-- [ ] 04-03-PLAN.md — DocumentResolver with Levenshtein matching, scope boundaries, and full resolution
-- [ ] 04-04-PLAN.md — Pipeline integration with resolve option, integration tests, and README docs
+- [x] 04-01-PLAN.md — Short-form detection patterns (Id./Ibid./supra) with types and ReDoS protection
+- [x] 04-02-PLAN.md — Short-form extraction functions and tokenizer integration
+- [x] 04-03-PLAN.md — DocumentResolver with Levenshtein matching, scope boundaries, and full resolution
+- [x] 04-04-PLAN.md — Pipeline integration with resolve option, integration tests, and README docs
 
 ## Progress
 
@@ -103,4 +103,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation & Architecture | 3/3 | ✓ Complete | 2026-02-05 |
 | 2. Core Parsing | 6/6 | ✓ Complete | 2026-02-05 |
 | 3. Reporter Database & Annotation | 4/4 | ✓ Complete | 2026-02-05 |
-| 4. Short-Form Resolution & Integration | 0/4 | Planned | - |
+| 4. Short-Form Resolution & Integration | 4/4 | ✓ Complete | 2026-02-05 |

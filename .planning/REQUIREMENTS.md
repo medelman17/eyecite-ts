@@ -18,12 +18,12 @@ Requirements for initial release. Full feature parity with Python eyecite.
 - [x] **DET-07**: Extract case citations with parenthetical (123 F.3d 456 (9th Cir. 2020) (holding that...))
 - [x] **DET-08**: Extract parallel citations (123 U.S. 456, 78 S.Ct. 901)
 - [x] **DET-09**: Extract neutral citations (2020 WL 123456)
-- [ ] **DET-10**: Detect Id. citations
-- [ ] **DET-11**: Detect Id. with pincite (Id. at 460)
-- [ ] **DET-12**: Detect Ibid. citations
-- [ ] **DET-13**: Detect supra citations (Smith, supra)
-- [ ] **DET-14**: Detect supra with pincite (Smith, supra, at 460)
-- [ ] **DET-15**: Detect short-form citations (Smith, 123 F.3d at 460)
+- [x] **DET-10**: Detect Id. citations
+- [x] **DET-11**: Detect Id. with pincite (Id. at 460)
+- [x] **DET-12**: Detect Ibid. citations
+- [x] **DET-13**: Detect supra citations (Smith, supra)
+- [x] **DET-14**: Detect supra with pincite (Smith, supra, at 460)
+- [x] **DET-15**: Detect short-form citations (Smith, 123 F.3d at 460)
 - [x] **DET-16**: Extract U.S. Code citations (42 U.S.C. § 1983)
 - [x] **DET-17**: Extract U.S. Code range citations (42 U.S.C. §§ 1983-1988)
 - [x] **DET-18**: Extract state code citations (Cal. Penal Code § 187)
@@ -45,12 +45,12 @@ Requirements for initial release. Full feature parity with Python eyecite.
 
 ### Citation Resolution
 
-- [ ] **RES-01**: Resolve Id. citations to immediately preceding citation
-- [ ] **RES-02**: Respect paragraph boundary for Id. resolution (configurable)
-- [ ] **RES-03**: Resolve supra citations by party name matching
-- [ ] **RES-04**: Handle variations in party name spelling for supra
-- [ ] **RES-05**: Resolve short-form citations by reporter and page
-- [ ] **RES-06**: Validate volume number consistency in resolution
+- [x] **RES-01**: Resolve Id. citations to immediately preceding citation
+- [x] **RES-02**: Respect paragraph boundary for Id. resolution (configurable)
+- [x] **RES-03**: Resolve supra citations by party name matching
+- [x] **RES-04**: Handle variations in party name spelling for supra
+- [x] **RES-05**: Resolve short-form citations by reporter and page
+- [x] **RES-06**: Validate volume number consistency in resolution
 
 ### Annotation
 
@@ -98,8 +98,8 @@ Requirements for initial release. Full feature parity with Python eyecite.
 
 - [x] **DX-01**: Full TypeScript types for all public APIs
 - [x] **DX-02**: No `any` types in public API
-- [ ] **DX-03**: Helpful error messages for invalid input
-- [ ] **DX-04**: API documentation with examples
+- [x] **DX-03**: Helpful error messages for invalid input
+- [x] **DX-04**: API documentation with examples
 
 ## v2 Requirements
 
@@ -147,12 +147,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DET-07 | Phase 2 | Complete |
 | DET-08 | Phase 2 | Complete |
 | DET-09 | Phase 2 | Complete |
-| DET-10 | Phase 4 | Pending |
-| DET-11 | Phase 4 | Pending |
-| DET-12 | Phase 4 | Pending |
-| DET-13 | Phase 4 | Pending |
-| DET-14 | Phase 4 | Pending |
-| DET-15 | Phase 4 | Pending |
+| DET-10 | Phase 4 | Complete |
+| DET-11 | Phase 4 | Complete |
+| DET-12 | Phase 4 | Complete |
+| DET-13 | Phase 4 | Complete |
+| DET-14 | Phase 4 | Complete |
+| DET-15 | Phase 4 | Complete |
 | DET-16 | Phase 2 | Complete |
 | DET-17 | Phase 2 | Complete |
 | DET-18 | Phase 2 | Complete |
@@ -168,12 +168,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | META-06 | Phase 2 | Complete |
 | META-07 | Phase 2 | Complete |
 | META-08 | Phase 2 | Complete |
-| RES-01 | Phase 4 | Pending |
-| RES-02 | Phase 4 | Pending |
-| RES-03 | Phase 4 | Pending |
-| RES-04 | Phase 4 | Pending |
-| RES-05 | Phase 4 | Pending |
-| RES-06 | Phase 4 | Pending |
+| RES-01 | Phase 4 | Complete |
+| RES-02 | Phase 4 | Complete |
+| RES-03 | Phase 4 | Complete |
+| RES-04 | Phase 4 | Complete |
+| RES-05 | Phase 4 | Complete |
+| RES-06 | Phase 4 | Complete |
 | ANN-01 | Phase 3 | Complete |
 | ANN-02 | Phase 3 | Complete |
 | ANN-03 | Phase 3 | Complete |
@@ -203,8 +203,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PERF-03 | Phase 1 | Complete |
 | DX-01 | Phase 1 | Complete |
 | DX-02 | Phase 1 | Complete |
-| DX-03 | Phase 4 | Pending |
-| DX-04 | Phase 4 | Pending |
+| DX-03 | Phase 4 | Complete |
+| DX-04 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 56 total
@@ -219,4 +219,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2025-02-04*
-*Last updated: 2026-02-05 after Phase 3 completion*
+*Last updated: 2026-02-05 after Phase 4 completion (all v1 requirements complete)*
