@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractId, extractSupra, extractShortFormCase } from '@/extract'
+import { extractId, extractSupra, extractShortFormCase, extractCitations } from '@/extract'
 import type { Token } from '@/tokenize'
 import type { TransformationMap } from '@/types/span'
 
@@ -246,6 +246,36 @@ describe('extractShortForms', () => {
 			expect(citation.span.originalEnd).toBe(33) // +3 offset
 		})
 
+		it('should handle space before comma (HTML cleaning artifact)', () => {
+			const token: Token = {
+				text: 'Twombly , supra, at 553',
+				span: { cleanStart: 0, cleanEnd: 23 },
+				type: 'case',
+				patternId: 'supra',
+			}
+			const transformationMap = createIdentityMap()
+
+			const citation = extractSupra(token, transformationMap)
+
+			expect(citation.partyName).toBe('Twombly')
+			expect(citation.pincite).toBe(553)
+		})
+
+		it('should handle space before comma without pincite', () => {
+			const token: Token = {
+				text: 'Smith , supra',
+				span: { cleanStart: 0, cleanEnd: 13 },
+				type: 'case',
+				patternId: 'supra',
+			}
+			const transformationMap = createIdentityMap()
+
+			const citation = extractSupra(token, transformationMap)
+
+			expect(citation.partyName).toBe('Smith')
+			expect(citation.pincite).toBeUndefined()
+		})
+
 		it('should throw error on non-supra text', () => {
 			const token: Token = {
 				text: 'Not a valid citation',
@@ -432,5 +462,30 @@ describe('extractShortForms', () => {
 			const citation = extractShortFormCase(token, createIdentityMap())
 			expect(citation.reporter).toBe('F.')
 		})
+	})
+})
+
+describe('supra with HTML cleaning artifacts (integration)', () => {
+	it('should match supra when HTML tags introduce space before comma', () => {
+		const text = 'In <em>Twombly</em>, supra, at 553'
+		const citations = extractCitations(text)
+		const supra = citations.find((c) => c.type === 'supra')
+
+		expect(supra).toBeDefined()
+		if (supra?.type === 'supra') {
+			expect(supra.pincite).toBe(553)
+		}
+	})
+
+	it('should match supra with space before comma in plain text', () => {
+		const text = 'Twombly , supra, at 553'
+		const citations = extractCitations(text)
+		const supra = citations.find((c) => c.type === 'supra')
+
+		expect(supra).toBeDefined()
+		if (supra?.type === 'supra') {
+			expect(supra.partyName).toBe('Twombly')
+			expect(supra.pincite).toBe(553)
+		}
 	})
 })
