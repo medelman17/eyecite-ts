@@ -50,6 +50,12 @@ jobs:
         with:
           name: coverage
           path: coverage/
+      - name: Upload coverage reports to Codecov
+        if: matrix.node-version == 22
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: medelman17/eyecitets
 
   build:
     name: Build & Size Check
