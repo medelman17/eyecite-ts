@@ -1,17 +1,18 @@
 # eyecite-ts
 
-TypeScript legal citation extraction library - port of Python [eyecite](https://github.com/freelawproject/eyecite).
+TypeScript legal citation extraction library — port of Python [eyecite](https://github.com/freelawproject/eyecite).
 
-Extract, validate, annotate, and resolve legal citations from court opinions and legal documents with zero runtime dependencies and a <50KB bundle size.
+Extract, resolve, and annotate legal citations from court opinions and legal documents with zero runtime dependencies.
 
 ## Features
 
 - **Full citation extraction**: Case citations, statutes, journal articles, neutral citations, public laws, federal register
 - **Short-form resolution**: Id./Ibid., supra, and short-form case citations resolved to their full antecedents
-- **Reporter database**: 1235 reporters with variant matching and confidence scoring
-- **Citation annotation**: HTML/Markdown markup with auto-escape and position tracking
-- **Bundle optimization**: Tree-shakeable exports, lazy-loaded data, separate entry points
-- **TypeScript native**: Discriminated unions, strict types, full IntelliSense
+- **Reporter database**: 1,200+ reporters with variant matching and confidence scoring
+- **Citation annotation**: HTML markup with auto-escape XSS protection and position tracking
+- **Bundle optimization**: Tree-shakeable exports, lazy-loaded reporter data, separate entry points
+- **TypeScript native**: Discriminated unions, conditional types, type guards, full IntelliSense
+- **Zero dependencies**: No runtime dependencies, 4.4KB gzipped core bundle
 
 ## Installation
 
@@ -36,13 +37,13 @@ console.log(citations[0])
 //   court: '9th Cir.',
 //   year: 2020,
 //   confidence: 0.85,
-//   span: { originalStart: 4, originalEnd: 48 }
+//   span: { originalStart: 4, originalEnd: 48, cleanStart: 4, cleanEnd: 48 }
 // }
 ```
 
 ## Citation Extraction
 
-### Basic Usage
+### Multiple Citation Types
 
 ```typescript
 import { extractCitations } from 'eyecite-ts'
@@ -70,7 +71,8 @@ const citations = await extractCitationsAsync(text)
 ### Custom Patterns
 
 ```typescript
-import { extractCitations, casePatterns } from 'eyecite-ts'
+import { extractCitations } from 'eyecite-ts'
+import { casePatterns } from 'eyecite-ts'
 
 // Extract only case citations
 const citations = extractCitations(text, {
@@ -81,17 +83,17 @@ const citations = extractCitations(text, {
 ### Custom Cleaners
 
 ```typescript
-import { extractCitations, stripHtmlTags } from 'eyecite-ts'
+import { extractCitations, cleanText } from 'eyecite-ts'
 
-// Use only HTML stripping, skip Unicode normalization
+// Use only HTML stripping
 const citations = extractCitations(html, {
-  cleaners: [stripHtmlTags]
+  cleaners: [(text) => text.replace(/<[^>]+>/g, '')]
 })
 ```
 
 ## Resolving Short-Form Citations
 
-Short-form citations (Id., supra, short-form case) refer to earlier citations in the document. The resolution engine automatically links them to their full antecedents.
+Short-form citations (Id., supra, short-form case) refer to earlier citations in the document. The resolution engine links them to their full antecedents.
 
 ### Convenience API
 
@@ -105,16 +107,11 @@ const text = `
   500 F.2d at 140.
 `
 
-// Convenience: extract + resolve in one call
 const citations = extractCitations(text, { resolve: true })
 
 // citations[1] is Id. citation
 console.log(citations[1].resolution)
-// {
-//   resolvedTo: 0,  // Points to Smith v. Jones (index 0)
-//   confidence: 1.0,
-//   warnings: []
-// }
+// { resolvedTo: 0, confidence: 1.0 }
 ```
 
 ### Power-User API
@@ -122,15 +119,13 @@ console.log(citations[1].resolution)
 ```typescript
 import { extractCitations, resolveCitations } from 'eyecite-ts'
 
-// Step 1: Extract citations
 const citations = extractCitations(text)
 
-// Step 2: Resolve short-form citations
 const resolved = resolveCitations(citations, text, {
-  scopeStrategy: 'paragraph',      // Only resolve within paragraphs
-  fuzzyPartyMatching: true,        // Enable fuzzy supra matching
-  partyMatchThreshold: 0.8,        // Similarity threshold (0-1)
-  reportUnresolved: true           // Report failure reasons
+  scopeStrategy: 'paragraph',
+  fuzzyPartyMatching: true,
+  partyMatchThreshold: 0.8,
+  reportUnresolved: true
 })
 ```
 
@@ -153,125 +148,91 @@ const resolved = resolveCitations(citations, text, {
 ```typescript
 const text = 'Smith v. Jones, 500 F.2d 123. Id. at 125.'
 const citations = extractCitations(text, { resolve: true })
-
-// citations[1].resolution.resolvedTo === 0 (points to Smith v. Jones)
+// citations[1].resolution.resolvedTo === 0
 ```
 
 **Supra citations:**
 
 ```typescript
-const text = 'Smith v. Jones, 500 F.2d 123. See also Smith, supra, at 130.'
+const text = 'Smith v. Jones, 500 F.2d 123. Smith, supra, at 130.'
 const citations = extractCitations(text, { resolve: true })
-
 // citations[1].resolution.resolvedTo === 0 (party name matches "Smith")
 ```
 
 **Short-form case citations:**
 
 ```typescript
-const text = 'Brown v. Board, 347 U.S. 483 (1954). See 347 U.S. at 495.'
+const text = 'Brown v. Board, 347 U.S. 483. See 347 U.S. at 495.'
 const citations = extractCitations(text, { resolve: true })
-
 // citations[1].resolution.resolvedTo === 0 (volume/reporter matches)
 ```
 
-### Handling Unresolved Citations
+**Unresolved citations:**
 
 ```typescript
 const text = 'Id. at 100.' // Orphan Id. with no preceding citation
-
 const citations = extractCitations(text, { resolve: true })
-
-console.log(citations[0].resolution)
-// {
-//   resolvedTo: undefined,
-//   failureReason: 'No preceding full citation found',
-//   confidence: 0,
-//   warnings: []
-// }
-```
-
-To suppress unresolved warnings:
-
-```typescript
-const citations = extractCitations(text, {
-  resolve: true,
-  resolutionOptions: {
-    reportUnresolved: false  // Omits resolution field for unresolved citations
-  }
-})
-```
-
-## Citation Validation
-
-Validate case citations against the reporters database:
-
-```typescript
-import { validateCitation } from 'eyecite-ts/data'
-
-// Returns citations with adjusted confidence scores
-const validated = await validateCitation(citations)
-
-// Confidence adjustments:
-// - +0.2 boost for reporter match
-// - -0.3 penalty for reporter mismatch
-// - -0.1 penalty for ambiguous reporter
+// citations[0].resolution.failureReason === 'No preceding full case citation found'
 ```
 
 ## Citation Annotation
 
-Add HTML/Markdown markup to citations:
+Add HTML markup to citations in text:
 
 ```typescript
 import { annotate } from 'eyecite-ts/annotate'
+import { extractCitations } from 'eyecite-ts'
 
-// Template mode (simple)
-const html = annotate(
-  text,
-  citations,
-  '<a href="{{url}}">{{text}}</a>'
-)
+const text = 'See Smith v. Jones, 500 F.2d 123 (2020).'
+const citations = extractCitations(text)
+
+// Template mode
+const result = annotate(text, citations, {
+  template: { before: '<cite>', after: '</cite>' }
+})
+// result.text === 'See Smith v. Jones, <cite>500 F.2d 123</cite> (2020).'
 
 // Callback mode (full control)
-const html = annotate(text, citations, (citation, text) => {
-  const url = `https://example.com/${citation.volume}/${citation.reporter}/${citation.page}`
-  return `<a href="${url}">${text}</a>`
+const result2 = annotate(text, citations, {
+  callback: (citation, surrounding) => {
+    if (citation.type === 'case') {
+      return `<a href="/cases/${citation.volume}">${citation.matchedText}</a>`
+    }
+    return citation.matchedText
+  }
 })
 ```
 
 Auto-escape is enabled by default for XSS protection:
 
 ```typescript
-// User input is automatically escaped
-const html = annotate(text, citations, '<a>{{text}}</a>', {
-  autoEscape: true  // default
+const result = annotate(text, citations, {
+  template: { before: '<cite>', after: '</cite>' },
+  autoEscape: true  // default — escapes &, <, >, ", ', /
 })
 ```
 
-## Bundle Size
+## Reporter Validation
 
-Core library is optimized for tree-shaking:
-
-- **Core extraction**: 2.5 KB gzipped
-- **Reporter database**: 88.5 KB gzipped (lazy-loaded)
-- **Annotation**: 0.5 KB gzipped
-
-Import only what you need:
+Validate case citations against the reporters database:
 
 ```typescript
-// Tree-shakeable imports
-import { extractCitations } from 'eyecite-ts'           // Core only
-import { validateCitation } from 'eyecite-ts/data'      // Core + data
-import { annotate } from 'eyecite-ts/annotate'          // Core + annotate
+import { extractWithValidation } from 'eyecite-ts'
+
+const validated = await extractWithValidation(text, { validate: true })
+// Confidence adjustments:
+//   +0.2 boost for reporter match
+//   -0.3 penalty for unknown reporter
+//   -0.1 per extra match for ambiguous reporter
 ```
 
-## Citation Types
+## Type System
 
-All citation types are exported with full TypeScript types:
+All citation types use a discriminated union on the `type` field:
 
 ```typescript
 import type {
-  Citation,
+  Citation,           // Union of all 9 types
   FullCaseCitation,
   StatuteCitation,
   JournalCitation,
@@ -280,24 +241,69 @@ import type {
   FederalRegisterCitation,
   IdCitation,
   SupraCitation,
-  ShortFormCaseCitation
+  ShortFormCaseCitation,
+  CitationOfType,     // Extract subtype: CitationOfType<'case'> = FullCaseCitation
+  ExtractorMap,       // Maps FullCitationType keys to citation subtypes
+  FullCitation,       // Union of full citation types
+  ShortFormCitation,  // Union of short-form types
+} from 'eyecite-ts'
+```
+
+### Type Guards
+
+```typescript
+import {
+  isFullCitation,
+  isShortFormCitation,
+  isCaseCitation,
+  isCitationType,
+  assertUnreachable
 } from 'eyecite-ts'
 
-// Discriminated union - switch on type
-citations.forEach(citation => {
-  switch (citation.type) {
-    case 'case':
-      console.log(citation.reporter)  // FullCaseCitation
-      break
-    case 'statute':
-      console.log(citation.title)     // StatuteCitation
-      break
-    case 'id':
-      console.log(citation.pincite)   // IdCitation
-      break
-    // etc.
-  }
-})
+// Specific guards
+if (isFullCitation(citation)) {
+  // citation: FullCitation
+}
+
+// Generic guard — narrows to any specific type
+if (isCitationType(citation, 'statute')) {
+  // citation: StatuteCitation
+}
+
+// Exhaustiveness check in switch statements
+switch (citation.type) {
+  case 'case': /* ... */ break
+  case 'statute': /* ... */ break
+  // ... all 9 types ...
+  default: assertUnreachable(citation.type)
+}
+```
+
+### Resolved Citation Types
+
+`ResolvedCitation` uses a conditional type — `resolution` is only meaningfully present on short-form citations:
+
+```typescript
+import type { ResolvedCitation } from 'eyecite-ts'
+
+// On short-form citations: resolution: ResolutionResult | undefined
+// On full citations: resolution?: undefined
+```
+
+## Bundle Size
+
+Three entry points for optimal tree-shaking:
+
+| Entry Point | Import | Gzipped |
+|------------|--------|---------|
+| Core extraction | `eyecite-ts` | 4.4 KB |
+| Annotation | `eyecite-ts/annotate` | 0.5 KB |
+| Reporter data | `eyecite-ts/data` | 88.5 KB (lazy-loaded) |
+
+```typescript
+import { extractCitations } from 'eyecite-ts'           // Core only
+import { annotate } from 'eyecite-ts/annotate'           // Annotation
+import { loadReporters } from 'eyecite-ts/data'          // Reporter database
 ```
 
 ## Architecture
@@ -307,27 +313,25 @@ Citation extraction follows a 4-stage pipeline:
 1. **Clean**: Remove HTML, normalize Unicode, fix smart quotes
 2. **Tokenize**: Apply regex patterns to find citation candidates
 3. **Extract**: Parse metadata (volume, reporter, page, etc.)
-4. **Translate**: Map positions from cleaned text → original text
+4. **Resolve** (optional): Link short-form citations to antecedents
 
-All positions (spans) track both cleaned and original text offsets.
+All positions (spans) track both cleaned and original text offsets via `TransformationMap`.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 
 ## Development
 
 ```bash
-# Install dependencies
-npm install
-
-# Run tests
-npm test
-
-# Type checking
-npm run typecheck
-
-# Build
-npm run build
+npm install          # Install dependencies
+npm test             # Run tests (vitest, watch mode)
+npx vitest run       # Run tests once
+npm run typecheck    # Type-check with tsc
+npm run build        # Build (ESM + CJS + DTS)
+npm run lint         # Lint with Biome
+npm run format       # Format with Biome
 ```
+
+304 tests, 97% statement coverage, 91% branch coverage.
 
 ## License
 
