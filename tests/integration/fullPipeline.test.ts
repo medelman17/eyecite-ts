@@ -298,6 +298,92 @@ describe('Full Pipeline Integration Tests', () => {
 		})
 	})
 
+	describe('4th Series Reporters', () => {
+		it('extracts F.4th citations', () => {
+			const text = 'The court in Smith v. Jones, 50 F.4th 100 (2021), held...'
+			const citations = extractCitations(text)
+
+			const f4th = citations.find(
+				(c) => c.type === 'case' && c.volume === 50 && c.reporter === 'F.4th',
+			)
+			expect(f4th).toBeDefined()
+			if (f4th && f4th.type === 'case') {
+				expect(f4th.volume).toBe(50)
+				expect(f4th.reporter).toBe('F.4th')
+				expect(f4th.page).toBe(100)
+			}
+		})
+
+		it('extracts Cal.App.4th citations', () => {
+			const text = 'See People v. Smith, 173 Cal.App.4th 655, for precedent.'
+			const citations = extractCitations(text)
+
+			const calApp4th = citations.find(
+				(c) =>
+					c.type === 'case' &&
+					c.volume === 173 &&
+					c.reporter === 'Cal.App.4th',
+			)
+			expect(calApp4th).toBeDefined()
+			if (calApp4th && calApp4th.type === 'case') {
+				expect(calApp4th.volume).toBe(173)
+				expect(calApp4th.reporter).toBe('Cal.App.4th')
+				expect(calApp4th.page).toBe(655)
+			}
+		})
+
+		it('extracts A.4th citations', () => {
+			const text = 'The decision in Doe v. Roe, 100 A.4th 200, is binding.'
+			const citations = extractCitations(text)
+
+			const a4th = citations.find(
+				(c) => c.type === 'case' && c.volume === 100 && c.reporter === 'A.4th',
+			)
+			expect(a4th).toBeDefined()
+			if (a4th && a4th.type === 'case') {
+				expect(a4th.volume).toBe(100)
+				expect(a4th.reporter).toBe('A.4th')
+				expect(a4th.page).toBe(200)
+			}
+		})
+
+		it('extracts Cal.App.5th citations', () => {
+			const text = 'See People v. Johnson, 75 Cal.App.5th 123, for analysis.'
+			const citations = extractCitations(text)
+
+			const calApp5th = citations.find(
+				(c) =>
+					c.type === 'case' &&
+					c.volume === 75 &&
+					c.reporter === 'Cal.App.5th',
+			)
+			expect(calApp5th).toBeDefined()
+			if (calApp5th && calApp5th.type === 'case') {
+				expect(calApp5th.volume).toBe(75)
+				expect(calApp5th.reporter).toBe('Cal.App.5th')
+				expect(calApp5th.page).toBe(123)
+			}
+		})
+
+		it('extracts F.Supp.4th citations', () => {
+			const text = 'In United States v. Smith, 200 F.Supp.4th 500, the district court...'
+			const citations = extractCitations(text)
+
+			const fSupp4th = citations.find(
+				(c) =>
+					c.type === 'case' &&
+					c.volume === 200 &&
+					c.reporter === 'F.Supp.4th',
+			)
+			expect(fSupp4th).toBeDefined()
+			if (fSupp4th && fSupp4th.type === 'case') {
+				expect(fSupp4th.volume).toBe(200)
+				expect(fSupp4th.reporter).toBe('F.Supp.4th')
+				expect(fSupp4th.page).toBe(500)
+			}
+		})
+	})
+
 	describe('Async API', () => {
 		it('async API produces identical results to sync API', async () => {
 			const syncCitations = extractCitations(CLEAN_CASE_TEXT)

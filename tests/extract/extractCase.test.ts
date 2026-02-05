@@ -79,6 +79,86 @@ describe('extractCase', () => {
 			expect(citation.reporter).toBe('So. 2d')
 			expect(citation.page).toBe(456)
 		})
+
+		it('should extract F.4th citations', () => {
+			const token: Token = {
+				text: '50 F.4th 100',
+				span: { cleanStart: 0, cleanEnd: 12 },
+				type: 'case',
+				patternId: 'federal-reporter',
+			}
+			const transformationMap = createIdentityMap()
+
+			const citation = extractCase(token, transformationMap)
+
+			expect(citation.volume).toBe(50)
+			expect(citation.reporter).toBe('F.4th')
+			expect(citation.page).toBe(100)
+		})
+
+		it('should extract Cal.App.4th citations', () => {
+			const token: Token = {
+				text: '173 Cal.App.4th 655',
+				span: { cleanStart: 0, cleanEnd: 19 },
+				type: 'case',
+				patternId: 'state-reporter',
+			}
+			const transformationMap = createIdentityMap()
+
+			const citation = extractCase(token, transformationMap)
+
+			expect(citation.volume).toBe(173)
+			expect(citation.reporter).toBe('Cal.App.4th')
+			expect(citation.page).toBe(655)
+		})
+
+		it('should extract A.4th citations', () => {
+			const token: Token = {
+				text: '100 A.4th 200',
+				span: { cleanStart: 0, cleanEnd: 13 },
+				type: 'case',
+				patternId: 'state-reporter',
+			}
+			const transformationMap = createIdentityMap()
+
+			const citation = extractCase(token, transformationMap)
+
+			expect(citation.volume).toBe(100)
+			expect(citation.reporter).toBe('A.4th')
+			expect(citation.page).toBe(200)
+		})
+
+		it('should extract Cal.App.5th citations', () => {
+			const token: Token = {
+				text: '75 Cal.App.5th 123',
+				span: { cleanStart: 0, cleanEnd: 18 },
+				type: 'case',
+				patternId: 'state-reporter',
+			}
+			const transformationMap = createIdentityMap()
+
+			const citation = extractCase(token, transformationMap)
+
+			expect(citation.volume).toBe(75)
+			expect(citation.reporter).toBe('Cal.App.5th')
+			expect(citation.page).toBe(123)
+		})
+
+		it('should extract F.Supp.4th citations', () => {
+			const token: Token = {
+				text: '200 F.Supp.4th 500',
+				span: { cleanStart: 0, cleanEnd: 18 },
+				type: 'case',
+				patternId: 'federal-reporter',
+			}
+			const transformationMap = createIdentityMap()
+
+			const citation = extractCase(token, transformationMap)
+
+			expect(citation.volume).toBe(200)
+			expect(citation.reporter).toBe('F.Supp.4th')
+			expect(citation.page).toBe(500)
+		})
 	})
 
 	describe('optional metadata extraction', () => {

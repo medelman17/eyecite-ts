@@ -24,8 +24,8 @@ export interface Pattern {
 export const casePatterns: Pattern[] = [
   {
     id: 'federal-reporter',
-    regex: /\b(\d+)\s+(F\.|F\.2d|F\.3d|F\.\s?Supp\.|F\.\s?Supp\.\s?2d|F\.\s?Supp\.\s?3d)\s+(\d+)\b/g,
-    description: 'Federal Reporter (F., F.2d, F.3d, F.Supp., etc.)',
+    regex: /\b(\d+)\s+(F\.|F\.2d|F\.3d|F\.4th|F\.\s?Supp\.|F\.\s?Supp\.\s?2d|F\.\s?Supp\.\s?3d|F\.\s?Supp\.\s?4th)\s+(\d+)\b/g,
+    description: 'Federal Reporter (F., F.2d, F.3d, F.4th, F.Supp., etc.)',
     type: 'case',
   },
   {
@@ -36,7 +36,7 @@ export const casePatterns: Pattern[] = [
   },
   {
     id: 'state-reporter',
-    regex: /\b(\d+)\s+([A-Z][A-Za-z.]+(?:\s?2d|\s?3d)?)\s+(\d+)\b/g,
+    regex: /\b(\d+)\s+([A-Z][A-Za-z.]+(?:\s?2d|\s?3d|\s?4th|\s?5th)?)\s+(\d+)\b/g,
     description: 'State reporters (broad pattern, validated against reporters-db in Phase 3)',
     type: 'case',
   },
