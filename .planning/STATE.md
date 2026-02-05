@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2025-02-04)
 ## Current Position
 
 Phase: 2 of 4 (Core Parsing)
-Plan: 5 of 6 complete
-Status: In progress
-Last activity: 2026-02-05 — Completed 02-05-PLAN.md (citation extraction with metadata parsing)
+Plan: 6 of 6 complete
+Status: Phase complete ✅
+Last activity: 2026-02-05 — Completed 02-06-PLAN.md (main extraction pipeline with integration tests)
 
-Progress: [████░░░░░░] 50%
+Progress: [█████░░░░░] 58%
 
 ## Phase 1 Plans (Complete)
 
@@ -24,7 +24,7 @@ Progress: [████░░░░░░] 50%
 | 01-03 | 2 | Type system (Span, Citation), src/index.ts, ARCHITECTURE.md | Complete ✅ |
 | 01-02 | 3 | Build tooling (tsdown, Biome, Vitest configs) | Complete ✅ |
 
-## Phase 2 Plans (In Progress)
+## Phase 2 Plans (Complete ✅)
 
 | Plan | Wave | Description | Status |
 |------|------|-------------|--------|
@@ -33,25 +33,25 @@ Progress: [████░░░░░░] 50%
 | 02-03 | 2 | Tokenizer (pattern matching, candidate extraction) | Complete ✅ |
 | 02-04 | 2 | Extended citation types (journal, neutral, public law, federal register) with metadata | Skipped ⏭️ |
 | 02-05 | 3 | Citation extraction and metadata parsing | Complete ✅ |
-| 02-06 | 3 | End-to-end parsing tests | Not started |
+| 02-06 | 3 | Main extraction pipeline with integration tests | Complete ✅ |
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
-- Average duration: 144s
-- Total execution time: 0.28 hours
+- Total plans completed: 8
+- Average duration: 165s
+- Total execution time: 0.37 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | Phase 1 | 3/3 | 4 min | 80s |
-| Phase 2 | 4/6 | 16.4 min | 246s |
+| Phase 2 | 5/6 | 21.3 min | 256s |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (60s), 02-01 (306s), 02-02 (214s), 02-03 (167s), 02-05 (308s)
-- Trend: Phase 2 plans averaging ~250s (complex implementation with tests)
+- Last 5 plans: 02-01 (306s), 02-02 (214s), 02-03 (167s), 02-05 (308s), 02-06 (296s)
+- Trend: Phase 2 plans averaging ~258s (complex implementation with comprehensive tests)
 
 *Updated after each plan completion*
 
@@ -129,6 +129,15 @@ Recent decisions affecting current work:
 | EXT-04 | Journal citations have 0.6 base confidence | Validation against database happens in Phase 3; Phase 2 only validates structure |
 | EXT-05 | Safe position translation fallback | cleanToOriginal.get(cleanPos) ?? cleanPos prevents errors with incomplete transformation maps |
 
+**From 02-06 execution:**
+
+| ID | Decision | Impact |
+|----|----------|--------|
+| PIPE-01 | Both sync and async API variants | Enables seamless transition when async operations added in Phase 3/4 |
+| PIPE-02 | ProcessTimeMs tracked per citation | Performance monitoring for DX and optimization guidance |
+| PIPE-03 | Warnings from cleaning layer attached to all citations | Preserves diagnostic context through pipeline layers |
+| TEST-01 | Integration tests focus on MVP capabilities | Tests validate core metadata; parenthetical parsing deferred to Phase 3 pattern enhancements |
+
 ### Pending Todos
 
 None yet.
@@ -138,12 +147,17 @@ None yet.
 **From Research (SUMMARY.md):**
 - Phase 1: Regex pattern audit needed — inventory all Python eyecite patterns, flag ES incompatibilities
 - Phase 1: Bundle strategy decision required — inline vs. tree-shake vs. CDN for reporters (affects architecture)
-- Phase 2: ReDoS testing infrastructure — integrate analyzer, establish baseline (<100ms per citation)
+- Phase 2: ReDoS testing infrastructure — integrate analyzer, establish baseline (<100ms per citation) ✅ Done (02-02)
 - Phase 3: Reporter database optimization — measure tree-shaking vs. compression trade-offs with actual bundle
 - Phase 3: Position accuracy validation — requires access to diverse legal document corpus with HTML/Unicode
 
+**From 02-06 execution:**
+- Parenthetical extraction (court, year) requires enhanced patterns with ReDoS protection — Phase 3 should add optional parenthetical matching
+- Duplicate citation filtering (overlapping pattern matches) deferred to Phase 3 annotation layer
+- Unicode position accuracy edge cases (emoji, combining characters, RTL) need validation corpus in Phase 3
+
 ## Session Continuity
 
-Last session: 2026-02-05 (02-05 execution)
-Stopped at: Completed 02-05-PLAN.md - Citation extraction with metadata parsing
+Last session: 2026-02-05 (02-06 execution)
+Stopped at: Completed 02-06-PLAN.md - Main extraction pipeline with integration tests (Phase 2 complete ✅)
 Resume file: None
