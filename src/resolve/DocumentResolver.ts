@@ -12,10 +12,11 @@
 
 import type {
   Citation,
+  FullCaseCitation,
+  FullCitationType,
   IdCitation,
   SupraCitation,
   ShortFormCaseCitation,
-  FullCaseCitation,
 } from '../types/citation'
 import type {
   ResolutionOptions,
@@ -98,13 +99,13 @@ export class DocumentResolver {
 
       switch (citation.type) {
         case 'id':
-          resolution = this.resolveId(citation as IdCitation)
+          resolution = this.resolveId(citation)
           break
         case 'supra':
-          resolution = this.resolveSupra(citation as SupraCitation)
+          resolution = this.resolveSupra(citation)
           break
         case 'shortFormCase':
-          resolution = this.resolveShortFormCase(citation as ShortFormCaseCitation)
+          resolution = this.resolveShortFormCase(citation)
           break
         default:
           // Full citation - update context for future resolutions
@@ -221,12 +222,10 @@ export class DocumentResolver {
         continue
       }
 
-      const fullCase = candidate as FullCaseCitation
-
       // Check if volume and reporter match
       if (
-        fullCase.volume === citation.volume &&
-        this.normalizeReporter(fullCase.reporter) === this.normalizeReporter(citation.reporter)
+        candidate.volume === citation.volume &&
+        this.normalizeReporter(candidate.reporter) === this.normalizeReporter(citation.reporter)
       ) {
         // Check scope boundary
         if (!this.isWithinScope(i, currentIndex)) {
@@ -248,14 +247,8 @@ export class DocumentResolver {
    * Checks if a citation is a full citation (not short-form).
    */
   private isFullCitation(citation: Citation): boolean {
-    return (
-      citation.type === 'case' ||
-      citation.type === 'statute' ||
-      citation.type === 'journal' ||
-      citation.type === 'neutral' ||
-      citation.type === 'publicLaw' ||
-      citation.type === 'federalRegister'
-    )
+    const fullTypes: Set<FullCitationType> = new Set(['case', 'statute', 'journal', 'neutral', 'publicLaw', 'federalRegister'])
+    return fullTypes.has(citation.type as FullCitationType)
   }
 
   /**
@@ -265,8 +258,7 @@ export class DocumentResolver {
   private trackFullCitation(citation: Citation, index: number): void {
     // Only case citations have party names for supra resolution
     if (citation.type === 'case') {
-      const fullCase = citation as FullCaseCitation
-      const partyName = this.extractPartyName(fullCase)
+      const partyName = this.extractPartyName(citation)
       if (partyName) {
         const normalized = this.normalizePartyName(partyName)
         this.context.fullCitationHistory.set(normalized, index)

@@ -12,5 +12,9 @@ export type {
   IdCitation,
   SupraCitation,
   ShortFormCaseCitation,
+  FullCitationType,
+  ShortFormCitationType,
+  FullCitation,
+  ShortFormCitation,
   Warning
 } from "./citation"

@@ -40,6 +40,11 @@ export type {
 	IdCitation,
 	SupraCitation,
 	ShortFormCaseCitation,
+	FullCitationType,
+	ShortFormCitationType,
+	FullCitation,
+	ShortFormCitation,
+	Warning,
 } from './types'
 
 // ============================================================================
@@ -55,7 +60,7 @@ export type { ExtractOptions } from './extract/extractCitations'
 
 // Text Cleaning Layer
 export { cleanText } from './clean'
-export type { CleanTextResult, Warning } from './clean/cleanText'
+export type { CleanTextResult } from './clean/cleanText'
 
 // Tokenization Layer
 export { tokenize } from './tokenize'

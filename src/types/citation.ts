@@ -268,3 +268,19 @@ export type Citation =
   | IdCitation
   | SupraCitation
   | ShortFormCaseCitation
+
+/**
+ * Citation type discriminators grouped by category.
+ */
+export type FullCitationType = 'case' | 'statute' | 'journal' | 'neutral' | 'publicLaw' | 'federalRegister'
+export type ShortFormCitationType = 'id' | 'supra' | 'shortFormCase'
+
+/**
+ * Union of all full citation types (not short-form references).
+ */
+export type FullCitation = FullCaseCitation | StatuteCitation | JournalCitation | NeutralCitation | PublicLawCitation | FederalRegisterCitation
+
+/**
+ * Union of all short-form citation types (Id., supra, short-form case).
+ */
+export type ShortFormCitation = IdCitation | SupraCitation | ShortFormCaseCitation

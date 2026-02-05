@@ -160,6 +160,8 @@ export interface ExtractOptions {
  * // citations[2].type === "journal"
  * ```
  */
+export function extractCitations(text: string, options: ExtractOptions & { resolve: true }): ResolvedCitation[]
+export function extractCitations(text: string, options?: ExtractOptions): Citation[]
 export function extractCitations(
 	text: string,
 	options?: ExtractOptions,
@@ -276,6 +278,8 @@ export function extractCitations(
  * // Returns ResolvedCitation[] with resolution metadata
  * ```
  */
+export async function extractCitationsAsync(text: string, options: ExtractOptions & { resolve: true }): Promise<ResolvedCitation[]>
+export async function extractCitationsAsync(text: string, options?: ExtractOptions): Promise<Citation[]>
 export async function extractCitationsAsync(
 	text: string,
 	options?: ExtractOptions,

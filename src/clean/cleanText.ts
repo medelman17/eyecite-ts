@@ -1,4 +1,5 @@
 import type { TransformationMap } from "../types/span"
+import type { Warning } from "../types/citation"
 import {
 	fixSmartQuotes,
 	normalizeUnicode,
@@ -18,15 +19,6 @@ export interface CleanTextResult {
 
 	/** Warnings generated during cleaning (currently unused) */
 	warnings: Warning[]
-}
-
-/**
- * Warning generated during text cleaning.
- */
-export interface Warning {
-	level: "error" | "warning" | "info"
-	message: string
-	position: { start: number; end: number }
 }
 
 /**
