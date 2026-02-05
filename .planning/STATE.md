@@ -12,9 +12,9 @@ See: .planning/PROJECT.md (updated 2025-02-04)
 Phase: 2 of 4 (Core Parsing)
 Plan: 3 of 6 complete
 Status: In progress
-Last activity: 2026-02-04 — Completed 02-04-PLAN.md (extended citation types with metadata)
+Last activity: 2026-02-04 — Completed 02-03-PLAN.md (tokenization layer with pattern matching)
 
-Progress: [████░░░░░░] 50%
+Progress: [███░░░░░░░] 40%
 
 ## Phase 1 Plans (Complete)
 
@@ -30,8 +30,8 @@ Progress: [████░░░░░░] 50%
 |------|------|-------------|--------|
 | 02-01 | 1 | Text cleaners (HTML stripping, Unicode normalization, whitespace) | Complete ✅ |
 | 02-02 | 1 | Citation regex patterns (case, statute, journal, neutral) with ReDoS protection | Complete ✅ |
-| 02-04 | 2 | Extended citation types (journal, neutral, public law, federal register) with metadata | Complete ✅ |
-| 02-03 | 2 | Tokenizer (pattern matching, candidate extraction) | Not started |
+| 02-03 | 2 | Tokenizer (pattern matching, candidate extraction) | Complete ✅ |
+| 02-04 | 2 | Extended citation types (journal, neutral, public law, federal register) with metadata | Not started |
 | 02-05 | 3 | Citation extraction and metadata parsing | Not started |
 | 02-06 | 3 | End-to-end parsing tests | Not started |
 
@@ -39,19 +39,19 @@ Progress: [████░░░░░░] 50%
 
 **Velocity:**
 - Total plans completed: 6
-- Average duration: 120s
-- Total execution time: 0.20 hours
+- Average duration: 152s
+- Total execution time: 0.25 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | Phase 1 | 3/3 | 4 min | 80s |
-| Phase 2 | 3/6 | 10.6 min | 212s |
+| Phase 2 | 3/6 | 11.4 min | 229s |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (120s), 01-02 (60s), 02-01 (306s), 02-02 (214s), 02-04 (107s)
-- Trend: 02-04 faster than previous Phase 2 plans (type-only changes)
+- Last 5 plans: 01-03 (120s), 01-02 (60s), 02-01 (306s), 02-02 (214s), 02-03 (167s)
+- Trend: Phase 2 plans stabilizing around 200-300s (complex implementation)
 
 *Updated after each plan completion*
 
@@ -110,14 +110,14 @@ Recent decisions affecting current work:
 | PATTERN-03 | Individual named exports (casePatterns, statutePatterns, etc.) | Better tree-shaking, clearer API, modular imports |
 | CONFIG-01 | Add path aliases (@/*) to tsconfig and vitest config | Clean imports in tests without relative paths |
 
-**From 02-04 execution:**
+**From 02-03 execution:**
 
 | ID | Decision | Impact |
 |----|----------|--------|
-| TYPE-04 | Confidence scoring included in CitationBase | Enables extraction layer to rank ambiguous matches; supports warning generation |
-| TYPE-05 | Processing metadata tracks performance | processTimeMs and patternsChecked enable ReDoS detection and pattern optimization |
-| TYPE-06 | Warning interface for malformed citations | Three severity levels with position tracking for precise error reporting |
-| TYPE-07 | Optional metadata enables progressive enhancement | All metadata fields optional; extraction layer populates as available; backward compatible |
+| TOKEN-01 | Synchronous tokenize() function | Enables both sync and async extraction APIs in Plan 6 |
+| TOKEN-02 | Token includes only cleanStart/cleanEnd positions | TransformationMap (Plan 4) will map to original positions later |
+| TOKEN-03 | Multiple pattern matches allowed | Extraction layer (Plan 5) must deduplicate and validate tokens |
+| TOKEN-04 | Default patterns parameter concatenates all arrays | API is tokenize(text) for common case, tokenize(text, patterns) for control |
 
 ### Pending Todos
 
@@ -134,6 +134,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-04 (02-04 execution)
-Stopped at: Completed 02-04-PLAN.md - Extended citation types with metadata
+Last session: 2026-02-04 (02-03 execution)
+Stopped at: Completed 02-03-PLAN.md - Tokenization layer with pattern matching
 Resume file: None
