@@ -588,3 +588,42 @@ describe('court extraction with date in parenthetical (#5)', () => {
 		}
 	})
 })
+
+describe('backward compatibility (QUAL-01)', () => {
+	it('normal citations still have numeric page field', () => {
+		const citations = extractCitations('500 F.2d 123')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].page).toBe(123)
+			expect(typeof citations[0].page).toBe('number')
+		}
+	})
+
+	it('new optional fields are undefined by default', () => {
+		const citations = extractCitations('500 F.2d 123')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].hasBlankPage).toBeUndefined()
+			expect(citations[0].fullSpan).toBeUndefined()
+			expect(citations[0].caseName).toBeUndefined()
+			expect(citations[0].plaintiff).toBeUndefined()
+			expect(citations[0].defendant).toBeUndefined()
+		}
+	})
+
+	it('all v1.0 citation fields still present and typed correctly', () => {
+		const citations = extractCitations('410 U.S. 113 (1973)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].volume).toBe(410)
+			expect(citations[0].reporter).toBe('U.S.')
+			expect(citations[0].page).toBe(113)
+			expect(citations[0].year).toBe(1973)
+			expect(citations[0].court).toBe('scotus')
+			expect(citations[0].text).toBeDefined()
+			expect(citations[0].span).toBeDefined()
+			expect(citations[0].confidence).toBeGreaterThan(0)
+			expect(citations[0].matchedText).toBeDefined()
+		}
+	})
+})
