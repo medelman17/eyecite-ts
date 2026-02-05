@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractStatute } from '@/extract'
+import { extractStatute, extractCitations } from '@/extract'
 import type { Token } from '@/tokenize'
 import type { TransformationMap } from '@/types/span'
 
@@ -194,6 +194,25 @@ describe('extractStatute', () => {
 			const citation = extractStatute(token, transformationMap)
 
 			expect(citation.confidence).toBe(0.5)
+		})
+	})
+
+	describe('trailing letters via full pipeline', () => {
+		it('should extract section with trailing uppercase letter', () => {
+			const citations = extractCitations('18 U.S.C. § 1028A')
+			expect(citations).toHaveLength(1)
+			expect(citations[0].type).toBe('statute')
+			if (citations[0].type === 'statute') {
+				expect(citations[0].section).toBe('1028A')
+			}
+		})
+
+		it('should extract section with trailing lowercase letter', () => {
+			const citations = extractCitations('18 U.S.C. § 2339B')
+			expect(citations).toHaveLength(1)
+			if (citations[0].type === 'statute') {
+				expect(citations[0].section).toBe('2339B')
+			}
 		})
 	})
 
