@@ -100,8 +100,8 @@ export function cleanText(
 /**
  * Rebuild position maps after a text transformation.
  *
- * Uses character-by-character comparison to track removals/expansions.
- * Conservative approach: maps positions linearly by finding character matches.
+ * Uses a simplified algorithm that scans through both strings, matching
+ * characters where possible and tracking the offset accumulation.
  *
  * @param beforeText - Text before transformation
  * @param afterText - Text after transformation
@@ -124,68 +124,88 @@ function rebuildPositionMaps(
 	let beforeIdx = 0
 	let afterIdx = 0
 
-	// Character-by-character comparison
-	while (beforeIdx <= beforeText.length && afterIdx <= afterText.length) {
-		if (beforeIdx === beforeText.length && afterIdx === afterText.length) {
-			// Both at end - map final positions
+	// Scan through both strings, matching characters where possible
+	while (beforeIdx <= beforeText.length || afterIdx <= afterText.length) {
+		// Both at end
+		if (beforeIdx >= beforeText.length && afterIdx >= afterText.length) {
 			const originalPos = oldCleanToOriginal.get(beforeIdx) ?? beforeIdx
 			newCleanToOriginal.set(afterIdx, originalPos)
 			newOriginalToClean.set(originalPos, afterIdx)
 			break
 		}
 
-		if (beforeIdx === beforeText.length) {
-			// Before text exhausted, after text has more (expansion case)
-			// Map remaining after positions to last before position
+		// Before text exhausted (expansion case)
+		if (beforeIdx >= beforeText.length) {
 			const originalPos = oldCleanToOriginal.get(beforeIdx) ?? beforeIdx
-			for (let i = afterIdx; i <= afterText.length; i++) {
-				newCleanToOriginal.set(i, originalPos)
-			}
-			break
+			newCleanToOriginal.set(afterIdx, originalPos)
+			afterIdx++
+			continue
 		}
 
-		if (afterIdx === afterText.length) {
-			// After text exhausted, before text has more (removal case)
-			// Map remaining before positions to last after position
+		// After text exhausted (removal case)
+		if (afterIdx >= afterText.length) {
 			const originalPos = oldCleanToOriginal.get(beforeIdx) ?? beforeIdx
 			newOriginalToClean.set(originalPos, afterIdx)
 			beforeIdx++
 			continue
 		}
 
+		// Characters match - carry forward the mapping
 		if (beforeText[beforeIdx] === afterText[afterIdx]) {
-			// Characters match - carry forward mapping
 			const originalPos = oldCleanToOriginal.get(beforeIdx) ?? beforeIdx
 			newCleanToOriginal.set(afterIdx, originalPos)
 			newOriginalToClean.set(originalPos, afterIdx)
 			beforeIdx++
 			afterIdx++
 		} else {
-			// Characters differ - check if character was removed
-			const originalPos = oldCleanToOriginal.get(beforeIdx) ?? beforeIdx
+			// Characters differ - need to determine if this is insertion/deletion/replacement
+			// Look ahead to find next match
+			let foundMatch = false
+			const maxLookAhead = 20 // Limit lookahead to avoid performance issues
 
-			// Look ahead to see if next character matches
-			if (
-				beforeIdx + 1 < beforeText.length &&
-				beforeText[beforeIdx + 1] === afterText[afterIdx]
-			) {
-				// Character was removed from before text
-				newOriginalToClean.set(originalPos, afterIdx)
-				beforeIdx++
-			} else if (
-				afterIdx + 1 < afterText.length &&
-				beforeText[beforeIdx] === afterText[afterIdx + 1]
-			) {
-				// Character was inserted in after text
-				newCleanToOriginal.set(afterIdx, originalPos)
-				afterIdx++
-			} else {
-				// Character was replaced - map both
-				newCleanToOriginal.set(afterIdx, originalPos)
-				newOriginalToClean.set(originalPos, afterIdx)
-				beforeIdx++
-				afterIdx++
+			// Check if something was deleted from before text
+			for (let lookAhead = 1; lookAhead <= maxLookAhead; lookAhead++) {
+				if (beforeIdx + lookAhead >= beforeText.length) break
+
+				if (beforeText[beforeIdx + lookAhead] === afterText[afterIdx]) {
+					// Found a match - characters were deleted from before text
+					for (let i = 0; i < lookAhead; i++) {
+						const originalPos =
+							oldCleanToOriginal.get(beforeIdx + i) ?? beforeIdx + i
+						newOriginalToClean.set(originalPos, afterIdx)
+					}
+					beforeIdx += lookAhead
+					foundMatch = true
+					break
+				}
 			}
+
+			if (foundMatch) continue
+
+			// Check if something was inserted into after text
+			for (let lookAhead = 1; lookAhead <= maxLookAhead; lookAhead++) {
+				if (afterIdx + lookAhead >= afterText.length) break
+
+				if (beforeText[beforeIdx] === afterText[afterIdx + lookAhead]) {
+					// Found a match - characters were inserted into after text
+					const originalPos = oldCleanToOriginal.get(beforeIdx) ?? beforeIdx
+					for (let i = 0; i < lookAhead; i++) {
+						newCleanToOriginal.set(afterIdx + i, originalPos)
+					}
+					afterIdx += lookAhead
+					foundMatch = true
+					break
+				}
+			}
+
+			if (foundMatch) continue
+
+			// No match found within lookahead - treat as replacement
+			const originalPos = oldCleanToOriginal.get(beforeIdx) ?? beforeIdx
+			newCleanToOriginal.set(afterIdx, originalPos)
+			newOriginalToClean.set(originalPos, afterIdx)
+			beforeIdx++
+			afterIdx++
 		}
 	}
 
