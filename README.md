@@ -16,6 +16,8 @@ Extract, resolve, and annotate legal citations from court opinions and legal doc
 ## Features
 
 - **Full citation extraction**: Case citations, statutes, journal articles, neutral citations, public laws, federal register
+- **Case name & full span**: Backward search extracts case names ("Smith v. Jones", "In re Smith"), `fullSpan` covers case name through closing parenthetical
+- **Complex parentheticals**: Unified parser handles court+year, full dates (Jan. 15, 2020 / January 15, 2020 / 1/15/2020), disposition (en banc, per curiam), and chained parentheticals
 - **Short-form resolution**: Id./Ibid., supra, and short-form case citations resolved to their full antecedents
 - **Reporter database**: 1,200+ reporters with variant matching and confidence scoring
 - **Citation annotation**: HTML markup with auto-escape XSS protection and position tracking
@@ -34,7 +36,7 @@ npm install eyecite-ts
 ```typescript
 import { extractCitations } from 'eyecite-ts'
 
-const text = 'See Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)'
+const text = 'See Smith v. Jones, 500 F.2d 123 (9th Cir. Jan. 15, 2020)'
 const citations = extractCitations(text)
 
 console.log(citations[0])
@@ -45,8 +47,11 @@ console.log(citations[0])
 //   page: 123,
 //   court: '9th Cir.',
 //   year: 2020,
+//   caseName: 'Smith v. Jones',
+//   date: { iso: '2020-01-15', parsed: { year: 2020, month: 1, day: 15 } },
 //   confidence: 0.85,
-//   span: { originalStart: 4, originalEnd: 48, cleanStart: 4, cleanEnd: 48 }
+//   span: { originalStart: 20, originalEnd: 33, ... },
+//   fullSpan: { originalStart: 4, originalEnd: 57, ... }
 // }
 ```
 
@@ -99,6 +104,46 @@ const citations = extractCitations(html, {
   cleaners: [(text) => text.replace(/<[^>]+>/g, '')]
 })
 ```
+
+## Case Names & Full Spans
+
+Case citations can include the case name and full citation boundaries:
+
+```typescript
+const text = 'In Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc), the court held...'
+const citations = extractCitations(text)
+
+if (citations[0].type === 'case') {
+  console.log(citations[0].caseName)     // 'Smith v. Jones'
+  console.log(citations[0].disposition)  // 'en banc'
+  console.log(citations[0].fullSpan)     // covers "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc)"
+  console.log(citations[0].span)         // covers "500 F.2d 123" only (citation core)
+}
+```
+
+Procedural prefixes are recognized automatically:
+
+```typescript
+const text = 'In re Smith, 410 U.S. 113 (1973)'
+// caseName: 'In re Smith'
+
+const text2 = 'Ex parte Young, 209 U.S. 123 (1908)'
+// caseName: 'Ex parte Young'
+```
+
+### Structured Dates
+
+Parentheticals with full dates return structured date objects:
+
+```typescript
+const text = '500 F.3d 100 (2d Cir. Jan. 15, 2020)'
+// date: { iso: '2020-01-15', parsed: { year: 2020, month: 1, day: 15 } }
+
+const text2 = '410 U.S. 113 (1973)'
+// date: { iso: '1973', parsed: { year: 1973 } }
+```
+
+Three date formats are supported: `Jan. 15, 2020`, `January 15, 2020`, and `1/15/2020`.
 
 ## Resolving Short-Form Citations
 
@@ -340,7 +385,7 @@ pnpm lint            # Lint with Biome
 pnpm format          # Format with Biome
 ```
 
-304 tests, 97% statement coverage, 91% branch coverage.
+435 tests across 20 test files.
 
 ## License
 
