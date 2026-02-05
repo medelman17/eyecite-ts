@@ -1,7 +1,7 @@
 # eyecite-ts
 
-[![CI](https://github.com/medelman17/eyecitets/actions/workflows/ci.yml/badge.svg)](https://github.com/medelman17/eyecitets/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/medelman17/eyecitets/branch/main/graph/badge.svg)](https://codecov.io/gh/medelman17/eyecitets)
+[![CI](https://github.com/medelman17/eyecite-ts/actions/workflows/ci.yml/badge.svg)](https://github.com/medelman17/eyecite-ts/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/medelman17/eyecite-ts/branch/main/graph/badge.svg)](https://codecov.io/gh/medelman17/eyecite-ts)
 [![npm version](https://img.shields.io/npm/v/eyecite-ts.svg)](https://www.npmjs.com/package/eyecite-ts)
 [![npm bundle size](https://img.shields.io/bundlephobia/minzip/eyecite-ts)](https://bundlephobia.com/package/eyecite-ts)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)

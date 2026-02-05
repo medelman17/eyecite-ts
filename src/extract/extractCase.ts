@@ -72,6 +72,7 @@ import type { TransformationMap } from '@/types/span'
 export function extractCase(
 	token: Token,
 	transformationMap: TransformationMap,
+	cleanedText?: string,
 ): FullCaseCitation {
 	const { text, span } = token
 
@@ -94,19 +95,56 @@ export function extractCase(
 	// Pattern: ", digits" (e.g., ", 125")
 	const pinciteRegex = /,\s*(\d+)/
 	const pinciteMatch = pinciteRegex.exec(text)
-	const pincite = pinciteMatch ? Number.parseInt(pinciteMatch[1], 10) : undefined
+	let pincite = pinciteMatch ? Number.parseInt(pinciteMatch[1], 10) : undefined
 
 	// Extract optional year in parentheses (extract first for better matching)
 	// Pattern: 4-digit year anywhere in parentheses
 	const yearRegex = /\((?:[^)]*\s)?(\d{4})\)/
 	const yearMatch = yearRegex.exec(text)
-	const year = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
+	let year = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
 
 	// Extract optional court abbreviation in parentheses
 	// Pattern: "(text)" where text contains letters (captures full parenthetical)
 	const courtRegex = /\(([^)]*[A-Za-z][^)]*)\)/
 	const courtMatch = courtRegex.exec(text)
-	const court = courtMatch ? courtMatch[1].trim() : undefined
+	let court = courtMatch ? courtMatch[1].replace(/\s*\d{4}\s*$/, '').trim() || undefined : undefined
+
+	// Look ahead in cleaned text for parenthetical after the token
+	// Tokenization patterns only capture volume-reporter-page, so parentheticals
+	// like "(1989)" or "(9th Cir. 2020)" are not in the token text.
+	if (cleanedText && year === undefined) {
+		const afterToken = cleanedText.substring(span.cleanEnd)
+		const lookAheadRegex = /^(?:,\s*\d+)*\s*\(([^)]+)\)/
+		const lookAheadMatch = lookAheadRegex.exec(afterToken)
+		if (lookAheadMatch) {
+			const parenContent = lookAheadMatch[1]
+
+			// Extract year from parenthetical content
+			const laYearMatch = /(\d{4})/.exec(parenContent)
+			if (laYearMatch) {
+				year = Number.parseInt(laYearMatch[1], 10)
+			}
+
+			// Extract court from parenthetical (strip trailing year)
+			const courtContent = parenContent.replace(/\s*\d{4}\s*$/, '').trim()
+			if (courtContent && /[A-Za-z]/.test(courtContent)) {
+				court = courtContent
+			}
+
+			// Extract pincite from look-ahead if not already found in token text
+			if (pincite === undefined) {
+				const laPinciteMatch = /^,\s*(\d+)/.exec(afterToken)
+				if (laPinciteMatch) {
+					pincite = Number.parseInt(laPinciteMatch[1], 10)
+				}
+			}
+		}
+	}
+
+	// Infer court from reporter for known Supreme Court reporters
+	if (!court && /^(?:U\.?\s?S\.|S\.?\s?Ct\.|L\.?\s?Ed\.)/.test(reporter)) {
+		court = 'scotus'
+	}
 
 	// Translate positions from clean → original
 	const originalStart =

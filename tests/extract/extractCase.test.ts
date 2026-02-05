@@ -218,7 +218,7 @@ describe('extractCase', () => {
 
 			const citation = extractCase(token, transformationMap)
 
-			expect(citation.court).toBe('9th Cir. 2020')
+			expect(citation.court).toBe('9th Cir.')
 			expect(citation.year).toBe(2020)
 		})
 	})
@@ -412,6 +412,89 @@ describe('reporter with internal spaces (integration)', () => {
 		expect(citations[0].type).toBe('case')
 		if (citations[0].type === 'case') {
 			expect(citations[0].reporter).toBe('U.S.')
+		}
+	})
+})
+
+describe('parenthetical year and court extraction (integration)', () => {
+	it('should extract year from parenthetical', () => {
+		const citations = extractCitations('491 U.S. 397 (1989)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].year).toBe(1989)
+		}
+	})
+
+	it('should extract year from parenthetical after pincite', () => {
+		const citations = extractCitations('See Texas v. Johnson, 491 U.S. 397, 404 (1989).')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].volume).toBe(491)
+			expect(citations[0].reporter).toBe('U.S.')
+			expect(citations[0].page).toBe(397)
+			expect(citations[0].year).toBe(1989)
+			expect(citations[0].pincite).toBe(404)
+		}
+	})
+
+	it('should infer scotus court from U.S. reporter', () => {
+		const citations = extractCitations('491 U.S. 397 (1989)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('scotus')
+		}
+	})
+
+	it('should infer scotus court from S. Ct. reporter', () => {
+		const citations = extractCitations('129 S. Ct. 2252 (2009)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('scotus')
+			expect(citations[0].year).toBe(2009)
+		}
+	})
+
+	it('should infer scotus court from L. Ed. reporter', () => {
+		const citations = extractCitations('174 L. Ed. 2d 490 (2009)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('scotus')
+			expect(citations[0].year).toBe(2009)
+		}
+	})
+
+	it('should extract court and year from combined parenthetical', () => {
+		const citations = extractCitations('500 F.2d 123 (9th Cir. 2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('9th Cir.')
+			expect(citations[0].year).toBe(2020)
+		}
+	})
+
+	it('should extract court from district court parenthetical', () => {
+		const citations = extractCitations('350 F. Supp. 3d 100 (D. Mass. 2019)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].court).toBe('D. Mass.')
+			expect(citations[0].year).toBe(2019)
+		}
+	})
+
+	it('should handle multiple SCOTUS citations from issue examples', () => {
+		const examples = [
+			{ text: '491 U.S. 397, 404 (1989)', year: 1989 },
+			{ text: '418 U.S. 405, 409 (1974)', year: 1974 },
+			{ text: '468 U.S. 288, 294 (1984)', year: 1984 },
+			{ text: '391 U.S. 367, 376 (1968)', year: 1968 },
+		]
+		for (const { text, year } of examples) {
+			const citations = extractCitations(text)
+			expect(citations).toHaveLength(1)
+			if (citations[0].type === 'case') {
+				expect(citations[0].year).toBe(year)
+				expect(citations[0].court).toBe('scotus')
+			}
 		}
 	})
 })
