@@ -10,36 +10,36 @@ See: .planning/PROJECT.md (updated 2025-02-04)
 ## Current Position
 
 Phase: 1 of 4 (Foundation & Architecture)
-Plan: 1 of 3 complete
+Plan: 2 of 3 complete
 Status: In progress
-Last activity: 2026-02-05 — Completed 01-01-PLAN.md (package configuration)
+Last activity: 2026-02-05 — Completed 01-03-PLAN.md (type system and architecture)
 
-Progress: [███░░░░░░░] 33%
+Progress: [██████░░░░] 67%
 
 ## Phase 1 Plans
 
 | Plan | Wave | Description | Status |
 |------|------|-------------|--------|
 | 01-01 | 1 | Package.json, tsconfig.json, .gitignore | Complete ✅ |
-| 01-03 | 2 | Type system (Span, Citation), src/index.ts, ARCHITECTURE.md | Pending |
+| 01-03 | 2 | Type system (Span, Citation), src/index.ts, ARCHITECTURE.md | Complete ✅ |
 | 01-02 | 3 | Build tooling (tsdown, Biome, Vitest configs) | Pending |
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 1 min
-- Total execution time: 0.02 hours
+- Total plans completed: 2
+- Average duration: 90s
+- Total execution time: 0.05 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| Phase 1 | 1/3 | 1 min | 1 min |
+| Phase 1 | 2/3 | 3 min | 90s |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (1min)
-- Trend: First plan baseline
+- Last 5 plans: 01-01 (1min), 01-03 (2min)
+- Trend: Consistent pace
 
 *Updated after each plan completion*
 
@@ -64,6 +64,14 @@ Recent decisions affecting current work:
 | PKG-03 | ES2020 target for modern regex | Can use lookbehind for "Id." vs "Idaho" disambiguation |
 | PKG-04 | Zero runtime dependencies enforced | Package adds zero transitive dependencies |
 
+**From 01-03 execution:**
+
+| ID | Decision | Impact |
+|----|----------|--------|
+| TYPE-01 | Span interface with dual position tracking | Phase 2 text cleaning must build TransformationMap |
+| TYPE-02 | Discriminated union Citation types | Switch statements on citation.type are compile-time safe |
+| ARCH-01 | Three-layer position tracking architecture | Phase 2 implements clean → extract → translate pipeline |
+
 ### Pending Todos
 
 None yet.
@@ -79,6 +87,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-05 (01-01 execution)
-Stopped at: Completed 01-01-PLAN.md, ready for 01-03 (wave 2)
-Resume file: .planning/phases/01-foundation-architecture/01-03-PLAN.md
+Last session: 2026-02-05 (01-03 execution)
+Stopped at: Completed 01-03-PLAN.md, ready for 01-02 (wave 3)
+Resume file: .planning/phases/01-foundation-architecture/01-02-PLAN.md
