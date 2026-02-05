@@ -126,7 +126,7 @@ export function extractSupra(
 	// Parse party name and optional pincite
 	// Pattern: word(s), supra [, at page]
 	// Note: Matches party names including "v." (e.g., "Smith v. Jones")
-	const supraRegex = /\b([A-Z][a-zA-Z]+(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z]+)*),?\s+supra(?:,?\s+at\s+(\d+))?/
+	const supraRegex = /\b([A-Z][a-zA-Z]+(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z]+)*)\s*,?\s+supra(?:,?\s+at\s+(\d+))?/
 	const match = supraRegex.exec(text)
 
 	if (!match) {

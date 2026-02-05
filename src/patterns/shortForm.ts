@@ -24,7 +24,7 @@ export const IBID_PATTERN: RegExp = /\b[Ii]bid\.(?:\s+at\s+(\d+))?/g
  * Captures: (1) party name, (2) pincite
  * Note: Matches party names including "v." (e.g., "Smith v. Jones, supra")
  */
-export const SUPRA_PATTERN: RegExp = /\b([A-Z][a-zA-Z]+(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z]+)*),?\s+supra(?:,?\s+at\s+(\d+))?/g
+export const SUPRA_PATTERN: RegExp = /\b([A-Z][a-zA-Z]+(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z]+)*)\s*,?\s+supra(?:,?\s+at\s+(\d+))?/g
 
 /**
  * Short-form case: volume reporter at page
