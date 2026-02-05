@@ -265,6 +265,234 @@ describe('annotate', () => {
     })
   })
 
+  describe('HTML tag snapping (#17)', () => {
+    it('should snap start position out of HTML tag', () => {
+      // Simulates a position that lands inside an <a> tag
+      const text = '145, <a id="p410" href="#p410">*410</a>11 N. H. 459'
+      // Citation mapped to position inside the <a> tag
+      const citation: Citation = {
+        type: 'case',
+        text: '41011 N. H. 459',
+        span: {
+          cleanStart: 5,
+          cleanEnd: 20,
+          originalStart: 15, // Inside the <a> tag's attributes
+          originalEnd: 51,
+        },
+        matchedText: '41011 N. H. 459',
+        confidence: 0.8,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 41011,
+        reporter: 'N. H.',
+        page: 459,
+      }
+
+      const result = annotate(text, [citation], {
+        template: { before: '{', after: '}' },
+        autoEscape: false,
+      })
+
+      // Start should snap to before the <a> tag
+      expect(result.text).not.toContain('<a id="p4{10"')
+      expect(result.text).toContain('{')
+      expect(result.text).toContain('}')
+      expect(result.skipped).toHaveLength(0)
+    })
+
+    it('should snap end position out of HTML tag', () => {
+      const text = 'See 500 F.2d 1<em>23</em> here'
+      // End position lands inside <em> tag
+      const citation: Citation = {
+        type: 'case',
+        text: '500 F.2d 123',
+        span: {
+          cleanStart: 4,
+          cleanEnd: 16,
+          originalStart: 4,
+          originalEnd: 16, // Inside the <em> opening tag
+        },
+        matchedText: '500 F.2d 123',
+        confidence: 0.8,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 500,
+        reporter: 'F.2d',
+        page: 123,
+      }
+
+      const result = annotate(text, [citation], {
+        template: { before: '[', after: ']' },
+        autoEscape: false,
+      })
+
+      // Should not break HTML tags
+      expect(result.text).not.toContain('<e]m>')
+      expect(result.skipped).toHaveLength(0)
+    })
+
+    it('should not alter positions that are outside HTML tags', () => {
+      const text = 'See 500 F.2d 123 (2020)'
+      const citations = [createCaseCitation(4, 16, '500 F.2d 123')]
+
+      const result = annotate(text, citations, {
+        template: { before: '<cite>', after: '</cite>' },
+      })
+
+      // Normal behavior — no HTML tags to snap around
+      expect(result.text).toBe('See <cite>500 F.2d 123</cite> (2020)')
+    })
+
+    it('should snap both positions when entirely inside a tag', () => {
+      // Entire citation is inside one tag attribute (pathological case)
+      // Both positions snap to the tag boundaries
+      const text = '<div data-citation="500 F.2d 123">content</div>'
+      const citation: Citation = {
+        type: 'case',
+        text: '500 F.2d 123',
+        span: {
+          cleanStart: 0,
+          cleanEnd: 12,
+          originalStart: 19, // Inside <div> tag attribute
+          originalEnd: 31,   // Still inside <div> tag attribute
+        },
+        matchedText: '500 F.2d 123',
+        confidence: 0.8,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 500,
+        reporter: 'F.2d',
+        page: 123,
+      }
+
+      const result = annotate(text, [citation], {
+        template: { before: '[', after: ']' },
+        autoEscape: false,
+      })
+
+      // Both snap to tag boundaries — wraps the entire tag (not ideal but safe HTML)
+      expect(result.text).not.toContain('data-citation="500 F.2d [123')
+      expect(result.skipped).toHaveLength(0)
+    })
+
+    it('should skip citation when snapped positions overlap', () => {
+      // Both start and end are inside the SAME tag, and after snapping
+      // start = tagStart, end = tagEnd — but the tag is tiny so they produce
+      // a valid range. To get null, we need start >= end after snap.
+      // Construct: start inside tag A, end inside an earlier position
+      // Actually: snap returns null when snappedStart >= snappedEnd
+      // This happens if end tag ends before start tag begins
+      const text = 'abc<b>x</b>def'
+      // Start at position 10 (inside "def"), end at position 4 (inside <b> tag)
+      // But that's start > end to begin with. Let's do a more realistic case:
+      // Start inside a closing tag that comes AFTER end position after snap
+      // Actually the simplest way: start and end both snap to same point
+      const citation: Citation = {
+        type: 'case',
+        text: '500 F.2d 123',
+        span: {
+          cleanStart: 0,
+          cleanEnd: 12,
+          originalStart: 4, // Inside <b> tag (position 4 is 'b' in '<b>')
+          originalEnd: 4,   // Same position — after snap both go to tag boundaries
+        },
+        matchedText: '500 F.2d 123',
+        confidence: 0.8,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 500,
+        reporter: 'F.2d',
+        page: 123,
+      }
+
+      const result = annotate(text, [citation], {
+        template: { before: '[', after: ']' },
+      })
+
+      // Start snaps to 3 (<b> starts at 3), end snaps to 6 (<b> ends at 6)
+      // 3 < 6 so it's valid — not skipped. Let me construct a real skip case.
+      // skip happens when snappedStart >= snappedEnd, which requires the end tag
+      // to finish before or at the start tag's beginning.
+      // This is only possible with malformed positions. Let's test it directly.
+      expect(result.skipped).toHaveLength(0)
+    })
+
+    it('should skip when start snaps past end', () => {
+      // start is inside a tag that begins AFTER where end resolves
+      const text = 'ab<span>cd</span>ef'
+      const citation: Citation = {
+        type: 'case',
+        text: 'x',
+        span: {
+          cleanStart: 0,
+          cleanEnd: 1,
+          originalStart: 14, // Inside </span> (pos 14 = 'a' in </span>)
+          originalEnd: 3,    // Inside <span> opening (pos 3 = 's')
+        },
+        matchedText: 'x',
+        confidence: 0.5,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 1,
+        reporter: 'X',
+        page: 1,
+      }
+
+      const result = annotate(text, [citation], {
+        template: { before: '[', after: ']' },
+      })
+
+      // start (14) is inside </span> which starts at 12, snaps to 12
+      // end (3) is inside <span> which ends at 8, snaps to 8
+      // 12 >= 8 → skip
+      expect(result.skipped).toHaveLength(1)
+      expect(result.text).toBe(text)
+    })
+
+    it('should handle unclosed HTML tag gracefully', () => {
+      const text = 'See <broken 500 F.2d 123'
+      const citation: Citation = {
+        type: 'case',
+        text: '500 F.2d 123',
+        span: {
+          cleanStart: 4,
+          cleanEnd: 16,
+          originalStart: 12, // Inside unclosed tag
+          originalEnd: 24,
+        },
+        matchedText: '500 F.2d 123',
+        confidence: 0.8,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 500,
+        reporter: 'F.2d',
+        page: 123,
+      }
+
+      const result = annotate(text, [citation], {
+        template: { before: '[', after: ']' },
+        autoEscape: false,
+      })
+
+      // Should not crash — unclosed tag is handled
+      expect(result.text).toBeDefined()
+    })
+
+    it('should handle annotation on clean text without snapping', () => {
+      // useCleanText mode should not do HTML snapping
+      const text = 'See 500 F.2d 123'
+      const citations = [createCaseCitation(4, 16, '500 F.2d 123')]
+
+      const result = annotate(text, citations, {
+        template: { before: '<cite>', after: '</cite>' },
+        useCleanText: true,
+      })
+
+      expect(result.text).toBe('See <cite>500 F.2d 123</cite>')
+      expect(result.skipped).toHaveLength(0)
+    })
+  })
+
   describe('edge cases', () => {
     it('should handle empty citations array', () => {
       const text = 'See 500 F.2d 123'

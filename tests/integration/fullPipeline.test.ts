@@ -14,6 +14,7 @@
 import { describe, it, expect } from 'vitest'
 import { extractCitations, extractCitationsAsync } from '@/extract/extractCitations'
 import { stripHtmlTags } from '@/clean/cleaners'
+import { annotate } from '@/annotate/annotate'
 
 // ============================================================================
 // Test Data: Realistic Legal Text Samples
@@ -431,6 +432,46 @@ describe('Full Pipeline Integration Tests', () => {
 			// Each citation should have processTimeMs populated
 			for (const citation of citations) {
 				expect(citation.processTimeMs).toBeGreaterThan(0)
+			}
+		})
+	})
+
+	describe('HTML annotation safety (#17)', () => {
+		it('should annotate on original HTML without breaking tags', () => {
+			// annotate imported at top of file
+
+			const html = 'See <b>Smith</b> v. <em>Jones</em>, 500 F.2d 123 (2020).'
+			const citations = extractCitations(html)
+
+			expect(citations.length).toBeGreaterThanOrEqual(1)
+
+			const result = annotate(html, citations, {
+				template: { before: '<cite>', after: '</cite>' },
+				autoEscape: false,
+			})
+
+			// Annotated text should not have broken HTML tags
+			expect(result.text).not.toMatch(/<[^>]*<cite>/)
+			expect(result.text).not.toMatch(/<\/cite>[^<]*>/)
+			expect(result.skipped).toHaveLength(0)
+		})
+
+		it('should annotate citation spanning across HTML tags', () => {
+			// annotate imported at top of file
+
+			// Citation text spans an anchor tag boundary
+			const html = '145, <a href="#p410">*410</a>11 N. H. 459'
+			const citations = extractCitations(html)
+
+			if (citations.length > 0) {
+				const result = annotate(html, citations, {
+					template: { before: '{', after: '}' },
+					autoEscape: false,
+				})
+
+				// Should not insert markers inside tag attributes
+				expect(result.text).not.toMatch(/<a[^>]*\{/)
+				expect(result.text).not.toMatch(/\}[^<]*>/)
 			}
 		})
 	})

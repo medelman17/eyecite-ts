@@ -66,10 +66,23 @@ export function annotate<C extends Citation = Citation>(
 
   let result = text
   const positionMap = new Map<number, number>()
+  const skipped: Citation[] = []
 
   for (const citation of sorted) {
-    const start = useCleanText ? citation.span.cleanStart : citation.span.originalStart
-    const end = useCleanText ? citation.span.cleanEnd : citation.span.originalEnd
+    let start = useCleanText ? citation.span.cleanStart : citation.span.originalStart
+    let end = useCleanText ? citation.span.cleanEnd : citation.span.originalEnd
+
+    // Snap positions out of HTML tags when annotating original text
+    if (!useCleanText) {
+      const snapped = snapOutOfHtmlTags(result, start, end)
+      if (snapped === null) {
+        // Could not safely snap — skip this citation
+        skipped.push(citation)
+        continue
+      }
+      start = snapped.start
+      end = snapped.end
+    }
 
     let markup = ''
 
@@ -97,7 +110,65 @@ export function annotate<C extends Citation = Citation>(
     positionMap.set(start, start)
   }
 
-  return { text: result, positionMap, skipped: [] }
+  return { text: result, positionMap, skipped }
+}
+
+/**
+ * Check if a position falls inside an HTML tag (between `<` and `>`).
+ * Returns the index of the opening `<` if inside a tag, otherwise -1.
+ */
+function findContainingTag(text: string, pos: number): { tagStart: number; tagEnd: number } | null {
+  // Search backwards from pos for '<' without encountering '>' first
+  let i = pos - 1
+  while (i >= 0) {
+    if (text[i] === '>') return null  // Hit a tag close — we're outside
+    if (text[i] === '<') {
+      // Found opening '<' — now find the closing '>'
+      let j = pos
+      while (j < text.length) {
+        if (text[j] === '>') return { tagStart: i, tagEnd: j + 1 }
+        j++
+      }
+      // Unclosed tag — treat as inside
+      return { tagStart: i, tagEnd: text.length }
+    }
+    i--
+  }
+  return null
+}
+
+/**
+ * Snap annotation start/end positions to avoid landing inside HTML tags.
+ *
+ * If a position falls inside an HTML tag, it is moved:
+ * - Start position: snapped to before the tag's `<`
+ * - End position: snapped to after the tag's `>`
+ *
+ * Returns null if the positions can't be safely adjusted (e.g., entirely
+ * within a single tag).
+ */
+function snapOutOfHtmlTags(
+  text: string,
+  start: number,
+  end: number,
+): { start: number; end: number } | null {
+  let snappedStart = start
+  let snappedEnd = end
+
+  const startTag = findContainingTag(text, start)
+  if (startTag) {
+    snappedStart = startTag.tagStart
+  }
+
+  const endTag = findContainingTag(text, end)
+  if (endTag) {
+    snappedEnd = endTag.tagEnd
+  }
+
+  // Sanity check: start must come before end
+  if (snappedStart >= snappedEnd) return null
+
+  return { start: snappedStart, end: snappedEnd }
 }
 
 /**
