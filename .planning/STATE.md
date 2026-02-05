@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2025-02-04)
 
 **Core value:** Developers can extract, resolve, and annotate legal citations from text without Python infrastructure
-**Current focus:** Phase 2 - Core Parsing
+**Current focus:** Phase 2 complete — ready for Phase 3
 
 ## Current Position
 
@@ -31,7 +31,7 @@ Progress: [█████░░░░░] 58%
 | 02-01 | 1 | Text cleaners (HTML stripping, Unicode normalization, whitespace) | Complete ✅ |
 | 02-02 | 1 | Citation regex patterns (case, statute, journal, neutral) with ReDoS protection | Complete ✅ |
 | 02-03 | 2 | Tokenizer (pattern matching, candidate extraction) | Complete ✅ |
-| 02-04 | 2 | Extended citation types (journal, neutral, public law, federal register) with metadata | Skipped ⏭️ |
+| 02-04 | 2 | Extended citation types (journal, neutral, public law, federal register) with metadata | Complete ✅ |
 | 02-05 | 3 | Citation extraction and metadata parsing | Complete ✅ |
 | 02-06 | 3 | Main extraction pipeline with integration tests | Complete ✅ |
 
@@ -47,7 +47,7 @@ Progress: [█████░░░░░] 58%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | Phase 1 | 3/3 | 4 min | 80s |
-| Phase 2 | 5/6 | 21.3 min | 256s |
+| Phase 2 | 6/6 | 23.3 min | 233s |
 
 **Recent Trend:**
 - Last 5 plans: 02-01 (306s), 02-02 (214s), 02-03 (167s), 02-05 (308s), 02-06 (296s)

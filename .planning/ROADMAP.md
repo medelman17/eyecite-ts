@@ -13,7 +13,7 @@ eyecite-ts delivers a TypeScript legal citation extraction library with feature 
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation & Architecture** - Project scaffolding, TypeScript config, architectural design ✓
-- [ ] **Phase 2: Core Parsing** - Tokenization, citation extraction, metadata, text cleaning
+- [x] **Phase 2: Core Parsing** - Tokenization, citation extraction, metadata, text cleaning ✓
 - [ ] **Phase 3: Reporter Database & Annotation** - Reporter data integration, bundle optimization, annotation
 - [ ] **Phase 4: Short-Form Resolution & Integration** - Id./Supra resolution, comprehensive testing, documentation
 
@@ -49,12 +49,12 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Text cleaning layer with position tracking (cleanText, built-in cleaners)
-- [ ] 02-02-PLAN.md — Regex patterns for all citation types with ReDoS protection
-- [ ] 02-03-PLAN.md — Tokenization layer applying patterns to cleaned text
-- [ ] 02-04-PLAN.md — Citation type system extension (journal, neutral, public law, federal register)
-- [ ] 02-05-PLAN.md — Citation extraction with metadata parsing and confidence scoring
-- [ ] 02-06-PLAN.md — Main pipeline (extractCitations API) with integration tests
+- [x] 02-01-PLAN.md — Text cleaning layer with position tracking (cleanText, built-in cleaners)
+- [x] 02-02-PLAN.md — Regex patterns for all citation types with ReDoS protection
+- [x] 02-03-PLAN.md — Tokenization layer applying patterns to cleaned text
+- [x] 02-04-PLAN.md — Citation type system extension (journal, neutral, public law, federal register)
+- [x] 02-05-PLAN.md — Citation extraction with metadata parsing and confidence scoring
+- [x] 02-06-PLAN.md — Main pipeline (extractCitations API) with integration tests
 
 ### Phase 3: Reporter Database & Annotation
 **Goal**: Integrate reporter database, optimize bundle size, implement position-aware annotation, validate performance constraints
@@ -95,6 +95,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Architecture | 3/3 | ✓ Complete | 2026-02-05 |
-| 2. Core Parsing | 0/6 | Not started | - |
+| 2. Core Parsing | 6/6 | ✓ Complete | 2026-02-05 |
 | 3. Reporter Database & Annotation | 0/TBD | Not started | - |
 | 4. Short-Form Resolution & Integration | 0/TBD | Not started | - |

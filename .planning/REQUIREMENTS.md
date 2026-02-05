@@ -9,39 +9,39 @@ Requirements for initial release. Full feature parity with Python eyecite.
 
 ### Citation Detection
 
-- [ ] **DET-01**: Extract full case citations (volume-reporter-page format)
-- [ ] **DET-02**: Extract case citations with pincite (123 F.3d 456, 460)
-- [ ] **DET-03**: Extract case citations with pincite range (123 F.3d 456, 460-62)
-- [ ] **DET-04**: Extract case citations with court (123 F.3d 456 (9th Cir. 2020))
-- [ ] **DET-05**: Extract case citations with date only (123 F.3d 456 (2020))
-- [ ] **DET-06**: Extract case citations with full date (123 F.3d 456 (9th Cir. Jan. 15, 2020))
-- [ ] **DET-07**: Extract case citations with parenthetical (123 F.3d 456 (9th Cir. 2020) (holding that...))
-- [ ] **DET-08**: Extract parallel citations (123 U.S. 456, 78 S.Ct. 901)
-- [ ] **DET-09**: Extract neutral citations (2020 WL 123456)
+- [x] **DET-01**: Extract full case citations (volume-reporter-page format)
+- [x] **DET-02**: Extract case citations with pincite (123 F.3d 456, 460)
+- [x] **DET-03**: Extract case citations with pincite range (123 F.3d 456, 460-62)
+- [x] **DET-04**: Extract case citations with court (123 F.3d 456 (9th Cir. 2020))
+- [x] **DET-05**: Extract case citations with date only (123 F.3d 456 (2020))
+- [x] **DET-06**: Extract case citations with full date (123 F.3d 456 (9th Cir. Jan. 15, 2020))
+- [x] **DET-07**: Extract case citations with parenthetical (123 F.3d 456 (9th Cir. 2020) (holding that...))
+- [x] **DET-08**: Extract parallel citations (123 U.S. 456, 78 S.Ct. 901)
+- [x] **DET-09**: Extract neutral citations (2020 WL 123456)
 - [ ] **DET-10**: Detect Id. citations
 - [ ] **DET-11**: Detect Id. with pincite (Id. at 460)
 - [ ] **DET-12**: Detect Ibid. citations
 - [ ] **DET-13**: Detect supra citations (Smith, supra)
 - [ ] **DET-14**: Detect supra with pincite (Smith, supra, at 460)
 - [ ] **DET-15**: Detect short-form citations (Smith, 123 F.3d at 460)
-- [ ] **DET-16**: Extract U.S. Code citations (42 U.S.C. § 1983)
-- [ ] **DET-17**: Extract U.S. Code range citations (42 U.S.C. §§ 1983-1988)
-- [ ] **DET-18**: Extract state code citations (Cal. Penal Code § 187)
-- [ ] **DET-19**: Extract public law citations (Pub. L. No. 116-283)
-- [ ] **DET-20**: Extract Federal Register citations (85 Fed. Reg. 12345)
-- [ ] **DET-21**: Extract journal citations (123 Harv. L. Rev. 456)
-- [ ] **DET-22**: Extract journal citations with author (Smith, Title, 123 Harv. L. Rev. 456)
+- [x] **DET-16**: Extract U.S. Code citations (42 U.S.C. § 1983)
+- [x] **DET-17**: Extract U.S. Code range citations (42 U.S.C. §§ 1983-1988)
+- [x] **DET-18**: Extract state code citations (Cal. Penal Code § 187)
+- [x] **DET-19**: Extract public law citations (Pub. L. No. 116-283)
+- [x] **DET-20**: Extract Federal Register citations (85 Fed. Reg. 12345)
+- [x] **DET-21**: Extract journal citations (123 Harv. L. Rev. 456)
+- [x] **DET-22**: Extract journal citations with author (Smith, Title, 123 Harv. L. Rev. 456)
 
 ### Citation Metadata
 
-- [ ] **META-01**: Extract matched text and span positions for all citations
-- [ ] **META-02**: Extract volume number from citations
-- [ ] **META-03**: Extract reporter abbreviation from citations
-- [ ] **META-04**: Extract page number from citations
-- [ ] **META-05**: Extract pincite from citations
-- [ ] **META-06**: Extract court from citations
-- [ ] **META-07**: Extract year from citations
-- [ ] **META-08**: Extract plaintiff/defendant names from full citations
+- [x] **META-01**: Extract matched text and span positions for all citations
+- [x] **META-02**: Extract volume number from citations
+- [x] **META-03**: Extract reporter abbreviation from citations
+- [x] **META-04**: Extract page number from citations
+- [x] **META-05**: Extract pincite from citations
+- [x] **META-06**: Extract court from citations
+- [x] **META-07**: Extract year from citations
+- [x] **META-08**: Extract plaintiff/defendant names from full citations
 
 ### Citation Resolution
 
@@ -61,12 +61,12 @@ Requirements for initial release. Full feature parity with Python eyecite.
 
 ### Text Cleaning
 
-- [ ] **CLN-01**: Strip HTML tags from text
-- [ ] **CLN-02**: Normalize whitespace in text
-- [ ] **CLN-03**: Remove underscores (OCR artifacts)
-- [ ] **CLN-04**: Normalize inline whitespace in citations
-- [ ] **CLN-05**: Support aggressive whitespace normalization
-- [ ] **CLN-06**: Support custom cleaning functions in pipeline
+- [x] **CLN-01**: Strip HTML tags from text
+- [x] **CLN-02**: Normalize whitespace in text
+- [x] **CLN-03**: Remove underscores (OCR artifacts)
+- [x] **CLN-04**: Normalize inline whitespace in citations
+- [x] **CLN-05**: Support aggressive whitespace normalization
+- [x] **CLN-06**: Support custom cleaning functions in pipeline
 
 ### Data
 
@@ -138,36 +138,36 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DET-01 | Phase 2 | Pending |
-| DET-02 | Phase 2 | Pending |
-| DET-03 | Phase 2 | Pending |
-| DET-04 | Phase 2 | Pending |
-| DET-05 | Phase 2 | Pending |
-| DET-06 | Phase 2 | Pending |
-| DET-07 | Phase 2 | Pending |
-| DET-08 | Phase 2 | Pending |
-| DET-09 | Phase 2 | Pending |
+| DET-01 | Phase 2 | Complete |
+| DET-02 | Phase 2 | Complete |
+| DET-03 | Phase 2 | Complete |
+| DET-04 | Phase 2 | Complete |
+| DET-05 | Phase 2 | Complete |
+| DET-06 | Phase 2 | Complete |
+| DET-07 | Phase 2 | Complete |
+| DET-08 | Phase 2 | Complete |
+| DET-09 | Phase 2 | Complete |
 | DET-10 | Phase 4 | Pending |
 | DET-11 | Phase 4 | Pending |
 | DET-12 | Phase 4 | Pending |
 | DET-13 | Phase 4 | Pending |
 | DET-14 | Phase 4 | Pending |
 | DET-15 | Phase 4 | Pending |
-| DET-16 | Phase 2 | Pending |
-| DET-17 | Phase 2 | Pending |
-| DET-18 | Phase 2 | Pending |
-| DET-19 | Phase 2 | Pending |
-| DET-20 | Phase 2 | Pending |
-| DET-21 | Phase 2 | Pending |
-| DET-22 | Phase 2 | Pending |
-| META-01 | Phase 2 | Pending |
-| META-02 | Phase 2 | Pending |
-| META-03 | Phase 2 | Pending |
-| META-04 | Phase 2 | Pending |
-| META-05 | Phase 2 | Pending |
-| META-06 | Phase 2 | Pending |
-| META-07 | Phase 2 | Pending |
-| META-08 | Phase 2 | Pending |
+| DET-16 | Phase 2 | Complete |
+| DET-17 | Phase 2 | Complete |
+| DET-18 | Phase 2 | Complete |
+| DET-19 | Phase 2 | Complete |
+| DET-20 | Phase 2 | Complete |
+| DET-21 | Phase 2 | Complete |
+| DET-22 | Phase 2 | Complete |
+| META-01 | Phase 2 | Complete |
+| META-02 | Phase 2 | Complete |
+| META-03 | Phase 2 | Complete |
+| META-04 | Phase 2 | Complete |
+| META-05 | Phase 2 | Complete |
+| META-06 | Phase 2 | Complete |
+| META-07 | Phase 2 | Complete |
+| META-08 | Phase 2 | Complete |
 | RES-01 | Phase 4 | Pending |
 | RES-02 | Phase 4 | Pending |
 | RES-03 | Phase 4 | Pending |
@@ -178,12 +178,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ANN-02 | Phase 3 | Pending |
 | ANN-03 | Phase 3 | Pending |
 | ANN-04 | Phase 3 | Pending |
-| CLN-01 | Phase 2 | Pending |
-| CLN-02 | Phase 2 | Pending |
-| CLN-03 | Phase 2 | Pending |
-| CLN-04 | Phase 2 | Pending |
-| CLN-05 | Phase 2 | Pending |
-| CLN-06 | Phase 2 | Pending |
+| CLN-01 | Phase 2 | Complete |
+| CLN-02 | Phase 2 | Complete |
+| CLN-03 | Phase 2 | Complete |
+| CLN-04 | Phase 2 | Complete |
+| CLN-05 | Phase 2 | Complete |
+| CLN-06 | Phase 2 | Complete |
 | DATA-01 | Phase 3 | Pending |
 | DATA-02 | Phase 3 | Pending |
 | DATA-03 | Phase 3 | Pending |
@@ -219,4 +219,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2025-02-04*
-*Last updated: 2026-02-05 after Phase 1 completion*
+*Last updated: 2026-02-05 after Phase 2 completion*
