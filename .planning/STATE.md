@@ -10,13 +10,13 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 ## Current Position
 
 Phase: 7 of 8 (Party Name Extraction)
-Plan: 1 of 2 complete
-Status: In progress
-Last activity: 2026-02-05 — Completed 07-01-PLAN.md
+Plan: 2 of 2 complete
+Status: Phase complete
+Last activity: 2026-02-05 — Completed 07-02-PLAN.md
 
-Progress: ████████████░░░░ 65% (22/26 plans total, 17/17 v1.0 complete, 5/9 v1.1 complete)
+Progress: █████████████░░░ 69% (23/26 plans total, 17/17 v1.0 complete, 6/9 v1.1 complete)
 
-**Phase 7 Plan 01 complete:** 2/2 tasks, 6 min, 461 tests passing
+**Phase 7 complete:** 2 plans, ~13 min total, 470 tests passing
 
 Config:
 {
@@ -57,9 +57,9 @@ Config:
 | 4. Resolution & Annotation | 6 | ~35 min | ~6 min |
 
 **Velocity (v1.1-alpha):**
-- Total plans completed: 5
-- Average duration: ~4 min
-- Total execution time: ~20 min
+- Total plans completed: 6
+- Average duration: ~4.5 min
+- Total execution time: ~27 min
 
 **By Phase (v1.1-alpha):**
 
@@ -67,7 +67,7 @@ Config:
 |-------|-------|-------|----------|
 | 5. Type System & Blank Pages | 2/2 | ~5 min | ~2.5 min |
 | 6. Full Span & Complex Parentheticals | 2/2 | ~7.4 min | ~3.7 min |
-| 7. Party Name Extraction | 1/2 | ~6 min | ~6 min |
+| 7. Party Name Extraction | 2/2 | ~13 min | ~6.5 min |
 
 ## Accumulated Context
 
@@ -94,6 +94,10 @@ Config:
 | 07-01 | Strip d/b/a and aka plus everything after | Alternative business names and aliases are noise for matching; "Smith d/b/a Smith Industries" should match "Smith" | Normalization removes alternative name variations |
 | 07-01 | Support '/' character in backward search regex | Party names contain "d/b/a" with slash; original regex truncated at slash | Updated extractCaseName regex to include '/' in character class |
 | 07-01 | Iteratively strip multiple corporate suffixes | Names like "Smith Corp., Inc." have multiple suffixes; single-pass leaves "Corp." | While loop strips suffixes until no more matches |
+| 07-02 | Defendant name stored first in resolution history | Bluebook convention prefers defendant name in supra citations | DocumentResolver prioritizes defendantNormalized for matching |
+| 07-02 | Fallback to backward text search when extracted names unavailable | Ensures compatibility with pre-Phase 7 citations and extraction failures | Graceful degradation maintains resolution quality |
+| 07-02 | Citation boundary detection uses digit-period-space pattern | Prevents matching across citation boundaries ("10. Jones" → split before "Jones") | extractCaseName correctly handles consecutive citations |
+| 07-02 | Signal word stripping moved into extractPartyNames | Consistent plaintiff extraction regardless of resolution path | "In Smith v. Jones" → plaintiff "Smith" (not "In Smith") |
 
 Recent decisions from v1.0-alpha affecting v1.1:
 - Dual position tracking (Span) enables accurate fullSpan calculation
@@ -114,5 +118,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-05 (plan execution)
-Stopped at: Completed 07-01-PLAN.md
-Resume file: .planning/phases/07-party-name-extraction/07-01-SUMMARY.md
+Stopped at: Completed 07-02-PLAN.md (Phase 7 complete)
+Resume file: .planning/phases/07-party-name-extraction/07-02-SUMMARY.md
