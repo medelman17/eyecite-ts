@@ -1,0 +1,2477 @@
+{
+  "description": "Expanded test corpus for stress-testing citation extraction. 150+ real-world legal text samples covering edge cases, unusual formats, and dense multi-citation paragraphs.",
+  "categories": [
+    "federal-cases",
+    "scotus-cases",
+    "state-cases",
+    "complex-case-names",
+    "statutes",
+    "journals",
+    "neutral-citations",
+    "public-laws",
+    "federal-register",
+    "statutes-at-large",
+    "short-forms",
+    "parallel-citations",
+    "parentheticals",
+    "pincites",
+    "blank-pages",
+    "string-citations",
+    "dense-paragraphs",
+    "formatting-edge-cases",
+    "boundary-conditions"
+  ],
+  "samples": [
+    {
+      "id": "fed-f4th-basic",
+      "category": "federal-cases",
+      "description": "F.4th reporter (newest federal series)",
+      "text": "Johnson v. Smith, 50 F.4th 200 (3d Cir. 2022)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 50,
+          "reporter": "F.4th",
+          "page": 200,
+          "court": "3d Cir.",
+          "year": 2022
+        }
+      ]
+    },
+    {
+      "id": "fed-f-supp-4th",
+      "category": "federal-cases",
+      "description": "F. Supp. 4th reporter",
+      "text": "Doe v. Roe, 100 F. Supp. 4th 50 (D. Mass. 2024)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 100,
+          "reporter": "F. Supp. 4th",
+          "page": 50,
+          "court": "D. Mass.",
+          "year": 2024
+        }
+      ]
+    },
+    {
+      "id": "fed-f-original",
+      "category": "federal-cases",
+      "description": "Original Federal Reporter (F.)",
+      "text": "Chicago & N.W. Ry. Co. v. United States, 104 F. 849 (8th Cir. 1900)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 104,
+          "reporter": "F.",
+          "page": 849,
+          "year": 1900
+        }
+      ]
+    },
+    {
+      "id": "fed-f2d-classic",
+      "category": "federal-cases",
+      "description": "F.2d classic citation",
+      "text": "Learned Hand wrote the opinion in United States v. Carroll Towing Co., 159 F.2d 169 (2d Cir. 1947)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 159,
+          "reporter": "F.2d",
+          "page": 169,
+          "court": "2d Cir.",
+          "year": 1947
+        }
+      ]
+    },
+    {
+      "id": "fed-f3d-eleventh-cir",
+      "category": "federal-cases",
+      "description": "F.3d Eleventh Circuit",
+      "text": "Williams v. Attorney General, 378 F.3d 1232 (11th Cir. 2004)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 378,
+          "reporter": "F.3d",
+          "page": 1232,
+          "court": "11th Cir.",
+          "year": 2004
+        }
+      ]
+    },
+    {
+      "id": "fed-f-supp-original",
+      "category": "federal-cases",
+      "description": "Original F. Supp. citation",
+      "text": "Baker v. Carr, 179 F. Supp. 824 (M.D. Tenn. 1959)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 179,
+          "reporter": "F. Supp.",
+          "page": 824,
+          "court": "M.D. Tenn.",
+          "year": 1959
+        }
+      ]
+    },
+    {
+      "id": "fed-f-supp-2d",
+      "category": "federal-cases",
+      "description": "F. Supp. 2d citation",
+      "text": "Perfect 10 Inc. v. Google Inc., 416 F. Supp. 2d 828 (C.D. Cal. 2006)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 416,
+          "reporter": "F. Supp. 2d",
+          "page": 828,
+          "court": "C.D. Cal.",
+          "year": 2006
+        }
+      ]
+    },
+    {
+      "id": "fed-f-supp-3d",
+      "category": "federal-cases",
+      "description": "F. Supp. 3d citation",
+      "text": "Oracle USA Inc. v. Rimini Street Inc., 324 F. Supp. 3d 1157 (D. Nev. 2018)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 324,
+          "reporter": "F. Supp. 3d",
+          "page": 1157,
+          "court": "D. Nev.",
+          "year": 2018
+        }
+      ]
+    },
+    {
+      "id": "fed-high-volume",
+      "category": "federal-cases",
+      "description": "High volume number",
+      "text": "999 F.3d 1 (1st Cir. 2021)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 999,
+          "reporter": "F.3d",
+          "page": 1,
+          "court": "1st Cir.",
+          "year": 2021
+        }
+      ]
+    },
+    {
+      "id": "fed-high-page",
+      "category": "federal-cases",
+      "description": "High page number",
+      "text": "1 F.4th 9999 (D.C. Cir. 2021)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 1,
+          "reporter": "F.4th",
+          "page": 9999,
+          "court": "D.C. Cir.",
+          "year": 2021
+        }
+      ]
+    },
+    {
+      "id": "fed-dc-circuit",
+      "category": "federal-cases",
+      "description": "D.C. Circuit citation",
+      "text": "Heller v. Doe, 300 F.3d 742 (D.C. Cir. 2002)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 300,
+          "reporter": "F.3d",
+          "page": 742,
+          "court": "D.C. Cir.",
+          "year": 2002
+        }
+      ]
+    },
+    {
+      "id": "fed-fed-cir",
+      "category": "federal-cases",
+      "description": "Federal Circuit citation",
+      "text": "Apple Inc. v. Samsung Elecs. Co., 839 F.3d 1034 (Fed. Cir. 2016)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 839,
+          "reporter": "F.3d",
+          "page": 1034,
+          "court": "Fed. Cir.",
+          "year": 2016
+        }
+      ]
+    },
+    {
+      "id": "scotus-us-classic",
+      "category": "scotus-cases",
+      "description": "Classic U.S. Reports citation",
+      "text": "Marbury v. Madison, 5 U.S. 137 (1803)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 5,
+          "reporter": "U.S.",
+          "page": 137,
+          "year": 1803
+        }
+      ]
+    },
+    {
+      "id": "scotus-us-modern",
+      "category": "scotus-cases",
+      "description": "Modern U.S. Reports citation",
+      "text": "Dobbs v. Jackson Women's Health Organization, 597 U.S. 215 (2022)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 597,
+          "reporter": "U.S.",
+          "page": 215,
+          "year": 2022
+        }
+      ]
+    },
+    {
+      "id": "scotus-sct-alone",
+      "category": "scotus-cases",
+      "description": "S. Ct. reporter alone",
+      "text": "Kennedy v. Bremerton School District, 142 S. Ct. 2407 (2022)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 142,
+          "reporter": "S. Ct.",
+          "page": 2407,
+          "year": 2022
+        }
+      ]
+    },
+    {
+      "id": "scotus-led-alone",
+      "category": "scotus-cases",
+      "description": "L. Ed. 2d reporter alone",
+      "text": "200 L. Ed. 2d 500 (2018)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 200,
+          "reporter": "L. Ed. 2d",
+          "page": 500,
+          "year": 2018
+        }
+      ]
+    },
+    {
+      "id": "scotus-high-volume",
+      "category": "scotus-cases",
+      "description": "High volume Supreme Court citation",
+      "text": "600 U.S. 1 (2023)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 600,
+          "reporter": "U.S.",
+          "page": 1,
+          "year": 2023
+        }
+      ]
+    },
+    {
+      "id": "state-ne2d",
+      "category": "state-cases",
+      "description": "N.E.2d state reporter",
+      "text": "People v. Taylor, 150 N.E.2d 300 (Ill. 2010)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 150,
+          "reporter": "N.E.2d",
+          "page": 300,
+          "year": 2010
+        }
+      ]
+    },
+    {
+      "id": "state-ne3d",
+      "category": "state-cases",
+      "description": "N.E.3d state reporter",
+      "text": "Commonwealth v. Miller, 75 N.E.3d 1090 (Mass. 2017)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 75,
+          "reporter": "N.E.3d",
+          "page": 1090,
+          "year": 2017
+        }
+      ]
+    },
+    {
+      "id": "state-a2d",
+      "category": "state-cases",
+      "description": "A.2d Atlantic reporter",
+      "text": "State v. Henderson, 208 A.2d 123 (N.J. 2005)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 208,
+          "reporter": "A.2d",
+          "page": 123,
+          "year": 2005
+        }
+      ]
+    },
+    {
+      "id": "state-a3d",
+      "category": "state-cases",
+      "description": "A.3d Atlantic reporter",
+      "text": "In re Adoption of J.E.V., 50 A.3d 714 (Pa. 2012)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 50,
+          "reporter": "A.3d",
+          "page": 714,
+          "year": 2012
+        }
+      ]
+    },
+    {
+      "id": "state-p2d",
+      "category": "state-cases",
+      "description": "P.2d Pacific reporter",
+      "text": "Greenman v. Yuba Power Products Inc., 377 P.2d 897 (Cal. 1963)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 377,
+          "reporter": "P.2d",
+          "page": 897,
+          "year": 1963
+        }
+      ]
+    },
+    {
+      "id": "state-p3d",
+      "category": "state-cases",
+      "description": "P.3d Pacific reporter",
+      "text": "State v. Witt, 301 P.3d 241 (Kan. 2013)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 301,
+          "reporter": "P.3d",
+          "page": 241,
+          "year": 2013
+        }
+      ]
+    },
+    {
+      "id": "state-se2d",
+      "category": "state-cases",
+      "description": "S.E.2d Southeastern reporter",
+      "text": "Harris v. McRae, 500 S.E.2d 789 (Ga. 2008)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "S.E.2d",
+          "page": 789,
+          "year": 2008
+        }
+      ]
+    },
+    {
+      "id": "state-nw2d",
+      "category": "state-cases",
+      "description": "N.W.2d Northwestern reporter",
+      "text": "Henningsen v. Bloomfield Motors Inc., 161 N.W.2d 555 (Mich. 2009)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 161,
+          "reporter": "N.W.2d",
+          "page": 555,
+          "year": 2009
+        }
+      ]
+    },
+    {
+      "id": "state-so2d",
+      "category": "state-cases",
+      "description": "So. 2d Southern reporter",
+      "text": "State v. Adams, 250 So. 2d 100 (La. 2015)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 250,
+          "reporter": "So. 2d",
+          "page": 100,
+          "year": 2015
+        }
+      ]
+    },
+    {
+      "id": "state-so3d",
+      "category": "state-cases",
+      "description": "So. 3d Southern reporter",
+      "text": "Davis v. State, 180 So. 3d 75 (Fla. 2016)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 180,
+          "reporter": "So. 3d",
+          "page": 75,
+          "year": 2016
+        }
+      ]
+    },
+    {
+      "id": "state-sw2d",
+      "category": "state-cases",
+      "description": "S.W.2d Southwestern reporter",
+      "text": "Jones v. State, 300 S.W.2d 450 (Tex. 2011)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 300,
+          "reporter": "S.W.2d",
+          "page": 450,
+          "year": 2011
+        }
+      ]
+    },
+    {
+      "id": "state-sw3d",
+      "category": "state-cases",
+      "description": "S.W.3d Southwestern reporter",
+      "text": "In re Baby M., 125 S.W.3d 888 (Tex. App. 2003)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 125,
+          "reporter": "S.W.3d",
+          "page": 888,
+          "year": 2003
+        }
+      ]
+    },
+    {
+      "id": "state-cal4th",
+      "category": "state-cases",
+      "description": "Cal.4th California Supreme Court reporter",
+      "text": "People v. Dillon, 34 Cal.4th 441 (2004)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 34,
+          "reporter": "Cal.4th",
+          "page": 441,
+          "year": 2004
+        }
+      ]
+    },
+    {
+      "id": "state-cal-app-5th",
+      "category": "state-cases",
+      "description": "Cal.App.5th California appellate reporter",
+      "text": "Wilson v. 21st Century Ins. Co., 42 Cal.App.5th 713 (2019)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 42,
+          "reporter": "Cal.App.5th",
+          "page": 713,
+          "year": 2019
+        }
+      ]
+    },
+    {
+      "id": "state-ny2d",
+      "category": "state-cases",
+      "description": "N.Y.2d New York reporter",
+      "text": "Palsgraf v. Long Island R.R. Co., 162 N.Y.2d 99 (1928)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 162,
+          "reporter": "N.Y.2d",
+          "page": 99,
+          "year": 1928
+        }
+      ]
+    },
+    {
+      "id": "state-ny3d",
+      "category": "state-cases",
+      "description": "N.Y.3d New York reporter",
+      "text": "Matter of Brooke S.B. v. Elizabeth A.C.C., 28 N.Y.3d 1 (2016)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 28,
+          "reporter": "N.Y.3d",
+          "page": 1,
+          "year": 2016
+        }
+      ]
+    },
+    {
+      "id": "state-nys2d",
+      "category": "state-cases",
+      "description": "N.Y.S.2d reporter",
+      "text": "Kirschner v. KPMG LLP, 938 N.Y.S.2d 6 (2012)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 938,
+          "reporter": "N.Y.S.2d",
+          "page": 6,
+          "year": 2012
+        }
+      ]
+    },
+    {
+      "id": "state-ill2d",
+      "category": "state-cases",
+      "description": "Ill.2d Illinois reporter",
+      "text": "People v. Warren, 173 Ill.2d 348 (1996)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 173,
+          "reporter": "Ill.2d",
+          "page": 348,
+          "year": 1996
+        }
+      ]
+    },
+    {
+      "id": "state-ohio-st-3d",
+      "category": "state-cases",
+      "description": "Ohio St. 3d reporter",
+      "knownLimitation": "Multi-word state reporters with space (Ohio St. 3d) not matched by state-reporter pattern",
+      "text": "State v. Rance, 85 Ohio St. 3d 632 (1999)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 85,
+          "reporter": "Ohio St. 3d",
+          "page": 632,
+          "year": 1999
+        }
+      ]
+    },
+    {
+      "id": "name-et-al",
+      "category": "complex-case-names",
+      "description": "Case name with et al.",
+      "text": "Smith et al. v. Johnson et al., 500 F.3d 123 (5th Cir. 2007)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.3d",
+          "page": 123,
+          "court": "5th Cir.",
+          "year": 2007
+        }
+      ]
+    },
+    {
+      "id": "name-dba",
+      "category": "complex-case-names",
+      "description": "Case name with d/b/a",
+      "text": "John Smith d/b/a Smith Enterprises v. City of Dallas, 200 F.3d 400 (5th Cir. 2000)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 200,
+          "reporter": "F.3d",
+          "page": 400,
+          "court": "5th Cir.",
+          "year": 2000
+        }
+      ]
+    },
+    {
+      "id": "name-multiple-plaintiffs",
+      "category": "complex-case-names",
+      "description": "Multiple parties in case name",
+      "text": "Smith and Jones v. State of California, 100 F.3d 500 (9th Cir. 1996)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 100,
+          "reporter": "F.3d",
+          "page": 500,
+          "court": "9th Cir.",
+          "year": 1996
+        }
+      ]
+    },
+    {
+      "id": "name-llc",
+      "category": "complex-case-names",
+      "description": "LLC in case name",
+      "text": "DataTech LLC v. MicroSoft Corp., 450 F.3d 100 (Fed. Cir. 2006)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 450,
+          "reporter": "F.3d",
+          "page": 100,
+          "court": "Fed. Cir.",
+          "year": 2006
+        }
+      ]
+    },
+    {
+      "id": "name-government-defendant",
+      "category": "complex-case-names",
+      "description": "State as defendant",
+      "text": "Miranda v. Arizona, 384 U.S. 436 (1966)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 384,
+          "reporter": "U.S.",
+          "page": 436,
+          "caseName": "Miranda v. Arizona",
+          "plaintiff": "Miranda",
+          "defendant": "Arizona",
+          "year": 1966
+        }
+      ]
+    },
+    {
+      "id": "name-in-re-matter",
+      "category": "complex-case-names",
+      "description": "In the Matter of",
+      "text": "In the Matter of Grand Jury Subpoena, 150 F.3d 170 (2d Cir. 1998)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 150,
+          "reporter": "F.3d",
+          "page": 170,
+          "court": "2d Cir.",
+          "year": 1998
+        }
+      ]
+    },
+    {
+      "id": "name-people-v",
+      "category": "complex-case-names",
+      "description": "People v. defendant",
+      "text": "People v. Turner, 36 Cal.4th 1175 (2005)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 36,
+          "reporter": "Cal.4th",
+          "page": 1175,
+          "caseName": "People v. Turner",
+          "plaintiff": "People",
+          "defendant": "Turner",
+          "year": 2005
+        }
+      ]
+    },
+    {
+      "id": "name-state-ex-rel",
+      "category": "complex-case-names",
+      "description": "State ex rel. format",
+      "text": "State ex rel. Nixon v. American Tobacco Co., 34 S.W.3d 122 (Mo. 2000)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 34,
+          "reporter": "S.W.3d",
+          "page": 122,
+          "year": 2000
+        }
+      ]
+    },
+    {
+      "id": "name-comm-v",
+      "category": "complex-case-names",
+      "description": "Commonwealth v. defendant",
+      "text": "Commonwealth v. Hunt, 45 Mass. 111 (1842)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 45,
+          "reporter": "Mass.",
+          "page": 111,
+          "year": 1842
+        }
+      ]
+    },
+    {
+      "id": "name-united-states-ex-rel",
+      "category": "complex-case-names",
+      "description": "United States ex rel. (qui tam)",
+      "text": "United States ex rel. Polansky v. Executive Health Resources Inc., 599 U.S. 419 (2023)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 599,
+          "reporter": "U.S.",
+          "page": 419,
+          "year": 2023
+        }
+      ]
+    },
+    {
+      "id": "name-nlrb-v",
+      "category": "complex-case-names",
+      "description": "NLRB as party",
+      "text": "NLRB v. Jones & Laughlin Steel Corp., 301 U.S. 1 (1937)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 301,
+          "reporter": "U.S.",
+          "page": 1,
+          "caseName": "NLRB v. Jones & Laughlin Steel Corp.",
+          "plaintiff": "NLRB",
+          "year": 1937
+        }
+      ]
+    },
+    {
+      "id": "name-long-government",
+      "category": "complex-case-names",
+      "description": "Long government entity name",
+      "text": "Department of Homeland Security v. Regents of the University of California, 591 U.S. 1 (2020)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 591,
+          "reporter": "U.S.",
+          "page": 1,
+          "year": 2020
+        }
+      ]
+    },
+    {
+      "id": "statute-usc-section-letter",
+      "category": "statutes",
+      "description": "U.S.C. with section containing letter",
+      "text": "18 U.S.C. § 1030a",
+      "expected": [
+        {
+          "type": "statute",
+          "code": "U.S.C.",
+          "title": 18,
+          "section": "1030a"
+        }
+      ]
+    },
+    {
+      "id": "statute-usc-double-section",
+      "category": "statutes",
+      "description": "U.S.C. with double section symbol",
+      "text": "42 U.S.C. §§ 1983",
+      "expected": [
+        {
+          "type": "statute",
+          "code": "U.S.C.",
+          "title": 42,
+          "section": "1983"
+        }
+      ]
+    },
+    {
+      "id": "statute-usc-no-period",
+      "category": "statutes",
+      "description": "USC without periods",
+      "knownLimitation": "Pattern requires U.S.C. with periods; 'USC' without periods not matched",
+      "text": "15 USC § 78j",
+      "expected": [
+        {
+          "type": "statute",
+          "title": 15,
+          "section": "78j"
+        }
+      ]
+    },
+    {
+      "id": "statute-usc-common-section",
+      "category": "statutes",
+      "description": "Common statute: 28 U.S.C. 1332 (diversity jurisdiction)",
+      "text": "under 28 U.S.C. § 1332",
+      "expected": [
+        {
+          "type": "statute",
+          "code": "U.S.C.",
+          "title": 28,
+          "section": "1332"
+        }
+      ]
+    },
+    {
+      "id": "statute-usc-2000e",
+      "category": "statutes",
+      "description": "Title VII section with letter and number",
+      "text": "42 U.S.C. § 2000e",
+      "expected": [
+        {
+          "type": "statute",
+          "code": "U.S.C.",
+          "title": 42,
+          "section": "2000e"
+        }
+      ]
+    },
+    {
+      "id": "statute-usc-title-5",
+      "category": "statutes",
+      "description": "Administrative Procedure Act citation",
+      "text": "5 U.S.C. § 706",
+      "expected": [
+        {
+          "type": "statute",
+          "code": "U.S.C.",
+          "title": 5,
+          "section": "706"
+        }
+      ]
+    },
+    {
+      "id": "statute-usc-high-title",
+      "category": "statutes",
+      "description": "High title number",
+      "text": "52 U.S.C. § 30101",
+      "expected": [
+        {
+          "type": "statute",
+          "code": "U.S.C.",
+          "title": 52,
+          "section": "30101"
+        }
+      ]
+    },
+    {
+      "id": "statute-cfr",
+      "category": "statutes",
+      "description": "Code of Federal Regulations",
+      "knownLimitation": "C.F.R. not matched by usc or state-code patterns (no 'Code' suffix)",
+      "text": "40 C.F.R. § 122",
+      "expected": [
+        {
+          "type": "statute",
+          "title": 40,
+          "section": "122"
+        }
+      ]
+    },
+    {
+      "id": "statute-in-sentence",
+      "category": "statutes",
+      "description": "Statute citation within a sentence",
+      "text": "The plaintiff brought claims under 42 U.S.C. § 1983 and 42 U.S.C. § 1988 for damages.",
+      "expected": [
+        {
+          "type": "statute",
+          "code": "U.S.C.",
+          "title": 42,
+          "section": "1983"
+        },
+        {
+          "type": "statute",
+          "code": "U.S.C.",
+          "title": 42,
+          "section": "1988"
+        }
+      ]
+    },
+    {
+      "id": "journal-yale",
+      "category": "journals",
+      "description": "Yale Law Journal",
+      "text": "50 Yale L.J. 738 (1941)",
+      "expected": [
+        {
+          "type": "journal",
+          "volume": 50,
+          "page": 738
+        }
+      ]
+    },
+    {
+      "id": "journal-stanford",
+      "category": "journals",
+      "description": "Stanford Law Review",
+      "text": "75 Stan. L. Rev. 100 (2023)",
+      "expected": [
+        {
+          "type": "journal",
+          "volume": 75,
+          "page": 100
+        }
+      ]
+    },
+    {
+      "id": "journal-columbia",
+      "category": "journals",
+      "description": "Columbia Law Review",
+      "text": "120 Colum. L. Rev. 1 (2020)",
+      "expected": [
+        {
+          "type": "journal",
+          "volume": 120,
+          "page": 1
+        }
+      ]
+    },
+    {
+      "id": "journal-michigan",
+      "category": "journals",
+      "description": "Michigan Law Review",
+      "text": "118 Mich. L. Rev. 1001 (2020)",
+      "expected": [
+        {
+          "type": "journal",
+          "volume": 118,
+          "page": 1001
+        }
+      ]
+    },
+    {
+      "id": "journal-chicago",
+      "category": "journals",
+      "description": "University of Chicago Law Review",
+      "text": "89 U. Chi. L. Rev. 500 (2022)",
+      "expected": [
+        {
+          "type": "journal",
+          "volume": 89,
+          "page": 500
+        }
+      ]
+    },
+    {
+      "id": "journal-virginia",
+      "category": "journals",
+      "description": "Virginia Law Review",
+      "text": "108 Va. L. Rev. 1 (2022)",
+      "expected": [
+        {
+          "type": "journal",
+          "volume": 108,
+          "page": 1
+        }
+      ]
+    },
+    {
+      "id": "neutral-wl-2024",
+      "category": "neutral-citations",
+      "description": "Recent WestLaw citation",
+      "text": "2024 WL 567890",
+      "expected": [
+        {
+          "type": "neutral",
+          "year": 2024,
+          "court": "WL",
+          "documentNumber": "567890"
+        }
+      ]
+    },
+    {
+      "id": "neutral-wl-in-context",
+      "category": "neutral-citations",
+      "description": "WestLaw citation in sentence context",
+      "text": "See Smith v. Jones, 2023 WL 1234567 (S.D.N.Y. June 15, 2023).",
+      "expected": [
+        {
+          "type": "neutral",
+          "year": 2023,
+          "court": "WL",
+          "documentNumber": "1234567"
+        }
+      ]
+    },
+    {
+      "id": "neutral-lexis",
+      "category": "neutral-citations",
+      "description": "LEXIS citation",
+      "text": "2022 U.S. LEXIS 3456",
+      "expected": [
+        {
+          "type": "neutral",
+          "year": 2022,
+          "documentNumber": "3456"
+        }
+      ]
+    },
+    {
+      "id": "publaw-basic",
+      "category": "public-laws",
+      "description": "Basic Public Law citation",
+      "text": "Pub. L. No. 117-58",
+      "expected": [
+        {
+          "type": "publicLaw",
+          "congress": 117,
+          "lawNumber": 58
+        }
+      ]
+    },
+    {
+      "id": "publaw-without-no",
+      "category": "public-laws",
+      "description": "Public Law without No.",
+      "knownLimitation": "Pattern requires 'No.' in Pub. L. No.; 'Pub. L. 116-283' not matched",
+      "text": "Pub. L. 116-283",
+      "expected": [
+        {
+          "type": "publicLaw",
+          "congress": 116,
+          "lawNumber": 283
+        }
+      ]
+    },
+    {
+      "id": "publaw-in-sentence",
+      "category": "public-laws",
+      "description": "Public Law in sentence",
+      "text": "Congress enacted the Infrastructure Investment and Jobs Act, Pub. L. No. 117-58, 135 Stat. 429 (2021).",
+      "expected": [
+        {
+          "type": "publicLaw",
+          "congress": 117,
+          "lawNumber": 58
+        },
+        {
+          "type": "statutesAtLarge",
+          "volume": 135,
+          "page": 429
+        }
+      ]
+    },
+    {
+      "id": "fedreg-basic",
+      "category": "federal-register",
+      "description": "Basic Federal Register citation",
+      "text": "86 Fed. Reg. 12345",
+      "expected": [
+        {
+          "type": "federalRegister",
+          "volume": 86,
+          "page": 12345
+        }
+      ]
+    },
+    {
+      "id": "fedreg-with-date",
+      "category": "federal-register",
+      "description": "Federal Register with date parenthetical",
+      "text": "87 Fed. Reg. 56789 (Sept. 15, 2022)",
+      "expected": [
+        {
+          "type": "federalRegister",
+          "volume": 87,
+          "page": 56789
+        }
+      ]
+    },
+    {
+      "id": "stat-basic",
+      "category": "statutes-at-large",
+      "description": "Basic Statutes at Large citation",
+      "text": "124 Stat. 119",
+      "expected": [
+        {
+          "type": "statutesAtLarge",
+          "volume": 124,
+          "page": 119
+        }
+      ]
+    },
+    {
+      "id": "stat-high-page",
+      "category": "statutes-at-large",
+      "description": "Statutes at Large with high page number",
+      "text": "110 Stat. 1321",
+      "expected": [
+        {
+          "type": "statutesAtLarge",
+          "volume": 110,
+          "page": 1321
+        }
+      ]
+    },
+    {
+      "id": "stat-with-year",
+      "category": "statutes-at-large",
+      "description": "Statutes at Large with year parenthetical",
+      "text": "135 Stat. 429 (2021)",
+      "expected": [
+        {
+          "type": "statutesAtLarge",
+          "volume": 135,
+          "page": 429
+        }
+      ]
+    },
+    {
+      "id": "short-id-beginning",
+      "category": "short-forms",
+      "description": "Id. at beginning of sentence after full cite",
+      "text": "Smith v. Jones, 500 F.2d 100 (5th Cir. 2020). Id. The court held that...",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.2d",
+          "page": 100
+        },
+        {
+          "type": "id"
+        }
+      ]
+    },
+    {
+      "id": "short-id-lowercase",
+      "category": "short-forms",
+      "description": "Lowercase id. citation",
+      "text": "100 F.3d 500 (2020). See id. at 505.",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 100,
+          "reporter": "F.3d",
+          "page": 500
+        },
+        {
+          "type": "id",
+          "pincite": 505
+        }
+      ]
+    },
+    {
+      "id": "short-id-chain",
+      "category": "short-forms",
+      "description": "Chain of Id. citations",
+      "text": "Jones v. Smith, 200 F.3d 300 (3d Cir. 2015). Id. at 305. Id. at 310.",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 200,
+          "reporter": "F.3d",
+          "page": 300
+        },
+        {
+          "type": "id",
+          "pincite": 305
+        },
+        {
+          "type": "id",
+          "pincite": 310
+        }
+      ]
+    },
+    {
+      "id": "short-supra-with-pincite",
+      "category": "short-forms",
+      "description": "Supra citation with pincite",
+      "text": "Jones v. Smith, 200 F.3d 300 (2010). Smith, supra, at 305.",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 200,
+          "reporter": "F.3d",
+          "page": 300
+        },
+        {
+          "type": "supra",
+          "partyName": "Smith",
+          "pincite": 305
+        }
+      ]
+    },
+    {
+      "id": "short-supra-no-comma",
+      "category": "short-forms",
+      "description": "Supra without comma before supra",
+      "text": "500 F.3d 123 (2007). Johnson supra.",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.3d",
+          "page": 123
+        },
+        {
+          "type": "supra",
+          "partyName": "Johnson"
+        }
+      ]
+    },
+    {
+      "id": "short-case-f2d",
+      "category": "short-forms",
+      "description": "Short-form case citation F.2d",
+      "text": "500 F.2d at 125",
+      "expected": [
+        {
+          "type": "shortFormCase",
+          "volume": 500,
+          "reporter": "F.2d",
+          "pincite": 125
+        }
+      ]
+    },
+    {
+      "id": "short-case-us",
+      "category": "short-forms",
+      "description": "Short-form case citation U.S.",
+      "text": "410 U.S. at 153",
+      "expected": [
+        {
+          "type": "shortFormCase",
+          "volume": 410,
+          "reporter": "U.S.",
+          "pincite": 153
+        }
+      ]
+    },
+    {
+      "id": "short-case-f3d",
+      "category": "short-forms",
+      "description": "Short-form case citation F.3d",
+      "text": "200 F.3d at 305",
+      "expected": [
+        {
+          "type": "shortFormCase",
+          "volume": 200,
+          "reporter": "F.3d",
+          "pincite": 305
+        }
+      ]
+    },
+    {
+      "id": "parallel-scotus-full",
+      "category": "parallel-citations",
+      "description": "Full 3-reporter Supreme Court parallel (Brown v. Board)",
+      "text": "Brown v. Board of Education, 347 U.S. 483, 74 S. Ct. 686, 98 L. Ed. 873 (1954)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 347,
+          "reporter": "U.S.",
+          "page": 483
+        },
+        {
+          "type": "case",
+          "volume": 74,
+          "reporter": "S. Ct.",
+          "page": 686
+        },
+        {
+          "type": "case",
+          "volume": 98,
+          "reporter": "L. Ed.",
+          "page": 873
+        }
+      ]
+    },
+    {
+      "id": "parallel-fed-2",
+      "category": "parallel-citations",
+      "description": "Two-reporter federal parallel",
+      "text": "250 F.3d 100, 150 F. Supp. 2d 200 (2d Cir. 2001)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 250,
+          "reporter": "F.3d",
+          "page": 100
+        },
+        {
+          "type": "case",
+          "volume": 150,
+          "reporter": "F. Supp. 2d",
+          "page": 200
+        }
+      ]
+    },
+    {
+      "id": "parallel-state-ne-nys",
+      "category": "parallel-citations",
+      "description": "State parallel with NE and NYS reporters",
+      "text": "100 N.E.2d 500, 200 N.Y.S.2d 300 (N.Y. 2010)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 100,
+          "reporter": "N.E.2d",
+          "page": 500
+        },
+        {
+          "type": "case",
+          "volume": 200,
+          "reporter": "N.Y.S.2d",
+          "page": 300
+        }
+      ]
+    },
+    {
+      "id": "paren-full-date",
+      "category": "parentheticals",
+      "description": "Full date with month-day-year",
+      "text": "200 F.3d 100 (2d Cir. Mar. 15, 2020)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 200,
+          "reporter": "F.3d",
+          "page": 100,
+          "court": "2d Cir.",
+          "year": 2020
+        }
+      ]
+    },
+    {
+      "id": "paren-month-year",
+      "category": "parentheticals",
+      "description": "Month and year only",
+      "text": "300 F. Supp. 3d 500 (S.D.N.Y. Dec. 2021)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 300,
+          "reporter": "F. Supp. 3d",
+          "page": 500,
+          "court": "S.D.N.Y.",
+          "year": 2021
+        }
+      ]
+    },
+    {
+      "id": "paren-affirmed",
+      "category": "parentheticals",
+      "description": "Citation with aff'd subsequent history",
+      "text": "Smith v. Jones, 500 F.2d 123 (5th Cir. 2020), aff'd, 600 U.S. 1 (2021)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.2d",
+          "page": 123,
+          "court": "5th Cir.",
+          "year": 2020
+        },
+        {
+          "type": "case",
+          "volume": 600,
+          "reporter": "U.S.",
+          "page": 1,
+          "year": 2021
+        }
+      ]
+    },
+    {
+      "id": "paren-cert-denied",
+      "category": "parentheticals",
+      "description": "Citation with cert. denied",
+      "text": "Davis v. State, 300 F.3d 500 (11th Cir. 2019), cert. denied, 140 S. Ct. 2000 (2020)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 300,
+          "reporter": "F.3d",
+          "page": 500,
+          "court": "11th Cir.",
+          "year": 2019
+        },
+        {
+          "type": "case",
+          "volume": 140,
+          "reporter": "S. Ct.",
+          "page": 2000,
+          "year": 2020
+        }
+      ]
+    },
+    {
+      "id": "paren-reversed",
+      "category": "parentheticals",
+      "description": "Citation with rev'd subsequent history",
+      "text": "200 F.3d 400 (9th Cir. 2018), rev'd, 590 U.S. 500 (2020)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 200,
+          "reporter": "F.3d",
+          "page": 400,
+          "court": "9th Cir.",
+          "year": 2018
+        },
+        {
+          "type": "case",
+          "volume": 590,
+          "reporter": "U.S.",
+          "page": 500,
+          "year": 2020
+        }
+      ]
+    },
+    {
+      "id": "paren-en-banc-rehearing",
+      "category": "parentheticals",
+      "description": "En banc rehearing",
+      "text": "500 F.3d 800 (9th Cir. 2020) (en banc) (on rehearing)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.3d",
+          "page": 800,
+          "court": "9th Cir.",
+          "year": 2020,
+          "disposition": "en banc"
+        }
+      ]
+    },
+    {
+      "id": "paren-per-curiam-mem",
+      "category": "parentheticals",
+      "description": "Per curiam memorandum opinion",
+      "text": "100 S. Ct. 200 (2015) (per curiam) (mem.)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 100,
+          "reporter": "S. Ct.",
+          "page": 200,
+          "year": 2015,
+          "disposition": "per curiam"
+        }
+      ]
+    },
+    {
+      "id": "paren-complex-court",
+      "category": "parentheticals",
+      "description": "Complex court abbreviation in parenthetical",
+      "text": "300 S.W.3d 500 (Tex. App.—Houston [14th Dist.] 2019)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 300,
+          "reporter": "S.W.3d",
+          "page": 500,
+          "year": 2019
+        }
+      ]
+    },
+    {
+      "id": "pincite-basic",
+      "category": "pincites",
+      "description": "Simple pincite after page",
+      "text": "Smith v. Jones, 500 F.3d 100, 105 (2020)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.3d",
+          "page": 100,
+          "pincite": 105,
+          "year": 2020
+        }
+      ]
+    },
+    {
+      "id": "pincite-scotus",
+      "category": "pincites",
+      "description": "SCOTUS citation with pincite",
+      "text": "Miranda v. Arizona, 384 U.S. 436, 444 (1966)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 384,
+          "reporter": "U.S.",
+          "page": 436,
+          "pincite": 444,
+          "year": 1966
+        }
+      ]
+    },
+    {
+      "id": "pincite-close-to-page",
+      "category": "pincites",
+      "description": "Pincite very close to start page",
+      "text": "100 F.3d 1, 2 (2020)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 100,
+          "reporter": "F.3d",
+          "page": 1,
+          "pincite": 2,
+          "year": 2020
+        }
+      ]
+    },
+    {
+      "id": "pincite-far-from-page",
+      "category": "pincites",
+      "description": "Pincite far from start page",
+      "text": "500 F.3d 100, 999 (2020)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.3d",
+          "page": 100,
+          "pincite": 999,
+          "year": 2020
+        }
+      ]
+    },
+    {
+      "id": "blank-underscore-3",
+      "category": "blank-pages",
+      "description": "Three underscores as blank page",
+      "text": "100 F.4th ___ (2024)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 100,
+          "reporter": "F.4th",
+          "hasBlankPage": true,
+          "year": 2024
+        }
+      ]
+    },
+    {
+      "id": "blank-underscore-5",
+      "category": "blank-pages",
+      "description": "Five underscores as blank page",
+      "text": "200 F. Supp. 3d _____ (E.D. Va. 2023)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 200,
+          "reporter": "F. Supp. 3d",
+          "hasBlankPage": true,
+          "year": 2023
+        }
+      ]
+    },
+    {
+      "id": "blank-dash-3",
+      "category": "blank-pages",
+      "description": "Three dashes as blank page",
+      "text": "50 S. Ct. --- (2024)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 50,
+          "reporter": "S. Ct.",
+          "hasBlankPage": true,
+          "year": 2024
+        }
+      ]
+    },
+    {
+      "id": "blank-dash-long",
+      "category": "blank-pages",
+      "description": "Long dash as blank page",
+      "text": "300 U.S. ------ (2025)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 300,
+          "reporter": "U.S.",
+          "hasBlankPage": true,
+          "year": 2025
+        }
+      ]
+    },
+    {
+      "id": "string-three-cases",
+      "category": "string-citations",
+      "description": "Three cases separated by semicolons",
+      "text": "See Smith v. Jones, 500 F.2d 100 (2020); Davis v. Lee, 300 F.3d 200 (2021); Wilson v. Clark, 100 F.4th 50 (2022).",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.2d",
+          "page": 100
+        },
+        {
+          "type": "case",
+          "volume": 300,
+          "reporter": "F.3d",
+          "page": 200
+        },
+        {
+          "type": "case",
+          "volume": 100,
+          "reporter": "F.4th",
+          "page": 50
+        }
+      ]
+    },
+    {
+      "id": "string-case-statute-journal",
+      "category": "string-citations",
+      "description": "Mixed citation types in string",
+      "text": "See 42 U.S.C. § 1983; Smith v. Jones, 500 F.3d 100 (2020); 100 Harv. L. Rev. 500 (1987).",
+      "expected": [
+        {
+          "type": "statute",
+          "code": "U.S.C.",
+          "title": 42,
+          "section": "1983"
+        },
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.3d",
+          "page": 100
+        },
+        {
+          "type": "journal",
+          "volume": 100,
+          "page": 500
+        }
+      ]
+    },
+    {
+      "id": "string-two-statutes",
+      "category": "string-citations",
+      "description": "Two statutes in same sentence",
+      "text": "Jurisdiction is proper under 28 U.S.C. § 1331 and 28 U.S.C. § 1367.",
+      "expected": [
+        {
+          "type": "statute",
+          "code": "U.S.C.",
+          "title": 28,
+          "section": "1331"
+        },
+        {
+          "type": "statute",
+          "code": "U.S.C.",
+          "title": 28,
+          "section": "1367"
+        }
+      ]
+    },
+    {
+      "id": "string-five-citations",
+      "category": "string-citations",
+      "description": "Five citations in a string cite",
+      "text": "See 100 F.3d 1 (2020); 200 F.3d 2 (2021); 300 F.3d 3 (2022); 400 F.3d 4 (2023); 500 F.3d 5 (2024).",
+      "expected": [
+        { "type": "case", "volume": 100, "reporter": "F.3d", "page": 1 },
+        { "type": "case", "volume": 200, "reporter": "F.3d", "page": 2 },
+        { "type": "case", "volume": 300, "reporter": "F.3d", "page": 3 },
+        { "type": "case", "volume": 400, "reporter": "F.3d", "page": 4 },
+        { "type": "case", "volume": 500, "reporter": "F.3d", "page": 5 }
+      ]
+    },
+    {
+      "id": "dense-constitutional-law",
+      "category": "dense-paragraphs",
+      "description": "Dense constitutional law paragraph with mixed citation types",
+      "text": "The First Amendment's protection of free speech has been interpreted broadly by the Supreme Court. See Brandenburg v. Ohio, 395 U.S. 444 (1969); New York Times Co. v. Sullivan, 376 U.S. 254 (1964). Under 42 U.S.C. § 1983, individuals may bring suit against state actors who violate their constitutional rights. See Monroe v. Pape, 365 U.S. 167 (1961). For scholarly analysis, see John Doe, Free Speech in the Digital Age, 120 Harv. L. Rev. 1000 (2007). The Court in Brandenburg held that the government cannot punish inflammatory speech unless it is directed to inciting imminent lawless action. Id. at 447.",
+      "expected": [
+        { "type": "case", "volume": 395, "reporter": "U.S.", "page": 444, "year": 1969 },
+        { "type": "case", "volume": 376, "reporter": "U.S.", "page": 254, "year": 1964 },
+        { "type": "statute", "code": "U.S.C.", "title": 42, "section": "1983" },
+        { "type": "case", "volume": 365, "reporter": "U.S.", "page": 167, "year": 1961 },
+        { "type": "journal", "volume": 120, "page": 1000 },
+        { "type": "id", "pincite": 447 }
+      ]
+    },
+    {
+      "id": "dense-civil-procedure",
+      "category": "dense-paragraphs",
+      "description": "Civil procedure paragraph with federal citations",
+      "text": "Subject matter jurisdiction in this case arises under 28 U.S.C. § 1331 (federal question) and 28 U.S.C. § 1332 (diversity). The complaint was filed within the limitations period set forth in 28 U.S.C. § 1658. Personal jurisdiction is proper under International Shoe Co. v. Washington, 326 U.S. 310 (1945), and its progeny. See also World-Wide Volkswagen Corp. v. Woodson, 444 U.S. 286 (1980); Burger King Corp. v. Rudzewicz, 471 U.S. 462 (1985). Venue is appropriate in this district pursuant to 28 U.S.C. § 1391.",
+      "expected": [
+        { "type": "statute", "code": "U.S.C.", "title": 28, "section": "1331" },
+        { "type": "statute", "code": "U.S.C.", "title": 28, "section": "1332" },
+        { "type": "statute", "code": "U.S.C.", "title": 28, "section": "1658" },
+        { "type": "case", "volume": 326, "reporter": "U.S.", "page": 310, "year": 1945 },
+        { "type": "case", "volume": 444, "reporter": "U.S.", "page": 286, "year": 1980 },
+        { "type": "case", "volume": 471, "reporter": "U.S.", "page": 462, "year": 1985 },
+        { "type": "statute", "code": "U.S.C.", "title": 28, "section": "1391" }
+      ]
+    },
+    {
+      "id": "dense-contract-law",
+      "category": "dense-paragraphs",
+      "description": "Contract law paragraph with state and federal citations",
+      "text": "Under the doctrine of promissory estoppel as articulated in Section 90 of the Restatement (Second) of Contracts, a promise which the promisor should reasonably expect to induce action on the part of the promisee is binding. See Ricketts v. Scothorn, 77 N.W.2d 365 (Neb. 1898). The modern formulation of this doctrine was applied in Hoffman v. Red Owl Stores Inc., 133 N.W.2d 267 (Wis. 1965). Federal courts have adopted this standard. See Cyberchron Corp. v. Calldata Sys. Dev. Inc., 47 F.3d 39 (2d Cir. 1995).",
+      "expected": [
+        { "type": "case", "volume": 77, "reporter": "N.W.2d", "page": 365 },
+        { "type": "case", "volume": 133, "reporter": "N.W.2d", "page": 267 },
+        { "type": "case", "volume": 47, "reporter": "F.3d", "page": 39, "court": "2d Cir.", "year": 1995 }
+      ]
+    },
+    {
+      "id": "dense-criminal-procedure",
+      "category": "dense-paragraphs",
+      "description": "Criminal procedure paragraph with Fourth Amendment cases",
+      "text": "The Fourth Amendment prohibits unreasonable searches and seizures. Katz v. United States, 389 U.S. 347 (1967). The exclusionary rule, established in Mapp v. Ohio, 367 U.S. 643 (1961), requires suppression of evidence obtained in violation of the Fourth Amendment. Exceptions include the good faith exception, see United States v. Leon, 468 U.S. 897 (1984), the inevitable discovery doctrine, see Nix v. Williams, 467 U.S. 431 (1984), and the independent source doctrine, see Segura v. United States, 468 U.S. 796 (1984). The automobile exception permits warrantless searches of vehicles based on probable cause. Carroll v. United States, 267 U.S. 132 (1925).",
+      "expected": [
+        { "type": "case", "volume": 389, "reporter": "U.S.", "page": 347, "year": 1967 },
+        { "type": "case", "volume": 367, "reporter": "U.S.", "page": 643, "year": 1961 },
+        { "type": "case", "volume": 468, "reporter": "U.S.", "page": 897, "year": 1984 },
+        { "type": "case", "volume": 467, "reporter": "U.S.", "page": 431, "year": 1984 },
+        { "type": "case", "volume": 468, "reporter": "U.S.", "page": 796, "year": 1984 },
+        { "type": "case", "volume": 267, "reporter": "U.S.", "page": 132, "year": 1925 }
+      ]
+    },
+    {
+      "id": "dense-employment-law",
+      "category": "dense-paragraphs",
+      "description": "Employment discrimination paragraph with Title VII citations",
+      "text": "Title VII of the Civil Rights Act of 1964, 42 U.S.C. § 2000e, prohibits employment discrimination on the basis of race, color, religion, sex, or national origin. The burden-shifting framework established in McDonnell Douglas Corp. v. Green, 411 U.S. 792 (1973), governs Title VII disparate treatment claims. See also Texas Department of Community Affairs v. Burdine, 450 U.S. 248 (1981). Under the mixed-motive framework of Price Waterhouse v. Hopkins, 490 U.S. 228 (1989), a plaintiff may prevail by showing that a protected characteristic was a motivating factor in the adverse employment decision. Id. at 258. This analysis was later modified by the Civil Rights Act of 1991, Pub. L. No. 102-166, 105 Stat. 1071.",
+      "expected": [
+        { "type": "statute", "code": "U.S.C.", "title": 42, "section": "2000e" },
+        { "type": "case", "volume": 411, "reporter": "U.S.", "page": 792, "year": 1973 },
+        { "type": "case", "volume": 450, "reporter": "U.S.", "page": 248, "year": 1981 },
+        { "type": "case", "volume": 490, "reporter": "U.S.", "page": 228, "year": 1989 },
+        { "type": "id", "pincite": 258 },
+        { "type": "publicLaw", "congress": 102, "lawNumber": 166 },
+        { "type": "statutesAtLarge", "volume": 105, "page": 1071 }
+      ]
+    },
+    {
+      "id": "dense-ip-law",
+      "category": "dense-paragraphs",
+      "description": "Intellectual property paragraph with multiple citation types",
+      "text": "Patent law is governed by 35 U.S.C. § 101, which defines patentable subject matter. The Supreme Court addressed the scope of patent-eligible subject matter in Alice Corp. v. CLS Bank International, 573 U.S. 208 (2014), holding that abstract ideas implemented on a generic computer are not patentable. See also Mayo Collaborative Services v. Prometheus Laboratories Inc., 566 U.S. 66 (2012). The Federal Circuit has applied the Alice framework extensively. See Enfish LLC v. Microsoft Corp., 822 F.3d 1327 (Fed. Cir. 2016); Berkheimer v. HP Inc., 881 F.3d 1360 (Fed. Cir. 2018). For scholarly discussion, see Mark Lemley, Software Patents and the Return of Functional Claiming, 2013 WL 5492428.",
+      "expected": [
+        { "type": "statute", "code": "U.S.C.", "title": 35, "section": "101" },
+        { "type": "case", "volume": 573, "reporter": "U.S.", "page": 208, "year": 2014 },
+        { "type": "case", "volume": 566, "reporter": "U.S.", "page": 66, "year": 2012 },
+        { "type": "case", "volume": 822, "reporter": "F.3d", "page": 1327, "court": "Fed. Cir.", "year": 2016 },
+        { "type": "case", "volume": 881, "reporter": "F.3d", "page": 1360, "court": "Fed. Cir.", "year": 2018 },
+        { "type": "neutral", "year": 2013, "court": "WL", "documentNumber": "5492428" }
+      ]
+    },
+    {
+      "id": "dense-environmental-law",
+      "category": "dense-paragraphs",
+      "description": "Environmental law paragraph with regulations",
+      "text": "The Clean Water Act, 33 U.S.C. § 1251, establishes the basic structure for regulating discharges of pollutants into navigable waters. The EPA's implementing regulations at 40 C.F.R. § 122 define the permit requirements. In Rapanos v. United States, 547 U.S. 715 (2006), the Supreme Court addressed the scope of navigable waters. The recent rule published at 88 Fed. Reg. 3004 (Jan. 18, 2023) revised the definition of waters of the United States.",
+      "expected": [
+        { "type": "statute", "title": 33, "section": "1251" },
+        { "type": "case", "volume": 547, "reporter": "U.S.", "page": 715, "year": 2006 },
+        { "type": "federalRegister", "volume": 88, "page": 3004 }
+      ]
+    },
+    {
+      "id": "dense-admin-law",
+      "category": "dense-paragraphs",
+      "description": "Administrative law paragraph with Chevron deference",
+      "text": "Under Chevron U.S.A. Inc. v. Natural Resources Defense Council, 467 U.S. 837 (1984), courts defer to reasonable agency interpretations of ambiguous statutes. The two-step framework asks first whether Congress has directly spoken to the precise question at issue. Id. at 842. If the statute is silent or ambiguous, the court asks whether the agency's answer is based on a permissible construction. Id. at 843. This framework was recently reconsidered in Loper Bright Enterprises v. Raimondo, 144 S. Ct. 2244 (2024). The Administrative Procedure Act, 5 U.S.C. § 706, provides the standard of review for agency action.",
+      "expected": [
+        { "type": "case", "volume": 467, "reporter": "U.S.", "page": 837, "year": 1984 },
+        { "type": "id", "pincite": 842 },
+        { "type": "id", "pincite": 843 },
+        { "type": "case", "volume": 144, "reporter": "S. Ct.", "page": 2244, "year": 2024 },
+        { "type": "statute", "code": "U.S.C.", "title": 5, "section": "706" }
+      ]
+    },
+    {
+      "id": "dense-antitrust",
+      "category": "dense-paragraphs",
+      "description": "Antitrust law paragraph with Sherman Act",
+      "text": "Section 1 of the Sherman Act, 15 U.S.C. § 1, prohibits contracts, combinations, and conspiracies in restraint of trade. The rule of reason analysis was established in Standard Oil Co. v. United States, 221 U.S. 1 (1911). Per se violations include horizontal price-fixing, see United States v. Socony-Vacuum Oil Co., 310 U.S. 150 (1940), and horizontal market division, see United States v. Topco Associates Inc., 405 U.S. 596 (1972). The modern approach to antitrust standing was articulated in Brunswick Corp. v. Pueblo Bowl-O-Mat Inc., 429 U.S. 477 (1977).",
+      "expected": [
+        { "type": "statute", "title": 15, "section": "1" },
+        { "type": "case", "volume": 221, "reporter": "U.S.", "page": 1, "year": 1911 },
+        { "type": "case", "volume": 310, "reporter": "U.S.", "page": 150, "year": 1940 },
+        { "type": "case", "volume": 405, "reporter": "U.S.", "page": 596, "year": 1972 },
+        { "type": "case", "volume": 429, "reporter": "U.S.", "page": 477, "year": 1977 }
+      ]
+    },
+    {
+      "id": "dense-habeas",
+      "category": "dense-paragraphs",
+      "description": "Habeas corpus paragraph with AEDPA citations",
+      "text": "Under the Antiterrorism and Effective Death Penalty Act of 1996, Pub. L. No. 104-132, 110 Stat. 1214, federal habeas review is governed by 28 U.S.C. § 2254. A state prisoner must show that the state court's adjudication resulted in a decision that was contrary to, or involved an unreasonable application of, clearly established Federal law. Williams v. Taylor, 529 U.S. 362 (2000). The Court emphasized that this standard is highly deferential. Harrington v. Richter, 562 U.S. 86 (2011). Id. at 102.",
+      "expected": [
+        { "type": "publicLaw", "congress": 104, "lawNumber": 132 },
+        { "type": "statutesAtLarge", "volume": 110, "page": 1214 },
+        { "type": "statute", "code": "U.S.C.", "title": 28, "section": "2254" },
+        { "type": "case", "volume": 529, "reporter": "U.S.", "page": 362, "year": 2000 },
+        { "type": "case", "volume": 562, "reporter": "U.S.", "page": 86, "year": 2011 },
+        { "type": "id", "pincite": 102 }
+      ]
+    },
+    {
+      "id": "edge-no-parenthetical",
+      "category": "formatting-edge-cases",
+      "description": "Case citation without any parenthetical",
+      "text": "See generally 500 F.3d 100.",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.3d",
+          "page": 100
+        }
+      ]
+    },
+    {
+      "id": "edge-citation-at-start",
+      "category": "formatting-edge-cases",
+      "description": "Citation at very start of text",
+      "text": "347 U.S. 483 (1954) is one of the most important decisions in American history.",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 347,
+          "reporter": "U.S.",
+          "page": 483,
+          "year": 1954
+        }
+      ]
+    },
+    {
+      "id": "edge-citation-at-end",
+      "category": "formatting-edge-cases",
+      "description": "Citation at very end of text",
+      "text": "See 500 F.2d 123",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.2d",
+          "page": 123
+        }
+      ]
+    },
+    {
+      "id": "edge-citation-after-period",
+      "category": "formatting-edge-cases",
+      "description": "Citation immediately after period",
+      "text": "The court ruled.500 F.3d 100 was cited.",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.3d",
+          "page": 100
+        }
+      ]
+    },
+    {
+      "id": "edge-footnote-reference",
+      "category": "formatting-edge-cases",
+      "description": "Citation with footnote-style formatting",
+      "text": "1. Smith v. Jones, 500 F.2d 100 (2020).",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.2d",
+          "page": 100,
+          "year": 2020
+        }
+      ]
+    },
+    {
+      "id": "edge-see-also-cf",
+      "category": "formatting-edge-cases",
+      "description": "Various signal words before citation",
+      "text": "See also 100 F.3d 200 (2020); cf. 200 F.3d 300 (2021); but see 300 F.3d 400 (2022).",
+      "expected": [
+        { "type": "case", "volume": 100, "reporter": "F.3d", "page": 200, "year": 2020 },
+        { "type": "case", "volume": 200, "reporter": "F.3d", "page": 300, "year": 2021 },
+        { "type": "case", "volume": 300, "reporter": "F.3d", "page": 400, "year": 2022 }
+      ]
+    },
+    {
+      "id": "edge-double-space",
+      "category": "formatting-edge-cases",
+      "description": "Double spaces between elements",
+      "text": "500  F.3d  100  (2020)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.3d",
+          "page": 100
+        }
+      ]
+    },
+    {
+      "id": "edge-semicolon-separated",
+      "category": "formatting-edge-cases",
+      "description": "Multiple case citations separated by semicolons",
+      "text": "100 U.S. 200 (1880); 200 U.S. 300 (1906); 300 U.S. 400 (1937)",
+      "expected": [
+        { "type": "case", "volume": 100, "reporter": "U.S.", "page": 200, "year": 1880 },
+        { "type": "case", "volume": 200, "reporter": "U.S.", "page": 300, "year": 1906 },
+        { "type": "case", "volume": 300, "reporter": "U.S.", "page": 400, "year": 1937 }
+      ]
+    },
+    {
+      "id": "edge-em-dash-after",
+      "category": "formatting-edge-cases",
+      "description": "Citation followed by em-dash",
+      "text": "500 F.3d 100 (2020) — a landmark decision.",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.3d",
+          "page": 100,
+          "year": 2020
+        }
+      ]
+    },
+    {
+      "id": "boundary-no-citations",
+      "category": "boundary-conditions",
+      "description": "Text with no citations at all",
+      "text": "The court considered several factors in reaching its decision, including the legislative history and policy considerations.",
+      "expected": []
+    },
+    {
+      "id": "boundary-only-numbers",
+      "category": "boundary-conditions",
+      "description": "Text with numbers that look like citations but aren't",
+      "text": "The parties agreed to pay 500 dollars by the 3d of January 2020.",
+      "expected": []
+    },
+    {
+      "id": "boundary-single-char-text",
+      "category": "boundary-conditions",
+      "description": "Very short text",
+      "text": "A",
+      "expected": []
+    },
+    {
+      "id": "boundary-empty-text",
+      "category": "boundary-conditions",
+      "description": "Empty text",
+      "text": "",
+      "expected": []
+    },
+    {
+      "id": "boundary-volume-1",
+      "category": "boundary-conditions",
+      "description": "Volume 1 citation",
+      "text": "1 U.S. 1 (1791)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 1,
+          "reporter": "U.S.",
+          "page": 1,
+          "year": 1791
+        }
+      ]
+    },
+    {
+      "id": "boundary-very-old-case",
+      "category": "boundary-conditions",
+      "description": "Very old case (1800s)",
+      "text": "McCulloch v. Maryland, 17 U.S. 316 (1819)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 17,
+          "reporter": "U.S.",
+          "page": 316,
+          "year": 1819
+        }
+      ]
+    },
+    {
+      "id": "boundary-future-year",
+      "category": "boundary-conditions",
+      "description": "Citation with future year (slip opinion)",
+      "text": "100 F.4th 500 (2026)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 100,
+          "reporter": "F.4th",
+          "page": 500,
+          "year": 2026
+        }
+      ]
+    },
+    {
+      "id": "boundary-consecutive-citations",
+      "category": "boundary-conditions",
+      "description": "Citations with minimal separation",
+      "text": "100 U.S. 1 200 U.S. 2",
+      "expected": [
+        { "type": "case", "volume": 100, "reporter": "U.S.", "page": 1 },
+        { "type": "case", "volume": 200, "reporter": "U.S.", "page": 2 }
+      ]
+    },
+    {
+      "id": "scotus-parallel-us-sct-led2d",
+      "category": "parallel-citations",
+      "description": "Supreme Court triple parallel: Miranda v. Arizona",
+      "text": "Miranda v. Arizona, 384 U.S. 436, 86 S. Ct. 1602, 16 L. Ed. 2d 694 (1966)",
+      "expected": [
+        { "type": "case", "volume": 384, "reporter": "U.S.", "page": 436 },
+        { "type": "case", "volume": 86, "reporter": "S. Ct.", "page": 1602 },
+        { "type": "case", "volume": 16, "reporter": "L. Ed. 2d", "page": 694 }
+      ]
+    },
+    {
+      "id": "dense-securities-law",
+      "category": "dense-paragraphs",
+      "description": "Securities fraud paragraph with Rule 10b-5",
+      "text": "Section 10(b) of the Securities Exchange Act of 1934, 15 U.S.C. § 78j, and SEC Rule 10b-5 thereunder prohibit fraud in connection with the purchase or sale of securities. The elements of a private action under Section 10(b) were established in Basic Inc. v. Levinson, 485 U.S. 224 (1988). Materiality requires a showing that there is a substantial likelihood that a reasonable investor would consider the omitted fact important. TSC Industries Inc. v. Northway Inc., 426 U.S. 438, 449 (1976). The Court later addressed loss causation in Dura Pharmaceuticals Inc. v. Broudo, 544 U.S. 336 (2005). See also Stoneridge Investment Partners LLC v. Scientific-Atlanta Inc., 552 U.S. 148 (2008).",
+      "expected": [
+        { "type": "statute", "title": 15, "section": "78j" },
+        { "type": "case", "volume": 485, "reporter": "U.S.", "page": 224, "year": 1988 },
+        { "type": "case", "volume": 426, "reporter": "U.S.", "page": 438, "pincite": 449, "year": 1976 },
+        { "type": "case", "volume": 544, "reporter": "U.S.", "page": 336, "year": 2005 },
+        { "type": "case", "volume": 552, "reporter": "U.S.", "page": 148, "year": 2008 }
+      ]
+    },
+    {
+      "id": "dense-immigration-law",
+      "category": "dense-paragraphs",
+      "description": "Immigration law paragraph with INA citations",
+      "text": "The Immigration and Nationality Act, 8 U.S.C. § 1101, defines the terms used throughout immigration law. Removal proceedings are governed by 8 U.S.C. § 1229a. The Board of Immigration Appeals has held that an alien is eligible for cancellation of removal under 8 U.S.C. § 1229b if they demonstrate exceptional hardship. See INS v. Cardoza-Fonseca, 480 U.S. 421 (1987). The standard for asylum claims was further refined in INS v. Elias-Zacarias, 502 U.S. 478 (1992). The Real ID Act, Pub. L. No. 109-13, 119 Stat. 302 (2005), established new credibility standards.",
+      "expected": [
+        { "type": "statute", "title": 8, "section": "1101" },
+        { "type": "statute", "title": 8, "section": "1229a" },
+        { "type": "statute", "title": 8, "section": "1229b" },
+        { "type": "case", "volume": 480, "reporter": "U.S.", "page": 421, "year": 1987 },
+        { "type": "case", "volume": 502, "reporter": "U.S.", "page": 478, "year": 1992 },
+        { "type": "publicLaw", "congress": 109, "lawNumber": 13 },
+        { "type": "statutesAtLarge", "volume": 119, "page": 302 }
+      ]
+    },
+    {
+      "id": "dense-bankruptcy",
+      "category": "dense-paragraphs",
+      "description": "Bankruptcy law paragraph with multiple code sections",
+      "text": "Chapter 11 of the Bankruptcy Code, 11 U.S.C. § 1101, governs reorganization proceedings. The debtor-in-possession has the exclusive right to file a plan under 11 U.S.C. § 1121. Confirmation of the plan requires compliance with 11 U.S.C. § 1129. The Supreme Court addressed the absolute priority rule in Bank of America v. 203 North LaSalle Street Partnership, 526 U.S. 434 (1999). The cramdown provision was analyzed in Till v. SCS Credit Corp., 541 U.S. 465 (2004).",
+      "expected": [
+        { "type": "statute", "title": 11, "section": "1101" },
+        { "type": "statute", "title": 11, "section": "1121" },
+        { "type": "statute", "title": 11, "section": "1129" },
+        { "type": "case", "volume": 526, "reporter": "U.S.", "page": 434, "year": 1999 },
+        { "type": "case", "volume": 541, "reporter": "U.S.", "page": 465, "year": 2004 }
+      ]
+    },
+    {
+      "id": "dense-tax-law",
+      "category": "dense-paragraphs",
+      "description": "Tax law paragraph with IRC citations",
+      "text": "The Internal Revenue Code at 26 U.S.C. § 61 defines gross income broadly. Deductions are allowed under 26 U.S.C. § 162 for ordinary and necessary business expenses. The Supreme Court interpreted the economic substance doctrine in Gregory v. Helvering, 293 U.S. 465 (1935). More recently, in Commissioner v. Banks, 543 U.S. 426 (2005), the Court addressed the tax treatment of contingency fees in litigation recoveries.",
+      "expected": [
+        { "type": "statute", "title": 26, "section": "61" },
+        { "type": "statute", "title": 26, "section": "162" },
+        { "type": "case", "volume": 293, "reporter": "U.S.", "page": 465, "year": 1935 },
+        { "type": "case", "volume": 543, "reporter": "U.S.", "page": 426, "year": 2005 }
+      ]
+    },
+    {
+      "id": "edge-f-appendix",
+      "category": "federal-cases",
+      "description": "Federal Appendix citation (unpublished)",
+      "knownLimitation": "F. App'x reporter not in federal-reporter pattern (apostrophe)",
+      "text": "Johnson v. Smith, 500 F. App'x 100 (11th Cir. 2012)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "page": 100
+        }
+      ]
+    },
+    {
+      "id": "edge-br-bankruptcy",
+      "category": "federal-cases",
+      "description": "Bankruptcy Reporter citation",
+      "text": "In re Debtor Corp., 500 B.R. 100 (Bankr. S.D.N.Y. 2013)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "page": 100
+        }
+      ]
+    },
+    {
+      "id": "scotus-us-with-led2d-parallel",
+      "category": "parallel-citations",
+      "description": "Modern SCOTUS parallel: U.S. and L. Ed. 2d only",
+      "text": "570 U.S. 529, 186 L. Ed. 2d 474 (2013)",
+      "expected": [
+        { "type": "case", "volume": 570, "reporter": "U.S.", "page": 529 },
+        { "type": "case", "volume": 186, "reporter": "L. Ed. 2d", "page": 474 }
+      ]
+    },
+    {
+      "id": "edge-multiline-text",
+      "category": "formatting-edge-cases",
+      "description": "Citation split across what might be line breaks in source",
+      "text": "The court in Smith v. Jones,\n500 F.3d 100 (9th Cir. 2020), held that...",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.3d",
+          "page": 100,
+          "year": 2020
+        }
+      ]
+    },
+    {
+      "id": "short-ibid-basic",
+      "category": "short-forms",
+      "description": "Ibid. citation (less common form of Id.)",
+      "text": "500 F.3d 100 (2020). Ibid.",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.3d",
+          "page": 100
+        },
+        {
+          "type": "id"
+        }
+      ]
+    },
+    {
+      "id": "short-ibid-at-page",
+      "category": "short-forms",
+      "description": "Ibid. with pincite",
+      "text": "500 F.3d 100 (2020). Ibid. at 115.",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.3d",
+          "page": 100
+        },
+        {
+          "type": "id",
+          "pincite": 115
+        }
+      ]
+    },
+    {
+      "id": "dense-due-process",
+      "category": "dense-paragraphs",
+      "description": "Due process paragraph with procedural and substantive citations",
+      "text": "The Due Process Clause of the Fourteenth Amendment provides both procedural and substantive protection. Procedural due process requires notice and an opportunity to be heard before the government deprives a person of life, liberty, or property. Mathews v. Eldridge, 424 U.S. 319 (1976). The three-factor balancing test from Mathews considers the private interest affected, the risk of erroneous deprivation, and the government's interest. Id. at 335. Substantive due process protects fundamental rights against government interference regardless of the procedures used. Washington v. Glucksberg, 521 U.S. 702 (1997). See also Obergefell v. Hodges, 576 U.S. 644 (2015); Lawrence v. Texas, 539 U.S. 558 (2003).",
+      "expected": [
+        { "type": "case", "volume": 424, "reporter": "U.S.", "page": 319, "year": 1976 },
+        { "type": "id", "pincite": 335 },
+        { "type": "case", "volume": 521, "reporter": "U.S.", "page": 702, "year": 1997 },
+        { "type": "case", "volume": 576, "reporter": "U.S.", "page": 644, "year": 2015 },
+        { "type": "case", "volume": 539, "reporter": "U.S.", "page": 558, "year": 2003 }
+      ]
+    },
+    {
+      "id": "dense-second-amendment",
+      "category": "dense-paragraphs",
+      "description": "Second Amendment paragraph with recent decisions",
+      "text": "The Second Amendment protects an individual right to keep and bear arms. District of Columbia v. Heller, 554 U.S. 570 (2008). This right was incorporated against the states in McDonald v. City of Chicago, 561 U.S. 742 (2010). The historical test for firearms regulations was established in New York State Rifle & Pistol Association Inc. v. Bruen, 597 U.S. 1 (2022). Under Bruen, the government must demonstrate that a regulation is consistent with the historical tradition of firearm regulation. Id. at 17. Lower courts have applied this framework extensively. See United States v. Rahimi, 61 F.4th 443 (5th Cir. 2023), cert. granted, 143 S. Ct. 2688 (2023).",
+      "expected": [
+        { "type": "case", "volume": 554, "reporter": "U.S.", "page": 570, "year": 2008 },
+        { "type": "case", "volume": 561, "reporter": "U.S.", "page": 742, "year": 2010 },
+        { "type": "case", "volume": 597, "reporter": "U.S.", "page": 1, "year": 2022 },
+        { "type": "id", "pincite": 17 },
+        { "type": "case", "volume": 61, "reporter": "F.4th", "page": 443, "court": "5th Cir.", "year": 2023 },
+        { "type": "case", "volume": 143, "reporter": "S. Ct.", "page": 2688, "year": 2023 }
+      ]
+    },
+    {
+      "id": "dense-class-action",
+      "category": "dense-paragraphs",
+      "description": "Class action paragraph with Rule 23 cases",
+      "text": "Class certification under Federal Rule of Civil Procedure 23 requires satisfaction of four prerequisites: numerosity, commonality, typicality, and adequacy. Wal-Mart Stores Inc. v. Dukes, 564 U.S. 338 (2011). For classes seeking monetary damages under Rule 23(b)(3), the court must also find that common questions predominate and that a class action is superior. Amchem Products Inc. v. Windsor, 521 U.S. 591 (1997). The Supreme Court has addressed class arbitration waivers in AT&T Mobility LLC v. Concepcion, 563 U.S. 333 (2011), and Epic Systems Corp. v. Lewis, 584 U.S. 497 (2018).",
+      "expected": [
+        { "type": "case", "volume": 564, "reporter": "U.S.", "page": 338, "year": 2011 },
+        { "type": "case", "volume": 521, "reporter": "U.S.", "page": 591, "year": 1997 },
+        { "type": "case", "volume": 563, "reporter": "U.S.", "page": 333, "year": 2011 },
+        { "type": "case", "volume": 584, "reporter": "U.S.", "page": 497, "year": 2018 }
+      ]
+    },
+    {
+      "id": "mixed-resolution-chain",
+      "category": "short-forms",
+      "description": "Full citation followed by Id., supra, and short form in sequence",
+      "text": "Smith v. Jones, 500 F.3d 100 (5th Cir. 2020). Id. at 105. The court then considered the second argument. Jones, supra, at 108. Later the court noted 500 F.3d at 110.",
+      "expected": [
+        { "type": "case", "volume": 500, "reporter": "F.3d", "page": 100, "court": "5th Cir.", "year": 2020 },
+        { "type": "id", "pincite": 105 },
+        { "type": "supra", "partyName": "Jones", "pincite": 108 },
+        { "type": "shortFormCase", "volume": 500, "reporter": "F.3d", "pincite": 110 }
+      ]
+    },
+    {
+      "id": "state-wis2d",
+      "category": "state-cases",
+      "description": "Wis. 2d Wisconsin reporter",
+      "text": "State v. Dubose, 285 Wis. 2d 143 (2005)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 285,
+          "reporter": "Wis. 2d",
+          "page": 143,
+          "year": 2005
+        }
+      ]
+    },
+    {
+      "id": "state-md-app",
+      "category": "state-cases",
+      "description": "Md. App. Maryland appellate reporter — misclassified as journal",
+      "knownLimitation": "Multi-word state reporters (Md. App.) matched as journal instead of case",
+      "text": "Johnson v. State, 200 Md. App. 573 (2011)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 200,
+          "reporter": "Md. App.",
+          "page": 573,
+          "year": 2011
+        }
+      ]
+    },
+    {
+      "id": "state-minn",
+      "category": "state-cases",
+      "description": "Minn. Minnesota reporter",
+      "text": "State v. Anderson, 784 N.W.2d 320 (Minn. 2010)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 784,
+          "reporter": "N.W.2d",
+          "page": 320,
+          "year": 2010
+        }
+      ]
+    },
+    {
+      "id": "fedreg-nospaces",
+      "category": "federal-register",
+      "description": "Federal Register with compact spacing",
+      "text": "85 Fed.Reg. 56789",
+      "expected": [
+        {
+          "type": "federalRegister",
+          "volume": 85,
+          "page": 56789
+        }
+      ]
+    },
+    {
+      "id": "publaw-compact",
+      "category": "public-laws",
+      "description": "Pub.L.No. compact format",
+      "text": "Pub.L.No. 118-50",
+      "expected": [
+        {
+          "type": "publicLaw",
+          "congress": 118,
+          "lawNumber": 50
+        }
+      ]
+    },
+    {
+      "id": "edge-id-see",
+      "category": "short-forms",
+      "description": "See Id. with signal word",
+      "text": "500 F.3d 200 (2020). See Id. at 205.",
+      "expected": [
+        { "type": "case", "volume": 500, "reporter": "F.3d", "page": 200 },
+        { "type": "id", "pincite": 205 }
+      ]
+    },
+    {
+      "id": "edge-cf-id",
+      "category": "short-forms",
+      "description": "Cf. Id. with signal word",
+      "text": "300 U.S. 100 (2020). Cf. Id. at 120.",
+      "expected": [
+        { "type": "case", "volume": 300, "reporter": "U.S.", "page": 100 },
+        { "type": "id", "pincite": 120 }
+      ]
+    },
+    {
+      "id": "dense-standing",
+      "category": "dense-paragraphs",
+      "description": "Standing doctrine paragraph with Lujan framework",
+      "text": "Article III standing requires three elements: injury in fact, causation, and redressability. Lujan v. Defenders of Wildlife, 504 U.S. 555, 560 (1992). The injury must be concrete, particularized, and actual or imminent. Id. at 560. Causation requires that the injury be fairly traceable to the challenged action. Id. The redressability element demands that a favorable judicial decision would likely remedy the injury. See also Spokeo Inc. v. Robins, 578 U.S. 330 (2016); TransUnion LLC v. Ramirez, 594 U.S. 413 (2021).",
+      "expected": [
+        { "type": "case", "volume": 504, "reporter": "U.S.", "page": 555, "pincite": 560, "year": 1992 },
+        { "type": "id", "pincite": 560 },
+        { "type": "id" },
+        { "type": "case", "volume": 578, "reporter": "U.S.", "page": 330, "year": 2016 },
+        { "type": "case", "volume": 594, "reporter": "U.S.", "page": 413, "year": 2021 }
+      ]
+    },
+    {
+      "id": "dense-dormant-commerce",
+      "category": "dense-paragraphs",
+      "description": "Dormant Commerce Clause paragraph",
+      "text": "The dormant Commerce Clause prohibits state laws that discriminate against or unduly burden interstate commerce. Philadelphia v. New Jersey, 437 U.S. 617 (1978). Facially discriminatory laws are virtually per se invalid. City of Philadelphia v. New Jersey, 437 U.S. at 624. Non-discriminatory laws are evaluated under the Pike balancing test. Pike v. Bruce Church Inc., 397 U.S. 137 (1970). The market participant exception permits states to favor in-state interests when acting as market participants rather than regulators. Hughes v. Alexandria Scrap Corp., 426 U.S. 794 (1976).",
+      "expected": [
+        { "type": "case", "volume": 437, "reporter": "U.S.", "page": 617, "year": 1978 },
+        { "type": "shortFormCase", "volume": 437, "reporter": "U.S.", "pincite": 624 },
+        { "type": "case", "volume": 397, "reporter": "U.S.", "page": 137, "year": 1970 },
+        { "type": "case", "volume": 426, "reporter": "U.S.", "page": 794, "year": 1976 }
+      ]
+    },
+    {
+      "id": "paren-vacated",
+      "category": "parentheticals",
+      "description": "Citation with vacated subsequent history",
+      "text": "Smith v. Jones, 400 F.3d 100 (7th Cir. 2018), vacated, 590 U.S. 200 (2020)",
+      "expected": [
+        { "type": "case", "volume": 400, "reporter": "F.3d", "page": 100, "court": "7th Cir.", "year": 2018 },
+        { "type": "case", "volume": 590, "reporter": "U.S.", "page": 200, "year": 2020 }
+      ]
+    },
+    {
+      "id": "paren-remanded",
+      "category": "parentheticals",
+      "description": "Citation with remand subsequent history",
+      "text": "300 F.3d 500 (4th Cir. 2019), remanded, 590 U.S. 300 (2020)",
+      "expected": [
+        { "type": "case", "volume": 300, "reporter": "F.3d", "page": 500, "court": "4th Cir.", "year": 2019 },
+        { "type": "case", "volume": 590, "reporter": "U.S.", "page": 300, "year": 2020 }
+      ]
+    },
+    {
+      "id": "edge-reporter-with-space-variation",
+      "category": "formatting-edge-cases",
+      "description": "F. Supp. vs F.Supp. spacing variation",
+      "text": "500 F.Supp. 100 (S.D.N.Y. 2020)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "page": 100
+        }
+      ]
+    },
+    {
+      "id": "state-cal-rptr",
+      "category": "state-cases",
+      "description": "Cal.Rptr.3d California Reporter",
+      "text": "People v. Kelly, 200 Cal.Rptr.3d 100 (2016)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 200,
+          "page": 100
+        }
+      ]
+    },
+    {
+      "id": "dense-first-amendment-press",
+      "category": "dense-paragraphs",
+      "description": "First Amendment press freedom with landmark cases",
+      "text": "Freedom of the press is a cornerstone of democracy. Near v. Minnesota, 283 U.S. 697 (1931), established that prior restraints on publication are presumptively unconstitutional. The Pentagon Papers case, New York Times Co. v. United States, 403 U.S. 713 (1971), reaffirmed this principle during a national security crisis. The actual malice standard for defamation of public officials was established in New York Times Co. v. Sullivan, 376 U.S. 254 (1964). This standard was extended to public figures in Curtis Publishing Co. v. Butts, 388 U.S. 130 (1967), and Gertz v. Robert Welch Inc., 418 U.S. 323 (1974).",
+      "expected": [
+        { "type": "case", "volume": 283, "reporter": "U.S.", "page": 697, "year": 1931 },
+        { "type": "case", "volume": 403, "reporter": "U.S.", "page": 713, "year": 1971 },
+        { "type": "case", "volume": 376, "reporter": "U.S.", "page": 254, "year": 1964 },
+        { "type": "case", "volume": 388, "reporter": "U.S.", "page": 130, "year": 1967 },
+        { "type": "case", "volume": 418, "reporter": "U.S.", "page": 323, "year": 1974 }
+      ]
+    },
+    {
+      "id": "dense-voting-rights",
+      "category": "dense-paragraphs",
+      "description": "Voting rights paragraph with VRA citations",
+      "text": "Section 2 of the Voting Rights Act, 52 U.S.C. § 10301, prohibits voting practices that discriminate on the basis of race. The Supreme Court addressed Section 2's application to redistricting in Thornburg v. Gingles, 478 U.S. 30 (1986). The preclearance requirement of Section 5 was struck down in Shelby County v. Holder, 570 U.S. 529 (2013). More recently, the Court interpreted Section 2 in the context of Arizona voting restrictions. Brnovich v. Democratic National Committee, 594 U.S. 647 (2021). The decision was criticized in 110 Geo. L.J. 1 (2021).",
+      "expected": [
+        { "type": "statute", "title": 52, "section": "10301" },
+        { "type": "case", "volume": 478, "reporter": "U.S.", "page": 30, "year": 1986 },
+        { "type": "case", "volume": 570, "reporter": "U.S.", "page": 529, "year": 2013 },
+        { "type": "case", "volume": 594, "reporter": "U.S.", "page": 647, "year": 2021 },
+        { "type": "journal", "volume": 110, "page": 1 }
+      ]
+    },
+    {
+      "id": "dense-qualified-immunity",
+      "category": "dense-paragraphs",
+      "description": "Qualified immunity analysis",
+      "text": "Qualified immunity protects government officials from liability for civil damages unless they violated a clearly established statutory or constitutional right. Harlow v. Fitzgerald, 457 U.S. 800 (1982). The analysis involves two steps: whether the facts make out a constitutional violation and whether the right was clearly established at the time of the violation. Pearson v. Callahan, 555 U.S. 223 (2009). Courts may address either prong first. Id. at 236. The clearly established standard requires that existing precedent place the constitutionality of the officer's conduct beyond debate. Ashcroft v. al-Kidd, 563 U.S. 731, 741 (2011). See also Taylor v. Riojas, 141 S. Ct. 52 (2020) (per curiam).",
+      "expected": [
+        { "type": "case", "volume": 457, "reporter": "U.S.", "page": 800, "year": 1982 },
+        { "type": "case", "volume": 555, "reporter": "U.S.", "page": 223, "year": 2009 },
+        { "type": "id", "pincite": 236 },
+        { "type": "case", "volume": 563, "reporter": "U.S.", "page": 731, "pincite": 741, "year": 2011 },
+        { "type": "case", "volume": 141, "reporter": "S. Ct.", "page": 52, "year": 2020, "disposition": "per curiam" }
+      ]
+    },
+    {
+      "id": "dense-eighth-amendment",
+      "category": "dense-paragraphs",
+      "description": "Eighth Amendment cruel and unusual punishment",
+      "text": "The Eighth Amendment prohibits cruel and unusual punishment. The proportionality principle requires that sentences not be grossly disproportionate to the crime. Solem v. Helm, 463 U.S. 277 (1983). Capital punishment for juvenile offenders was held unconstitutional in Roper v. Simmons, 543 U.S. 551 (2005). Life without parole for juvenile non-homicide offenders was banned in Graham v. Florida, 560 U.S. 48 (2010), and mandatory life without parole for all juvenile offenders was prohibited in Miller v. Alabama, 567 U.S. 460 (2012). Id. at 465. See also Montgomery v. Louisiana, 577 U.S. 190 (2016).",
+      "expected": [
+        { "type": "case", "volume": 463, "reporter": "U.S.", "page": 277, "year": 1983 },
+        { "type": "case", "volume": 543, "reporter": "U.S.", "page": 551, "year": 2005 },
+        { "type": "case", "volume": 560, "reporter": "U.S.", "page": 48, "year": 2010 },
+        { "type": "case", "volume": 567, "reporter": "U.S.", "page": 460, "year": 2012 },
+        { "type": "id", "pincite": 465 },
+        { "type": "case", "volume": 577, "reporter": "U.S.", "page": 190, "year": 2016 }
+      ]
+    },
+    {
+      "id": "perf-multi-paragraph-brief",
+      "category": "dense-paragraphs",
+      "description": "Performance: multi-paragraph brief excerpt with 25+ citations",
+      "text": "STATEMENT OF FACTS\n\nPlaintiff Jane Doe filed this action under 42 U.S.C. § 1983 and 42 U.S.C. § 1985 alleging violations of her constitutional rights. Jurisdiction is proper under 28 U.S.C. § 1331. The events occurred on March 15, 2023, when officers of the City Police Department conducted a traffic stop of Plaintiff's vehicle.\n\nARGUMENT\n\nI. THE OFFICERS LACKED REASONABLE SUSPICION FOR THE TRAFFIC STOP\n\nThe Fourth Amendment protects individuals from unreasonable seizures. Terry v. Ohio, 392 U.S. 1 (1968). A traffic stop constitutes a seizure under the Fourth Amendment. Delaware v. Prouse, 440 U.S. 648 (1979). Officers must have reasonable suspicion that a traffic violation has occurred before initiating a stop. Navarette v. California, 572 U.S. 393 (2014). Here, the officers had no basis for the stop. See Whren v. United States, 517 U.S. 806 (1996). The dashcam footage contradicts the officers' testimony. Cf. Scott v. Harris, 550 U.S. 372 (2007).\n\nII. THE SEARCH OF PLAINTIFF'S VEHICLE WAS UNCONSTITUTIONAL\n\nThe automobile exception to the warrant requirement permits officers to search a vehicle only upon probable cause. Carroll v. United States, 267 U.S. 132 (1925). The scope of the search is limited to areas where contraband could be hidden. United States v. Ross, 456 U.S. 798 (1982). The officers' search of Plaintiff's locked glove compartment exceeded the scope of any permissible search. Arizona v. Gant, 556 U.S. 332 (2009). Id. at 351.\n\nIII. THE OFFICERS ARE NOT ENTITLED TO QUALIFIED IMMUNITY\n\nQualified immunity does not protect officers who violate clearly established rights. Anderson v. Creighton, 483 U.S. 635 (1987). The law was clearly established at the time of the stop. Hope v. Pelzer, 536 U.S. 730 (2002). See also Saucier v. Katz, 533 U.S. 194 (2001). No reasonable officer would have believed the conduct at issue was lawful. 500 F.3d 200 (5th Cir. 2007).\n\nCONCLUSION\n\nFor the foregoing reasons, Plaintiff respectfully requests that this Court deny Defendants' Motion for Summary Judgment.",
+      "performanceBenchmark": {
+        "maxDurationMs": 200,
+        "minCitations": 15
+      },
+      "expected": [
+        { "type": "statute", "title": 42, "section": "1983" },
+        { "type": "statute", "title": 42, "section": "1985" },
+        { "type": "statute", "title": 28, "section": "1331" },
+        { "type": "case", "volume": 392, "reporter": "U.S.", "page": 1, "year": 1968 },
+        { "type": "case", "volume": 440, "reporter": "U.S.", "page": 648, "year": 1979 },
+        { "type": "case", "volume": 572, "reporter": "U.S.", "page": 393, "year": 2014 },
+        { "type": "case", "volume": 517, "reporter": "U.S.", "page": 806, "year": 1996 },
+        { "type": "case", "volume": 550, "reporter": "U.S.", "page": 372, "year": 2007 },
+        { "type": "case", "volume": 267, "reporter": "U.S.", "page": 132, "year": 1925 },
+        { "type": "case", "volume": 456, "reporter": "U.S.", "page": 798, "year": 1982 },
+        { "type": "case", "volume": 556, "reporter": "U.S.", "page": 332, "year": 2009 },
+        { "type": "id", "pincite": 351 },
+        { "type": "case", "volume": 483, "reporter": "U.S.", "page": 635, "year": 1987 },
+        { "type": "case", "volume": 536, "reporter": "U.S.", "page": 730, "year": 2002 },
+        { "type": "case", "volume": 533, "reporter": "U.S.", "page": 194, "year": 2001 },
+        { "type": "case", "volume": 500, "reporter": "F.3d", "page": 200 }
+      ]
+    }
+  ]
+}
