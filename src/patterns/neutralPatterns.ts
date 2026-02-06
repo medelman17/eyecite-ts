@@ -15,6 +15,12 @@ import type { Pattern } from './casePatterns'
 
 export const neutralPatterns: Pattern[] = [
   {
+    id: 'state-neutral',
+    regex: /\b(\d{4})\s+([A-Z]{2})\s+(\d+)\b/g,
+    description: 'State vendor-neutral citations (e.g., "2007 UT 49", "2017 WI 17")',
+    type: 'neutral',
+  },
+  {
     id: 'westlaw',
     regex: /\b(\d{4})\s+WL\s+(\d+)\b/g,
     description: 'WestLaw citations (e.g., "2021 WL 123456")',

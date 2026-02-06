@@ -126,6 +126,88 @@ describe('Other extraction functions', () => {
 
 			expect(citation.confidence).toBe(1.0)
 		})
+
+		it('should extract state vendor-neutral citation (Utah)', () => {
+			const token: Token = {
+				text: '2007 UT 49',
+				span: { cleanStart: 0, cleanEnd: 10 },
+				type: 'neutral',
+				patternId: 'state-neutral',
+			}
+			const transformationMap = createIdentityMap()
+
+			const citation = extractNeutral(token, transformationMap)
+
+			expect(citation.type).toBe('neutral')
+			expect(citation.year).toBe(2007)
+			expect(citation.court).toBe('UT')
+			expect(citation.documentNumber).toBe('49')
+			expect(citation.confidence).toBe(1.0)
+		})
+
+		it('should extract state vendor-neutral citation (Wisconsin)', () => {
+			const token: Token = {
+				text: '2017 WI 17',
+				span: { cleanStart: 0, cleanEnd: 10 },
+				type: 'neutral',
+				patternId: 'state-neutral',
+			}
+			const transformationMap = createIdentityMap()
+
+			const citation = extractNeutral(token, transformationMap)
+
+			expect(citation.year).toBe(2017)
+			expect(citation.court).toBe('WI')
+			expect(citation.documentNumber).toBe('17')
+		})
+
+		it('should extract state vendor-neutral citation (Illinois)', () => {
+			const token: Token = {
+				text: '2013 IL 112116',
+				span: { cleanStart: 0, cleanEnd: 14 },
+				type: 'neutral',
+				patternId: 'state-neutral',
+			}
+			const transformationMap = createIdentityMap()
+
+			const citation = extractNeutral(token, transformationMap)
+
+			expect(citation.year).toBe(2013)
+			expect(citation.court).toBe('IL')
+			expect(citation.documentNumber).toBe('112116')
+		})
+
+		it('should extract state vendor-neutral citation (Colorado)', () => {
+			const token: Token = {
+				text: '2020 CO 48',
+				span: { cleanStart: 0, cleanEnd: 10 },
+				type: 'neutral',
+				patternId: 'state-neutral',
+			}
+			const transformationMap = createIdentityMap()
+
+			const citation = extractNeutral(token, transformationMap)
+
+			expect(citation.year).toBe(2020)
+			expect(citation.court).toBe('CO')
+			expect(citation.documentNumber).toBe('48')
+		})
+
+		it('should extract state vendor-neutral citation (Oklahoma)', () => {
+			const token: Token = {
+				text: '2010 OK 16',
+				span: { cleanStart: 0, cleanEnd: 10 },
+				type: 'neutral',
+				patternId: 'state-neutral',
+			}
+			const transformationMap = createIdentityMap()
+
+			const citation = extractNeutral(token, transformationMap)
+
+			expect(citation.year).toBe(2010)
+			expect(citation.court).toBe('OK')
+			expect(citation.documentNumber).toBe('16')
+		})
 	})
 
 	describe('extractPublicLaw', () => {
@@ -355,5 +437,54 @@ describe('compact journal citations (integration)', () => {
 		const citations = extractCitations('500 F.2d 123')
 		expect(citations).toHaveLength(1)
 		expect(citations[0].type).toBe('case')
+	})
+})
+
+describe('state vendor-neutral citations (integration)', () => {
+	it('should classify state neutral citations as neutral, not case', () => {
+		const cases = [
+			{ text: 'State v. Tiedemann, 2007 UT 49', year: 2007, court: 'UT', doc: '49' },
+			{ text: '2017 WI 17', year: 2017, court: 'WI', doc: '17' },
+			{ text: '2013 IL 112116', year: 2013, court: 'IL', doc: '112116' },
+			{ text: '2020 CO 48', year: 2020, court: 'CO', doc: '48' },
+			{ text: '2010 OK 16', year: 2010, court: 'OK', doc: '16' },
+		]
+
+		for (const { text, year, court, doc } of cases) {
+			const citations = extractCitations(text)
+			const neutralCites = citations.filter((c) => c.type === 'neutral')
+			expect(neutralCites.length).toBeGreaterThan(0)
+			expect(neutralCites[0].type).toBe('neutral')
+			if (neutralCites[0].type === 'neutral') {
+				expect(neutralCites[0].year).toBe(year)
+				expect(neutralCites[0].court).toBe(court)
+				expect(neutralCites[0].documentNumber).toBe(doc)
+			}
+		}
+	})
+
+	it('should extract year from state neutral citation', () => {
+		const citations = extractCitations('2007 UT 49')
+		expect(citations).toHaveLength(1)
+		expect(citations[0].type).toBe('neutral')
+		if (citations[0].type === 'neutral') {
+			expect(citations[0].year).toBe(2007)
+		}
+	})
+
+	it('should not misclassify state neutral as case citation', () => {
+		const citations = extractCitations('State v. Tiedemann, 2007 UT 49')
+		const caseCites = citations.filter((c) => c.type === 'case')
+		const neutralCites = citations.filter((c) => c.type === 'neutral')
+
+		// "2007 UT 49" should be neutral, not case
+		expect(neutralCites.length).toBeGreaterThan(0)
+		const ut49 = neutralCites.find((c) => c.text.includes('UT'))
+		expect(ut49).toBeDefined()
+		expect(ut49?.type).toBe('neutral')
+
+		// Should not have a case citation for "2007 UT 49"
+		const wrongCase = caseCites.find((c) => c.text.includes('2007') && c.text.includes('UT'))
+		expect(wrongCase).toBeUndefined()
 	})
 })
