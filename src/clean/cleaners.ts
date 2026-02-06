@@ -61,3 +61,61 @@ export function fixSmartQuotes(text: string): string {
 export function removeOcrArtifacts(text: string): string {
 	return text.replace(/_/g, "")
 }
+
+/**
+ * Normalize Unicode dashes to ASCII hyphens.
+ *
+ * Converts en-dash (U+2013) and em-dash (U+2014) to ASCII hyphen-minus (U+002D).
+ * This ensures extraction regexes that expect ASCII hyphens work correctly.
+ *
+ * @example
+ * normalizeDashes("Smith v. Doe, 500 F.2d 123–125")  // en-dash
+ * // => "Smith v. Doe, 500 F.2d 123-125"
+ *
+ * @example
+ * normalizeDashes("Smith v. Doe—500 F.2d 123")  // em-dash
+ * // => "Smith v. Doe-500 F.2d 123"
+ */
+export function normalizeDashes(text: string): string {
+	return text.replace(/[\u2013\u2014]/g, "-")
+}
+
+/**
+ * Decode common HTML entities relevant to legal text.
+ *
+ * Handles named entities (&sect;, &para;, &amp;, &nbsp;) and numeric entities
+ * (&#NNN; and &#xHHH;). Should be called after stripHtmlTags to decode any
+ * remaining entities.
+ *
+ * @example
+ * decodeHtmlEntities("42 U.S.C. &sect; 1983")
+ * // => "42 U.S.C. § 1983"
+ *
+ * @example
+ * decodeHtmlEntities("Smith &amp; Jones, 500 F.2d 123")
+ * // => "Smith & Jones, 500 F.2d 123"
+ */
+export function decodeHtmlEntities(text: string): string {
+	return (
+		text
+			// Named entities
+			.replace(/&sect;/gi, "§")
+			.replace(/&para;/gi, "¶")
+			.replace(/&amp;/gi, "&")
+			.replace(/&nbsp;/gi, " ")
+			.replace(/&lt;/gi, "<")
+			.replace(/&gt;/gi, ">")
+			.replace(/&quot;/gi, '"')
+			.replace(/&apos;/gi, "'")
+			// Numeric entities - decimal
+			.replace(/&#(\d+);/g, (_match, dec) => {
+				const code = Number.parseInt(dec, 10)
+				return Number.isNaN(code) ? _match : String.fromCharCode(code)
+			})
+			// Numeric entities - hexadecimal
+			.replace(/&#x([0-9a-fA-F]+);/g, (_match, hex) => {
+				const code = Number.parseInt(hex, 16)
+				return Number.isNaN(code) ? _match : String.fromCharCode(code)
+			})
+	)
+}
