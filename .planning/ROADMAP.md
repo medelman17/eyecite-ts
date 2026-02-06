@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0-alpha** - Phases 1-4 (shipped 2026-02-05)
-- 🚧 **v1.1 Extraction Accuracy** - Phases 5-8 (in progress)
+- ✅ **v1.1 Extraction Accuracy** - Phases 5-8 (shipped 2026-02-06)
 
 ## Phases
 
@@ -53,7 +53,7 @@ Plans:
 
 </details>
 
-### 🚧 v1.1 Extraction Accuracy (In Progress)
+### ✅ v1.1 Extraction Accuracy (SHIPPED 2026-02-06)
 
 **Milestone Goal:** Improve citation extraction accuracy with full spans, party names, parallel citation linking, blank page support, and complex parentheticals
 
@@ -118,9 +118,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Parallel citation detection with groupId and parallelCitations (TDD)
-- [ ] 08-02-PLAN.md — Full-span annotation mode (useFullSpan option)
-- [ ] 08-03-PLAN.md — Golden test corpus and quality validation
+- [x] 08-01-PLAN.md — Parallel citation detection with groupId and parallelCitations (TDD)
+- [x] 08-02-PLAN.md — Full-span annotation mode (useFullSpan option)
+- [x] 08-03-PLAN.md — Golden test corpus and quality validation
 
 ## Progress
 
@@ -136,4 +136,4 @@ Phases execute in numeric order: 5 -> 6 -> 7 -> 8
 | 5. Type System & Blank Pages | v1.1 | 2/2 | Complete | 2026-02-05 |
 | 6. Full Span & Complex Parentheticals | v1.1 | 2/2 | Complete | 2026-02-05 |
 | 7. Party Name Extraction | v1.1 | 2/2 | Complete | 2026-02-05 |
-| 8. Parallel Linking & Quality Validation | v1.1 | 0/3 | Not started | - |
+| 8. Parallel Linking & Quality Validation | v1.1 | 3/3 | Complete | 2026-02-06 |

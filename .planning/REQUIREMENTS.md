@@ -13,15 +13,15 @@ Requirements for extraction accuracy milestone. Each maps to roadmap phases.
 - [x] **SPAN-02**: Calculate `fullSpan` field covering case name through closing parenthetical
 - [x] **SPAN-03**: Provide structured `caseName` field with the extracted case name string
 - [x] **SPAN-04**: Existing `span` field unchanged (citation core only) for backward compatibility
-- [ ] **SPAN-05**: Annotation supports full citation span mode (annotate from case name through parenthetical)
+- [x] **SPAN-05**: Annotation supports full citation span mode (annotate from case name through parenthetical)
 
 ### Party Name Extraction
 
-- [ ] **PARTY-01**: Extract `plaintiff` and `defendant` fields from case name split on "v." / "vs."
-- [ ] **PARTY-02**: Handle procedural prefixes: "In re", "Ex parte", "Matter of" (plaintiff only, no defendant)
-- [ ] **PARTY-03**: Handle "United States" and government entity plaintiffs
-- [ ] **PARTY-04**: Party names available for supra resolution (fixes #21)
-- [ ] **PARTY-05**: Confidence scoring reflects extraction quality (lower for complex/uncertain names)
+- [x] **PARTY-01**: Extract `plaintiff` and `defendant` fields from case name split on "v." / "vs."
+- [x] **PARTY-02**: Handle procedural prefixes: "In re", "Ex parte", "Matter of" (plaintiff only, no defendant)
+- [x] **PARTY-03**: Handle "United States" and government entity plaintiffs
+- [x] **PARTY-04**: Party names available for supra resolution (fixes #21)
+- [x] **PARTY-05**: Confidence scoring reflects extraction quality (lower for complex/uncertain names)
 
 ### Blank Page Numbers
 
@@ -32,10 +32,10 @@ Requirements for extraction accuracy milestone. Each maps to roadmap phases.
 
 ### Parallel Citation Linking
 
-- [ ] **PARA-01**: Detect comma-separated case citations sharing a parenthetical as parallel
-- [ ] **PARA-02**: Populate `parallelCitations` array on the first citation in the group
-- [ ] **PARA-03**: All citations returned individually in results (backward compatible)
-- [ ] **PARA-04**: No false positives — only link citations with physical proximity and shared context
+- [x] **PARA-01**: Detect comma-separated case citations sharing a parenthetical as parallel
+- [x] **PARA-02**: Populate `parallelCitations` array on the first citation in the group
+- [x] **PARA-03**: All citations returned individually in results (backward compatible)
+- [x] **PARA-04**: No false positives — only link citations with physical proximity and shared context
 
 ### Complex Parentheticals
 
@@ -47,9 +47,9 @@ Requirements for extraction accuracy milestone. Each maps to roadmap phases.
 ### Quality & Compatibility
 
 - [x] **QUAL-01**: All new fields are optional — existing consumer code unaffected
-- [ ] **QUAL-02**: Bundle size remains under 50KB gzipped
-- [ ] **QUAL-03**: Performance remains under 100ms for 10KB documents
-- [ ] **QUAL-04**: All existing tests continue to pass
+- [x] **QUAL-02**: Bundle size remains under 50KB gzipped
+- [x] **QUAL-03**: Performance remains under 100ms for 10KB documents
+- [x] **QUAL-04**: All existing tests continue to pass
 
 ## Future Requirements
 
@@ -101,19 +101,19 @@ Deferred to later milestones.
 | PAREN-02 | Phase 6 | Complete |
 | PAREN-03 | Phase 6 | Complete |
 | PAREN-04 | Phase 6 | Complete |
-| PARTY-01 | Phase 7 | Pending |
-| PARTY-02 | Phase 7 | Pending |
-| PARTY-03 | Phase 7 | Pending |
-| PARTY-04 | Phase 7 | Pending |
-| PARTY-05 | Phase 7 | Pending |
-| PARA-01 | Phase 8 | Pending |
-| PARA-02 | Phase 8 | Pending |
-| PARA-03 | Phase 8 | Pending |
-| PARA-04 | Phase 8 | Pending |
-| SPAN-05 | Phase 8 | Pending |
-| QUAL-02 | Phase 8 | Pending |
-| QUAL-03 | Phase 8 | Pending |
-| QUAL-04 | Phase 8 | Pending |
+| PARTY-01 | Phase 7 | Complete |
+| PARTY-02 | Phase 7 | Complete |
+| PARTY-03 | Phase 7 | Complete |
+| PARTY-04 | Phase 7 | Complete |
+| PARTY-05 | Phase 7 | Complete |
+| PARA-01 | Phase 8 | Complete |
+| PARA-02 | Phase 8 | Complete |
+| PARA-03 | Phase 8 | Complete |
+| PARA-04 | Phase 8 | Complete |
+| SPAN-05 | Phase 8 | Complete |
+| QUAL-02 | Phase 8 | Complete |
+| QUAL-03 | Phase 8 | Complete |
+| QUAL-04 | Phase 8 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 26 total
@@ -122,4 +122,4 @@ Deferred to later milestones.
 
 ---
 *Requirements defined: 2026-02-05*
-*Last updated: 2026-02-05 after Phase 6 completion*
+*Last updated: 2026-02-06 after Phase 8 completion (v1.1 milestone complete)*
