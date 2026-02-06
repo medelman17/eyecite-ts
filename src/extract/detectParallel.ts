@@ -77,6 +77,7 @@ export function detectParallelCitations(
 		const secondaryIndices: number[] = []
 
 		// Look ahead for potential secondary citations
+		// Chain detection: "A, B, C (year)" where A is primary, B and C are secondaries
 		for (let j = i + 1; j < tokens.length; j++) {
 			const secondary = tokens[j]
 
@@ -85,7 +86,7 @@ export function detectParallelCitations(
 				break // Stop looking once we hit non-case citation
 			}
 
-			// Check proximity: comma should be right after primary (or previous secondary)
+			// Check proximity: comma should be right after primary (or previous secondary in chain)
 			const prevToken = j === i + 1 ? primary : tokens[j - 1]
 			const gapStart = prevToken.span.cleanEnd
 			const gapEnd = secondary.span.cleanStart
@@ -93,12 +94,13 @@ export function detectParallelCitations(
 			// Extract the gap text between citations
 			const gapText = cleanedText.substring(gapStart, gapEnd)
 
-			// Check for comma separator
+			// Bluebook requires comma separator for parallel citations
 			if (!gapText.includes(',')) {
 				break // No comma = not parallel, stop looking
 			}
 
 			// Check proximity: distance from comma to next citation start
+			// MAX_PROXIMITY enforces tight spacing: "A, B" not "A,      B"
 			const commaIndex = gapText.indexOf(',')
 			const distanceAfterComma = gapText.length - commaIndex - 1
 
@@ -108,7 +110,8 @@ export function detectParallelCitations(
 
 			// Check for shared parenthetical
 			// Both citations must share the SAME closing parenthetical
-			// This means: no closing parenthesis between primary and secondary
+			// Reject: "A (1970), B (1971)" - separate parens = different cases
+			// Accept: "A, B (1970)" - shared paren = parallel citations
 			const textBetween = cleanedText.substring(primary.span.cleanEnd, secondary.span.cleanEnd)
 			if (textBetween.includes(')')) {
 				break // Separate parentheticals = not parallel, stop looking
