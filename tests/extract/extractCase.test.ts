@@ -880,6 +880,29 @@ describe('backward compatibility (Phase 6)', () => {
 		}
 	})
 
+	it('extracts year with multiple pincite ranges (issue #53)', () => {
+		const citations = extractCitations('Roe v. Wade, 410 U.S. 113, 152-53, 163-64 (1973)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].year).toBe(1973)
+			expect(citations[0].volume).toBe(410)
+			expect(citations[0].reporter).toBe('U.S.')
+			expect(citations[0].page).toBe(113)
+			expect(citations[0].court).toBe('scotus')
+		}
+	})
+
+	it('extracts year with single pincite range', () => {
+		const citations = extractCitations('500 F.2d 123, 152-53 (2020)')
+		expect(citations).toHaveLength(1)
+		if (citations[0].type === 'case') {
+			expect(citations[0].year).toBe(2020)
+			expect(citations[0].volume).toBe(500)
+			expect(citations[0].reporter).toBe('F.2d')
+			expect(citations[0].page).toBe(123)
+		}
+	})
+
 	it('scotus inference from reporter unchanged', () => {
 		const citations = extractCitations('410 U.S. 113 (1973)')
 		expect(citations).toHaveLength(1)
