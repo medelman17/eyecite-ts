@@ -1303,4 +1303,53 @@ describe('party name extraction (Phase 7)', () => {
 			}
 		})
 	})
+
+	describe('nominative reporter parentheticals (Issue #49)', () => {
+		it('extracts early SCOTUS citation with Black nominative reporter', () => {
+			const citations = extractCitations('67 U.S. (2 Black) 635 (1862)')
+			expect(citations).toHaveLength(1)
+			if (citations[0].type === 'case') {
+				expect(citations[0].volume).toBe(67)
+				expect(citations[0].reporter).toBe('U.S.')
+				expect(citations[0].page).toBe(635)
+				expect(citations[0].year).toBe(1862)
+				expect(citations[0].court).toBe('scotus')
+			}
+		})
+
+		it('extracts Marbury v. Madison with Cranch nominative reporter', () => {
+			const citations = extractCitations('Marbury v. Madison, 5 U.S. (1 Cranch) 137 (1803)')
+			expect(citations).toHaveLength(1)
+			if (citations[0].type === 'case') {
+				expect(citations[0].volume).toBe(5)
+				expect(citations[0].reporter).toBe('U.S.')
+				expect(citations[0].page).toBe(137)
+				expect(citations[0].year).toBe(1803)
+				expect(citations[0].court).toBe('scotus')
+				expect(citations[0].caseName).toBe('Marbury v. Madison')
+			}
+		})
+
+		it('extracts citation with multi-digit nominative volume', () => {
+			const citations = extractCitations('60 U.S. (19 How.) 393 (1856)')
+			expect(citations).toHaveLength(1)
+			if (citations[0].type === 'case') {
+				expect(citations[0].volume).toBe(60)
+				expect(citations[0].reporter).toBe('U.S.')
+				expect(citations[0].page).toBe(393)
+				expect(citations[0].year).toBe(1856)
+			}
+		})
+
+		it('extracts citation with Wallace nominative reporter', () => {
+			const citations = extractCitations('74 U.S. (7 Wall.) 506 (1868)')
+			expect(citations).toHaveLength(1)
+			if (citations[0].type === 'case') {
+				expect(citations[0].volume).toBe(74)
+				expect(citations[0].reporter).toBe('U.S.')
+				expect(citations[0].page).toBe(506)
+				expect(citations[0].year).toBe(1868)
+			}
+		})
+	})
 })
