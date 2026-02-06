@@ -1,5 +1,52 @@
 # eyecite-ts
 
+## 0.4.0
+
+### Minor Changes
+
+- [#38](https://github.com/medelman17/eyecite-ts/pull/38) [`49a4055`](https://github.com/medelman17/eyecite-ts/commit/49a40554c87ebae42bedbaa85362bf8356faf335) Thanks [@medelman17](https://github.com/medelman17)! - Add full citation span, case name extraction, complex parenthetical parsing, and blank page support
+
+  - Extract case names via backward search for "v." pattern and procedural prefixes (In re, Ex parte, Matter of)
+  - Calculate `fullSpan` field covering case name through closing parenthetical, including chained parens and subsequent history
+  - Unified parenthetical parser supporting court+year, full dates (abbreviated/full month/numeric), and year-only formats
+  - Structured `date` field with ISO string and parsed `{ year, month?, day? }` object
+  - `disposition` field for "en banc" and "per curiam" from chained parentheticals
+  - Blank page placeholder recognition (`___`, `---`) with `hasBlankPage` flag and confidence 0.8
+  - All new fields optional — zero breaking changes for existing consumers
+
+- [#40](https://github.com/medelman17/eyecite-ts/pull/40) [`5c6134f`](https://github.com/medelman17/eyecite-ts/commit/5c6134fde13bedf980013e082da67722cf27ccbe) Thanks [@medelman17](https://github.com/medelman17)! - Extract plaintiff and defendant party names from case citations and improve supra resolution matching
+
+  - Split case names on "v."/"vs." into `plaintiff` and `defendant` fields with raw text preserved
+  - Normalized fields (`plaintiffNormalized`, `defendantNormalized`) strip et al., d/b/a, aka, corporate suffixes, and leading articles
+  - Procedural prefix detection (In re, Ex parte, Matter of, etc.) with `proceduralPrefix` field
+  - Government entities (United States, People, Commonwealth, State) recognized as plaintiffs, not procedural prefixes
+  - Supra resolution uses extracted party names for higher-accuracy matching before Levenshtein fallback
+  - Defendant name prioritized in resolution history per Bluebook convention
+  - All new fields optional — zero breaking changes for existing consumers
+
+- [#41](https://github.com/medelman17/eyecite-ts/pull/41) [`fb18be2`](https://github.com/medelman17/eyecite-ts/commit/fb18be281b3835e90d46ad2e5e3e2229c6e43667) Thanks [@medelman17](https://github.com/medelman17)! - Link parallel citations into groups and add full-span annotation mode
+
+  - Detect comma-separated case citations sharing a parenthetical as parallel citations
+  - `groupId` field identifies citation groups, `parallelCitations` array on primary citation references secondaries
+  - All citations still returned individually for backward compatibility
+  - `useFullSpan` annotation option to annotate from case name through closing parenthetical
+  - Golden test corpus with 28 real-world samples for regression testing
+  - All new fields optional — zero breaking changes for existing consumers
+
+### Patch Changes
+
+- [#42](https://github.com/medelman17/eyecite-ts/pull/42) [`5e8544b`](https://github.com/medelman17/eyecite-ts/commit/5e8544ba271bc73545bb9fc877dd636f9a301dba) Thanks [@medelman17](https://github.com/medelman17)! - Improve extraction performance with TypeScript-specific optimizations
+
+  This release includes three performance optimizations that significantly speed up citation extraction:
+
+  **Regex Compilation Hoisting:** Moved 11 frequently-used regex patterns from inline definitions to module-level constants, eliminating redundant compilations (5-10ms savings per document).
+
+  **Deduplication Bitpacking:** Optimized token deduplication by using bitpacked integers instead of string concatenation for Set keys in typical documents (<65KB), with automatic fallback for larger documents (2-5ms savings).
+
+  **Parallel Detection Early Exit:** Added distance-based early exit in parallel citation detection to skip expensive validation when tokens are too far apart, reducing algorithmic complexity from O(n²) to O(n×k) (3-8ms savings).
+
+  **Expected impact:** 20-60% performance improvement on typical 10KB legal documents (from <49ms to 19-39ms baseline). All optimizations are transparent to consumers with zero breaking changes.
+
 ## 0.3.0
 
 ### Minor Changes
