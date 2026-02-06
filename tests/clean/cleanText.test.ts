@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
 	cleanText,
+	decodeHtmlEntities,
 	fixSmartQuotes,
 	normalizeWhitespace,
 	stripHtmlTags,
@@ -177,5 +178,87 @@ describe("cleanText position tracking", () => {
 
 		// First character 't' is at position 0 in cleaned, position 11 in original (after "<div><span>")
 		expect(result.transformationMap.cleanToOriginal.get(0)).toBe(11)
+	})
+})
+
+describe("HTML entity decoding", () => {
+	it("should decode &sect; to § symbol", () => {
+		const input = "42 U.S.C. &sect; 1983"
+		const expected = "42 U.S.C. § 1983"
+		const result = decodeHtmlEntities(input)
+
+		expect(result).toBe(expected)
+	})
+
+	it("should decode &para; to ¶ symbol", () => {
+		const input = "See &para; 123"
+		const expected = "See ¶ 123"
+		const result = decodeHtmlEntities(input)
+
+		expect(result).toBe(expected)
+	})
+
+	it("should decode &amp; to & symbol", () => {
+		const input = "Smith &amp; Jones"
+		const expected = "Smith & Jones"
+		const result = decodeHtmlEntities(input)
+
+		expect(result).toBe(expected)
+	})
+
+	it("should decode numeric entities (decimal)", () => {
+		const input = "42 U.S.C. &#167; 1983"
+		const expected = "42 U.S.C. § 1983"
+		const result = decodeHtmlEntities(input)
+
+		expect(result).toBe(expected)
+	})
+
+	it("should decode numeric entities (hexadecimal)", () => {
+		const input = "42 U.S.C. &#x00A7; 1983"
+		const expected = "42 U.S.C. § 1983"
+		const result = decodeHtmlEntities(input)
+
+		expect(result).toBe(expected)
+	})
+
+	it("should decode multiple entities in one string", () => {
+		const input = "42 U.S.C. &sect; 1983 &amp; 29 C.F.R. &sect; 1910"
+		const expected = "42 U.S.C. § 1983 & 29 C.F.R. § 1910"
+		const result = decodeHtmlEntities(input)
+
+		expect(result).toBe(expected)
+	})
+
+	it("should handle text with no entities", () => {
+		const input = "42 U.S.C. § 1983"
+		const expected = "42 U.S.C. § 1983"
+		const result = decodeHtmlEntities(input)
+
+		expect(result).toBe(expected)
+	})
+
+	it("should track positions after HTML entity decoding", () => {
+		const input = "42 U.S.C. &sect; 1983"
+		const expected = "42 U.S.C. § 1983"
+		const result = cleanText(input, [decodeHtmlEntities])
+
+		expect(result.cleaned).toBe(expected)
+
+		// The "§" symbol is at position 10 in cleaned text
+		// In original: "42 U.S.C. &sect; 1983", the "&" starts at position 10
+		const cleanPosOfSection = 10
+		const originalPosOfSection = 10
+		expect(result.transformationMap.cleanToOriginal.get(cleanPosOfSection)).toBe(
+			originalPosOfSection,
+		)
+
+		// The "1983" starts at position 12 in cleaned text
+		// In original: it's at position 17 (after "&sect;")
+		const cleanPosOf1983 = 12
+		const originalPosOf1983 = 17
+		expect(result.transformationMap.cleanToOriginal.get(cleanPosOf1983)).toBe(
+			originalPosOf1983,
+		)
 	})
 })

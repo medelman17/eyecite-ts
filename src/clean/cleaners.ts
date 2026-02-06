@@ -61,3 +61,46 @@ export function fixSmartQuotes(text: string): string {
 export function removeOcrArtifacts(text: string): string {
 	return text.replace(/_/g, "")
 }
+
+/**
+ * Decode common HTML entities found in legal documents.
+ *
+ * Handles both named entities (&sect;) and numeric entities (&#167;).
+ * Supports common legal symbols like section (§) and paragraph (¶).
+ *
+ * @example
+ * decodeHtmlEntities("42 U.S.C. &sect; 1983")
+ * // => "42 U.S.C. § 1983"
+ *
+ * @example
+ * decodeHtmlEntities("See &#167; 1983")
+ * // => "See § 1983"
+ */
+export function decodeHtmlEntities(text: string): string {
+	// Common legal HTML entities
+	const entityMap: Record<string, string> = {
+		"&sect;": "§", // Section symbol
+		"&para;": "¶", // Paragraph symbol
+		"&amp;": "&", // Ampersand
+		"&lt;": "<", // Less than
+		"&gt;": ">", // Greater than
+		"&quot;": '"', // Double quote
+		"&apos;": "'", // Single quote/apostrophe
+		"&nbsp;": " ", // Non-breaking space
+	}
+
+	// Replace named entities
+	let result = text
+	for (const [entity, char] of Object.entries(entityMap)) {
+		result = result.replace(new RegExp(entity, "g"), char)
+	}
+
+	// Replace numeric entities (decimal: &#167; and hex: &#x00A7;)
+	result = result
+		.replace(/&#(\d+);/g, (_match, code) => String.fromCharCode(Number(code)))
+		.replace(/&#x([0-9A-Fa-f]+);/g, (_match, code) =>
+			String.fromCharCode(Number.parseInt(code, 16)),
+		)
+
+	return result
+}

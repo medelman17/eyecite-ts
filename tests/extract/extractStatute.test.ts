@@ -264,4 +264,56 @@ describe('extractStatute', () => {
 			expect(citation.patternsChecked).toBe(1)
 		})
 	})
+
+	describe('HTML entity decoding', () => {
+		it('should extract statute with &sect; HTML entity', () => {
+			const citations = extractCitations('42 U.S.C. &sect; 1983')
+			expect(citations).toHaveLength(1)
+			expect(citations[0].type).toBe('statute')
+			if (citations[0].type === 'statute') {
+				expect(citations[0].title).toBe(42)
+				expect(citations[0].code).toBe('U.S.C.')
+				expect(citations[0].section).toBe('1983')
+			}
+		})
+
+		it('should extract statute with &#167; numeric entity (decimal)', () => {
+			const citations = extractCitations('42 U.S.C. &#167; 1983')
+			expect(citations).toHaveLength(1)
+			expect(citations[0].type).toBe('statute')
+			if (citations[0].type === 'statute') {
+				expect(citations[0].title).toBe(42)
+				expect(citations[0].code).toBe('U.S.C.')
+				expect(citations[0].section).toBe('1983')
+			}
+		})
+
+		it('should extract statute with &#x00A7; numeric entity (hexadecimal)', () => {
+			const citations = extractCitations('42 U.S.C. &#x00A7; 1983')
+			expect(citations).toHaveLength(1)
+			expect(citations[0].type).toBe('statute')
+			if (citations[0].type === 'statute') {
+				expect(citations[0].title).toBe(42)
+				expect(citations[0].code).toBe('U.S.C.')
+				expect(citations[0].section).toBe('1983')
+			}
+		})
+
+		it('should extract multiple statutes with HTML entities', () => {
+			const citations = extractCitations('42 U.S.C. &sect; 1983 &amp; 29 C.F.R. &sect; 1910')
+			expect(citations).toHaveLength(2)
+			expect(citations[0].type).toBe('statute')
+			expect(citations[1].type).toBe('statute')
+			if (citations[0].type === 'statute') {
+				expect(citations[0].title).toBe(42)
+				expect(citations[0].code).toBe('U.S.C.')
+				expect(citations[0].section).toBe('1983')
+			}
+			if (citations[1].type === 'statute') {
+				expect(citations[1].title).toBe(29)
+				expect(citations[1].code).toBe('C.F.R.')
+				expect(citations[1].section).toBe('1910')
+			}
+		})
+	})
 })
