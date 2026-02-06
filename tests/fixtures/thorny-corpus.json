@@ -439,7 +439,6 @@
       "id": "pincite-footnote-n",
       "category": "thorny-pincites",
       "description": "Pincite with footnote reference (n.3)",
-      "knownLimitation": "Footnote ref (n.3) prevents year extraction (#52)",
       "text": "Miranda v. Arizona, 384 U.S. 436, 444 n.3 (1966)",
       "expected": [
         {
@@ -469,7 +468,6 @@
       "id": "pincite-multiple",
       "category": "thorny-pincites",
       "description": "Multiple pincites (passim)",
-      "knownLimitation": "Multiple pincite ranges prevent year extraction (#53)",
       "text": "Roe v. Wade, 410 U.S. 113, 152-53, 163-64 (1973)",
       "expected": [
         {

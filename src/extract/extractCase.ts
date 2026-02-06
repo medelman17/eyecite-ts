@@ -45,10 +45,10 @@ const PINCITE_REGEX = /,\s*(\d+)/
 const PAREN_REGEX = /\(([^)]+)\)/
 
 /** Look-ahead pattern for parenthetical after token */
-const LOOKAHEAD_PAREN_REGEX = /^(?:,\s*\d+)*\s*\(([^)]+)\)/
+const LOOKAHEAD_PAREN_REGEX = /^(?:,\s*\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d+)?\s*\(([^)]+)\)/
 
 /** Extracts pincite from look-ahead text */
-const LOOKAHEAD_PINCITE_REGEX = /^,\s*(\d+)/
+const LOOKAHEAD_PINCITE_REGEX = /^,\s*(\d+(?:-\d+)?)/
 
 /** Matches chained parentheticals with disposition */
 const CHAINED_DISPOSITION_REGEX = /\([^)]+\)\s*\((en banc|per curiam)\)/i
