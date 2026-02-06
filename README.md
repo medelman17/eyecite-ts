@@ -17,6 +17,7 @@ Extract, resolve, and annotate legal citations from court opinions and legal doc
 
 - **Full citation extraction**: Case citations, statutes, journal articles, neutral citations, public laws, federal register
 - **Case name & full span**: Backward search extracts case names ("Smith v. Jones", "In re Smith"), `fullSpan` covers case name through closing parenthetical
+- **Parallel citation linking**: Automatic detection and grouping of comma-separated citations sharing a parenthetical (e.g., "410 U.S. 113, 93 S. Ct. 705 (1973)")
 - **Complex parentheticals**: Unified parser handles court+year, full dates (Jan. 15, 2020 / January 15, 2020 / 1/15/2020), disposition (en banc, per curiam), and chained parentheticals
 - **Short-form resolution**: Id./Ibid., supra, and short-form case citations resolved to their full antecedents
 - **Reporter database**: 1,200+ reporters with variant matching and confidence scoring
@@ -145,6 +146,57 @@ const text2 = '410 U.S. 113 (1973)'
 
 Three date formats are supported: `Jan. 15, 2020`, `January 15, 2020`, and `1/15/2020`.
 
+### Blank Page Citations
+
+Citations can reference blank pages using placeholder notation:
+
+```typescript
+const text = '500 F.2d ___ (2020)'
+const citations = extractCitations(text)
+
+if (citations[0].type === 'case') {
+  console.log(citations[0].hasBlankPage)  // true
+  console.log(citations[0].page)          // undefined
+}
+```
+
+Both `___` (triple underscore) and `---` (triple dash) are recognized as blank page placeholders. These appear in slip opinions or unpublished decisions where the final reporter page number is not yet available.
+
+## Parallel Citations
+
+When multiple case citations share the same parenthetical, they represent parallel citations for the same case in different reporters. The library automatically detects and groups them:
+
+```typescript
+const text = 'See 410 U.S. 113, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973).'
+const citations = extractCitations(text)
+
+// Returns 3 citations, all linked by groupId
+console.log(citations[0].groupId)  // "410-U.S.-113"
+console.log(citations[1].groupId)  // "410-U.S.-113" (same group)
+console.log(citations[2].groupId)  // "410-U.S.-113" (same group)
+
+// Primary citation (first in group) has parallelCitations array
+if (citations[0].type === 'case') {
+  console.log(citations[0].parallelCitations)
+  // [
+  //   { volume: 93, reporter: 'S. Ct.', page: 705 },
+  //   { volume: 35, reporter: 'L. Ed. 2d', page: 147 }
+  // ]
+}
+
+// Secondary citations don't duplicate the array
+console.log(citations[1].parallelCitations)  // undefined
+console.log(citations[2].parallelCitations)  // undefined
+```
+
+**Key points:**
+- All citations in a parallel group share the same `groupId`
+- Only the **first citation** (primary) has the `parallelCitations` array
+- Secondary citations remain in the results array for individual processing
+- Group ID format: `${volume}-${reporter}-${page}` (e.g., "410-U.S.-113")
+
+Use `groupId` to identify which citations refer to the same case, or access `parallelCitations` on the primary to get all reporters at once.
+
 ## Resolving Short-Form Citations
 
 Short-form citations (Id., supra, short-form case) refer to earlier citations in the document. The resolution engine links them to their full antecedents.
@@ -265,6 +317,38 @@ const result = annotate(text, citations, {
   autoEscape: true  // default — escapes &, <, >, ", ', /
 })
 ```
+
+### Annotating Full Spans
+
+By default, annotation wraps only the citation core (volume-reporter-page). Use `useFullSpan` to annotate from the case name through the closing parenthetical:
+
+```typescript
+const text = 'In Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc), the court held...'
+const citations = extractCitations(text)
+
+// Default: annotates only "500 F.2d 123"
+const coreOnly = annotate(text, citations, {
+  template: { before: '<cite>', after: '</cite>' }
+})
+// Result: "In Smith v. Jones, <cite>500 F.2d 123</cite> (9th Cir. 2020) (en banc), the court held..."
+
+// With useFullSpan: annotates "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc)"
+const fullSpan = annotate(text, citations, {
+  template: { before: '<cite>', after: '</cite>' },
+  useFullSpan: true
+})
+// Result: "In <cite>Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc)</cite>, the court held..."
+```
+
+Full span annotation covers:
+- Case name (if present)
+- Volume-reporter-page
+- Court and date parenthetical
+- Disposition parenthetical (en banc, per curiam)
+- Chained parentheticals
+- Subsequent history
+
+Use `useFullSpan: true` when you want to highlight the entire citation as a unit, or `useFullSpan: false` (default) to annotate only the citation core for minimal markup.
 
 ## Reporter Validation
 
