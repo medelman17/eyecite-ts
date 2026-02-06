@@ -2,6 +2,7 @@ import type { TransformationMap } from "../types/span"
 import type { Warning } from "../types/citation"
 import {
 	fixSmartQuotes,
+	normalizeDashes,
 	normalizeUnicode,
 	normalizeWhitespace,
 	stripHtmlTags,
@@ -29,7 +30,7 @@ export interface CleanTextResult {
  * cleaned text while reporting positions in the original text.
  *
  * @param original - Original input text
- * @param cleaners - Array of cleaner functions to apply (default: stripHtmlTags, normalizeWhitespace, normalizeUnicode, fixSmartQuotes)
+ * @param cleaners - Array of cleaner functions to apply (default: stripHtmlTags, normalizeWhitespace, normalizeUnicode, fixSmartQuotes, normalizeDashes)
  * @returns Cleaned text with position mappings and warnings
  *
  * @example
@@ -44,6 +45,7 @@ export function cleanText(
 		normalizeWhitespace,
 		normalizeUnicode,
 		fixSmartQuotes,
+		normalizeDashes,
 	],
 ): CleanTextResult {
 	// Initialize 1:1 position mapping

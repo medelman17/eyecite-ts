@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
 	cleanText,
 	fixSmartQuotes,
+	normalizeDashes,
 	normalizeWhitespace,
 	stripHtmlTags,
 } from "../../src/clean"
@@ -177,5 +178,70 @@ describe("cleanText position tracking", () => {
 
 		// First character 't' is at position 0 in cleaned, position 11 in original (after "<div><span>")
 		expect(result.transformationMap.cleanToOriginal.get(0)).toBe(11)
+	})
+})
+
+describe("normalizeDashes cleaner", () => {
+	it("should convert en-dash to hyphen", () => {
+		const input = "500 F.3d 100, 105\u2013107"
+		const expected = "500 F.3d 100, 105-107"
+		const result = normalizeDashes(input)
+
+		expect(result).toBe(expected)
+	})
+
+	it("should convert em-dash to triple underscore", () => {
+		const input = "500 F.4th \u2014 (2024)"
+		const expected = "500 F.4th ___ (2024)"
+		const result = normalizeDashes(input)
+
+		expect(result).toBe(expected)
+	})
+
+	it("should handle multiple en-dashes", () => {
+		const input = "1984\u20131 F.2d 100, 105\u2013107"
+		const expected = "1984-1 F.2d 100, 105-107"
+		const result = normalizeDashes(input)
+
+		expect(result).toBe(expected)
+	})
+
+	it("should handle multiple em-dashes", () => {
+		const input = "500 F.4th \u2014 (2024) and 600 F.3d \u2014 (2025)"
+		const expected = "500 F.4th ___ (2024) and 600 F.3d ___ (2025)"
+		const result = normalizeDashes(input)
+
+		expect(result).toBe(expected)
+	})
+
+	it("should handle mixed en-dash and em-dash", () => {
+		const input = "1984\u20131 F.2d \u2014, 105\u2013107"
+		const expected = "1984-1 F.2d ___, 105-107"
+		const result = normalizeDashes(input)
+
+		expect(result).toBe(expected)
+	})
+
+	it("should leave regular hyphens and underscores unchanged", () => {
+		const input = "500 F.3d ___ or 600 F.2d 100-200"
+		const expected = "500 F.3d ___ or 600 F.2d 100-200"
+		const result = normalizeDashes(input)
+
+		expect(result).toBe(expected)
+	})
+
+	it("should track positions correctly after dash normalization", () => {
+		const input = "Smith v. Doe, 500 F.3d 100, 105\u2013107 (2020)"
+		const result = cleanText(input, [normalizeDashes])
+
+		// En-dash should be replaced with hyphen
+		expect(result.cleaned).toContain("105-107")
+
+		// Position tracking should work
+		const cleanPosOfCitation = result.cleaned.indexOf("500 F.3d")
+		const originalPosOfCitation = input.indexOf("500 F.3d")
+		expect(
+			result.transformationMap.cleanToOriginal.get(cleanPosOfCitation),
+		).toBe(originalPosOfCitation)
 	})
 })

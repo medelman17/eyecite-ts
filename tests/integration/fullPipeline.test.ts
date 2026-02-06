@@ -596,4 +596,58 @@ describe('Full Pipeline Integration Tests', () => {
 			}
 		})
 	})
+
+	describe('Unicode Dash Handling (Issue #54)', () => {
+		it('extracts year from citation with en-dash in pincite range', () => {
+			// En-dash (U+2013) in pincite range should be normalized to hyphen
+			const text = '500 F.3d 100, 105–107 (2020)'
+			const citations = extractCitations(text)
+
+			const citation = citations.find(
+				(c) => c.type === 'case' && c.volume === 500,
+			)
+			expect(citation).toBeDefined()
+			if (citation && citation.type === 'case') {
+				expect(citation.volume).toBe(500)
+				expect(citation.reporter).toBe('F.3d')
+				expect(citation.page).toBe(100)
+				expect(citation.year).toBe(2020)
+			}
+		})
+
+		it('recognizes em-dash as blank page placeholder', () => {
+			// Em-dash (U+2014) should be recognized as blank page indicator
+			const text = '500 F.4th — (2024)'
+			const citations = extractCitations(text)
+
+			const citation = citations.find(
+				(c) => c.type === 'case' && c.volume === 500,
+			)
+			expect(citation).toBeDefined()
+			if (citation && citation.type === 'case') {
+				expect(citation.volume).toBe(500)
+				expect(citation.reporter).toBe('F.4th')
+				expect(citation.page).toBeUndefined()
+				expect(citation.hasBlankPage).toBe(true)
+				expect(citation.year).toBe(2024)
+			}
+		})
+
+		it('handles multiple en-dashes in volume ranges', () => {
+			// Test with hyphenated volume (though this uses en-dash)
+			const text = '1984–1 F.2d 100 (2020)'
+			const citations = extractCitations(text)
+
+			const citation = citations.find(
+				(c) => c.type === 'case' && c.volume === '1984-1',
+			)
+			expect(citation).toBeDefined()
+			if (citation && citation.type === 'case') {
+				expect(citation.volume).toBe('1984-1')
+				expect(citation.reporter).toBe('F.2d')
+				expect(citation.page).toBe(100)
+				expect(citation.year).toBe(2020)
+			}
+		})
+	})
 })

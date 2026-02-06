@@ -61,3 +61,21 @@ export function fixSmartQuotes(text: string): string {
 export function removeOcrArtifacts(text: string): string {
 	return text.replace(/_/g, "")
 }
+
+/**
+ * Normalize Unicode dashes to ASCII equivalents.
+ * - En-dash (U+2013, –) → hyphen (-)
+ * - Em-dash (U+2014, —) → triple underscore (___) for blank page detection
+ *
+ * @example
+ * normalizeDashes("500 F.3d 100, 105–107 (2020)")
+ * // => "500 F.3d 100, 105-107 (2020)"
+ *
+ * normalizeDashes("500 F.4th — (2024)")
+ * // => "500 F.4th ___ (2024)"
+ */
+export function normalizeDashes(text: string): string {
+	return text
+		.replace(/\u2013/g, "-") // en-dash → hyphen
+		.replace(/\u2014/g, "___") // em-dash → triple underscore
+}
