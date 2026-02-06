@@ -54,8 +54,8 @@ export function extractStatute(
 	const { text, span } = token
 
 	// Parse title-code-section using regex
-	// Pattern: optional title (digits) + code (letters/periods/spaces) + § + section
-	const statuteRegex = /^(?:(\d+)\s+)?([A-Za-z.\s]+?)\s*§\s*(\d+[A-Za-z0-9-]*)/
+	// Pattern: optional title (digits) + code (letters/periods/spaces) + §+ (one or more) + section
+	const statuteRegex = /^(?:(\d+)\s+)?([A-Za-z.\s]+?)\s*§+\s*(\d+[A-Za-z0-9-]*)/
 	const match = statuteRegex.exec(text)
 
 	if (!match) {

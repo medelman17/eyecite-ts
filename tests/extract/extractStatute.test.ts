@@ -89,6 +89,23 @@ describe('extractStatute', () => {
 
 			expect(citation.section).toBe('1983-1')
 		})
+
+		it('should handle double section symbol (§§)', () => {
+			const token: Token = {
+				text: '42 U.S.C. §§ 1983',
+				span: { cleanStart: 0, cleanEnd: 17 },
+				type: 'statute',
+				patternId: 'usc',
+			}
+			const transformationMap = createIdentityMap()
+
+			const citation = extractStatute(token, transformationMap)
+
+			expect(citation.title).toBe(42)
+			expect(citation.code).toBe('U.S.C.')
+			expect(citation.section).toBe('1983')
+			expect(citation.text).toBe('42 U.S.C. §§ 1983')
+		})
 	})
 
 	describe('different statutory codes', () => {
@@ -212,6 +229,17 @@ describe('extractStatute', () => {
 			expect(citations).toHaveLength(1)
 			if (citations[0].type === 'statute') {
 				expect(citations[0].section).toBe('2339B')
+			}
+		})
+
+		it('should extract citation with double section symbol (§§)', () => {
+			const citations = extractCitations('42 U.S.C. §§ 1983')
+			expect(citations).toHaveLength(1)
+			expect(citations[0].type).toBe('statute')
+			if (citations[0].type === 'statute') {
+				expect(citations[0].title).toBe(42)
+				expect(citations[0].code).toBe('U.S.C.')
+				expect(citations[0].section).toBe('1983')
 			}
 		})
 	})
