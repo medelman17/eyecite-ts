@@ -1,5 +1,33 @@
 # Project Milestones: eyecite-ts
 
+## v1.1 Extraction Accuracy (Shipped: 2026-02-06)
+
+**Delivered:** Enhanced extraction accuracy with full citation spans, party names, parallel citation linking, blank page support, complex parenthetical parsing, and golden test corpus.
+
+**Phases completed:** 5-8 (9 plans total)
+
+**Key accomplishments:**
+- Full citation span extraction covering case name through closing parenthetical (fullSpan field)
+- Case name backward search with "v." pattern and procedural prefix handling (In re, Ex parte, Matter of)
+- Plaintiff/defendant extraction with 7-step normalization pipeline for improved supra resolution
+- Parallel citation detection linking comma-separated reporters sharing a parenthetical (groupId + parallelCitations)
+- Complex parenthetical parsing with structured dates (abbreviated, full month, numeric), court, and disposition
+- Blank page placeholder recognition (___/---) with hasBlankPage flag and confidence scoring
+- Golden test corpus with 28 real-world samples and 34 regression tests
+
+**Stats:**
+- 61 TypeScript files
+- 12,654 lines of TypeScript (4,980 source + 7,674 test)
+- 4 phases, 9 plans
+- 1 day (2026-02-05 -> 2026-02-06)
+- 528 tests passing, core bundle 6.35KB gzipped
+
+**Git range:** Phase 5 start -> `795be97` (phase 8 complete)
+
+**What's next:** v1.2 statute pipeline, custom reporter API, NPM stable release
+
+---
+
 ## v1.0-alpha (Shipped: 2026-02-05)
 
 **Delivered:** TypeScript legal citation extraction library with full feature parity to Python eyecite, zero dependencies, and <50KB browser bundle.

@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A TypeScript legal citation extraction, annotation, and resolution library — a port of Python [eyecite](https://github.com/freelawproject/eyecite). Runs in both Node.js and browsers with zero runtime dependencies and a 4.2KB gzipped core bundle.
+A TypeScript legal citation extraction, annotation, and resolution library — a port of Python [eyecite](https://github.com/freelawproject/eyecite). Runs in both Node.js and browsers with zero runtime dependencies and a 6.35KB gzipped core bundle. Extracts full citation spans with case names, party names, parallel groups, and structured dates.
 
 ## Core Value
 
@@ -10,11 +10,12 @@ Developers can extract, resolve, and annotate legal citations from text without 
 
 ## Current State
 
-**Version:** v1.0-alpha (shipped 2026-02-05)
-**Codebase:** 3,684 LOC source, 3,949 LOC tests, 51 TypeScript files
+**Version:** v1.1 Extraction Accuracy (shipped 2026-02-06)
+**Codebase:** 4,980 LOC source, 7,674 LOC tests, 61 TypeScript files
 **Tech stack:** TypeScript strict mode, tsdown (dual ESM/CJS), Vitest, Biome
-**Tests:** 235 passing, 473ms runtime
-**Bundle:** 4.2KB core (gzipped), 88.5KB reporters (lazy-loaded)
+**Tests:** 528 passing, 599ms runtime
+**Bundle:** 6.35KB core (gzipped), 88.5KB reporters (lazy-loaded)
+**Golden corpus:** 28 real-world samples for regression testing
 
 ## Requirements
 
@@ -53,14 +54,21 @@ Developers can extract, resolve, and annotate legal citations from text without 
 - Full TypeScript types, zero runtime dependencies
 - 4.2KB gzipped bundle (<50KB target), <49ms for 10KB documents (<100ms target)
 
+**Extraction Accuracy** — v1.1
+- Full citation span from case name through parenthetical (fullSpan field)
+- Case name extraction via backward search for "v." and procedural prefixes
+- Plaintiff/defendant party name extraction with normalization pipeline
+- Parallel citation linking into groups (groupId + parallelCitations)
+- Blank page placeholder recognition with hasBlankPage flag
+- Complex parenthetical parsing with structured dates (abbreviated, full month, numeric)
+- Disposition extraction (en banc, per curiam)
+- Full-span annotation mode (useFullSpan option)
+- Golden test corpus with 28 real-world samples
+- Party name supra resolution enhancement (defendant-first, Bluebook convention)
+
 ### Active
 
-**Extraction Accuracy** — v1.1
-- Link parallel citations into groups (#8)
-- Full citation span from case name through parenthetical (#9)
-- Expose plaintiff/defendant as citation fields (#12)
-- Support partial citations with blank page numbers (#6)
-- Complex parenthetical parsing with dates (#5)
+(No active requirements — next milestone not yet defined)
 
 ### Out of Scope
 
@@ -101,14 +109,19 @@ Developers can extract, resolve, and annotate legal citations from text without 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | TypeScript strict mode | Prevents common errors in complex parsing logic | ✓ Good — zero type errors, strict catches bugs early |
-| Zero runtime deps | Simplifies bundling, avoids supply chain risk | ✓ Good — 4.2KB core bundle |
+| Zero runtime deps | Simplifies bundling, avoids supply chain risk | ✓ Good — 6.35KB core bundle |
 | reporters-db as data source | Same data as Python eyecite, maintained by FLP | ✓ Good — 1,235 reporters indexed |
 | ES2020 target | Enables modern regex features (lookbehind, named groups) | ✓ Good — used in Id./supra patterns |
-| Dual position tracking (Span) | Preserves original text positions through cleaning pipeline | ✓ Good — enables accurate annotation |
+| Dual position tracking (Span) | Preserves original text positions through cleaning pipeline | ✓ Good — enables accurate annotation and fullSpan |
 | Broad tokenization + strict extraction | Separation of concerns: find candidates fast, validate later | ✓ Good — simple patterns, no ReDoS |
-| Lazy-loaded reporter data | Keeps core bundle small, data loads on demand | ✓ Good — 4.2KB core vs 88.5KB data |
+| Lazy-loaded reporter data | Keeps core bundle small, data loads on demand | ✓ Good — 6.35KB core vs 88.5KB data |
 | Levenshtein fuzzy matching (0.8 threshold) | Handles party name spelling variations in supra | ✓ Good — robust matching without false positives |
 | Auto-escape annotation by default | XSS prevention out of the box | ✓ Good — secure defaults |
+| All v1.1 fields optional | Incremental feature rollout with 100% backward compat | ✓ Good — zero breaking changes |
+| Unified parenthetical parser | Single parser for all parenthetical formats | ✓ Good — replaced fragmented extraction |
+| Defendant-first supra resolution | Bluebook convention prefers defendant name | ✓ Good — higher accuracy on standard citations |
+| Comma-only parallel separator | Bluebook standard; semicolons separate distinct citations | ✓ Good — no false positives |
+| Key field matching in golden corpus | Full snapshots break on new features | ✓ Good — flexible regression testing |
 
 ---
-*Last updated: 2026-02-05 after v1.1 milestone start*
+*Last updated: 2026-02-06 after v1.1 milestone completion*
