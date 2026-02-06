@@ -211,10 +211,27 @@ export function extractCitations(
 	// Map of primary token index -> array of secondary token indices
 	const parallelGroups = detectParallelCitations(deduplicatedTokens, cleaned)
 
-	// Step 4: Extract citations from deduplicated tokens
+	// Step 3.6: Filter out excluded international reporters (eyecite-ts targets US legal citations)
+	const excludedInternationalReporters = new Set([
+		'I.C.J.',  // International Court of Justice
+		'U.N.T.S.',  // United Nations Treaty Series
+	])
+	const filteredTokens = deduplicatedTokens.filter(token => {
+		if (token.type === 'case' && token.patternId === 'state-reporter') {
+			// Extract reporter abbreviation from token text to check exclusion list
+			const match = /^\d+(?:-\d+)?\s+([A-Za-z0-9.\s]+)\s+\d+/.exec(token.text)
+			if (match) {
+				const reporter = match[1].trim()
+				return !excludedInternationalReporters.has(reporter)
+			}
+		}
+		return true
+	})
+
+	// Step 4: Extract citations from filtered tokens
 	const citations: Citation[] = []
-	for (let i = 0; i < deduplicatedTokens.length; i++) {
-		const token = deduplicatedTokens[i]
+	for (let i = 0; i < filteredTokens.length; i++) {
+		const token = filteredTokens[i]
 		let citation: Citation
 
 		switch (token.type) {
