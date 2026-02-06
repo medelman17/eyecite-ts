@@ -15,6 +15,12 @@ import type { Pattern } from './casePatterns'
 
 export const neutralPatterns: Pattern[] = [
   {
+    id: 'state-vendor-neutral',
+    regex: /\b(\d{4})\s+([A-Z]{2}(?:\s+App\.?)?)\s+(\d+)\b/g,
+    description: 'State vendor-neutral citations (e.g., "2007 UT 49", "2017 WI 17", "2013 IL 112116")',
+    type: 'neutral',
+  },
+  {
     id: 'westlaw',
     regex: /\b(\d{4})\s+WL\s+(\d+)\b/g,
     description: 'WestLaw citations (e.g., "2021 WL 123456")',
@@ -22,8 +28,8 @@ export const neutralPatterns: Pattern[] = [
   },
   {
     id: 'lexis',
-    regex: /\b(\d{4})\s+U\.S\.\s+LEXIS\s+(\d+)\b/g,
-    description: 'LexisNexis citations (e.g., "2021 U.S. LEXIS 5000")',
+    regex: /\b(\d{4})\s+U\.S\.(?:\s+(?:App|Dist)\.)?\s+LEXIS\s+(\d+)\b/g,
+    description: 'LexisNexis citations (e.g., "2021 U.S. LEXIS 5000", "2021 U.S. App. LEXIS 12345", "2021 U.S. Dist. LEXIS 67890")',
     type: 'neutral',
   },
   {

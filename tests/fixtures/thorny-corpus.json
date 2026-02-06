@@ -204,7 +204,6 @@
       "id": "neutral-state-utah",
       "category": "vendor-neutral-state",
       "description": "Utah vendor-neutral citation",
-      "knownLimitation": "State vendor-neutral classified as case (#50)",
       "text": "State v. Tiedemann, 2007 UT 49",
       "expected": [
         {
@@ -217,7 +216,6 @@
       "id": "neutral-state-wisconsin",
       "category": "vendor-neutral-state",
       "description": "Wisconsin vendor-neutral citation",
-      "knownLimitation": "State vendor-neutral classified as case (#50)",
       "text": "State v. Denny, 2017 WI 17",
       "expected": [
         {
@@ -230,7 +228,6 @@
       "id": "neutral-state-illinois",
       "category": "vendor-neutral-state",
       "description": "Illinois vendor-neutral citation",
-      "knownLimitation": "State vendor-neutral classified as case (#50)",
       "text": "People v. Aguilar, 2013 IL 112116",
       "expected": [
         {
@@ -243,7 +240,6 @@
       "id": "neutral-state-colorado",
       "category": "vendor-neutral-state",
       "description": "Colorado vendor-neutral citation",
-      "knownLimitation": "State vendor-neutral classified as case (#50)",
       "text": "People v. Erickson, 2020 CO 48",
       "expected": [
         {
@@ -256,7 +252,6 @@
       "id": "neutral-state-oklahoma",
       "category": "vendor-neutral-state",
       "description": "Oklahoma vendor-neutral citation",
-      "knownLimitation": "State vendor-neutral classified as case (#50)",
       "text": "Okla. Dep't of Sec. ex rel. Faught v. Blair, 2010 OK 16",
       "expected": [
         {
@@ -269,7 +264,6 @@
       "id": "neutral-lexis-usapp",
       "category": "vendor-neutral-state",
       "description": "U.S. App. LEXIS citation",
-      "knownLimitation": "U.S. App./Dist. LEXIS not matched as neutral (#51)",
       "text": "2021 U.S. App. LEXIS 12345",
       "expected": [
         {
@@ -282,7 +276,6 @@
       "id": "neutral-lexis-usdist",
       "category": "vendor-neutral-state",
       "description": "U.S. Dist. LEXIS citation",
-      "knownLimitation": "U.S. App./Dist. LEXIS not matched as neutral (#51)",
       "text": "2022 U.S. Dist. LEXIS 67890",
       "expected": [
         {
