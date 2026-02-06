@@ -57,6 +57,20 @@ export interface AnnotationOptions<C extends Citation = Citation> {
   autoEscape?: boolean
 
   /**
+   * Use full citation span from case name through parenthetical (true) or core citation only (false).
+   *
+   * When enabled and citation has a fullSpan field (from Phase 6+), annotation will span:
+   * - Case name: "Smith v. Jones"
+   * - Reporter: "500 F.2d 123"
+   * - Parenthetical: "(9th Cir. 1974)"
+   *
+   * When disabled or fullSpan unavailable, falls back to core citation span (volume-reporter-page).
+   *
+   * @default false (backward compatible)
+   */
+  useFullSpan?: boolean
+
+  /**
    * Callback for custom annotation logic.
    *
    * Receives each citation and surrounding context (±30 characters),

@@ -525,4 +525,142 @@ describe('annotate', () => {
       expect(result.text).toBe('The case is <cite>500 F.2d 123</cite>')
     })
   })
+
+  describe('useFullSpan mode', () => {
+    it('uses fullSpan when available and useFullSpan enabled', () => {
+      const text = 'See Smith v. Jones, 500 F.2d 123 (9th Cir. 1974)'
+
+      // Citation with fullSpan that includes case name and parenthetical
+      const citation: Citation = {
+        type: 'case',
+        text: '500 F.2d 123',
+        span: {
+          cleanStart: 20,  // Core citation: "500 F.2d 123"
+          cleanEnd: 32,
+          originalStart: 20,
+          originalEnd: 32,
+        },
+        matchedText: '500 F.2d 123',
+        confidence: 0.9,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 500,
+        reporter: 'F.2d',
+        page: 123,
+        fullSpan: {
+          cleanStart: 4,  // Full span: "Smith v. Jones, 500 F.2d 123 (9th Cir. 1974)"
+          cleanEnd: 48,
+          originalStart: 4,
+          originalEnd: 48,
+        },
+      }
+
+      const result = annotate(text, [citation], {
+        template: { before: '<cite>', after: '</cite>' },
+        useFullSpan: true,
+      })
+
+      // Should annotate full span from case name through parenthetical
+      expect(result.text).toBe('See <cite>Smith v. Jones, 500 F.2d 123 (9th Cir. 1974)</cite>')
+      expect(result.skipped).toHaveLength(0)
+    })
+
+    it('falls back to core span when fullSpan missing', () => {
+      const text = 'See 500 F.2d 123'
+
+      // Citation without fullSpan field
+      const citation = createCaseCitation(4, 16, '500 F.2d 123')
+
+      const result = annotate(text, [citation], {
+        template: { before: '<cite>', after: '</cite>' },
+        useFullSpan: true,  // Enabled but citation lacks fullSpan
+      })
+
+      // Should fall back to core span
+      expect(result.text).toBe('See <cite>500 F.2d 123</cite>')
+      expect(result.skipped).toHaveLength(0)
+    })
+
+    it('uses core span when useFullSpan disabled (default)', () => {
+      const text = 'See Smith v. Jones, 500 F.2d 123 (9th Cir. 1974)'
+
+      // Citation with fullSpan but useFullSpan=false
+      const citation: Citation = {
+        type: 'case',
+        text: '500 F.2d 123',
+        span: {
+          cleanStart: 20,
+          cleanEnd: 32,
+          originalStart: 20,
+          originalEnd: 32,
+        },
+        matchedText: '500 F.2d 123',
+        confidence: 0.9,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 500,
+        reporter: 'F.2d',
+        page: 123,
+        fullSpan: {
+          cleanStart: 4,
+          cleanEnd: 48,
+          originalStart: 4,
+          originalEnd: 48,
+        },
+      }
+
+      const result = annotate(text, [citation], {
+        template: { before: '<cite>', after: '</cite>' },
+        // useFullSpan defaults to false
+      })
+
+      // Should use core span (backward compatible)
+      expect(result.text).toBe('See Smith v. Jones, <cite>500 F.2d 123</cite> (9th Cir. 1974)')
+      expect(result.skipped).toHaveLength(0)
+    })
+
+    it('works with callback mode and useFullSpan', () => {
+      const text = 'See Smith v. Jones, 500 F.2d 123 (9th Cir. 1974)'
+
+      const citation: Citation = {
+        type: 'case',
+        text: '500 F.2d 123',
+        span: {
+          cleanStart: 20,
+          cleanEnd: 32,
+          originalStart: 20,
+          originalEnd: 32,
+        },
+        matchedText: '500 F.2d 123',
+        confidence: 0.9,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 500,
+        reporter: 'F.2d',
+        page: 123,
+        fullSpan: {
+          cleanStart: 4,
+          cleanEnd: 48,
+          originalStart: 4,
+          originalEnd: 48,
+        },
+      }
+
+      const result = annotate(text, [citation], {
+        callback: (c) => {
+          if (c.type === 'case') {
+            return `<a href="/cases/${c.volume}-${c.page}">${c.matchedText}</a>`
+          }
+          return c.matchedText
+        },
+        useFullSpan: true,
+      })
+
+      // Callback receives citation but annotation spans fullSpan
+      // Note: callback gets citation.matchedText which is "500 F.2d 123"
+      // but the REPLACEMENT happens at fullSpan positions
+      expect(result.text).toBe('See <a href="/cases/500-123">500 F.2d 123</a>')
+      expect(result.skipped).toHaveLength(0)
+    })
+  })
 })

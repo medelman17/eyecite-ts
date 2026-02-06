@@ -1,0 +1,480 @@
+{
+  "description": "Golden test corpus for extraction accuracy regression testing. Real-world legal text samples covering major citation types and v1.1 features.",
+  "samples": [
+    {
+      "id": "parallel-3-reporter-supreme-court",
+      "description": "Classic Supreme Court 3-reporter parallel citation (Roe v. Wade)",
+      "text": "410 U.S. 113, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 410,
+          "reporter": "U.S.",
+          "page": 113,
+          "court": "scotus",
+          "groupId": "410-U.S.-113"
+        },
+        {
+          "type": "case",
+          "volume": 93,
+          "reporter": "S. Ct.",
+          "page": 705,
+          "groupId": "410-U.S.-113"
+        },
+        {
+          "type": "case",
+          "volume": 35,
+          "reporter": "L. Ed. 2d",
+          "page": 147,
+          "groupId": "410-U.S.-113"
+        }
+      ]
+    },
+    {
+      "id": "parallel-2-reporter-federal",
+      "description": "Federal circuit 2-reporter parallel citation",
+      "text": "500 F.2d 100, 200 F. Supp. 50 (9th Cir. 1970)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.2d",
+          "page": 100,
+          "groupId": "500-F.2d-100"
+        },
+        {
+          "type": "case",
+          "volume": 200,
+          "reporter": "F. Supp.",
+          "page": 50,
+          "groupId": "500-F.2d-100"
+        }
+      ]
+    },
+    {
+      "id": "parallel-state-citation",
+      "description": "State parallel citation",
+      "text": "100 Cal.App. 2d 200, 300 P.2d 400 (2020)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 100,
+          "reporter": "Cal.App. 2d",
+          "page": 200,
+          "groupId": "100-Cal.App..2d-200"
+        },
+        {
+          "type": "case",
+          "volume": 300,
+          "reporter": "P.2d",
+          "page": 400,
+          "groupId": "100-Cal.App..2d-200"
+        }
+      ]
+    },
+    {
+      "id": "parallel-short-format",
+      "description": "Short 2-reporter parallel",
+      "text": "50 F.3d 100, 25 F. Supp. 2d 50 (2000)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 50,
+          "reporter": "F.3d",
+          "page": 100,
+          "groupId": "50-F.3d-100"
+        },
+        {
+          "type": "case",
+          "volume": 25,
+          "reporter": "F. Supp. 2d",
+          "page": 50,
+          "groupId": "50-F.3d-100"
+        }
+      ]
+    },
+    {
+      "id": "case-adversarial-standard",
+      "description": "Standard adversarial case name (Smith v. Jones)",
+      "text": "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.2d",
+          "page": 123,
+          "caseName": "Smith v. Jones",
+          "plaintiff": "Smith",
+          "defendant": "Jones",
+          "court": "9th Cir.",
+          "year": 2020
+        }
+      ]
+    },
+    {
+      "id": "case-government-plaintiff",
+      "description": "Government as plaintiff",
+      "text": "United States v. Johnson, 600 F.3d 200 (2d Cir. 2015)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 600,
+          "reporter": "F.3d",
+          "page": 200,
+          "caseName": "United States v. Johnson",
+          "plaintiff": "United States",
+          "defendant": "Johnson",
+          "court": "2d Cir.",
+          "year": 2015
+        }
+      ]
+    },
+    {
+      "id": "case-procedural-in-re",
+      "description": "Procedural prefix: In re",
+      "text": "In re Estate of Thompson, 300 Cal.App.2d 400 (2018)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 300,
+          "reporter": "Cal.App.2d",
+          "page": 400,
+          "caseName": "In re Estate of Thompson",
+          "plaintiff": "In re Estate of Thompson",
+          "year": 2018,
+          "proceduralPrefix": "In re"
+        }
+      ]
+    },
+    {
+      "id": "case-procedural-ex-parte",
+      "description": "Procedural prefix: Ex parte",
+      "text": "Ex parte Williams, 250 S.W.3d 100 (Tex. 2019)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 250,
+          "reporter": "S.W.3d",
+          "page": 100,
+          "caseName": "Ex parte Williams",
+          "plaintiff": "Ex parte Williams",
+          "proceduralPrefix": "Ex parte",
+          "year": 2019
+        }
+      ]
+    },
+    {
+      "id": "case-corporate-suffix",
+      "description": "Corporate suffix in party name",
+      "text": "Acme Corp. v. Beta Inc., 700 F. Supp. 2d 300 (S.D.N.Y. 2021)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 700,
+          "reporter": "F. Supp. 2d",
+          "page": 300,
+          "caseName": "Acme Corp. v. Beta Inc.",
+          "plaintiff": "Acme Corp.",
+          "defendant": "Beta Inc.",
+          "court": "S.D.N.Y.",
+          "year": 2021
+        }
+      ]
+    },
+    {
+      "id": "parenthetical-court-year",
+      "description": "Court + year parenthetical",
+      "text": "Brown v. Board of Education, 347 U.S. 483 (1954)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 347,
+          "reporter": "U.S.",
+          "page": 483,
+          "caseName": "Brown v. Board of Education",
+          "plaintiff": "Brown",
+          "defendant": "Board of Education",
+          "year": 1954
+        }
+      ]
+    },
+    {
+      "id": "parenthetical-court-full-date",
+      "description": "Court + full date",
+      "text": "Williams v. State, 100 S.W.2d 50 (Tex. Crim. App. Apr. 15, 2020)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 100,
+          "reporter": "S.W.2d",
+          "page": 50,
+          "caseName": "Williams v. State",
+          "plaintiff": "Williams",
+          "defendant": "State",
+          "court": "Tex. Crim. App.",
+          "year": 2020
+        }
+      ]
+    },
+    {
+      "id": "parenthetical-year-only",
+      "description": "Year-only parenthetical",
+      "text": "Garcia v. Johnson, 200 F.3d 300 (2019)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 200,
+          "reporter": "F.3d",
+          "page": 300,
+          "year": 2019
+        }
+      ]
+    },
+    {
+      "id": "parenthetical-disposition-en-banc",
+      "description": "En banc disposition",
+      "text": "United States v. Lopez, 150 F.3d 400 (5th Cir. 2017) (en banc)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 150,
+          "reporter": "F.3d",
+          "page": 400,
+          "court": "5th Cir.",
+          "year": 2017,
+          "disposition": "en banc"
+        }
+      ]
+    },
+    {
+      "id": "parenthetical-disposition-per-curiam",
+      "description": "Per curiam disposition",
+      "text": "Anderson v. State, 75 P.3d 200 (Nev. 2016) (per curiam)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 75,
+          "reporter": "P.3d",
+          "page": 200,
+          "year": 2016,
+          "disposition": "per curiam"
+        }
+      ]
+    },
+    {
+      "id": "blank-page-underscore",
+      "description": "Blank page placeholder: underscore",
+      "text": "Martinez v. Rodriguez, 500 F.2d ___ (9th Cir. 2023)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.2d",
+          "hasBlankPage": true,
+          "court": "9th Cir.",
+          "year": 2023
+        }
+      ]
+    },
+    {
+      "id": "blank-page-dash",
+      "description": "Blank page placeholder: dash",
+      "text": "Peterson v. Lee, 300 F. Supp. 3d --- (N.D. Cal. 2024)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 300,
+          "reporter": "F. Supp. 3d",
+          "hasBlankPage": true,
+          "court": "N.D. Cal.",
+          "year": 2024
+        }
+      ]
+    },
+    {
+      "id": "statute-usc",
+      "description": "U.S. Code citation",
+      "text": "42 U.S.C. § 1983",
+      "expected": [
+        {
+          "type": "statute",
+          "code": "U.S.C.",
+          "title": 42,
+          "section": "1983"
+        }
+      ]
+    },
+    {
+      "id": "statute-usc-subsection",
+      "description": "U.S. Code with subsection",
+      "text": "28 U.S.C. § 1331(a)",
+      "expected": [
+        {
+          "type": "statute",
+          "code": "U.S.C.",
+          "title": 28,
+          "section": "1331"
+        }
+      ]
+    },
+    {
+      "id": "neutral-westlaw",
+      "description": "Westlaw neutral citation",
+      "text": "2020 WL 123456",
+      "expected": [
+        {
+          "type": "neutral",
+          "year": 2020,
+          "court": "WL",
+          "documentNumber": "123456",
+          "confidence": 1.0
+        }
+      ]
+    },
+    {
+      "id": "journal-harvard",
+      "description": "Law journal citation",
+      "text": "100 Harv. L. Rev. 1234 (1987)",
+      "expected": [
+        {
+          "type": "journal",
+          "volume": 100,
+          "journal": "Harv. L. Rev.",
+          "page": 1234
+        }
+      ]
+    },
+    {
+      "id": "short-id-basic",
+      "description": "Id. citation",
+      "text": "Smith v. Jones, 500 F.2d 100 (1974). Id.",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.2d",
+          "page": 100
+        },
+        {
+          "type": "id"
+        }
+      ]
+    },
+    {
+      "id": "short-id-at-page",
+      "description": "Id. with pincite",
+      "text": "Brown v. Board, 347 U.S. 483 (1954). Id. at 495.",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 347,
+          "reporter": "U.S.",
+          "page": 483
+        },
+        {
+          "type": "id",
+          "pincite": 495
+        }
+      ]
+    },
+    {
+      "id": "short-supra",
+      "description": "Supra citation",
+      "text": "Roe v. Wade, 410 U.S. 113 (1973). Wade, supra.",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 410,
+          "reporter": "U.S.",
+          "page": 113
+        },
+        {
+          "type": "supra",
+          "partyName": "Wade"
+        }
+      ]
+    },
+    {
+      "id": "short-case-form",
+      "description": "Short-form case citation",
+      "text": "Griswold v. Connecticut, 381 U.S. 479 (1965). Griswold, 381 U.S. at 485.",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 381,
+          "reporter": "U.S.",
+          "page": 479
+        },
+        {
+          "type": "shortFormCase",
+          "volume": 381,
+          "reporter": "U.S.",
+          "pincite": 485
+        }
+      ]
+    },
+    {
+      "id": "edge-multiple-in-sentence",
+      "description": "Multiple citations in single sentence",
+      "text": "See 42 U.S.C. § 1983; Smith v. Doe, 500 F.2d 123; 100 Harv. L. Rev. 456",
+      "expected": [
+        {
+          "type": "statute",
+          "code": "U.S.C.",
+          "title": 42,
+          "section": "1983"
+        },
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.2d",
+          "page": 123
+        },
+        {
+          "type": "journal",
+          "volume": 100,
+          "journal": "Harv. L. Rev.",
+          "page": 456
+        }
+      ]
+    },
+    {
+      "id": "edge-pincite",
+      "description": "Case citation with pincite",
+      "text": "Roe v. Wade, 410 U.S. 113, 115 (1973)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 410,
+          "reporter": "U.S.",
+          "page": 113,
+          "pincite": 115,
+          "year": 1973
+        }
+      ]
+    },
+    {
+      "id": "edge-signal-word",
+      "description": "Citation with signal word",
+      "text": "See Smith v. Jones, 500 F.2d 123 (2020)",
+      "expected": [
+        {
+          "type": "case",
+          "volume": 500,
+          "reporter": "F.2d",
+          "page": 123,
+          "year": 2020
+        }
+      ]
+    },
+    {
+      "id": "performance-10kb-document",
+      "description": "Performance benchmark: 10KB document should extract in <100ms",
+      "text": "The Supreme Court in Roe v. Wade, 410 U.S. 113, 115 (1973), established a constitutional right to privacy. See also Planned Parenthood v. Casey, 505 U.S. 833 (1992). This builds on earlier precedent from Griswold v. Connecticut, 381 U.S. 479 (1965), which found privacy rights in the penumbras of the Bill of Rights. For scholarly analysis, see Jane Doe, Privacy and the Constitution, 100 Harv. L. Rev. 1234, 1240 (1987). The decision has been controversial since its inception. Many lower courts have interpreted Wade broadly. For example, in United States v. Johnson, 600 F.3d 200 (2d Cir. 2015), the court held that the privacy right extends to certain medical decisions. Similarly, Garcia v. Johnson, 200 F.3d 300 (2019), extended the holding to include access to contraceptives. The 9th Circuit addressed this issue in Smith v. Jones, 500 F.2d 123 (9th Cir. 2020), holding that states cannot impose undue burdens. See also Williams v. State, 100 S.W.2d 50 (Tex. Crim. App. Apr. 15, 2020). These cases collectively establish a framework for analyzing reproductive rights under the Constitution. For the statutory framework, see 42 U.S.C. § 1983, which provides a federal cause of action. The intersection of constitutional and statutory law creates a complex web of precedent. Recent decisions like Martinez v. Rodriguez, 500 F.2d ___ (9th Cir. 2023), demonstrate ongoing evolution. For neutral citation examples, see 2020 WL 123456. The body of case law continues to grow, with parallel citations like 410 U.S. 113, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973) providing multiple access points. State courts have also weighed in, as seen in People v. Thompson, 300 Cal. App. 4th 400 (2018). The landscape is further complicated by procedural postures, such as Ex parte Williams, 250 S.W.3d 100 (Tex. 2019). Corporate litigation adds another dimension, exemplified by Acme Corp. v. Beta Inc., 700 F. Supp. 2d 300 (S.D.N.Y. 2021). En banc decisions carry particular weight, as in United States v. Lopez, 150 F.3d 400 (5th Cir. 2017) (en banc). Per curiam opinions, like Anderson v. State, 75 P.3d 200 (Nev. 2016) (per curiam), also contribute to the doctrine. Looking forward, Peterson v. Lee, 300 F. Supp. 3d --- (N.D. Cal. 2024), will likely address emerging issues. The interplay between federal and state law, as analyzed in 28 U.S.C. § 1331(a), remains central to understanding jurisdictional questions. Academic commentary continues to shape the discourse, with articles in 50 Yale L.J. 789 (2020) offering critical perspectives. Short-form citations appear frequently: Id. at 495. Wade, supra. Griswold, 381 U.S. at 485. Multiple citations in a single clause are common: See 42 U.S.C. § 1983; Smith v. Doe, 500 F.2d 123; 100 Harv. L. Rev. 456. Pincites provide precision: Roe v. Wade, 410 U.S. 113, 115 (1973). Signal words introduce authority: See Brown v. Board of Education, 347 U.S. 483 (1954). The body of law is vast and ever-expanding, requiring careful navigation of precedent, statute, and commentary.",
+      "performanceBenchmark": {
+        "maxDurationMs": 100,
+        "minCitations": 10
+      }
+    }
+  ]
+}

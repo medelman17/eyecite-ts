@@ -475,4 +475,125 @@ describe('Full Pipeline Integration Tests', () => {
 			}
 		})
 	})
+
+	describe('Parallel Citation Detection (Phase 8)', () => {
+		it('links parallel citations with groupId and parallelCitations array', () => {
+			const text = 'See 410 U.S. 113, 93 S. Ct. 705 (1973).'
+			const citations = extractCitations(text)
+
+			expect(citations).toHaveLength(2)
+
+			// Find the citations by volume
+			const primary = citations.find(c => c.type === 'case' && c.volume === 410)
+			const secondary = citations.find(c => c.type === 'case' && c.volume === 93)
+
+			expect(primary).toBeDefined()
+			expect(secondary).toBeDefined()
+
+			if (primary && primary.type === 'case' && secondary && secondary.type === 'case') {
+				// Both should have the same groupId
+				expect(primary.groupId).toBeDefined()
+				expect(secondary.groupId).toBeDefined()
+				expect(primary.groupId).toBe(secondary.groupId)
+
+				// Only primary gets parallelCitations array
+				expect(primary.parallelCitations).toBeDefined()
+				expect(primary.parallelCitations).toHaveLength(1)
+				expect(primary.parallelCitations?.[0]).toMatchObject({
+					volume: 93,
+					reporter: 'S. Ct.',
+					page: 705
+				})
+
+				// Secondary should NOT have parallelCitations array
+				expect(secondary.parallelCitations).toBeUndefined()
+			}
+		})
+
+		it('detects 3-reporter parallel citations', () => {
+			const text = '410 U.S. 113, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973)'
+			const citations = extractCitations(text)
+
+			expect(citations).toHaveLength(3)
+
+			const primary = citations.find(c => c.type === 'case' && c.volume === 410)
+			expect(primary).toBeDefined()
+
+			if (primary && primary.type === 'case') {
+				expect(primary.groupId).toBeDefined()
+				expect(primary.parallelCitations).toBeDefined()
+				expect(primary.parallelCitations).toHaveLength(2)
+
+				// Verify both secondary citations are in the array
+				expect(primary.parallelCitations?.[0]).toMatchObject({
+					volume: 93,
+					reporter: 'S. Ct.',
+					page: 705
+				})
+				expect(primary.parallelCitations?.[1]).toMatchObject({
+					volume: 35,
+					reporter: 'L. Ed. 2d',
+					page: 147
+				})
+			}
+		})
+
+		it('does not link citations without shared parenthetical', () => {
+			const text = 'See 500 F.2d 100 (1974), and 600 F.2d 200 (1975).'
+			const citations = extractCitations(text)
+
+			expect(citations).toHaveLength(2)
+
+			// Neither should have groupId (different parentheticals = not parallel)
+			const cite1 = citations.find(c => c.type === 'case' && c.volume === 500)
+			const cite2 = citations.find(c => c.type === 'case' && c.volume === 600)
+
+			expect(cite1).toBeDefined()
+			expect(cite2).toBeDefined()
+
+			if (cite1 && cite1.type === 'case' && cite2 && cite2.type === 'case') {
+				expect(cite1.groupId).toBeUndefined()
+				expect(cite2.groupId).toBeUndefined()
+				expect(cite1.parallelCitations).toBeUndefined()
+				expect(cite2.parallelCitations).toBeUndefined()
+			}
+		})
+
+		it('handles multiple parallel groups in same document', () => {
+			const text = '500 F.2d 100, 200 F. Supp. 50 (1970). See also 300 F.3d 200, 100 F. Supp. 2d 75 (2000).'
+			const citations = extractCitations(text)
+
+			expect(citations).toHaveLength(4)
+
+			// First group
+			const group1Primary = citations.find(c => c.type === 'case' && c.volume === 500)
+			const group1Secondary = citations.find(c => c.type === 'case' && c.volume === 200 && c.reporter === 'F. Supp.')
+
+			// Second group
+			const group2Primary = citations.find(c => c.type === 'case' && c.volume === 300)
+			const group2Secondary = citations.find(c => c.type === 'case' && c.volume === 100)
+
+			expect(group1Primary).toBeDefined()
+			expect(group1Secondary).toBeDefined()
+			expect(group2Primary).toBeDefined()
+			expect(group2Secondary).toBeDefined()
+
+			if (group1Primary && group1Primary.type === 'case' &&
+				group1Secondary && group1Secondary.type === 'case' &&
+				group2Primary && group2Primary.type === 'case' &&
+				group2Secondary && group2Secondary.type === 'case') {
+
+				// Group 1 should share groupId
+				expect(group1Primary.groupId).toBeDefined()
+				expect(group1Secondary.groupId).toBeDefined()
+				expect(group1Primary.groupId).toBe(group1Secondary.groupId)
+
+				// Group 2 should share groupId (different from group 1)
+				expect(group2Primary.groupId).toBeDefined()
+				expect(group2Secondary.groupId).toBeDefined()
+				expect(group2Primary.groupId).toBe(group2Secondary.groupId)
+				expect(group2Primary.groupId).not.toBe(group1Primary.groupId)
+			}
+		})
+	})
 })

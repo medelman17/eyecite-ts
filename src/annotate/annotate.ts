@@ -53,6 +53,7 @@ export function annotate<C extends Citation = Citation>(
   const {
     useCleanText = false,
     autoEscape = true,  // Secure by default
+    useFullSpan = false,  // Backward compatible default
     template,
     callback,
   } = options
@@ -69,8 +70,19 @@ export function annotate<C extends Citation = Citation>(
   const skipped: Citation[] = []
 
   for (const citation of sorted) {
-    let start = useCleanText ? citation.span.cleanStart : citation.span.originalStart
-    let end = useCleanText ? citation.span.cleanEnd : citation.span.originalEnd
+    // Determine which span to use
+    let start: number
+    let end: number
+
+    if (useFullSpan && 'fullSpan' in citation && citation.fullSpan) {
+      // Full span mode: case name through parenthetical
+      start = useCleanText ? citation.fullSpan.cleanStart : citation.fullSpan.originalStart
+      end = useCleanText ? citation.fullSpan.cleanEnd : citation.fullSpan.originalEnd
+    } else {
+      // Default mode: core citation only
+      start = useCleanText ? citation.span.cleanStart : citation.span.originalStart
+      end = useCleanText ? citation.span.cleanEnd : citation.span.originalEnd
+    }
 
     // Snap positions out of HTML tags when annotating original text
     if (!useCleanText) {

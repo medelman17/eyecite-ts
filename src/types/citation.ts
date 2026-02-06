@@ -70,6 +70,15 @@ export interface FullCaseCitation extends CitationBase {
   /** Normalized reporter abbreviation from reporters-db (e.g., "F.2d" vs "F. 2d") */
   normalizedReporter?: string
 
+  /**
+   * Group identifier for parallel citations (same case in multiple reporters).
+   * Populated by Phase 8 (Parallel Linking).
+   * Format: ${volume}-${reporter}-${page} (e.g., "410-U.S.-113")
+   * All citations in the same parallel group share the same groupId.
+   * @example "410-U.S.-113" for parallel group [410 U.S. 113, 93 S. Ct. 705]
+   */
+  groupId?: string
+
   /** Parallel citations for same case in different reporters */
   parallelCitations?: Array<{
     volume: number | string
