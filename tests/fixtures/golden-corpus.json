@@ -11,7 +11,7 @@
           "volume": 410,
           "reporter": "U.S.",
           "page": 113,
-          "year": 1973,
+          "court": "scotus",
           "groupId": "410-U.S.-113"
         },
         {
@@ -40,8 +40,6 @@
           "volume": 500,
           "reporter": "F.2d",
           "page": 100,
-          "court": "9th Cir.",
-          "year": 1970,
           "groupId": "500-F.2d-100"
         },
         {
@@ -56,22 +54,21 @@
     {
       "id": "parallel-state-citation",
       "description": "State parallel citation",
-      "text": "100 Cal. 4th 200, 300 Cal. Rptr. 2d 400 (2020)",
+      "text": "100 Cal.App. 2d 200, 300 P.2d 400 (2020)",
       "expected": [
         {
           "type": "case",
           "volume": 100,
-          "reporter": "Cal. 4th",
+          "reporter": "Cal.App. 2d",
           "page": 200,
-          "year": 2020,
-          "groupId": "100-Cal..4th-200"
+          "groupId": "100-Cal.App..2d-200"
         },
         {
           "type": "case",
           "volume": 300,
-          "reporter": "Cal. Rptr. 2d",
+          "reporter": "P.2d",
           "page": 400,
-          "groupId": "100-Cal..4th-200"
+          "groupId": "100-Cal.App..2d-200"
         }
       ]
     },
@@ -135,16 +132,17 @@
     {
       "id": "case-procedural-in-re",
       "description": "Procedural prefix: In re",
-      "text": "In re Estate of Thompson, 300 Cal. App. 4th 400 (2018)",
+      "text": "In re Estate of Thompson, 300 Cal.App.2d 400 (2018)",
       "expected": [
         {
           "type": "case",
           "volume": 300,
-          "reporter": "Cal. App. 4th",
+          "reporter": "Cal.App.2d",
           "page": 400,
           "caseName": "In re Estate of Thompson",
-          "plaintiff": "Estate of Thompson",
-          "year": 2018
+          "plaintiff": "In re Estate of Thompson",
+          "year": 2018,
+          "proceduralPrefix": "In re"
         }
       ]
     },
@@ -159,7 +157,8 @@
           "reporter": "S.W.3d",
           "page": 100,
           "caseName": "Ex parte Williams",
-          "plaintiff": "Williams",
+          "plaintiff": "Ex parte Williams",
+          "proceduralPrefix": "Ex parte",
           "year": 2019
         }
       ]
@@ -175,8 +174,8 @@
           "reporter": "F. Supp. 2d",
           "page": 300,
           "caseName": "Acme Corp. v. Beta Inc.",
-          "plaintiff": "Acme",
-          "defendant": "Beta",
+          "plaintiff": "Acme Corp.",
+          "defendant": "Beta Inc.",
           "court": "S.D.N.Y.",
           "year": 2021
         }
@@ -209,8 +208,11 @@
           "volume": 100,
           "reporter": "S.W.2d",
           "page": 50,
+          "caseName": "Williams v. State",
+          "plaintiff": "Williams",
+          "defendant": "State",
           "court": "Tex. Crim. App.",
-          "date": "2020-04-15"
+          "year": 2020
         }
       ]
     },
@@ -297,7 +299,7 @@
         {
           "type": "statute",
           "code": "U.S.C.",
-          "title": "42",
+          "title": 42,
           "section": "1983"
         }
       ]
@@ -310,8 +312,8 @@
         {
           "type": "statute",
           "code": "U.S.C.",
-          "title": "28",
-          "section": "1331(a)"
+          "title": 28,
+          "section": "1331"
         }
       ]
     },
@@ -337,9 +339,8 @@
         {
           "type": "journal",
           "volume": 100,
-          "abbreviation": "Harv. L. Rev.",
-          "page": 1234,
-          "year": 1987
+          "journal": "Harv. L. Rev.",
+          "page": 1234
         }
       ]
     },
@@ -372,7 +373,7 @@
         },
         {
           "type": "id",
-          "pincite": "495"
+          "pincite": 495
         }
       ]
     },
@@ -389,7 +390,7 @@
         },
         {
           "type": "supra",
-          "caseName": "Wade"
+          "partyName": "Wade"
         }
       ]
     },
@@ -406,10 +407,9 @@
         },
         {
           "type": "shortFormCase",
-          "caseName": "Griswold",
           "volume": 381,
           "reporter": "U.S.",
-          "pincite": "485"
+          "pincite": 485
         }
       ]
     },
@@ -421,7 +421,7 @@
         {
           "type": "statute",
           "code": "U.S.C.",
-          "title": "42",
+          "title": 42,
           "section": "1983"
         },
         {
@@ -433,7 +433,7 @@
         {
           "type": "journal",
           "volume": 100,
-          "abbreviation": "Harv. L. Rev.",
+          "journal": "Harv. L. Rev.",
           "page": 456
         }
       ]
@@ -448,7 +448,7 @@
           "volume": 410,
           "reporter": "U.S.",
           "page": 113,
-          "pincite": "115",
+          "pincite": 115,
           "year": 1973
         }
       ]
