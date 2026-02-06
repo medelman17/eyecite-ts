@@ -38,17 +38,17 @@ const VOLUME_REPORTER_PAGE_REGEX = /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s]+)\s+(\d+|_
 /** Detects blank page placeholders (3+ underscores or dashes) */
 const BLANK_PAGE_REGEX = /^[_-]{3,}$/
 
-/** Extracts pincite (page reference after comma) */
-const PINCITE_REGEX = /,\s*(\d+)/
+/** Extracts pincite (page reference after comma, ignores footnote references like "n.3") */
+const PINCITE_REGEX = /,\s*(\d+)(?:\s+n\.\d+)?/
 
 /** Matches parenthetical content */
 const PAREN_REGEX = /\(([^)]+)\)/
 
-/** Look-ahead pattern for parenthetical after token */
-const LOOKAHEAD_PAREN_REGEX = /^(?:,\s*\d+)*\s*\(([^)]+)\)/
+/** Look-ahead pattern for parenthetical after token (handles pincites and footnote references like "n.3") */
+const LOOKAHEAD_PAREN_REGEX = /^(?:,\s*\d+(?:\s+n\.\d+)?)*\s*\(([^)]+)\)/
 
-/** Extracts pincite from look-ahead text */
-const LOOKAHEAD_PINCITE_REGEX = /^,\s*(\d+)/
+/** Extracts pincite from look-ahead text (ignores footnote references like "n.3") */
+const LOOKAHEAD_PINCITE_REGEX = /^,\s*(\d+)(?:\s+n\.\d+)?/
 
 /** Matches chained parentheticals with disposition */
 const CHAINED_DISPOSITION_REGEX = /\([^)]+\)\s*\((en banc|per curiam)\)/i
