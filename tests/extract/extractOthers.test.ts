@@ -113,6 +113,42 @@ describe('Other extraction functions', () => {
 			expect(citation.documentNumber).toBe('456')
 		})
 
+		it('should extract U.S. App. LEXIS citation', () => {
+			const token: Token = {
+				text: '2021 U.S. App. LEXIS 12345',
+				span: { cleanStart: 0, cleanEnd: 26 },
+				type: 'neutral',
+				patternId: 'lexis',
+			}
+			const transformationMap = createIdentityMap()
+
+			const citation = extractNeutral(token, transformationMap)
+
+			expect(citation.type).toBe('neutral')
+			expect(citation.year).toBe(2021)
+			expect(citation.court).toBe('U.S. App. LEXIS')
+			expect(citation.documentNumber).toBe('12345')
+			expect(citation.confidence).toBe(1.0)
+		})
+
+		it('should extract U.S. Dist. LEXIS citation', () => {
+			const token: Token = {
+				text: '2022 U.S. Dist. LEXIS 67890',
+				span: { cleanStart: 0, cleanEnd: 27 },
+				type: 'neutral',
+				patternId: 'lexis',
+			}
+			const transformationMap = createIdentityMap()
+
+			const citation = extractNeutral(token, transformationMap)
+
+			expect(citation.type).toBe('neutral')
+			expect(citation.year).toBe(2022)
+			expect(citation.court).toBe('U.S. Dist. LEXIS')
+			expect(citation.documentNumber).toBe('67890')
+			expect(citation.confidence).toBe(1.0)
+		})
+
 		it('should have confidence 1.0 for neutral citations', () => {
 			const token: Token = {
 				text: '2020 WL 123456',
@@ -355,5 +391,40 @@ describe('compact journal citations (integration)', () => {
 		const citations = extractCitations('500 F.2d 123')
 		expect(citations).toHaveLength(1)
 		expect(citations[0].type).toBe('case')
+	})
+})
+
+describe('court-specific LEXIS citations (integration)', () => {
+	it('should classify U.S. App. LEXIS as neutral, not journal', () => {
+		const citations = extractCitations('2021 U.S. App. LEXIS 12345')
+		expect(citations).toHaveLength(1)
+		expect(citations[0].type).toBe('neutral')
+		if (citations[0].type === 'neutral') {
+			expect(citations[0].year).toBe(2021)
+			expect(citations[0].court).toBe('U.S. App. LEXIS')
+			expect(citations[0].documentNumber).toBe('12345')
+		}
+	})
+
+	it('should classify U.S. Dist. LEXIS as neutral, not journal', () => {
+		const citations = extractCitations('2022 U.S. Dist. LEXIS 67890')
+		expect(citations).toHaveLength(1)
+		expect(citations[0].type).toBe('neutral')
+		if (citations[0].type === 'neutral') {
+			expect(citations[0].year).toBe(2022)
+			expect(citations[0].court).toBe('U.S. Dist. LEXIS')
+			expect(citations[0].documentNumber).toBe('67890')
+		}
+	})
+
+	it('should still classify standard U.S. LEXIS as neutral', () => {
+		const citations = extractCitations('2020 U.S. LEXIS 456')
+		expect(citations).toHaveLength(1)
+		expect(citations[0].type).toBe('neutral')
+		if (citations[0].type === 'neutral') {
+			expect(citations[0].year).toBe(2020)
+			expect(citations[0].court).toBe('U.S. LEXIS')
+			expect(citations[0].documentNumber).toBe('456')
+		}
 	})
 })

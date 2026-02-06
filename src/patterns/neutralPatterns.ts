@@ -22,8 +22,8 @@ export const neutralPatterns: Pattern[] = [
   },
   {
     id: 'lexis',
-    regex: /\b(\d{4})\s+U\.S\.\s+LEXIS\s+(\d+)\b/g,
-    description: 'LexisNexis citations (e.g., "2021 U.S. LEXIS 5000")',
+    regex: /\b(\d{4})\s+U\.S\.(?:\s+(?:App\.|Dist\.|Sup\.\s+Ct\.|Tax\.\s+Ct\.|Bankr\.|Ct\.\s+Int'l\s+Trade|Ct\.\s+Cl\.))?\s+LEXIS\s+(\d+)\b/g,
+    description: 'LexisNexis citations (e.g., "2021 U.S. LEXIS 5000", "2021 U.S. App. LEXIS 12345", "2022 U.S. Dist. LEXIS 67890")',
     type: 'neutral',
   },
   {

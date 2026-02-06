@@ -53,7 +53,8 @@ export function extractNeutral(
 
 	// Parse year-court-documentNumber using regex
 	// Pattern: 4-digit year + court identifier (WL, LEXIS, etc.) + document number
-	const neutralRegex = /^(\d{4})\s+(WL|LEXIS|U\.S\.\s+LEXIS)\s+(\d+)/
+	// LEXIS can include optional court specifiers: U.S. App. LEXIS, U.S. Dist. LEXIS, etc.
+	const neutralRegex = /^(\d{4})\s+(WL|(?:U\.S\.(?:\s+(?:App\.|Dist\.|Sup\.\s+Ct\.|Tax\.\s+Ct\.|Bankr\.|Ct\.\s+Int'l\s+Trade|Ct\.\s+Cl\.))?\s+)?LEXIS)\s+(\d+)/
 	const match = neutralRegex.exec(text)
 
 	if (!match) {
