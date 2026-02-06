@@ -148,7 +148,6 @@
       "id": "specialty-fed-cl",
       "category": "specialty-courts",
       "description": "Federal Claims reporter",
-      "knownLimitation": "Multi-word reporters misclassified as journal (#45)",
       "text": "Cacciola v. United States, 148 Fed. Cl. 745 (2020)",
       "expected": [
         {
@@ -163,7 +162,6 @@
       "id": "specialty-vet-app",
       "category": "specialty-courts",
       "description": "Veterans Appeals reporter",
-      "knownLimitation": "Multi-word reporters misclassified as journal (#45)",
       "text": "Gilbert v. Derwinski, 1 Vet. App. 49 (1990)",
       "expected": [
         {

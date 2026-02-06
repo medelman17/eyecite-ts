@@ -36,8 +36,8 @@ export const casePatterns: Pattern[] = [
   },
   {
     id: 'state-reporter',
-    regex: /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.]+(?:\s?2d|\s?3d|\s?4th|\s?5th)?)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.)/g,
-    description: 'State reporters (broad pattern, validated against reporters-db in Phase 3)',
+    regex: /\b(\d+(?:-\d+)?)\s+([A-Z](?:(?! L\.[JQR\s])[A-Za-z.\d\s])+?)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.)/g,
+    description: 'State reporters (broad pattern allowing multi-word reporters, excludes journal patterns with " L.J/Q/Rev", validated against reporters-db in Phase 3)',
     type: 'case',
   },
 ]

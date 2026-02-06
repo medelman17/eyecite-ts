@@ -142,45 +142,6 @@ describe("Expanded Corpus — 165 Real-World Samples", () => {
 		}
 	})
 
-	// Known limitations — these document gaps for future work
-	describe("Known Limitations (expected failures)", () => {
-		const limitedSamples = (expandedCorpus.samples as CorpusSample[]).filter(
-			(s) => s.knownLimitation,
-		)
-
-		for (const sample of limitedSamples) {
-			it(`${sample.id}: ${sample.knownLimitation}`, () => {
-				// Run extraction but expect it to NOT match the expected output
-				// This documents the gap so we can track progress fixing it
-				let citations: Citation[]
-				try {
-					citations = extractCitations(sample.text)
-				} catch {
-					// Crash = known bug (e.g., §§)
-					return
-				}
-
-				// Verify the limitation still exists (when it's fixed, this test should fail,
-				// prompting us to promote the sample to a regular test)
-				const countMatches = citations.length === sample.expected.length
-				const allFieldsMatch =
-					countMatches &&
-					sample.expected.every((exp, i) => {
-						const { matches } = matchesExpected(citations[i], exp)
-						return matches
-					})
-
-				if (allFieldsMatch) {
-					// This limitation has been fixed! The test should be promoted.
-					expect.fail(
-						`Known limitation "${sample.id}" appears to be FIXED. ` +
-							`Remove knownLimitation flag to promote to regular test.`,
-					)
-				}
-			})
-		}
-	})
-
 	// Quality assertions across all samples
 	describe("Quality Invariants", () => {
 		it("all citations have valid confidence scores", () => {

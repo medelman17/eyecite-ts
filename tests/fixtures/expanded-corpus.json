@@ -562,7 +562,6 @@
       "id": "state-ohio-st-3d",
       "category": "state-cases",
       "description": "Ohio St. 3d reporter",
-      "knownLimitation": "Multi-word state reporters with space (Ohio St. 3d) not matched by state-reporter pattern",
       "text": "State v. Rance, 85 Ohio St. 3d 632 (1999)",
       "expected": [
         {
@@ -2838,7 +2837,6 @@
       "id": "state-md-app",
       "category": "state-cases",
       "description": "Md. App. Maryland appellate reporter — misclassified as journal",
-      "knownLimitation": "Multi-word state reporters (Md. App.) matched as journal instead of case",
       "text": "Johnson v. State, 200 Md. App. 573 (2011)",
       "expected": [
         {
