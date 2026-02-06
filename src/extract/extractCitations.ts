@@ -313,12 +313,31 @@ export function extractCitations(
 		citations.push(citation)
 	}
 
+	// Step 4.5: Filter out historical citations (pre-1700)
+	// This prevents false positives from historical legal sources (Magna Carta, Coke's Reports, etc.)
+	// that match modern reporter patterns but have very old dates.
+	// Threshold: 1700 is reasonable because:
+	// - Most modern U.S. legal reporters started in the late 1700s
+	// - The U.S. Constitution was ratified in 1788
+	// - Pre-1700 references are almost always historical/scholarly, not citable precedent
+	const HISTORICAL_YEAR_THRESHOLD = 1700
+	const filteredCitations = citations.filter((citation) => {
+		// Only apply filter to case and journal citations (they have year fields)
+		if (citation.type === 'case' || citation.type === 'journal') {
+			// If citation has a year and it's before 1700, filter it out
+			if (citation.year !== undefined && citation.year < HISTORICAL_YEAR_THRESHOLD) {
+				return false
+			}
+		}
+		return true
+	})
+
 	// Step 5: Resolve short-form citations if requested
 	if (options?.resolve) {
-		return resolveCitations(citations, text, options.resolutionOptions)
+		return resolveCitations(filteredCitations, text, options.resolutionOptions)
 	}
 
-	return citations
+	return filteredCitations
 }
 
 /**
