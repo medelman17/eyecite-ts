@@ -16,8 +16,14 @@ import type { Pattern } from './casePatterns'
 export const statutePatterns: Pattern[] = [
   {
     id: 'usc',
-    regex: /\b(\d+)\s+U\.S\.C\.?\s+§+\s*(\d+[A-Za-z]*)\b/g,
-    description: 'U.S. Code citations (e.g., "42 U.S.C. § 1983")',
+    regex: /\b(\d+)\s+(?:U\.S\.C\.?|USC)\s+§+\s*(\d+[A-Za-z]*)\b/g,
+    description: 'U.S. Code citations (e.g., "42 U.S.C. § 1983" or "15 USC § 78j")',
+    type: 'statute',
+  },
+  {
+    id: 'cfr',
+    regex: /\b(\d+)\s+C\.F\.R\.?\s+§+\s*(\d+[A-Za-z]*)\b/g,
+    description: 'Code of Federal Regulations citations (e.g., "40 C.F.R. § 122")',
     type: 'statute',
   },
   {
