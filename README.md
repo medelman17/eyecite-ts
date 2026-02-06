@@ -9,7 +9,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://www.npmjs.com/package/eyecite-ts)
 
-TypeScript legal citation extraction library — port of Python [eyecite](https://github.com/freelawproject/eyecite).
+TypeScript legal citation extraction library — inspired by and extending Python [eyecite](https://github.com/freelawproject/eyecite).
 
 Extract, resolve, and annotate legal citations from court opinions and legal documents with zero runtime dependencies.
 
@@ -393,4 +393,4 @@ MIT
 
 ## Credits
 
-Ported from [eyecite](https://github.com/freelawproject/eyecite) (Python) by Free Law Project.
+Inspired by [eyecite](https://github.com/freelawproject/eyecite) (Python) by Free Law Project. This TypeScript implementation adds parallel citation linking, party name extraction, full span tracking, and performance optimizations while maintaining compatibility with the original API design.
