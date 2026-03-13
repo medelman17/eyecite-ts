@@ -28,6 +28,11 @@ export interface CodeEntry {
  *
  * Covers 12 jurisdictions. Pennsylvania has two entries because it
  * maintains two distinct code families (Pa.C.S. and P.S.).
+ *
+ * Note: Short 2-letter patterns (GS, IC, PS, RC, FS) may produce false positives
+ * in non-legal text (e.g., "GS 5" for government service grade). The extraction
+ * layer mitigates this via confidence scoring — citations without a § symbol receive
+ * lower confidence (0.85 vs 0.95). Consumers should filter by confidence threshold.
  */
 export const abbreviatedCodes: CodeEntry[] = [
   {
