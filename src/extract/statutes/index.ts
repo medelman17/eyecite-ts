@@ -1,4 +1,5 @@
-export { extractFederal } from './extractFederal'
-export { extractProse } from './extractProse'
-export { extractAbbreviated } from './extractAbbreviated'
-export { parseBody, type ParsedBody } from './parseBody'
+export { extractAbbreviated } from "./extractAbbreviated"
+export { extractFederal } from "./extractFederal"
+export { extractNamedCode } from "./extractNamedCode"
+export { extractProse } from "./extractProse"
+export { type ParsedBody, parseBody } from "./parseBody"
