@@ -122,19 +122,6 @@ describe('statutePatterns', () => {
     })
   })
 
-  describe('state-code pattern (backward compat)', () => {
-    const getMatches = (text: string) => {
-      const p = getPattern('state-code')
-      p.regex.lastIndex = 0
-      return [...text.matchAll(p.regex)]
-    }
-
-    it('should still match Cal. Penal Code § 187', () => {
-      const matches = getMatches('Cal. Penal Code § 187')
-      expect(matches).toHaveLength(1)
-    })
-  })
-
   describe('abbreviated-code pattern', () => {
     const getMatches = (text: string) => {
       const p = statutePatterns.find(p => p.id === 'abbreviated-code')
@@ -306,6 +293,38 @@ describe('statutePatterns', () => {
     })
     it('should match A.L.M. c. 93A, § 9', () => {
       expect(getMatches('A.L.M. c. 93A, § 9')).toHaveLength(1)
+    })
+  })
+
+  describe('chapter-act pattern', () => {
+    const getMatches = (text: string) => {
+      const p = statutePatterns.find(p => p.id === 'chapter-act')
+      if (!p) throw new Error('chapter-act pattern not found')
+      p.regex.lastIndex = 0
+      return [...text.matchAll(p.regex)]
+    }
+
+    it('should match 735 ILCS 5/2-1001', () => {
+      expect(getMatches('735 ILCS 5/2-1001')).toHaveLength(1)
+    })
+    it('should match 720 ILCS 5/12-3.05', () => {
+      expect(getMatches('720 ILCS 5/12-3.05')).toHaveLength(1)
+    })
+    it('should match 735 Ill. Comp. Stat. 5/2-1001', () => {
+      expect(getMatches('735 Ill. Comp. Stat. 5/2-1001')).toHaveLength(1)
+    })
+    it('should match ILCS Ann.', () => {
+      expect(getMatches('735 ILCS Ann. 5/2-1001')).toHaveLength(1)
+    })
+    it('should capture subsections', () => {
+      const m = getMatches('735 ILCS 5/2-1001(a)')
+      expect(m).toHaveLength(1)
+      expect(m[0][0]).toContain('(a)')
+    })
+    it('should capture et seq.', () => {
+      const m = getMatches('735 ILCS 5/2-1001 et seq.')
+      expect(m).toHaveLength(1)
+      expect(m[0][0]).toContain('et seq.')
     })
   })
 })

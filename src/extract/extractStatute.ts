@@ -8,7 +8,8 @@
  * - "usc", "cfr" → extractFederal
  * - "prose" → extractProse
  * - "abbreviated-code" → extractAbbreviated
- * - "state-code", unknown → legacy inline parser (backward compat)
+ * - "chapter-act" → extractChapterAct
+ * - unknown → legacy inline parser (safety net for unknown patternIds)
  *
  * @module extract/extractStatute
  */
@@ -17,13 +18,14 @@ import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
 import type { TransformationMap } from "@/types/span"
 import { extractAbbreviated } from "./statutes/extractAbbreviated"
+import { extractChapterAct } from "./statutes/extractChapterAct"
 import { extractFederal } from "./statutes/extractFederal"
 import { extractNamedCode } from "./statutes/extractNamedCode"
 import { extractProse } from "./statutes/extractProse"
 
 /**
- * Legacy inline parser for state-code and unknown patterns.
- * Preserved for backward compatibility until PR 2-3 add state extractors.
+ * Legacy inline parser for unknown patterns.
+ * Safety net for any patternId not explicitly handled by the dispatcher.
  */
 function extractLegacy(token: Token, transformationMap: TransformationMap): StatuteCitation {
   const { text, span } = token
@@ -111,8 +113,10 @@ export function extractStatute(
     case "named-code":
     case "mass-chapter":
       return extractNamedCode(token, transformationMap)
+    case "chapter-act":
+      return extractChapterAct(token, transformationMap)
     default:
-      // state-code and any unknown patterns use legacy parser
+      // unknown patterns use legacy parser
       return extractLegacy(token, transformationMap)
   }
 }

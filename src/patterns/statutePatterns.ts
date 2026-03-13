@@ -8,7 +8,7 @@
  * Pattern families (spec Section 2):
  * - Federal: usc, cfr (enhanced with subsections, et seq., §§)
  * - Prose: "section X of title Y"
- * - State: broad state-code (legacy, superseded in PR 2-3)
+ * - Illinois: chapter-act (ILCS chapter/act/section format)
  */
 
 import type { Pattern } from './casePatterns'
@@ -48,17 +48,19 @@ export const statutePatterns: Pattern[] = [
     type: 'statute',
   },
   {
+    id: 'chapter-act',
+    // IL: "735 ILCS 5/2-1001" or "735 Ill. Comp. Stat. 5/2-1001"
+    // Captures: (1) chapter, (2) act, (3) section+subsections+et seq
+    regex: /\b(\d+)\s+(?:ILCS|Ill\.?\s*Comp\.?\s*Stat\.?)\s*(?:Ann\.?\s+)?(\d+)\/([^\s(]+(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+    description: 'Illinois Compiled Statutes chapter-act citations (e.g., "735 ILCS 5/2-1001")',
+    type: 'statute',
+  },
+  {
     id: 'abbreviated-code',
     // Alternation order: longer/more-specific patterns first within each state to avoid partial matches.
     // The \b anchor prevents cross-boundary matches (e.g., "N.C.G.S." won't match "G.S." at position 4).
     regex: /\b(?:(\d+)\s+)?(Fla\.?\s*Stat(?:utes)?\.?(?:\s*Ann\.?)?|F\.?S\.?|R\.?C\.?|O\.?R\.?C\.?|Ohio\s+Rev\.?\s+Code(?:\s+Ann\.?)?|MCL[AS]?|M\.?C\.?L\.?|Mich\.?\s+Comp\.?\s+Laws(?:\s+(?:Ann|Serv)\.?)?|Utah\s+Code(?:\s+Ann\.?)?|U\.?C\.?A\.?|C\.?R\.?S\.?|Colo\.?\s+Rev\.?\s+Stat\.?(?:\s+Ann\.?)?|RCW|Wash\.?\s+Rev\.?\s+Code(?:\s+Ann\.?)?|G\.?S\.?|N\.?C\.?\s*Gen\.?\s*Stat\.?(?:\s+Ann\.?)?|N\.?C\.?G\.?S\.?|O\.?C\.?G\.?A\.?|Ga\.?\s+Code(?:\s+Ann\.?)?|Pa\.?\s*C\.?S\.?A?\.?|Pa\.?\s+Cons\.?\s+Stat\.?|P\.?S\.?|Ind(?:iana)?\.?\s+Code(?:\s+Ann\.?)?|Burns\s+Ind\.?\s+Code(?:\s+Ann\.?)?|I\.?C\.?|N\.?J\.?\s*S(?:tat)?\.?\s*A?\.?|Del\.?\s*(?:Code(?:\s+Ann\.?)?|C\.?))\s*§?\s*(\d+[A-Za-z0-9.:/-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
     description: 'Abbreviated state code citations for 12 jurisdictions (FL, OH, MI, UT, CO, WA, NC, GA, PA, IN, NJ, DE)',
-    type: 'statute',
-  },
-  {
-    id: 'state-code',
-    regex: /\b([A-Z][a-z]+\.?\s+[A-Za-z.]+\s+Code)\s+§\s*(\d+[A-Za-z]*)\b/g,
-    description: 'State code citations (broad pattern, e.g., "Cal. Penal Code § 187")',
     type: 'statute',
   },
 ]
