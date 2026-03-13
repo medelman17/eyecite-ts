@@ -33,6 +33,21 @@ export const statutePatterns: Pattern[] = [
     type: 'statute',
   },
   {
+    id: 'named-code',
+    // Matches: [State abbrev]. [Code/Law Name] § [section]
+    // Captures: (1) jurisdiction prefix, (2) code name text, (3) section+subsections+et seq
+    regex: /\b(N\.?\s*Y\.?|Cal(?:ifornia)?\.?|Tex(?:as)?\.?|Md\.?|Va\.?|Ala(?:bama)?\.?)\s+((?:[A-Za-z.&',\s]+?))\s*§§?\s*(\d+[A-Za-z0-9.:/-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+    description: 'Named-code state citations (NY, CA, TX, MD, VA, AL) with jurisdiction prefix + code name + §',
+    type: 'statute',
+  },
+  {
+    id: 'mass-chapter',
+    // Matches: Mass. Gen. Laws ch. X, § Y / M.G.L.A. c. X, § Y / G.L. c. X, § Y / A.L.M. c. X, § Y
+    regex: /\b(Mass\.?\s*Gen\.?\s*Laws|M\.?G\.?L\.?A?\.?|A\.?L\.?M\.?|G\.?\s*L\.?)\s+(?:ch\.?|c\.?)\s*(\w+),?\s*§\s*([\w./-]+(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+    description: 'Massachusetts chapter-based citations (e.g., "Mass. Gen. Laws ch. 93A, § 2")',
+    type: 'statute',
+  },
+  {
     id: 'abbreviated-code',
     // Alternation order: longer/more-specific patterns first within each state to avoid partial matches.
     // The \b anchor prevents cross-boundary matches (e.g., "N.C.G.S." won't match "G.S." at position 4).
