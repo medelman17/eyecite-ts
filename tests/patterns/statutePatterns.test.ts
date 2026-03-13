@@ -134,4 +134,100 @@ describe('statutePatterns', () => {
       expect(matches).toHaveLength(1)
     })
   })
+
+  describe('abbreviated-code pattern', () => {
+    const getMatches = (text: string) => {
+      const p = statutePatterns.find(p => p.id === 'abbreviated-code')
+      if (!p) throw new Error('abbreviated-code pattern not found')
+      p.regex.lastIndex = 0
+      return [...text.matchAll(p.regex)]
+    }
+
+    it('should match Fla. Stat. § 768.81', () => {
+      const m = getMatches('Fla. Stat. § 768.81')
+      expect(m).toHaveLength(1)
+    })
+    it('should match F.S. 768.81', () => {
+      const m = getMatches('F.S. 768.81')
+      expect(m).toHaveLength(1)
+    })
+    it('should match R.C. 2305.01', () => {
+      const m = getMatches('R.C. 2305.01')
+      expect(m).toHaveLength(1)
+    })
+    it('should match Ohio Rev. Code § 2305.01', () => {
+      const m = getMatches('Ohio Rev. Code § 2305.01')
+      expect(m).toHaveLength(1)
+    })
+    it('should match MCL 750.81', () => {
+      const m = getMatches('MCL 750.81')
+      expect(m).toHaveLength(1)
+    })
+    it('should match Utah Code § 76-5-302', () => {
+      const m = getMatches('Utah Code § 76-5-302')
+      expect(m).toHaveLength(1)
+    })
+    it('should match U.C.A. § 76-5-302', () => {
+      const m = getMatches('U.C.A. § 76-5-302')
+      expect(m).toHaveLength(1)
+    })
+    it('should match C.R.S. § 13-1-101', () => {
+      const m = getMatches('C.R.S. § 13-1-101')
+      expect(m).toHaveLength(1)
+    })
+    it('should match RCW 26.09.191', () => {
+      const m = getMatches('RCW 26.09.191')
+      expect(m).toHaveLength(1)
+    })
+    it('should match G.S. 20-138.1', () => {
+      const m = getMatches('G.S. 20-138.1')
+      expect(m).toHaveLength(1)
+    })
+    it('should match N.C. Gen. Stat. § 20-138.1', () => {
+      const m = getMatches('N.C. Gen. Stat. § 20-138.1')
+      expect(m).toHaveLength(1)
+    })
+    it('should match O.C.G.A. § 16-5-1', () => {
+      const m = getMatches('O.C.G.A. § 16-5-1')
+      expect(m).toHaveLength(1)
+    })
+    it('should match 42 Pa.C.S. § 5524', () => {
+      const m = getMatches('42 Pa.C.S. § 5524')
+      expect(m).toHaveLength(1)
+    })
+    it('should match 43 P.S. § 951', () => {
+      const m = getMatches('43 P.S. § 951')
+      expect(m).toHaveLength(1)
+    })
+    it('should match Ind. Code § 35-42-1-1', () => {
+      const m = getMatches('Ind. Code § 35-42-1-1')
+      expect(m).toHaveLength(1)
+    })
+    it('should match IC 35-42-1-1', () => {
+      const m = getMatches('IC 35-42-1-1')
+      expect(m).toHaveLength(1)
+    })
+    it('should match N.J.S.A. 2A:10-1', () => {
+      const m = getMatches('N.J.S.A. 2A:10-1')
+      expect(m).toHaveLength(1)
+    })
+    it('should match 8 Del. C. § 141', () => {
+      const m = getMatches('8 Del. C. § 141')
+      expect(m).toHaveLength(1)
+    })
+    it('should capture subsections', () => {
+      const m = getMatches('Fla. Stat. § 768.81(1)(a)')
+      expect(m).toHaveLength(1)
+      expect(m[0][0]).toContain('(1)(a)')
+    })
+    it('should capture et seq.', () => {
+      const m = getMatches('R.C. 2305.01 et seq.')
+      expect(m).toHaveLength(1)
+      expect(m[0][0]).toContain('et seq.')
+    })
+    it('should not match bare numbers', () => {
+      const m = getMatches('Section 768.81 of the statute')
+      expect(m).toHaveLength(0)
+    })
+  })
 })

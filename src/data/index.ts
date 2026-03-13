@@ -6,3 +6,4 @@
  */
 
 export * from "./reporters"
+export * from "./knownCodes"

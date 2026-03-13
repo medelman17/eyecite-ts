@@ -10,17 +10,12 @@
 import type { Token } from '@/tokenize'
 import type { StatuteCitation } from '@/types/citation'
 import type { TransformationMap } from '@/types/span'
+import { parseBody } from './parseBody'
 
 /** Regex to parse federal token: title + code + § + body */
 const FEDERAL_SECTION_RE = /^(\d+)\s+(\S+(?:\.\S+)*)\s*§§?\s*(.+)$/
 /** Regex to parse federal token: title + code + Part + body */
 const FEDERAL_PART_RE = /^(\d+)\s+(\S+(?:\.\S+)*)\s+(?:Part|pt\.)\s+(.+)$/
-
-/** Separate subsection chain from section number */
-const SUBSECTION_RE = /^([^(]+?)\s*((?:\([^)]*\))*)$/
-
-/** Et seq. at end of string */
-const ET_SEQ_RE = /\s*et\s+seq\.?\s*$/i
 
 /**
  * Extract a federal statute citation (USC or CFR) from a tokenized match.
@@ -49,25 +44,7 @@ export function extractFederal(
     title = undefined
   }
 
-  // Strip et seq. from body
-  let hasEtSeq = false
-  if (ET_SEQ_RE.test(rawBody)) {
-    hasEtSeq = true
-    rawBody = rawBody.replace(ET_SEQ_RE, '')
-  }
-
-  // Split section from subsections: "1983(a)(1)" → section="1983", subsection="(a)(1)"
-  let section: string
-  let subsection: string | undefined
-
-  const subMatch = SUBSECTION_RE.exec(rawBody.trim())
-  const subMatchGroups = subMatch?.[2]
-  if (subMatch !== null && subMatchGroups) {
-    section = subMatch[1].trim()
-    subsection = subMatchGroups || undefined
-  } else {
-    section = rawBody.trim()
-  }
+  const { section, subsection, hasEtSeq } = parseBody(rawBody)
 
   // Translate positions
   const originalStart =

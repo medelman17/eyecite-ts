@@ -7,6 +7,7 @@
  * Family dispatch:
  * - "usc", "cfr" → extractFederal
  * - "prose" → extractProse
+ * - "abbreviated-code" → extractAbbreviated
  * - "state-code", unknown → legacy inline parser (backward compat)
  *
  * @module extract/extractStatute
@@ -17,6 +18,7 @@ import type { StatuteCitation } from '@/types/citation'
 import type { TransformationMap } from '@/types/span'
 import { extractFederal } from './statutes/extractFederal'
 import { extractProse } from './statutes/extractProse'
+import { extractAbbreviated } from './statutes/extractAbbreviated'
 
 /**
  * Legacy inline parser for state-code and unknown patterns.
@@ -110,6 +112,8 @@ export function extractStatute(
       return extractFederal(token, transformationMap)
     case 'prose':
       return extractProse(token, transformationMap)
+    case 'abbreviated-code':
+      return extractAbbreviated(token, transformationMap)
     default:
       // state-code and any unknown patterns use legacy parser
       return extractLegacy(token, transformationMap)
