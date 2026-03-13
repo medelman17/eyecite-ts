@@ -1,0 +1,83 @@
+[
+  {
+    "text": "42 U.S.C. § 1983",
+    "expected": [
+      { "type": "statute", "title": 42, "code": "U.S.C.", "section": "1983", "jurisdiction": "US" }
+    ]
+  },
+  {
+    "text": "15 USC § 78j",
+    "expected": [
+      { "type": "statute", "title": 15, "code": "USC", "section": "78j", "jurisdiction": "US" }
+    ]
+  },
+  {
+    "text": "42 U.S.C. § 1983(a)(1)",
+    "expected": [
+      { "type": "statute", "title": 42, "section": "1983", "subsection": "(a)(1)", "jurisdiction": "US" }
+    ]
+  },
+  {
+    "text": "26 U.S.C. § 501(c)(3)(A)(i)",
+    "expected": [
+      { "type": "statute", "title": 26, "section": "501", "subsection": "(c)(3)(A)(i)", "jurisdiction": "US" }
+    ]
+  },
+  {
+    "text": "42 U.S.C. § 1983 et seq.",
+    "expected": [
+      { "type": "statute", "title": 42, "section": "1983", "hasEtSeq": true, "jurisdiction": "US" }
+    ]
+  },
+  {
+    "text": "42 U.S.C. § 1983(a) et seq.",
+    "expected": [
+      { "type": "statute", "title": 42, "section": "1983", "subsection": "(a)", "hasEtSeq": true, "jurisdiction": "US" }
+    ]
+  },
+  {
+    "text": "40 C.F.R. § 122.26(b)(14)",
+    "expected": [
+      { "type": "statute", "title": 40, "section": "122.26", "subsection": "(b)(14)", "jurisdiction": "US" }
+    ]
+  },
+  {
+    "text": "12 C.F.R. § 226.1",
+    "expected": [
+      { "type": "statute", "title": 12, "code": "C.F.R.", "section": "226.1", "jurisdiction": "US" }
+    ],
+    "note": "CFR § form; 'Part' form is ambiguous with case-reporter pattern and tracked separately"
+  },
+  {
+    "text": "section 1983 of title 42",
+    "expected": [
+      { "type": "statute", "title": 42, "section": "1983", "jurisdiction": "US" }
+    ]
+  },
+  {
+    "text": "See 42 U.S.C. § 1983 and 28 U.S.C. § 1331.",
+    "expected": [
+      { "type": "statute", "title": 42, "section": "1983", "jurisdiction": "US" },
+      { "type": "statute", "title": 28, "section": "1331", "jurisdiction": "US" }
+    ]
+  },
+  {
+    "text": "The court cited Smith v. Doe, 500 F.2d 123 (1974), interpreting 42 U.S.C. § 1983(a).",
+    "expected_statute_count": 1,
+    "expected_case_count": 1,
+    "note": "Mixed citation types — verify both extracted"
+  },
+  {
+    "text": "18 U.S.C. § 1028A",
+    "expected": [
+      { "type": "statute", "title": 18, "section": "1028A", "jurisdiction": "US" }
+    ]
+  },
+  {
+    "text": "Cal. Penal Code § 187",
+    "expected": [
+      { "type": "statute", "code": "Cal. Penal Code", "section": "187" }
+    ],
+    "note": "State citation — backward compat via legacy parser"
+  }
+]
