@@ -1,4 +1,5 @@
 export { extractAbbreviated } from "./extractAbbreviated"
+export { extractChapterAct } from "./extractChapterAct"
 export { extractFederal } from "./extractFederal"
 export { extractNamedCode } from "./extractNamedCode"
 export { extractProse } from "./extractProse"
