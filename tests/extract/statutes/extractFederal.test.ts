@@ -138,4 +138,18 @@ describe('extractFederal', () => {
       expect(c.span.originalEnd).toBe(31)
     })
   })
+
+  describe('fallback parsing', () => {
+    it('should use fallback code for unparseable USC token', () => {
+      // Token text that doesn't match FEDERAL_SECTION_RE or FEDERAL_PART_RE
+      const c = extractFederal(makeToken('malformed text', 'usc'), map)
+      expect(c.code).toBe('U.S.C.')
+      expect(c.type).toBe('statute')
+    })
+
+    it('should use C.F.R. fallback for unparseable CFR token', () => {
+      const c = extractFederal(makeToken('malformed text', 'cfr'), map)
+      expect(c.code).toBe('C.F.R.')
+    })
+  })
 })

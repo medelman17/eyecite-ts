@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { abbreviatedCodes, type CodeEntry } from '@/data/knownCodes'
+import { abbreviatedCodes, findAbbreviatedCode, type CodeEntry } from '@/data/knownCodes'
 
 describe('knownCodes registry', () => {
   describe('abbreviatedCodes', () => {
@@ -49,6 +49,35 @@ describe('knownCodes registry', () => {
       for (const entry of abbreviatedCodes) {
         expect(entry.patterns.length).toBeGreaterThanOrEqual(1)
       }
+    })
+  })
+
+  describe('findAbbreviatedCode', () => {
+    it('should find exact match', () => {
+      const entry = findAbbreviatedCode('R.C.')
+      expect(entry?.jurisdiction).toBe('OH')
+    })
+
+    it('should find case-insensitive match', () => {
+      const entry = findAbbreviatedCode('mcl')
+      expect(entry?.jurisdiction).toBe('MI')
+    })
+
+    it('should return undefined for unknown abbreviation', () => {
+      const entry = findAbbreviatedCode('UNKNOWN')
+      expect(entry).toBeUndefined()
+    })
+
+    it('should use prefix fallback for longer text not in exact map', () => {
+      // "Fla. Stat. Ann. §" is not an exact pattern entry, but starts with "Fla. Stat."
+      const entry = findAbbreviatedCode('Fla. Stat. Ann. §')
+      expect(entry?.jurisdiction).toBe('FL')
+    })
+
+    it('should prefer longest prefix match', () => {
+      // "RCW" should match WA, not OH's "RC" prefix
+      const entry = findAbbreviatedCode('RCW')
+      expect(entry?.jurisdiction).toBe('WA')
     })
   })
 })

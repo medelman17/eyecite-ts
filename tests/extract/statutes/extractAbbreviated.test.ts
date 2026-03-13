@@ -172,5 +172,21 @@ describe('extractAbbreviated', () => {
       expect(c.confidence).toBeLessThanOrEqual(0.6)
       expect(c.jurisdiction).toBeUndefined()
     })
+
+    it('should return 0.6 confidence for unknown code with § symbol', () => {
+      const c = extractAbbreviated(makeToken('Xyz. § 999'), map)
+      expect(c.confidence).toBe(0.6)
+      expect(c.jurisdiction).toBeUndefined()
+    })
+  })
+
+  describe('fallback parsing', () => {
+    it('should handle token text that does not match ABBREVIATED_RE', () => {
+      // Token with no digits in section position — regex won't match
+      const c = extractAbbreviated(makeToken('just text'), map)
+      expect(c.type).toBe('statute')
+      expect(c.section).toBe('')
+      expect(c.confidence).toBeLessThanOrEqual(0.4)
+    })
   })
 })
