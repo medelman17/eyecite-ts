@@ -333,8 +333,17 @@ describe('extractStatute', () => {
 			}
 		})
 
-		it('should extract et seq through full pipeline', () => {
+		it('should extract et seq. through full pipeline', () => {
 			const citations = extractCitations('42 U.S.C. § 1983 et seq.')
+			expect(citations).toHaveLength(1)
+			const c = citations[0]
+			if (c.type === 'statute') {
+				expect(c.hasEtSeq).toBe(true)
+			}
+		})
+
+		it('should extract et seq without period through full pipeline', () => {
+			const citations = extractCitations('42 U.S.C. § 1983 et seq')
 			expect(citations).toHaveLength(1)
 			const c = citations[0]
 			if (c.type === 'statute') {
