@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { abbreviatedCodes, findAbbreviatedCode, type CodeEntry } from '@/data/knownCodes'
+import { abbreviatedCodes, findAbbreviatedCode, namedCodes, findNamedCode, type CodeEntry } from '@/data/knownCodes'
 
 describe('knownCodes registry', () => {
   describe('abbreviatedCodes', () => {
@@ -78,6 +78,148 @@ describe('knownCodes registry', () => {
       // "RCW" should match WA, not OH's "RC" prefix
       const entry = findAbbreviatedCode('RCW')
       expect(entry?.jurisdiction).toBe('WA')
+    })
+  })
+
+  describe('namedCodes', () => {
+    it('should have entries for all 7 named-code jurisdictions', () => {
+      const jurisdictions = new Set(namedCodes.map(c => c.jurisdiction))
+      expect(jurisdictions).toContain('NY')
+      expect(jurisdictions).toContain('CA')
+      expect(jurisdictions).toContain('TX')
+      expect(jurisdictions).toContain('MD')
+      expect(jurisdictions).toContain('VA')
+      expect(jurisdictions).toContain('AL')
+      expect(jurisdictions).toContain('MA')
+      expect(jurisdictions.size).toBe(7)
+    })
+
+    it('should have valid CodeEntry fields on all entries', () => {
+      for (const entry of namedCodes) {
+        expect(entry.jurisdiction).toBeTruthy()
+        expect(entry.abbreviation).toBeTruthy()
+        expect(entry.patterns.length).toBeGreaterThan(0)
+        expect(entry.family).toBe('named')
+      }
+    })
+
+    it('should have 21 NY entries', () => {
+      const nyEntries = namedCodes.filter(e => e.jurisdiction === 'NY')
+      expect(nyEntries.length).toBe(21)
+    })
+
+    it('should have 29 CA entries', () => {
+      const caEntries = namedCodes.filter(e => e.jurisdiction === 'CA')
+      expect(caEntries.length).toBe(29)
+    })
+
+    it('should have 29 TX entries', () => {
+      const txEntries = namedCodes.filter(e => e.jurisdiction === 'TX')
+      expect(txEntries.length).toBe(29)
+    })
+
+    it('should have 36 MD entries', () => {
+      const mdEntries = namedCodes.filter(e => e.jurisdiction === 'MD')
+      expect(mdEntries.length).toBe(36)
+    })
+
+    it('should have key NY entries', () => {
+      const penEntry = namedCodes.find(e => e.jurisdiction === 'NY' && e.abbreviation === 'PEN')
+      expect(penEntry).toBeDefined()
+      expect(penEntry?.patterns).toContain('Penal')
+
+      const cplrEntry = namedCodes.find(e => e.jurisdiction === 'NY' && e.abbreviation === 'CPLR')
+      expect(cplrEntry).toBeDefined()
+      expect(cplrEntry?.patterns).toContain('C.P.L.R.')
+    })
+
+    it('should have key CA entries with CCP before CIV', () => {
+      const caEntries = namedCodes.filter(e => e.jurisdiction === 'CA')
+      const ccpIdx = caEntries.findIndex(e => e.abbreviation === 'CCP')
+      const civIdx = caEntries.findIndex(e => e.abbreviation === 'CIV')
+      expect(ccpIdx).toBeGreaterThanOrEqual(0)
+      expect(civIdx).toBeGreaterThanOrEqual(0)
+      // CCP (specific) must come before CIV (general) for longest-match to work
+      expect(ccpIdx).toBeLessThan(civIdx)
+    })
+
+    it('should have key TX entries', () => {
+      const peEntry = namedCodes.find(e => e.jurisdiction === 'TX' && e.abbreviation === 'PE')
+      expect(peEntry).toBeDefined()
+      expect(peEntry?.patterns).toContain('Penal')
+    })
+
+    it('should have key MD entries', () => {
+      const gcrEntry = namedCodes.find(e => e.jurisdiction === 'MD' && e.abbreviation === 'gcr')
+      expect(gcrEntry).toBeDefined()
+      expect(gcrEntry?.patterns).toContain('Crim. Law')
+    })
+  })
+
+  describe('findNamedCode', () => {
+    it('should find NY Penal → PEN', () => {
+      const entry = findNamedCode('NY', 'Penal')
+      expect(entry?.jurisdiction).toBe('NY')
+      expect(entry?.abbreviation).toBe('PEN')
+    })
+
+    it('should find CA Penal → PEN', () => {
+      const entry = findNamedCode('CA', 'Penal')
+      expect(entry?.jurisdiction).toBe('CA')
+      expect(entry?.abbreviation).toBe('PEN')
+    })
+
+    it('should find MD Crim. Law → gcr', () => {
+      const entry = findNamedCode('MD', 'Crim. Law')
+      expect(entry?.jurisdiction).toBe('MD')
+      expect(entry?.abbreviation).toBe('gcr')
+    })
+
+    it('should prefer longer match: CA Civ. Proc. → CCP (not CIV)', () => {
+      const entry = findNamedCode('CA', 'Civ. Proc.')
+      expect(entry?.jurisdiction).toBe('CA')
+      expect(entry?.abbreviation).toBe('CCP')
+    })
+
+    it('should match CA Civ. → CIV when no longer match exists', () => {
+      const entry = findNamedCode('CA', 'Civ.')
+      expect(entry?.jurisdiction).toBe('CA')
+      expect(entry?.abbreviation).toBe('CIV')
+    })
+
+    it('should be case-insensitive', () => {
+      const entry = findNamedCode('NY', 'penal')
+      expect(entry?.jurisdiction).toBe('NY')
+      expect(entry?.abbreviation).toBe('PEN')
+    })
+
+    it('should return undefined for unknown code name', () => {
+      const entry = findNamedCode('NY', 'Unknown Code')
+      expect(entry).toBeUndefined()
+    })
+
+    it('should return undefined for unknown jurisdiction', () => {
+      const entry = findNamedCode('ZZ', 'Penal')
+      expect(entry).toBeUndefined()
+    })
+
+    it('should match on startsWith for code name with trailing text', () => {
+      // "Penal Law" starts with "Penal"
+      const entry = findNamedCode('NY', 'Penal Law')
+      expect(entry?.jurisdiction).toBe('NY')
+      expect(entry?.abbreviation).toBe('PEN')
+    })
+
+    it('should find MA Gen. Laws → GL', () => {
+      const entry = findNamedCode('MA', 'Gen. Laws')
+      expect(entry?.jurisdiction).toBe('MA')
+      expect(entry?.abbreviation).toBe('GL')
+    })
+
+    it('should handle extra whitespace via normalization', () => {
+      const entry = findNamedCode('NY', '  Penal  ')
+      expect(entry?.jurisdiction).toBe('NY')
+      expect(entry?.abbreviation).toBe('PEN')
     })
   })
 })
