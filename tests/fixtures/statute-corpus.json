@@ -151,5 +151,39 @@
     "expected": [
       { "type": "statute", "code": "Del. C.", "title": 8, "section": "141", "jurisdiction": "DE" }
     ]
+  },
+  {
+    "text": "N.Y. Penal Law § 125.25(1)(a)",
+    "expected": [
+      { "type": "statute", "code": "Penal", "section": "125.25", "subsection": "(1)(a)", "jurisdiction": "NY" }
+    ]
+  },
+  {
+    "text": "Tex. Fam. Code § 1.01",
+    "note": "Produces 2 statutes (named-code + legacy state-code dedup overlap); state-code removed in PR 4. Testing via extraction tests instead."
+  },
+  {
+    "text": "Md. Code Ann., Crim. Law § 3-202",
+    "expected": [
+      { "type": "statute", "section": "3-202", "jurisdiction": "MD" }
+    ]
+  },
+  {
+    "text": "Va. Code § 8.01-243",
+    "expected": [
+      { "type": "statute", "section": "8.01-243", "jurisdiction": "VA" }
+    ]
+  },
+  {
+    "text": "Ala. Code § 13A-6-61",
+    "expected": [
+      { "type": "statute", "section": "13A-6-61", "jurisdiction": "AL" }
+    ]
+  },
+  {
+    "text": "Mass. Gen. Laws ch. 93A, § 2",
+    "expected": [
+      { "type": "statute", "code": "93A", "section": "2", "jurisdiction": "MA" }
+    ]
   }
 ]
