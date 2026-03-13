@@ -230,4 +230,82 @@ describe('statutePatterns', () => {
       expect(m).toHaveLength(0)
     })
   })
+
+  describe('named-code pattern', () => {
+    const getMatches = (text: string) => {
+      const p = statutePatterns.find(p => p.id === 'named-code')
+      if (!p) throw new Error('named-code pattern not found')
+      p.regex.lastIndex = 0
+      return [...text.matchAll(p.regex)]
+    }
+
+    it('should match N.Y. Penal Law § 125.25', () => {
+      expect(getMatches('N.Y. Penal Law § 125.25')).toHaveLength(1)
+    })
+    it('should match N.Y. C.P.L.R. § 211', () => {
+      expect(getMatches('N.Y. C.P.L.R. § 211')).toHaveLength(1)
+    })
+    it('should match Cal. Penal Code § 187', () => {
+      expect(getMatches('Cal. Penal Code § 187')).toHaveLength(1)
+    })
+    it('should match Cal. Civ. Proc. Code § 425.16', () => {
+      expect(getMatches('Cal. Civ. Proc. Code § 425.16')).toHaveLength(1)
+    })
+    it('should match Tex. Penal Code § 19.02', () => {
+      expect(getMatches('Tex. Penal Code § 19.02')).toHaveLength(1)
+    })
+    it('should match Tex. Fam. Code § 1.01', () => {
+      expect(getMatches('Tex. Fam. Code § 1.01')).toHaveLength(1)
+    })
+    it('should match Md. Code Ann., Crim. Law § 3-202', () => {
+      expect(getMatches('Md. Code Ann., Crim. Law § 3-202')).toHaveLength(1)
+    })
+    it('should match Md. Code, Ins. § 27-101', () => {
+      expect(getMatches('Md. Code, Ins. § 27-101')).toHaveLength(1)
+    })
+    it('should match Va. Code § 8.01-243', () => {
+      expect(getMatches('Va. Code § 8.01-243')).toHaveLength(1)
+    })
+    it('should match Va. Code Ann. § 54.1-2400', () => {
+      expect(getMatches('Va. Code Ann. § 54.1-2400')).toHaveLength(1)
+    })
+    it('should match Ala. Code § 13A-6-61', () => {
+      expect(getMatches('Ala. Code § 13A-6-61')).toHaveLength(1)
+    })
+    it('should capture subsections', () => {
+      const m = getMatches('N.Y. Penal Law § 125.25(1)(a)')
+      expect(m).toHaveLength(1)
+      expect(m[0][0]).toContain('(1)(a)')
+    })
+    it('should capture et seq.', () => {
+      const m = getMatches('Cal. Penal Code § 187 et seq.')
+      expect(m).toHaveLength(1)
+      expect(m[0][0]).toContain('et seq.')
+    })
+    it('should not match text without §', () => {
+      expect(getMatches('The N.Y. Penal Law was enacted in 1965')).toHaveLength(0)
+    })
+  })
+
+  describe('mass-chapter pattern', () => {
+    const getMatches = (text: string) => {
+      const p = statutePatterns.find(p => p.id === 'mass-chapter')
+      if (!p) throw new Error('mass-chapter pattern not found')
+      p.regex.lastIndex = 0
+      return [...text.matchAll(p.regex)]
+    }
+
+    it('should match Mass. Gen. Laws ch. 93A, § 2', () => {
+      expect(getMatches('Mass. Gen. Laws ch. 93A, § 2')).toHaveLength(1)
+    })
+    it('should match M.G.L.A. c. 93, § 14', () => {
+      expect(getMatches('M.G.L.A. c. 93, § 14')).toHaveLength(1)
+    })
+    it('should match G.L. c. 231, § 6', () => {
+      expect(getMatches('G.L. c. 231, § 6')).toHaveLength(1)
+    })
+    it('should match A.L.M. c. 93A, § 9', () => {
+      expect(getMatches('A.L.M. c. 93A, § 9')).toHaveLength(1)
+    })
+  })
 })
