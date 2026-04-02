@@ -13,6 +13,8 @@ export type {
   IdCitation,
   JournalCitation,
   NeutralCitation,
+  Parenthetical,
+  ParentheticalType,
   PublicLawCitation,
   ShortFormCaseCitation,
   ShortFormCitation,

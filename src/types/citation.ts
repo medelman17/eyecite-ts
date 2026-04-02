@@ -78,6 +78,43 @@ export interface CourtInference {
 }
 
 /**
+ * Signal-word classification for explanatory parentheticals.
+ * Based on the leading gerund/verb form in the parenthetical text.
+ */
+export type ParentheticalType =
+  | "holding"
+  | "finding"
+  | "stating"
+  | "noting"
+  | "explaining"
+  | "quoting"
+  | "citing"
+  | "discussing"
+  | "describing"
+  | "recognizing"
+  | "applying"
+  | "rejecting"
+  | "adopting"
+  | "requiring"
+  | "other"
+
+/**
+ * An extracted explanatory parenthetical from a case citation.
+ *
+ * @example
+ * ```typescript
+ * { text: "holding that X requires Y", type: "holding" }
+ * { text: "citing Doe v. City for the same proposition", type: "citing" }
+ * ```
+ */
+export interface Parenthetical {
+  /** Full text content between the parentheses (excluding parens themselves) */
+  text: string
+  /** Signal-word classification based on leading gerund */
+  type: ParentheticalType
+}
+
+/**
  * Full case citation (volume-reporter-page format).
  *
  * @example "500 F.2d 123"
@@ -115,8 +152,12 @@ export interface FullCaseCitation extends CitationBase {
   /** Citation signal (introductory phrase) */
   signal?: "see" | "see also" | "cf" | "but see" | "compare"
 
-  /** Parenthetical explanation following the citation */
-  parenthetical?: string
+  /**
+   * Explanatory parentheticals following the citation.
+   * Only populated when explanatory content is found (not court/year/disposition).
+   * @example [{ text: "holding that X requires Y", type: "holding" }]
+   */
+  parentheticals?: Parenthetical[]
 
   /** Subsequent procedural history (e.g., "aff'd", "rev'd", "cert. denied") */
   subsequentHistory?: string
