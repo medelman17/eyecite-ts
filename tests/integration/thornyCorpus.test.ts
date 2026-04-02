@@ -80,7 +80,12 @@ describe("Thorny Corpus — 94 Edge-Case Samples", () => {
         }
 
         it(`${sample.id}: ${sample.description}`, () => {
-          const citations = extractCitations(sample.text)
+          const useFalsePositiveFilter =
+            sample.category === "historical" || sample.category === "international"
+          const citations = extractCitations(
+            sample.text,
+            useFalsePositiveFilter ? { filterFalsePositives: true } : undefined,
+          )
 
           expect(
             citations.length,

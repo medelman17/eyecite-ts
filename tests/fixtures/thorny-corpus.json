@@ -380,7 +380,6 @@
       "id": "magna-carta",
       "category": "historical",
       "description": "Magna Carta citation (historical English law)",
-      "knownLimitation": "False positive: historical citation matched as case (#57)",
       "text": "The right to trial by jury dates back to the Magna Carta, ch. 39 (1215), and was recognized in 3 Edw. 1, ch. 29 (1297).",
       "expected": []
     },
@@ -409,7 +408,6 @@
       "id": "coke-reports",
       "category": "historical",
       "description": "Coke's Reports citation",
-      "knownLimitation": "False positive: historical citation matched as journal (#57)",
       "text": "Dr. Bonham's Case, 8 Co. Rep. 114 (C.P. 1610)",
       "expected": []
     },
@@ -1084,7 +1082,6 @@
       "id": "international-icj",
       "category": "international",
       "description": "International Court of Justice citation",
-      "knownLimitation": "False positive: international citation (#58)",
       "text": "Military and Paramilitary Activities in and Against Nicaragua (Nicar. v. U.S.), 1986 I.C.J. 14 (June 27)",
       "expected": []
     },
@@ -1099,7 +1096,6 @@
       "id": "international-treaty",
       "category": "international",
       "description": "Treaty citation",
-      "knownLimitation": "False positive: international citation (#58)",
       "text": "Vienna Convention on the Law of Treaties art. 31, May 23, 1969, 1155 U.N.T.S. 331",
       "expected": []
     },
