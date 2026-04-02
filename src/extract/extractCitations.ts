@@ -315,6 +315,46 @@ export function extractCitations(
     citations.push(citation)
   }
 
+  // Step 4.5: Link subsequent history citations
+  // For each parent with subsequentHistoryEntries, find the next case citation
+  // after each signal span and set back-pointers. Also aggregate chained entries
+  // from children onto the root parent.
+  for (let i = 0; i < citations.length; i++) {
+    const parent = citations[i]
+    if (parent.type !== "case" || !parent.subsequentHistoryEntries) continue
+
+    const entries = parent.subsequentHistoryEntries
+    let entryIdx = 0
+
+    for (let j = i + 1; j < citations.length && entryIdx < entries.length; j++) {
+      const child = citations[j]
+      if (child.type !== "case") continue
+
+      // Match child to signal: child must start after the signal ends
+      // (the signal text like "aff'd" precedes the child citation)
+      const signalEnd = entries[entryIdx].signalSpan.cleanEnd
+      if (child.span.cleanStart >= signalEnd) {
+        child.subsequentHistoryOf = {
+          index: i,
+          signal: entries[entryIdx].signal,
+        }
+
+        // Aggregate any entries the child has onto the parent (chained history)
+        if (child.subsequentHistoryEntries) {
+          for (const childEntry of child.subsequentHistoryEntries) {
+            entries.push({
+              ...childEntry,
+              order: entries.length,
+            })
+          }
+          child.subsequentHistoryEntries = undefined
+        }
+
+        entryIdx++
+      }
+    }
+  }
+
   // Step 5: Resolve short-form citations if requested
   if (options?.resolve) {
     return resolveCitations(citations, text, options.resolutionOptions)
