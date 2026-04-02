@@ -15,6 +15,7 @@
 import type { Token } from "@/tokenize"
 import type { ConstitutionalCitation } from "@/types/citation"
 import type { TransformationMap } from "@/types/span"
+import { CONSTITUTIONAL_BODY_RE } from "@/patterns/constitutionalPatterns"
 
 /**
  * Roman numeral lookup table (I–XXVII).
@@ -117,11 +118,6 @@ const STATE_ABBREV_TO_CODE: Record<string, string> = {
 	wyo: "WY",
 }
 
-/** Regex to parse the body: art./amend. + numeral + optional § section + optional cl. clause */
-const BODY_RE =
-	/(?:art(?:icle)?\.?|amend(?:ment)?\.?)\s+([IVXLC]+|\d+)(?:[,;]\s*§\s*([^\s,;()]+))?(?:[,;]\s*cl\.?\s*(\d+))?/i
-
-/** Regex to detect article vs amendment keyword */
 const IS_AMENDMENT_RE = /amend/i
 
 /** Regex to extract the state abbreviation prefix from state-constitution tokens */
@@ -159,8 +155,7 @@ export function extractConstitutional(
 ): ConstitutionalCitation {
 	const { text, span } = token
 
-	// Parse body fields
-	const bodyMatch = BODY_RE.exec(text)
+	const bodyMatch = CONSTITUTIONAL_BODY_RE.exec(text)
 
 	let article: number | undefined
 	let amendment: number | undefined
@@ -169,22 +164,19 @@ export function extractConstitutional(
 
 	if (bodyMatch) {
 		const numeral = parseNumeral(bodyMatch[1])
-		const keyword = text.slice(
-			0,
-			bodyMatch.index + bodyMatch[0].indexOf(bodyMatch[1]),
-		)
 
-		if (IS_AMENDMENT_RE.test(keyword)) {
+		if (IS_AMENDMENT_RE.test(bodyMatch[0])) {
 			amendment = numeral
 		} else {
 			article = numeral
 		}
 
-		section = bodyMatch[2] ? bodyMatch[2].replace(/\.$/, "") : undefined
+		section = bodyMatch[2]
+			? bodyMatch[2].endsWith(".") ? bodyMatch[2].slice(0, -1) : bodyMatch[2]
+			: undefined
 		clause = bodyMatch[3] ? Number.parseInt(bodyMatch[3], 10) : undefined
 	}
 
-	// Determine jurisdiction from patternId
 	let jurisdiction: string | undefined
 	switch (token.patternId) {
 		case "us-constitution":
@@ -198,13 +190,11 @@ export function extractConstitutional(
 			break
 	}
 
-	// Translate positions
 	const originalStart =
 		transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
 	const originalEnd =
 		transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
 
-	// Confidence scoring
 	let confidence: number
 	if (token.patternId === "bare-constitution") {
 		confidence = 0.7
@@ -214,10 +204,8 @@ export function extractConstitutional(
 		confidence = 0.9
 	}
 
-	// Strip a sentence-terminating trailing period from matchedText.
-	// The section regex ([^\s,;()]+) may greedily consume "§ 1." — the period
-	// belongs to the surrounding sentence, not the citation itself.
-	const matchedText = text.replace(/\.$/, "")
+	// The section regex may greedily consume a sentence-terminating period ("§ 1.")
+	const matchedText = text.endsWith(".") ? text.slice(0, -1) : text
 
 	return {
 		type: "constitutional",

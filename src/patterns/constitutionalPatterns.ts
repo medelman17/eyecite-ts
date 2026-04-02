@@ -20,6 +20,9 @@ const OPTIONAL_SECTION = String.raw`(?:[,;]\s*§\s*([^\s,;()]+))?`
 const OPTIONAL_CLAUSE = String.raw`(?:[,;]\s*cl\.?\s*(\d+))?`
 const BODY_TAIL = `${ARTICLE_OR_AMENDMENT}${OPTIONAL_SECTION}${OPTIONAL_CLAUSE}`
 
+/** Compiled body regex shared with the extractor to avoid duplicate definitions. */
+export const CONSTITUTIONAL_BODY_RE: RegExp = new RegExp(BODY_TAIL, "i")
+
 export const constitutionalPatterns: Pattern[] = [
   {
     id: "us-constitution",
