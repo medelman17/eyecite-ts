@@ -1008,6 +1008,16 @@ describe("explanatory parentheticals (#76)", () => {
       expect(citations[0].parentheticals?.[0]?.type).toBe("quoting")
     }
   })
+
+  it("handles capitalized signal words", () => {
+    const citations = extractCitations(
+      "Smith v. Jones, 500 F.2d 123 (2020) (Holding that X)",
+    )
+    expect(citations).toHaveLength(1)
+    if (citations[0].type === "case") {
+      expect(citations[0].parentheticals?.[0]?.type).toBe("holding")
+    }
+  })
 })
 
 describe("backward compatibility (Phase 6)", () => {
@@ -1049,6 +1059,24 @@ describe("backward compatibility (Phase 6)", () => {
     if (citations[0].type === "case") {
       expect(citations[0].hasBlankPage).toBe(true)
       expect(citations[0].page).toBeUndefined()
+    }
+  })
+
+  it("disposition extraction still works via classify", () => {
+    const citations = extractCitations("500 F.2d 123 (9th Cir. 2020) (en banc)")
+    expect(citations).toHaveLength(1)
+    if (citations[0].type === "case") {
+      expect(citations[0].disposition).toBe("en banc")
+      expect(citations[0].parentheticals).toBeUndefined()
+    }
+  })
+
+  it("per curiam still extracted from chained paren", () => {
+    const citations = extractCitations("500 F.2d 123 (9th Cir. 2020) (per curiam)")
+    expect(citations).toHaveLength(1)
+    if (citations[0].type === "case") {
+      expect(citations[0].disposition).toBe("per curiam")
+      expect(citations[0].parentheticals).toBeUndefined()
     }
   })
 })
