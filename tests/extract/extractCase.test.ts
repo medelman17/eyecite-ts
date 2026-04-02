@@ -896,6 +896,41 @@ describe("disposition extraction (Phase 6)", () => {
   })
 })
 
+describe("explanatory parentheticals (#76)", () => {
+  it("extracts single explanatory parenthetical", () => {
+    const citations = extractCitations(
+      "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (holding that X requires Y)",
+    )
+    expect(citations).toHaveLength(1)
+    if (citations[0].type === "case") {
+      expect(citations[0].parentheticals).toEqual([
+        { text: "holding that X requires Y", type: "holding" },
+      ])
+    }
+  })
+
+  it("extracts multiple chained explanatory parentheticals", () => {
+    const citations = extractCitations(
+      "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (holding that X) (citing Doe v. City)",
+    )
+    expect(citations).toHaveLength(1)
+    if (citations[0].type === "case") {
+      expect(citations[0].parentheticals).toEqual([
+        { text: "holding that X", type: "holding" },
+        { text: "citing Doe v. City", type: "citing" },
+      ])
+    }
+  })
+
+  it("no parentheticals when only court/year paren present", () => {
+    const citations = extractCitations("Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)")
+    expect(citations).toHaveLength(1)
+    if (citations[0].type === "case") {
+      expect(citations[0].parentheticals).toBeUndefined()
+    }
+  })
+})
+
 describe("backward compatibility (Phase 6)", () => {
   it("year-only extraction still works", () => {
     const citations = extractCitations("410 U.S. 113 (1973)")

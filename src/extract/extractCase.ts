@@ -58,6 +58,12 @@ const CHAINED_DISPOSITION_REGEX = /\([^)]+\)\s*\((en banc|per curiam)\)/i
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
 
+/** Whitespace/comma skip pattern for parenthetical scanning */
+const PAREN_SKIP_REGEX = /[\s,]/
+
+/** Subsequent history signals between parentheticals */
+const HISTORY_SIGNAL_REGEX = /^(aff'd|rev'd|cert\.\s*denied|overruled\s+by|vacated\s+by)/i
+
 /** Standard "v." or "vs." case name format */
 const V_CASE_NAME_REGEX =
   /([A-Z][A-Za-z0-9\s.,'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9\s.,'&()/-]+?)\s*,\s*$/
@@ -151,76 +157,109 @@ function extractCaseName(
   return undefined
 }
 
+/** A raw parenthetical block extracted from text */
+interface RawParenthetical {
+  /** Content between the parentheses (excluding parens themselves) */
+  text: string
+  /** Position of opening '(' in the text */
+  start: number
+  /** Position after closing ')' in the text (exclusive) */
+  end: number
+}
+
+/**
+ * Collect all top-level parenthetical blocks starting from a position.
+ * Uses depth tracking to handle nested parens. Continues scanning through
+ * chained parentheticals and subsequent history signals.
+ *
+ * @param text - Full text to scan
+ * @param startPos - Position to start scanning (typically after citation core)
+ * @param maxLookahead - Maximum characters to scan forward (default 500)
+ * @returns Array of raw parenthetical blocks in order of appearance
+ */
+function collectParentheticals(
+  text: string,
+  startPos: number,
+  maxLookahead = 500,
+): RawParenthetical[] {
+  const results: RawParenthetical[] = []
+  let pos = startPos
+  const endLimit = Math.min(text.length, startPos + maxLookahead)
+
+  while (pos < endLimit) {
+    // Skip whitespace and commas between parentheticals
+    while (pos < endLimit && PAREN_SKIP_REGEX.test(text[pos])) {
+      pos++
+    }
+
+    if (pos >= endLimit || text[pos] !== "(") {
+      // Check for subsequent history signal before giving up
+      const remainingText = text.substring(pos, endLimit)
+      const signalMatch = HISTORY_SIGNAL_REGEX.exec(remainingText)
+      if (signalMatch) {
+        pos += signalMatch[0].length
+        continue
+      }
+      break
+    }
+
+    // Found opening paren — track depth to find matching close
+    const parenStart = pos
+    let depth = 0
+    const contentStart = pos + 1
+
+    while (pos < endLimit) {
+      const char = text[pos]
+      if (char === "(") {
+        depth++
+      } else if (char === ")") {
+        depth--
+        if (depth === 0) {
+          pos++ // move past closing paren
+          const content = text.substring(contentStart, pos - 1).trim()
+          if (content.length > 0) {
+            results.push({
+              text: content,
+              start: parenStart,
+              end: pos,
+            })
+          }
+          break
+        }
+      }
+      pos++
+    }
+
+    // If we never closed the paren, stop
+    if (depth > 0) break
+  }
+
+  return results
+}
+
 /**
  * Find the end of parenthetical content, including chained parentheticals and subsequent history.
- * Tracks paren depth to handle nested parens, and continues scanning for chained parens.
+ * Thin wrapper around collectParentheticals() for backward compatibility.
  *
  * @param cleanedText - Full cleaned text
  * @param searchStart - Position to start searching from (after citation core)
- * @param maxLookahead - Maximum characters to search forward (default 200)
+ * @param maxLookahead - Maximum characters to search forward (default 500)
  * @returns Position after final closing paren (exclusive), or searchStart if no parens
  *
  * @example
  * ```typescript
- * findParentheticalEnd(text, 20, 200)
+ * findParentheticalEnd(text, 20, 500)
  * // For "(2020) (en banc)" returns position after final ")"
  * ```
  */
 function findParentheticalEnd(
   cleanedText: string,
   searchStart: number,
-  maxLookahead = 200,
+  maxLookahead = 500,
 ): number {
-  let pos = searchStart
-  const endLimit = Math.min(cleanedText.length, searchStart + maxLookahead)
-  let depth = 0
-  let foundAnyParen = false
-
-  while (pos < endLimit) {
-    const char = cleanedText[pos]
-
-    if (char === "(") {
-      depth++
-      foundAnyParen = true
-      pos++
-    } else if (char === ")") {
-      depth--
-      pos++
-
-      // When depth returns to 0, check for chained paren or subsequent history
-      if (depth === 0) {
-        // Skip whitespace
-        let nextPos = pos
-        while (nextPos < endLimit && /\s/.test(cleanedText[nextPos])) {
-          nextPos++
-        }
-
-        // Check for chained parenthetical
-        if (cleanedText[nextPos] === "(") {
-          pos = nextPos
-          continue
-        }
-
-        // Check for subsequent history signals
-        const remainingText = cleanedText.substring(nextPos, endLimit)
-        const historyRegex = /^,\s*(aff'd|rev'd|cert\.\s*denied|overruled\s+by|vacated\s+by)/i
-        if (historyRegex.test(remainingText)) {
-          // Continue scanning - subsequent history has its own paren
-          pos = nextPos
-          continue
-        }
-
-        // No chained paren or subsequent history - we're done
-        return pos
-      }
-    } else {
-      pos++
-    }
-  }
-
-  // If we found parens but didn't close them all, return where we stopped
-  // If we never found parens, return searchStart
-  return foundAnyParen ? pos : searchStart
+  const parens = collectParentheticals(cleanedText, searchStart, maxLookahead)
+  if (parens.length === 0) return searchStart
+  return parens[parens.length - 1].end
 }
 
 /**
