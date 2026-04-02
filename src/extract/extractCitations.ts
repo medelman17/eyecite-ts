@@ -111,6 +111,24 @@ export interface ExtractOptions {
    * ```
    */
   resolutionOptions?: ResolutionOptions
+
+  /**
+   * Remove citations flagged as likely false positives (default: false).
+   *
+   * When false (default), flagged citations get reduced confidence (0.1) and a warning.
+   * When true, flagged citations are removed from results entirely.
+   *
+   * False positive detection uses:
+   * - A static blocklist of known non-US reporter abbreviations (international, UK, European)
+   * - A year plausibility heuristic (years before 1750 predate US legal reporting)
+   *
+   * @example
+   * ```typescript
+   * // Remove false positives from results
+   * const citations = extractCitations(text, { filterFalsePositives: true })
+   * ```
+   */
+  filterFalsePositives?: boolean
 }
 
 /**
