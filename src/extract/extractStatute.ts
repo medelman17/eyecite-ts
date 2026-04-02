@@ -16,7 +16,7 @@
 
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
-import type { TransformationMap } from "@/types/span"
+import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 import { extractAbbreviated } from "./statutes/extractAbbreviated"
 import { extractChapterAct } from "./statutes/extractChapterAct"
 import { extractFederal } from "./statutes/extractFederal"
@@ -36,8 +36,7 @@ function extractLegacy(token: Token, transformationMap: TransformationMap): Stat
   // Graceful fallback for unparseable tokens — return low-confidence citation
   // rather than throwing (spec: "Unknown codes produce citations with low confidence")
   if (!match) {
-    const originalStart = transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-    const originalEnd = transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+    const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
     return {
       type: "statute",
@@ -56,8 +55,7 @@ function extractLegacy(token: Token, transformationMap: TransformationMap): Stat
   const code = match[2].trim()
   const section = match[3]
 
-  const originalStart = transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-  const originalEnd = transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
   let confidence = 0.5
   const knownCodes = [

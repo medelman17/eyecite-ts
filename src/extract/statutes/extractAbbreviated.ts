@@ -12,7 +12,7 @@
 
 import type { Token } from '@/tokenize'
 import type { StatuteCitation } from '@/types/citation'
-import type { TransformationMap } from '@/types/span'
+import { resolveOriginalSpan, type TransformationMap } from '@/types/span'
 import { findAbbreviatedCode } from '@/data/knownCodes'
 import { parseBody } from './parseBody'
 
@@ -44,8 +44,7 @@ export function extractAbbreviated(
 
   const { section, subsection, hasEtSeq } = parseBody(rawBody)
 
-  const originalStart = transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-  const originalEnd = transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
   const hasSection = text.includes('§')
   let confidence: number

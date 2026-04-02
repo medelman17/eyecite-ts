@@ -9,7 +9,7 @@
 
 import type { Token } from '@/tokenize'
 import type { StatuteCitation } from '@/types/citation'
-import type { TransformationMap } from '@/types/span'
+import { resolveOriginalSpan, type TransformationMap } from '@/types/span'
 import { parseBody } from './parseBody'
 
 /** Regex to parse federal token: title + code + § + body */
@@ -47,10 +47,7 @@ export function extractFederal(
   const { section, subsection, hasEtSeq } = parseBody(rawBody)
 
   // Translate positions
-  const originalStart =
-    transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-  const originalEnd =
-    transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
   // Confidence: known federal code + § = 0.95 base
   let confidence = 0.95

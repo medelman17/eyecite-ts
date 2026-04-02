@@ -9,7 +9,7 @@
 
 import type { Token } from '@/tokenize'
 import type { JournalCitation } from '@/types/citation'
-import type { TransformationMap } from '@/types/span'
+import { resolveOriginalSpan, type TransformationMap } from '@/types/span'
 
 /**
  * Extracts journal citation metadata from a tokenized citation.
@@ -75,10 +75,7 @@ export function extractJournal(
 	const pincite = pinciteMatch ? Number.parseInt(pinciteMatch[1], 10) : undefined
 
 	// Translate positions from clean → original
-	const originalStart =
-		transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-	const originalEnd =
-		transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+	const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
 	// Confidence: 0.6 base (journal validation against database happens in Phase 3)
 	const confidence = 0.6

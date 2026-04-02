@@ -42,3 +42,14 @@ export interface TransformationMap {
   /** Maps original text position to cleaned text position */
   originalToClean: Map<number, number>
 }
+
+/** Translate clean-text span positions back to original-text positions. */
+export function resolveOriginalSpan(
+  span: { cleanStart: number; cleanEnd: number },
+  map: TransformationMap,
+): { originalStart: number; originalEnd: number } {
+  return {
+    originalStart: map.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart,
+    originalEnd: map.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd,
+  }
+}

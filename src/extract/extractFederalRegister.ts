@@ -9,7 +9,7 @@
 
 import type { Token } from '@/tokenize'
 import type { FederalRegisterCitation } from '@/types/citation'
-import type { TransformationMap } from '@/types/span'
+import { resolveOriginalSpan, type TransformationMap } from '@/types/span'
 
 /**
  * Extracts Federal Register citation metadata from a tokenized citation.
@@ -70,10 +70,7 @@ export function extractFederalRegister(
 	const year = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
 
 	// Translate positions from clean → original
-	const originalStart =
-		transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-	const originalEnd =
-		transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+	const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
 	// Confidence: 0.9 (Federal Register format is standardized)
 	const confidence = 0.9

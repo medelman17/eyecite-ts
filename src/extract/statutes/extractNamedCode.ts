@@ -16,7 +16,7 @@
 import { findNamedCode } from "@/data/knownCodes"
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
-import type { TransformationMap } from "@/types/span"
+import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 import { parseBody } from "./parseBody"
 
 /** Match named-code token: jurisdiction prefix + code name + § + body */
@@ -140,8 +140,7 @@ export function extractNamedCode(
 
   const { section, subsection, hasEtSeq } = parseBody(rawBody)
 
-  const originalStart = transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-  const originalEnd = transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
   // Confidence: named-code patterns always require §, so known jurisdiction → 0.95 base
   let confidence = jurisdiction ? 0.95 : 0.5

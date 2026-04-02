@@ -9,7 +9,7 @@
 
 import type { Token } from '@/tokenize'
 import type { NeutralCitation } from '@/types/citation'
-import type { TransformationMap } from '@/types/span'
+import { resolveOriginalSpan, type TransformationMap } from '@/types/span'
 
 /**
  * Extracts neutral citation metadata from a tokenized citation.
@@ -65,10 +65,7 @@ export function extractNeutral(
 	const documentNumber = match[3]
 
 	// Translate positions from clean → original
-	const originalStart =
-		transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-	const originalEnd =
-		transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+	const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
 	// Confidence: 1.0 (neutral format is unambiguous)
 	const confidence = 1.0

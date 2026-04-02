@@ -9,7 +9,7 @@
 
 import type { Token } from '@/tokenize'
 import type { IdCitation, SupraCitation, ShortFormCaseCitation } from '@/types/citation'
-import type { TransformationMap } from '@/types/span'
+import { resolveOriginalSpan, type TransformationMap } from '@/types/span'
 
 /**
  * Extracts Id. citation metadata from a tokenized citation.
@@ -60,10 +60,7 @@ export function extractId(
 	const pincite = match[1] ? Number.parseInt(match[1], 10) : undefined
 
 	// Translate positions from clean → original
-	const originalStart =
-		transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-	const originalEnd =
-		transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+	const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
 	// Confidence: 1.0 (Id. format is unambiguous)
 	const confidence = 1.0
@@ -137,10 +134,7 @@ export function extractSupra(
 	const pincite = match[2] ? Number.parseInt(match[2], 10) : undefined
 
 	// Translate positions from clean → original
-	const originalStart =
-		transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-	const originalEnd =
-		transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+	const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
 	// Confidence: 0.9 (supra format is fairly standard)
 	const confidence = 0.9
@@ -218,10 +212,7 @@ export function extractShortFormCase(
 	const pincite = Number.parseInt(match[3], 10)
 
 	// Translate positions from clean → original
-	const originalStart =
-		transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-	const originalEnd =
-		transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+	const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
 	// Confidence: 0.7 (short-form citations are more ambiguous)
 	const confidence = 0.7

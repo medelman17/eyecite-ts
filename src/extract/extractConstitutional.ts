@@ -14,7 +14,7 @@
 
 import type { Token } from "@/tokenize"
 import type { ConstitutionalCitation } from "@/types/citation"
-import type { TransformationMap } from "@/types/span"
+import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 import { CONSTITUTIONAL_BODY_RE } from "@/patterns/constitutionalPatterns"
 
 /**
@@ -184,8 +184,7 @@ export function extractConstitutional(
       break
   }
 
-  const originalStart = transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-  const originalEnd = transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
   let confidence: number
   if (token.patternId === "bare-constitution") {
