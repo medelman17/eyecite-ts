@@ -12,10 +12,10 @@
  * @module extract/extractConstitutional
  */
 
+import { CONSTITUTIONAL_BODY_RE } from "@/patterns/constitutionalPatterns"
 import type { Token } from "@/tokenize"
 import type { ConstitutionalCitation } from "@/types/citation"
 import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
-import { CONSTITUTIONAL_BODY_RE } from "@/patterns/constitutionalPatterns"
 
 /**
  * Roman numeral lookup table (I–XXVII).

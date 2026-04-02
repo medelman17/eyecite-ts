@@ -13,7 +13,7 @@
  * // => "Smith v. Doe, 500 F.2d 123"
  */
 export function stripHtmlTags(text: string): string {
-	return text.replace(/<[^>]+>/g, "")
+  return text.replace(/<[^>]+>/g, "")
 }
 
 /**
@@ -24,7 +24,7 @@ export function stripHtmlTags(text: string): string {
  * // => "Smith v. Doe, 500 F.2d 123"
  */
 export function normalizeWhitespace(text: string): string {
-	return text.replace(/[\t\n\r]+/g, " ").replace(/ {2,}/g, " ")
+  return text.replace(/[\t\n\r]+/g, " ").replace(/ {2,}/g, " ")
 }
 
 /**
@@ -35,7 +35,7 @@ export function normalizeWhitespace(text: string): string {
  * // => "Smith v. Doe, 500 F.2d 123" // normalized
  */
 export function normalizeUnicode(text: string): string {
-	return text.normalize("NFKC")
+  return text.normalize("NFKC")
 }
 
 /**
@@ -46,9 +46,9 @@ export function normalizeUnicode(text: string): string {
  * // => "\"Smith\" v. 'Doe', 500 F.2d 123"
  */
 export function fixSmartQuotes(text: string): string {
-	return text
-		.replace(/[\u201C\u201D]/g, '"') // curly double quotes
-		.replace(/[\u2018\u2019]/g, "'") // curly single quotes/apostrophes
+  return text
+    .replace(/[\u201C\u201D]/g, '"') // curly double quotes
+    .replace(/[\u2018\u2019]/g, "'") // curly single quotes/apostrophes
 }
 
 /**
@@ -59,7 +59,7 @@ export function fixSmartQuotes(text: string): string {
  * // => "Smith v. Doe, 500 F.2d 123"
  */
 export function removeOcrArtifacts(text: string): string {
-	return text.replace(/_/g, "")
+  return text.replace(/_/g, "")
 }
 
 /**
@@ -77,7 +77,7 @@ export function removeOcrArtifacts(text: string): string {
  * // => "Smith v. Doe-500 F.2d 123"
  */
 export function normalizeDashes(text: string): string {
-	return text.replace(/[\u2013\u2014]/g, "-")
+  return text.replace(/[\u2013\u2014]/g, "-")
 }
 
 /**
@@ -96,26 +96,26 @@ export function normalizeDashes(text: string): string {
  * // => "Smith & Jones, 500 F.2d 123"
  */
 export function decodeHtmlEntities(text: string): string {
-	return (
-		text
-			// Named entities
-			.replace(/&sect;/gi, "§")
-			.replace(/&para;/gi, "¶")
-			.replace(/&amp;/gi, "&")
-			.replace(/&nbsp;/gi, " ")
-			.replace(/&lt;/gi, "<")
-			.replace(/&gt;/gi, ">")
-			.replace(/&quot;/gi, '"')
-			.replace(/&apos;/gi, "'")
-			// Numeric entities - decimal
-			.replace(/&#(\d+);/g, (_match, dec) => {
-				const code = Number.parseInt(dec, 10)
-				return Number.isNaN(code) ? _match : String.fromCharCode(code)
-			})
-			// Numeric entities - hexadecimal
-			.replace(/&#x([0-9a-fA-F]+);/g, (_match, hex) => {
-				const code = Number.parseInt(hex, 16)
-				return Number.isNaN(code) ? _match : String.fromCharCode(code)
-			})
-	)
+  return (
+    text
+      // Named entities
+      .replace(/&sect;/gi, "§")
+      .replace(/&para;/gi, "¶")
+      .replace(/&amp;/gi, "&")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&quot;/gi, '"')
+      .replace(/&apos;/gi, "'")
+      // Numeric entities - decimal
+      .replace(/&#(\d+);/g, (_match, dec) => {
+        const code = Number.parseInt(dec, 10)
+        return Number.isNaN(code) ? _match : String.fromCharCode(code)
+      })
+      // Numeric entities - hexadecimal
+      .replace(/&#x([0-9a-fA-F]+);/g, (_match, hex) => {
+        const code = Number.parseInt(hex, 16)
+        return Number.isNaN(code) ? _match : String.fromCharCode(code)
+      })
+  )
 }

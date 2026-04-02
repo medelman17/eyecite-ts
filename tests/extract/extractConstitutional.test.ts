@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest"
+import { describe, expect, it } from "vitest"
 import { extractConstitutional } from "@/extract/extractConstitutional"
 import type { Token } from "@/tokenize"
 import { createIdentityMap, createOffsetMap } from "../helpers/transformationMap"

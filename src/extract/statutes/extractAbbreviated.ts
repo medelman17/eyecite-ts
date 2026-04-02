@@ -10,13 +10,14 @@
  * @module extract/statutes/extractAbbreviated
  */
 
-import type { Token } from '@/tokenize'
-import type { StatuteCitation } from '@/types/citation'
-import { resolveOriginalSpan, type TransformationMap } from '@/types/span'
-import { findAbbreviatedCode } from '@/data/knownCodes'
-import { parseBody } from './parseBody'
+import { findAbbreviatedCode } from "@/data/knownCodes"
+import type { Token } from "@/tokenize"
+import type { StatuteCitation } from "@/types/citation"
+import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import { parseBody } from "./parseBody"
 
-const ABBREVIATED_RE = /^(?:(\d+)\s+)?(.+?)\s*§?\s*(\d+[A-Za-z0-9.:/-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/
+const ABBREVIATED_RE =
+  /^(?:(\d+)\s+)?(.+?)\s*§?\s*(\d+[A-Za-z0-9.:/-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/
 
 export function extractAbbreviated(
   token: Token,
@@ -35,7 +36,7 @@ export function extractAbbreviated(
     rawBody = match[3]
   } else {
     abbrevText = text
-    rawBody = ''
+    rawBody = ""
   }
 
   const codeEntry = findAbbreviatedCode(abbrevText)
@@ -46,21 +47,35 @@ export function extractAbbreviated(
 
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-  const hasSection = text.includes('§')
+  const hasSection = text.includes("§")
   let confidence: number
-  if (codeEntry && hasSection) { confidence = 0.95 }
-  else if (codeEntry) { confidence = 0.85 }
-  else if (hasSection) { confidence = 0.6 }
-  else { confidence = 0.4 }
+  if (codeEntry && hasSection) {
+    confidence = 0.95
+  } else if (codeEntry) {
+    confidence = 0.85
+  } else if (hasSection) {
+    confidence = 0.6
+  } else {
+    confidence = 0.4
+  }
   if (title !== undefined) confidence += 0.05
   if (subsection) confidence += 0.05
   confidence = Math.min(confidence, 1.0)
 
   return {
-    type: 'statute', text,
+    type: "statute",
+    text,
     span: { cleanStart: span.cleanStart, cleanEnd: span.cleanEnd, originalStart, originalEnd },
-    confidence, matchedText: text, processTimeMs: 0, patternsChecked: 1,
-    title, code, section, subsection, pincite: subsection,
-    jurisdiction, hasEtSeq: hasEtSeq || undefined,
+    confidence,
+    matchedText: text,
+    processTimeMs: 0,
+    patternsChecked: 1,
+    title,
+    code,
+    section,
+    subsection,
+    pincite: subsection,
+    jurisdiction,
+    hasEtSeq: hasEtSeq || undefined,
   }
 }

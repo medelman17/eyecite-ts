@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach } from "vitest"
+import { beforeEach, describe, expect, it } from "vitest"
 import {
-  loadReporters,
-  getReportersSync,
   findReportersByAbbreviation,
+  getReportersSync,
+  loadReporters,
   type ReportersDatabase,
 } from "@/data/reporters"
 

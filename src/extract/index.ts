@@ -15,13 +15,13 @@
  */
 
 export * from "./extractCase"
-export * from "./extractStatute"
+export * from "./extractCitations"
+export * from "./extractConstitutional"
+export * from "./extractFederalRegister"
 export * from "./extractJournal"
 export * from "./extractNeutral"
 export * from "./extractPublicLaw"
-export * from "./extractFederalRegister"
-export * from "./extractStatutesAtLarge"
-export * from "./extractConstitutional"
 export * from "./extractShortForms"
-export * from "./extractCitations"
+export * from "./extractStatute"
+export * from "./extractStatutesAtLarge"
 export * from "./validation"

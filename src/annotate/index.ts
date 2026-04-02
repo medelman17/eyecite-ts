@@ -8,5 +8,5 @@
  * @module annotate
  */
 
-export * from './types'
-export * from './annotate'
+export * from "./annotate"
+export * from "./types"

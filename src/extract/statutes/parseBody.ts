@@ -29,7 +29,7 @@ export interface ParsedBody {
  */
 export function parseBody(rawBody: string): ParsedBody {
   // Strip et seq. — single replace + compare (avoids double regex execution)
-  const stripped = rawBody.replace(ET_SEQ_RE, '')
+  const stripped = rawBody.replace(ET_SEQ_RE, "")
   const hasEtSeq = stripped !== rawBody
 
   // Split section from subsections: "1983(a)(1)" → section="1983", subsection="(a)(1)"

@@ -12,7 +12,7 @@
  * - Use global flag /g for matchAll()
  */
 
-import type { FullCitationType } from '@/types/citation'
+import type { FullCitationType } from "@/types/citation"
 
 export interface Pattern {
   id: string
@@ -23,21 +23,25 @@ export interface Pattern {
 
 export const casePatterns: Pattern[] = [
   {
-    id: 'federal-reporter',
-    regex: /\b(\d+(?:-\d+)?)\s+(F\.|F\.2d|F\.3d|F\.4th|F\.\s?Supp\.|F\.\s?Supp\.\s?2d|F\.\s?Supp\.\s?3d|F\.\s?Supp\.\s?4th|F\.\s?App'x)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.)/g,
-    description: 'Federal Reporter (F., F.2d, F.3d, F.4th, F.Supp., F.App\'x, etc.)',
-    type: 'case',
+    id: "federal-reporter",
+    regex:
+      /\b(\d+(?:-\d+)?)\s+(F\.|F\.2d|F\.3d|F\.4th|F\.\s?Supp\.|F\.\s?Supp\.\s?2d|F\.\s?Supp\.\s?3d|F\.\s?Supp\.\s?4th|F\.\s?App'x)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.)/g,
+    description: "Federal Reporter (F., F.2d, F.3d, F.4th, F.Supp., F.App'x, etc.)",
+    type: "case",
   },
   {
-    id: 'supreme-court',
-    regex: /\b(\d+(?:-\d+)?)\s+(U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?2d)?)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.)/g,
-    description: 'U.S. Supreme Court reporters',
-    type: 'case',
+    id: "supreme-court",
+    regex:
+      /\b(\d+(?:-\d+)?)\s+(U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?2d)?)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.)/g,
+    description: "U.S. Supreme Court reporters",
+    type: "case",
   },
   {
-    id: 'state-reporter',
-    regex: /\b(\d+(?:-\d+)?)\s+([A-Z](?:(?! L\.[JQR\s])[A-Za-z.\d\s])+?)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.)/g,
-    description: 'State reporters (broad pattern allowing multi-word reporters, excludes journal patterns with " L.J/Q/Rev", validated against reporters-db in Phase 3)',
-    type: 'case',
+    id: "state-reporter",
+    regex:
+      /\b(\d+(?:-\d+)?)\s+([A-Z](?:(?! L\.[JQR\s])[A-Za-z.\d\s])+?)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.)/g,
+    description:
+      'State reporters (broad pattern allowing multi-word reporters, excludes journal patterns with " L.J/Q/Rev", validated against reporters-db in Phase 3)',
+    type: "case",
   },
 ]

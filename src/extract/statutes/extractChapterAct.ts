@@ -7,10 +7,10 @@
  * @module extract/statutes/extractChapterAct
  */
 
-import type { Token } from '@/tokenize'
-import type { StatuteCitation } from '@/types/citation'
-import { resolveOriginalSpan, type TransformationMap } from '@/types/span'
-import { parseBody } from './parseBody'
+import type { Token } from "@/tokenize"
+import type { StatuteCitation } from "@/types/citation"
+import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import { parseBody } from "./parseBody"
 
 /** Parse chapter-act token: chapter + ILCS + act/section */
 const CHAPTER_ACT_RE = /^(\d+)\s+(?:ILCS|Ill\.?\s*Comp\.?\s*Stat\.?)\s*(?:Ann\.?\s+)?(\d+)\/(.+)$/
@@ -22,17 +22,17 @@ export function extractChapterAct(
   const { text, span } = token
   const match = CHAPTER_ACT_RE.exec(text)
 
-  let title: number | undefined  // chapter number
-  let code: string               // act number
+  let title: number | undefined // chapter number
+  let code: string // act number
   let rawBody: string
 
   if (match) {
-    title = Number.parseInt(match[1], 10)  // chapter (e.g., 735)
-    code = match[2]                         // act (e.g., 5)
-    rawBody = match[3]                      // section (e.g., 2-1001)
+    title = Number.parseInt(match[1], 10) // chapter (e.g., 735)
+    code = match[2] // act (e.g., 5)
+    rawBody = match[3] // section (e.g., 2-1001)
   } else {
     code = text
-    rawBody = ''
+    rawBody = ""
   }
 
   const { section, subsection, hasEtSeq } = parseBody(rawBody)
@@ -46,7 +46,7 @@ export function extractChapterAct(
   confidence = Math.min(confidence, 1.0)
 
   return {
-    type: 'statute',
+    type: "statute",
     text,
     span: { cleanStart: span.cleanStart, cleanEnd: span.cleanEnd, originalStart, originalEnd },
     confidence,
@@ -58,7 +58,7 @@ export function extractChapterAct(
     section,
     subsection,
     pincite: subsection,
-    jurisdiction: match ? 'IL' : undefined,
+    jurisdiction: match ? "IL" : undefined,
     hasEtSeq: hasEtSeq || undefined,
   }
 }

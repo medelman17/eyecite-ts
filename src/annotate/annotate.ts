@@ -1,5 +1,5 @@
-import type { Citation } from '../types/citation'
-import type { AnnotationOptions, AnnotationResult } from './types'
+import type { Citation } from "../types/citation"
+import type { AnnotationOptions, AnnotationResult } from "./types"
 
 /**
  * Annotate citations in text with custom markup.
@@ -48,12 +48,12 @@ import type { AnnotationOptions, AnnotationResult } from './types'
 export function annotate<C extends Citation = Citation>(
   text: string,
   citations: C[],
-  options: AnnotationOptions<C> = {}
+  options: AnnotationOptions<C> = {},
 ): AnnotationResult {
   const {
     useCleanText = false,
-    autoEscape = true,  // Secure by default
-    useFullSpan = false,  // Backward compatible default
+    autoEscape = true, // Secure by default
+    useFullSpan = false, // Backward compatible default
     template,
     callback,
   } = options
@@ -62,7 +62,7 @@ export function annotate<C extends Citation = Citation>(
   const sorted = [...citations].sort((a, b) => {
     const aPos = useCleanText ? a.span.cleanStart : a.span.originalStart
     const bPos = useCleanText ? b.span.cleanStart : b.span.originalStart
-    return bPos - aPos  // Reverse for backward iteration
+    return bPos - aPos // Reverse for backward iteration
   })
 
   let result = text
@@ -74,7 +74,7 @@ export function annotate<C extends Citation = Citation>(
     let start: number
     let end: number
 
-    if (useFullSpan && 'fullSpan' in citation && citation.fullSpan) {
+    if (useFullSpan && "fullSpan" in citation && citation.fullSpan) {
       // Full span mode: case name through parenthetical
       start = useCleanText ? citation.fullSpan.cleanStart : citation.fullSpan.originalStart
       end = useCleanText ? citation.fullSpan.cleanEnd : citation.fullSpan.originalEnd
@@ -96,14 +96,11 @@ export function annotate<C extends Citation = Citation>(
       end = snapped.end
     }
 
-    let markup = ''
+    let markup = ""
 
     if (callback) {
       // Callback mode: developer provides full logic
-      const surrounding = text.substring(
-        Math.max(0, start - 30),
-        Math.min(text.length, end + 30)
-      )
+      const surrounding = text.substring(Math.max(0, start - 30), Math.min(text.length, end + 30))
       markup = callback(citation, surrounding)
     } else if (template) {
       // Template mode: simple before/after wrapping
@@ -133,12 +130,12 @@ function findContainingTag(text: string, pos: number): { tagStart: number; tagEn
   // Search backwards from pos for '<' without encountering '>' first
   let i = pos - 1
   while (i >= 0) {
-    if (text[i] === '>') return null  // Hit a tag close — we're outside
-    if (text[i] === '<') {
+    if (text[i] === ">") return null // Hit a tag close — we're outside
+    if (text[i] === "<") {
       // Found opening '<' — now find the closing '>'
       let j = pos
       while (j < text.length) {
-        if (text[j] === '>') return { tagStart: i, tagEnd: j + 1 }
+        if (text[j] === ">") return { tagStart: i, tagEnd: j + 1 }
         j++
       }
       // Unclosed tag — treat as inside
@@ -199,12 +196,12 @@ function snapOutOfHtmlTags(
  */
 function escapeHtmlEntities(text: string): string {
   const map: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-    '/': '&#x2F;',
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+    "/": "&#x2F;",
   }
   return text.replace(/[&<>"'/]/g, (char) => map[char])
 }

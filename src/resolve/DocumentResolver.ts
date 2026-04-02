@@ -14,18 +14,18 @@ import type {
   Citation,
   FullCaseCitation,
   IdCitation,
-  SupraCitation,
   ShortFormCaseCitation,
-} from '../types/citation'
-import { isFullCitation } from '../types/guards'
+  SupraCitation,
+} from "../types/citation"
+import { isFullCitation } from "../types/guards"
+import { normalizedLevenshteinDistance } from "./levenshtein"
+import { detectParagraphBoundaries, isWithinBoundary } from "./scopeBoundary"
 import type {
+  ResolutionContext,
   ResolutionOptions,
   ResolutionResult,
   ResolvedCitation,
-  ResolutionContext,
-} from './types'
-import { detectParagraphBoundaries, isWithinBoundary } from './scopeBoundary'
-import { normalizedLevenshteinDistance } from './levenshtein'
+} from "./types"
 
 /**
  * Document-scoped resolver that processes citations sequentially
@@ -44,17 +44,13 @@ export class DocumentResolver {
    * @param text - Original document text
    * @param options - Resolution options
    */
-  constructor(
-    citations: Citation[],
-    text: string,
-    options: ResolutionOptions = {}
-  ) {
+  constructor(citations: Citation[], text: string, options: ResolutionOptions = {}) {
     this.citations = citations
     this.text = text
 
     // Apply defaults to options
     this.options = {
-      scopeStrategy: options.scopeStrategy ?? 'paragraph',
+      scopeStrategy: options.scopeStrategy ?? "paragraph",
       autoDetectParagraphs: options.autoDetectParagraphs ?? true,
       paragraphBoundaryPattern: options.paragraphBoundaryPattern ?? /\n\n+/g,
       fuzzyPartyMatching: options.fuzzyPartyMatching ?? true,
@@ -77,7 +73,7 @@ export class DocumentResolver {
       this.context.paragraphMap = detectParagraphBoundaries(
         text,
         citations,
-        this.options.paragraphBoundaryPattern
+        this.options.paragraphBoundaryPattern,
       )
     }
   }
@@ -98,13 +94,13 @@ export class DocumentResolver {
       let resolution: ResolutionResult | undefined
 
       switch (citation.type) {
-        case 'id':
+        case "id":
           resolution = this.resolveId(citation)
           break
-        case 'supra':
+        case "supra":
           resolution = this.resolveSupra(citation)
           break
-        case 'shortFormCase':
+        case "shortFormCase":
           resolution = this.resolveShortFormCase(citation)
           break
         default:
@@ -137,7 +133,7 @@ export class DocumentResolver {
     let antecedentIndex: number | undefined
     for (let i = currentIndex - 1; i >= 0; i--) {
       const candidate = this.citations[i]
-      if (candidate.type === 'case') {
+      if (candidate.type === "case") {
         antecedentIndex = i
         break
       }
@@ -145,12 +141,12 @@ export class DocumentResolver {
 
     // Check if we have a previous case citation
     if (antecedentIndex === undefined) {
-      return this.createFailureResult('No preceding full case citation found')
+      return this.createFailureResult("No preceding full case citation found")
     }
 
     // Check scope boundary
     if (!this.isWithinScope(antecedentIndex, currentIndex)) {
-      return this.createFailureResult('Antecedent citation outside scope boundary')
+      return this.createFailureResult("Antecedent citation outside scope boundary")
     }
 
     return {
@@ -186,12 +182,12 @@ export class DocumentResolver {
 
     // Check if we found a match above threshold
     if (!bestMatch) {
-      return this.createFailureResult('No full citation found in scope')
+      return this.createFailureResult("No full citation found in scope")
     }
 
     if (bestMatch.similarity < this.options.partyMatchThreshold) {
       return this.createFailureResult(
-        `Party name similarity ${bestMatch.similarity.toFixed(2)} below threshold ${this.options.partyMatchThreshold}`
+        `Party name similarity ${bestMatch.similarity.toFixed(2)} below threshold ${this.options.partyMatchThreshold}`,
       )
     }
 
@@ -219,7 +215,7 @@ export class DocumentResolver {
       const candidate = this.citations[i]
 
       // Only match against full case citations
-      if (candidate.type !== 'case') {
+      if (candidate.type !== "case") {
         continue
       }
 
@@ -230,7 +226,7 @@ export class DocumentResolver {
       ) {
         // Check scope boundary
         if (!this.isWithinScope(i, currentIndex)) {
-          return this.createFailureResult('Matching citation outside scope boundary')
+          return this.createFailureResult("Matching citation outside scope boundary")
         }
 
         // Found a match
@@ -241,7 +237,7 @@ export class DocumentResolver {
       }
     }
 
-    return this.createFailureResult('No matching full case citation found')
+    return this.createFailureResult("No matching full case citation found")
   }
 
   /**
@@ -251,7 +247,7 @@ export class DocumentResolver {
    */
   private trackFullCitation(citation: Citation, index: number): void {
     // Only case citations have party names for supra resolution
-    if (citation.type === 'case') {
+    if (citation.type === "case") {
       // Phase 7: Use extracted party names when available
       // Defendant name stored first (preferred for Bluebook-style supra matching)
       if (citation.defendantNormalized) {
@@ -288,7 +284,9 @@ export class DocumentResolver {
 
     // Match pattern: "FirstParty v. SecondParty, " before the citation
     // Capture the first party name (handles single-letter party names like "A" or "B")
-    const vMatch = beforeText.match(/([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*)\s+v\.?\s+[A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*,\s*$/)
+    const vMatch = beforeText.match(
+      /([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*)\s+v\.?\s+[A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*,\s*$/,
+    )
     if (vMatch) {
       return this.stripSignalWords(vMatch[1].trim())
     }
@@ -307,7 +305,9 @@ export class DocumentResolver {
    * Preserves "In re" which is a case name format, not a signal word.
    */
   private stripSignalWords(name: string): string {
-    const stripped = name.replace(/^(?:In(?!\s+re\b)|See(?:\s+[Aa]lso)?|Compare|But(?:\s+[Ss]ee)?|Cf\.?|Also)\s+/i, '').trim()
+    const stripped = name
+      .replace(/^(?:In(?!\s+re\b)|See(?:\s+[Aa]lso)?|Compare|But(?:\s+[Ss]ee)?|Cf\.?|Also)\s+/i, "")
+      .trim()
     // Only return stripped version if something remains
     return stripped.length > 0 ? stripped : name
   }
@@ -318,7 +318,7 @@ export class DocumentResolver {
   private normalizePartyName(name: string): string {
     return name
       .toLowerCase()
-      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/\s+/g, " ") // Normalize whitespace
       .trim()
   }
 
@@ -328,8 +328,8 @@ export class DocumentResolver {
   private normalizeReporter(reporter: string): string {
     return reporter
       .toLowerCase()
-      .replace(/\s+/g, '') // Remove spaces (F.2d vs F. 2d)
-      .replace(/\./g, '')   // Remove periods
+      .replace(/\s+/g, "") // Remove spaces (F.2d vs F. 2d)
+      .replace(/\./g, "") // Remove periods
   }
 
   /**
@@ -340,7 +340,7 @@ export class DocumentResolver {
       antecedentIndex,
       currentIndex,
       this.context.paragraphMap,
-      this.options.scopeStrategy
+      this.options.scopeStrategy,
     )
   }
 

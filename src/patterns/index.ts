@@ -7,8 +7,8 @@
  */
 
 export * from "./casePatterns"
-export * from "./statutePatterns"
+export * from "./constitutionalPatterns"
 export * from "./journalPatterns"
 export * from "./neutralPatterns"
 export * from "./shortForm"
-export * from "./constitutionalPatterns"
+export * from "./statutePatterns"

@@ -14,15 +14,10 @@
  * @module tokenize
  */
 
-import type { Span } from '@/types/span'
-import type { Pattern } from '@/patterns'
-import {
-  casePatterns,
-  statutePatterns,
-  journalPatterns,
-  neutralPatterns,
-} from '@/patterns'
-import { shortFormPatterns } from '@/patterns/shortForm'
+import type { Pattern } from "@/patterns"
+import { casePatterns, journalPatterns, neutralPatterns, statutePatterns } from "@/patterns"
+import { shortFormPatterns } from "@/patterns/shortForm"
+import type { Span } from "@/types/span"
 
 /**
  * A token representing a potential citation found in cleaned text.
@@ -36,10 +31,10 @@ export interface Token {
   text: string
 
   /** Position in cleaned text (cleanStart/cleanEnd only, no original positions yet) */
-  span: Pick<Span, 'cleanStart' | 'cleanEnd'>
+  span: Pick<Span, "cleanStart" | "cleanEnd">
 
   /** Pattern type that matched this token */
-  type: Pattern['type']
+  type: Pattern["type"]
 
   /** Pattern ID that matched this token */
   patternId: string
@@ -89,7 +84,7 @@ export function tokenize(
     ...journalPatterns,
     ...neutralPatterns,
     ...shortFormPatterns,
-  ]
+  ],
 ): Token[] {
   const tokens: Token[] = []
 
@@ -114,7 +109,7 @@ export function tokenize(
       // Timeout protection: If pattern throws (ReDoS, etc.), skip it
       console.warn(
         `Pattern ${pattern.id} threw error, skipping:`,
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
       )
     }
   }

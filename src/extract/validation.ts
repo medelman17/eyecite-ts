@@ -13,22 +13,22 @@
  * @module extract/validation
  */
 
-import type { Citation, Warning } from '@/types/citation'
-import type { ReportersDatabase, ReporterEntry } from '@/data/reporters'
-import { getReportersSync } from '@/data/reporters'
-import { extractCitations } from './extractCitations'
-import type { ExtractOptions } from './extractCitations'
+import type { ReporterEntry, ReportersDatabase } from "@/data/reporters"
+import { getReportersSync } from "@/data/reporters"
+import type { Citation, Warning } from "@/types/citation"
+import type { ExtractOptions } from "./extractCitations"
+import { extractCitations } from "./extractCitations"
 
 /**
  * Options for configuring confidence score adjustments
  */
 export interface ConfidenceScoringOptions {
-	/** Boost applied when reporter matches database (default: +0.2) */
-	reporterMatchBoost: number
-	/** Penalty applied when reporter not found in database (default: -0.3) */
-	reporterMissPenalty: number
-	/** Penalty per extra match for ambiguous reporters (default: -0.1) */
-	ambiguityPenalty: number
+  /** Boost applied when reporter matches database (default: +0.2) */
+  reporterMatchBoost: number
+  /** Penalty applied when reporter not found in database (default: -0.3) */
+  reporterMissPenalty: number
+  /** Penalty per extra match for ambiguous reporters (default: -0.1) */
+  ambiguityPenalty: number
 }
 
 /**
@@ -38,10 +38,10 @@ export interface ConfidenceScoringOptions {
  * to carry optional reporter match information.
  */
 export type ValidatedCitation = Citation & {
-	/** Matched reporter entry from database (null if no match) */
-	reporterMatch?: ReporterEntry | null
-	/** Multiple matches for ambiguous reporter abbreviations */
-	reporterMatches?: ReporterEntry[]
+  /** Matched reporter entry from database (null if no match) */
+  reporterMatch?: ReporterEntry | null
+  /** Multiple matches for ambiguous reporter abbreviations */
+  reporterMatches?: ReporterEntry[]
 }
 
 /**
@@ -77,83 +77,82 @@ export type ValidatedCitation = Citation & {
  * ```
  */
 export async function validateAndScore(
-	citation: Citation,
-	reportersDb: ReportersDatabase | null,
-	options: Partial<ConfidenceScoringOptions> = {},
+  citation: Citation,
+  reportersDb: ReportersDatabase | null,
+  options: Partial<ConfidenceScoringOptions> = {},
 ): Promise<ValidatedCitation> {
-	const opts: ConfidenceScoringOptions = {
-		reporterMatchBoost: 0.2,
-		reporterMissPenalty: -0.3,
-		ambiguityPenalty: -0.1,
-		...options,
-	}
+  const opts: ConfidenceScoringOptions = {
+    reporterMatchBoost: 0.2,
+    reporterMissPenalty: -0.3,
+    ambiguityPenalty: -0.1,
+    ...options,
+  }
 
-	// Only validate case citations (others don't have reporters)
-	if (!reportersDb || citation.type !== 'case') {
-		return citation
-	}
+  // Only validate case citations (others don't have reporters)
+  if (!reportersDb || citation.type !== "case") {
+    return citation
+  }
 
-	let adjustedConfidence = citation.confidence
+  let adjustedConfidence = citation.confidence
 
-	// Case citations have 'reporter' field (discriminated union)
-	if ('reporter' in citation && citation.reporter) {
-		const matches =
-			reportersDb.byAbbreviation.get(citation.reporter.toLowerCase()) ?? []
+  // Case citations have 'reporter' field (discriminated union)
+  if ("reporter" in citation && citation.reporter) {
+    const matches = reportersDb.byAbbreviation.get(citation.reporter.toLowerCase()) ?? []
 
-		if (matches.length === 0) {
-			// No match - penalize confidence and add warning
-			adjustedConfidence = Math.max(0, adjustedConfidence + opts.reporterMissPenalty)
+    if (matches.length === 0) {
+      // No match - penalize confidence and add warning
+      adjustedConfidence = Math.max(0, adjustedConfidence + opts.reporterMissPenalty)
 
-			const warning: Warning = {
-				level: 'warning',
-				message: `Reporter "${citation.reporter}" not found in database`,
-				position: {
-					start: citation.span.originalStart,
-					end: citation.span.originalEnd,
-				},
-			}
+      const warning: Warning = {
+        level: "warning",
+        message: `Reporter "${citation.reporter}" not found in database`,
+        position: {
+          start: citation.span.originalStart,
+          end: citation.span.originalEnd,
+        },
+      }
 
-			return {
-				...citation,
-				confidence: adjustedConfidence,
-				reporterMatch: null,
-				warnings: [...(citation.warnings ?? []), warning],
-			}
-		}
+      return {
+        ...citation,
+        confidence: adjustedConfidence,
+        reporterMatch: null,
+        warnings: [...(citation.warnings ?? []), warning],
+      }
+    }
 
-		if (matches.length === 1) {
-			// Exact match - boost confidence
-			adjustedConfidence = Math.min(1.0, adjustedConfidence + opts.reporterMatchBoost)
+    if (matches.length === 1) {
+      // Exact match - boost confidence
+      adjustedConfidence = Math.min(1.0, adjustedConfidence + opts.reporterMatchBoost)
 
-			return {
-				...citation,
-				confidence: adjustedConfidence,
-				reporterMatch: matches[0],
-			}
-		}
+      return {
+        ...citation,
+        confidence: adjustedConfidence,
+        reporterMatch: matches[0],
+      }
+    }
 
-		// Ambiguous match (2+ reporters) - fractional penalty
-		const penalty = opts.ambiguityPenalty * (matches.length - 1)
-		adjustedConfidence = Math.max(0, adjustedConfidence + penalty)
+    // Ambiguous match (2+ reporters) - fractional penalty
+    const penalty = opts.ambiguityPenalty * (matches.length - 1)
+    adjustedConfidence = Math.max(0, adjustedConfidence + penalty)
 
-		const warning: Warning = {
-			level: 'warning',
-			message: `Ambiguous reporter: ${matches.map((m) => m.name).join(', ')}`,
-			position: {
-				start: citation.span.originalStart,
-				end: citation.span.originalEnd,
-			},
-		}
+    const warning: Warning = {
+      level: "warning",
+      message: `Ambiguous reporter: ${matches.map((m) => m.name).join(", ")}`,
+      position: {
+        start: citation.span.originalStart,
+        end: citation.span.originalEnd,
+      },
+    }
 
-		return {
-			...citation,
-			confidence: adjustedConfidence,
-			reporterMatches: matches,
-			warnings: [...(citation.warnings ?? []), warning],
-		}
-	}
+    return {
+      ...citation,
+      confidence: adjustedConfidence,
+      reporterMatches: matches,
+      warnings: [...(citation.warnings ?? []), warning],
+    }
+  }
 
-	return citation
+  return citation
 }
 
 /**
@@ -192,37 +191,37 @@ export async function validateAndScore(
  * ```
  */
 export async function extractWithValidation(
-	text: string,
-	options: ExtractOptions & { validate?: boolean } = {},
+  text: string,
+  options: ExtractOptions & { validate?: boolean } = {},
 ): Promise<ValidatedCitation[]> {
-	// Extract citations using standard pipeline
-	const citations = extractCitations(text, options)
+  // Extract citations using standard pipeline
+  const citations = extractCitations(text, options)
 
-	// If validation not requested, return as-is
-	if (!options.validate) {
-		return citations
-	}
+  // If validation not requested, return as-is
+  if (!options.validate) {
+    return citations
+  }
 
-	// Get database (null if not loaded)
-	const reportersDb = getReportersSync()
+  // Get database (null if not loaded)
+  const reportersDb = getReportersSync()
 
-	// Degraded mode: database not loaded
-	if (!reportersDb) {
-		return citations.map((c) => {
-			const warning: Warning = {
-				level: 'info',
-				message: 'Reporter database not loaded; validation skipped',
-				position: { start: c.span.originalStart, end: c.span.originalEnd },
-			}
+  // Degraded mode: database not loaded
+  if (!reportersDb) {
+    return citations.map((c) => {
+      const warning: Warning = {
+        level: "info",
+        message: "Reporter database not loaded; validation skipped",
+        position: { start: c.span.originalStart, end: c.span.originalEnd },
+      }
 
-			return {
-				...c,
-				reporterMatch: null,
-				warnings: [...(c.warnings ?? []), warning],
-			}
-		})
-	}
+      return {
+        ...c,
+        reporterMatch: null,
+        warnings: [...(c.warnings ?? []), warning],
+      }
+    })
+  }
 
-	// Validate and score each citation
-	return Promise.all(citations.map((c) => validateAndScore(c, reportersDb)))
+  // Validate and score each citation
+  return Promise.all(citations.map((c) => validateAndScore(c, reportersDb)))
 }

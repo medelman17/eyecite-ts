@@ -26,45 +26,45 @@
 // ============================================================================
 
 export type {
-  Span,
-  TransformationMap,
   Citation,
-  CitationType,
   CitationBase,
   CitationOfType,
+  CitationType,
+  ConstitutionalCitation,
   ExtractorMap,
+  FederalRegisterCitation,
   FullCaseCitation,
-  StatuteCitation,
+  FullCitation,
+  FullCitationType,
+  IdCitation,
   JournalCitation,
   NeutralCitation,
   PublicLawCitation,
-  FederalRegisterCitation,
-  StatutesAtLargeCitation,
-  ConstitutionalCitation,
-  IdCitation,
-  SupraCitation,
   ShortFormCaseCitation,
-  FullCitationType,
-  ShortFormCitationType,
-  FullCitation,
   ShortFormCitation,
+  ShortFormCitationType,
+  Span,
+  StatuteCitation,
+  StatutesAtLargeCitation,
+  SupraCitation,
+  TransformationMap,
   Warning,
 } from "./types"
 
 export {
-  isFullCitation,
-  isShortFormCitation,
+  assertUnreachable,
   isCaseCitation,
   isCitationType,
-  assertUnreachable,
+  isFullCitation,
+  isShortFormCitation,
 } from "./types"
 
 // ============================================================================
 // Main API (Phase 2) - Convenience Functions
 // ============================================================================
 
-export { extractCitations, extractCitationsAsync } from "./extract/extractCitations"
 export type { ExtractOptions } from "./extract/extractCitations"
+export { extractCitations, extractCitationsAsync } from "./extract/extractCitations"
 
 // ============================================================================
 // Granular APIs (Phase 2) - For Power Users
@@ -73,22 +73,20 @@ export type { ExtractOptions } from "./extract/extractCitations"
 // Text Cleaning Layer
 export { cleanText } from "./clean"
 export type { CleanTextResult } from "./clean/cleanText"
-
-// Tokenization Layer
-export { tokenize } from "./tokenize"
-export type { Token } from "./tokenize/tokenizer"
-
 // Extraction Functions (for advanced use cases)
 export {
   extractCase,
-  extractStatute,
+  extractConstitutional,
+  extractFederalRegister,
   extractJournal,
   extractNeutral,
   extractPublicLaw,
-  extractFederalRegister,
+  extractStatute,
   extractStatutesAtLarge,
-  extractConstitutional,
 } from "./extract"
+// Tokenization Layer
+export { tokenize } from "./tokenize"
+export type { Token } from "./tokenize/tokenizer"
 
 // ============================================================================
 // Phase 3: Annotation
@@ -101,7 +99,7 @@ export {
 // Phase 4: Resolution
 // ============================================================================
 
-export { resolveCitations, DocumentResolver } from "./resolve"
+export { DocumentResolver, resolveCitations } from "./resolve"
 export type {
   ResolutionOptions,
   ResolutionResult,

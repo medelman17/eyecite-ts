@@ -95,10 +95,7 @@ export async function loadReporters(): Promise<ReportersDatabase> {
   const all: ReporterEntry[] = []
 
   // reporters.json structure: { "A.": [...], "F.2d": [...], ... }
-  const reportersData = (data.default || data) as Record<
-    string,
-    ReporterEntry[]
-  >
+  const reportersData = (data.default || data) as Record<string, ReporterEntry[]>
 
   // Build fast lookup index with lowercase normalization
   for (const [_canonicalAbbr, reporters] of Object.entries(reportersData)) {
@@ -115,9 +112,7 @@ export async function loadReporters(): Promise<ReportersDatabase> {
       }
 
       // Index all variations for fuzzy matching
-      for (const [variant, _canonical] of Object.entries(
-        reporter.variations || {},
-      )) {
+      for (const [variant, _canonical] of Object.entries(reporter.variations || {})) {
         const variantKey = variant.toLowerCase()
         if (!byAbbreviation.has(variantKey)) {
           byAbbreviation.set(variantKey, [])
@@ -171,9 +166,7 @@ export function getReportersSync(): ReportersDatabase | null {
  * const unknown = await findReportersByAbbreviation('NONEXISTENT')
  * // [] (empty array, not error)
  */
-export async function findReportersByAbbreviation(
-  abbr: string,
-): Promise<ReporterEntry[]> {
+export async function findReportersByAbbreviation(abbr: string): Promise<ReporterEntry[]> {
   const db = await loadReporters()
   return db.byAbbreviation.get(abbr.toLowerCase()) ?? []
 }

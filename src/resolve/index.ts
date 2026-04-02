@@ -17,9 +17,9 @@
  * ```
  */
 
-import type { Citation } from '../types/citation'
-import type { ResolutionOptions, ResolvedCitation } from './types'
-import { DocumentResolver } from './DocumentResolver'
+import type { Citation } from "../types/citation"
+import { DocumentResolver } from "./DocumentResolver"
+import type { ResolutionOptions, ResolvedCitation } from "./types"
 
 /**
  * Resolves short-form citations to their full antecedents.
@@ -34,17 +34,17 @@ import { DocumentResolver } from './DocumentResolver'
 export function resolveCitations(
   citations: Citation[],
   text: string,
-  options?: ResolutionOptions
+  options?: ResolutionOptions,
 ): ResolvedCitation[] {
   const resolver = new DocumentResolver(citations, text, options)
   return resolver.resolve()
 }
 
 // Re-export core types and classes
-export { DocumentResolver } from './DocumentResolver'
+export { DocumentResolver } from "./DocumentResolver"
 export type {
   ResolutionOptions,
   ResolutionResult,
   ResolvedCitation,
   ScopeStrategy,
-} from './types'
+} from "./types"

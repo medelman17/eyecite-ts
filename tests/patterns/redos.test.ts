@@ -10,14 +10,14 @@
  * - Fail if any pattern exceeds 100ms threshold (PERF requirement from plan)
  */
 
-import { describe, it, expect } from "vitest"
+import { describe, expect, it } from "vitest"
 import {
   casePatterns,
-  statutePatterns,
+  constitutionalPatterns,
   journalPatterns,
   neutralPatterns,
   shortFormPatterns,
-  constitutionalPatterns,
+  statutePatterns,
 } from "@/patterns"
 
 describe("ReDoS protection", () => {

@@ -12,31 +12,31 @@
  */
 
 import { cleanText } from "@/clean"
-import { tokenize } from "@/tokenize"
 import {
   extractCase,
-  extractStatute,
+  extractConstitutional,
+  extractFederalRegister,
   extractJournal,
   extractNeutral,
   extractPublicLaw,
-  extractFederalRegister,
+  extractStatute,
   extractStatutesAtLarge,
-  extractConstitutional,
 } from "@/extract"
-import { extractId, extractSupra, extractShortFormCase } from "./extractShortForms"
+import type { Pattern } from "@/patterns"
 import {
   casePatterns,
-  statutePatterns,
+  constitutionalPatterns,
   journalPatterns,
   neutralPatterns,
   shortFormPatterns,
-  constitutionalPatterns,
+  statutePatterns,
 } from "@/patterns"
-import { resolveCitations } from "../resolve"
-import { detectParallelCitations } from "./detectParallel"
+import { tokenize } from "@/tokenize"
 import type { Citation } from "@/types/citation"
-import type { Pattern } from "@/patterns"
+import { resolveCitations } from "../resolve"
 import type { ResolutionOptions, ResolvedCitation } from "../resolve/types"
+import { detectParallelCitations } from "./detectParallel"
+import { extractId, extractShortFormCase, extractSupra } from "./extractShortForms"
 
 /**
  * Regex to parse "volume reporter page" from a citation token's text.

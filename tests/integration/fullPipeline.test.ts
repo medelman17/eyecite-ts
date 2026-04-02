@@ -11,10 +11,10 @@
  * - Sync/async API equivalence
  */
 
-import { describe, it, expect } from "vitest"
-import { extractCitations, extractCitationsAsync } from "@/extract/extractCitations"
-import { stripHtmlTags } from "@/clean/cleaners"
+import { describe, expect, it } from "vitest"
 import { annotate } from "@/annotate/annotate"
+import { stripHtmlTags } from "@/clean/cleaners"
+import { extractCitations, extractCitationsAsync } from "@/extract/extractCitations"
 
 // ============================================================================
 // Test Data: Realistic Legal Text Samples

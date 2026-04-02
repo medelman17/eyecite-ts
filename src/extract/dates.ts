@@ -77,7 +77,7 @@ const MONTH_MAP: Record<string, number> = {
  */
 export function parseMonth(monthStr: string): number {
   // Normalize: lowercase, strip trailing period
-  const normalized = monthStr.toLowerCase().replace(/\.$/, '')
+  const normalized = monthStr.toLowerCase().replace(/\.$/, "")
   const month = MONTH_MAP[normalized]
 
   if (month === undefined) {
@@ -106,14 +106,14 @@ export function toIsoDate(parsed: ParsedDate): string {
 
   if (month !== undefined && day !== undefined) {
     // Full date: YYYY-MM-DD with zero-padding
-    const monthStr = String(month).padStart(2, '0')
-    const dayStr = String(day).padStart(2, '0')
+    const monthStr = String(month).padStart(2, "0")
+    const dayStr = String(day).padStart(2, "0")
     return `${year}-${monthStr}-${dayStr}`
   }
 
   if (month !== undefined) {
     // Month+year: YYYY-MM with zero-padding
-    const monthStr = String(month).padStart(2, '0')
+    const monthStr = String(month).padStart(2, "0")
     return `${year}-${monthStr}`
   }
 
@@ -143,7 +143,9 @@ export function toIsoDate(parsed: ParsedDate): string {
  */
 export function parseDate(dateStr: string): StructuredDate | undefined {
   // Try abbreviated month format: Jan. 15, 2020 or Feb 9, 2015
-  const abbrMatch = dateStr.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+(\d{1,2}),?\s+(\d{4})\b/i)
+  const abbrMatch = dateStr.match(
+    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+(\d{1,2}),?\s+(\d{4})\b/i,
+  )
   if (abbrMatch) {
     const month = parseMonth(abbrMatch[1])
     const day = Number.parseInt(abbrMatch[2], 10)
@@ -153,7 +155,9 @@ export function parseDate(dateStr: string): StructuredDate | undefined {
   }
 
   // Try full month format: January 15, 2020
-  const fullMatch = dateStr.match(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(\d{4})\b/i)
+  const fullMatch = dateStr.match(
+    /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(\d{4})\b/i,
+  )
   if (fullMatch) {
     const month = parseMonth(fullMatch[1])
     const day = Number.parseInt(fullMatch[2], 10)

@@ -24,9 +24,7 @@ export function levenshteinDistance(a: string, b: string): number {
 
   // Create 2D array for dynamic programming
   // dp[i][j] = edit distance between a[0...i-1] and b[0...j-1]
-  const dp: number[][] = Array.from({ length: a.length + 1 }, () =>
-    Array(b.length + 1).fill(0)
-  )
+  const dp: number[][] = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0))
 
   // Initialize base cases
   for (let i = 0; i <= a.length; i++) {
@@ -47,11 +45,13 @@ export function levenshteinDistance(a: string, b: string): number {
         // 1. Insert: dp[i][j-1] + 1
         // 2. Delete: dp[i-1][j] + 1
         // 3. Substitute: dp[i-1][j-1] + 1
-        dp[i][j] = 1 + Math.min(
-          dp[i - 1][j],     // Delete from a
-          dp[i][j - 1],     // Insert into a
-          dp[i - 1][j - 1]  // Substitute
-        )
+        dp[i][j] =
+          1 +
+          Math.min(
+            dp[i - 1][j], // Delete from a
+            dp[i][j - 1], // Insert into a
+            dp[i - 1][j - 1], // Substitute
+          )
       }
     }
   }
