@@ -13,42 +13,60 @@ import type { Citation, CitationSignal, FullCaseCitation } from "@/types/citatio
 /**
  * Signal words recognized between string citation members (case-insensitive).
  * Longer patterns first so "see also" matches before "see".
+ *
+ * Each entry also carries a pre-built `endRegex` for matching the signal at the
+ * end of preceding text (used in leading-signal detection). These are built once
+ * at module load to avoid reconstructing RegExp objects inside hot loops.
  */
-const SIGNAL_PATTERNS: ReadonlyArray<{ regex: RegExp; signal: CitationSignal }> = [
-  { regex: /^see\s+generally\b/i, signal: "see generally" },
-  { regex: /^see\s+also\b/i, signal: "see also" },
-  { regex: /^but\s+see\b/i, signal: "but see" },
-  { regex: /^but\s+cf\.?(?=\s|$)/i, signal: "but cf" },
-  { regex: /^compare\b/i, signal: "compare" },
-  { regex: /^accord\b/i, signal: "accord" },
-  { regex: /^contra\b/i, signal: "contra" },
-  { regex: /^see\b/i, signal: "see" },
-  { regex: /^cf\.?(?=\s|$)/i, signal: "cf" },
-]
+const SIGNAL_PATTERNS: ReadonlyArray<{
+  regex: RegExp
+  endRegex: RegExp
+  signal: CitationSignal
+}> = buildSignalPatterns()
+
+function buildSignalPatterns() {
+  const raw: ReadonlyArray<{ regex: RegExp; signal: CitationSignal }> = [
+    { regex: /^see\s+generally\b/i, signal: "see generally" },
+    { regex: /^see\s+also\b/i, signal: "see also" },
+    { regex: /^but\s+see\b/i, signal: "but see" },
+    { regex: /^but\s+cf\.?(?=\s|$)/i, signal: "but cf" },
+    { regex: /^compare\b/i, signal: "compare" },
+    { regex: /^accord\b/i, signal: "accord" },
+    { regex: /^contra\b/i, signal: "contra" },
+    { regex: /^see\b/i, signal: "see" },
+    { regex: /^cf\.?(?=\s|$)/i, signal: "cf" },
+  ]
+  return raw.map(({ regex, signal }) => ({
+    regex,
+    // Matches the signal at the end of a string (for leading-signal lookback).
+    // Replaces the leading `^` anchor with a negative lookbehind for word chars.
+    endRegex: new RegExp(`${regex.source.replace(/^\^/, "(?<![a-z])")}\\s*$`, regex.flags),
+    signal,
+  }))
+}
 
 /**
  * Get the end position of a citation's full extent in cleaned text.
- * Uses fullSpan if available (case citations with parentheticals),
- * otherwise falls back to the core span.
+ * Uses fullSpan if available on any citation type (currently only case
+ * citations carry fullSpan, but this is future-proof for other types).
  */
 function getCitationEnd(c: Citation): number {
-  if (c.type === "case") {
-    const fullSpan = (c as FullCaseCitation).fullSpan
-    if (fullSpan) return fullSpan.cleanEnd
-  }
-  return c.span.cleanEnd
+  const fullSpan = "fullSpan" in c ? (c as FullCaseCitation).fullSpan : undefined
+  return fullSpan ? fullSpan.cleanEnd : c.span.cleanEnd
 }
 
 /**
  * Get the start position of a citation's full extent in cleaned text.
- * Uses fullSpan if available, otherwise falls back to core span.
+ * Uses fullSpan if available on any citation type.
  */
 function getCitationStart(c: Citation): number {
-  if (c.type === "case") {
-    const fullSpan = (c as FullCaseCitation).fullSpan
-    if (fullSpan) return fullSpan.cleanStart
-  }
-  return c.span.cleanStart
+  const fullSpan = "fullSpan" in c ? (c as FullCaseCitation).fullSpan : undefined
+  return fullSpan ? fullSpan.cleanStart : c.span.cleanStart
+}
+
+/** Set a signal on a citation without triggering type errors on the union. */
+function setSignal(c: Citation, sig: CitationSignal): void {
+  ;(c as { signal?: CitationSignal }).signal = sig
 }
 
 /**
@@ -165,7 +183,7 @@ export function detectStringCitations(citations: Citation[], cleanedText: string
       currentGroup.push(i + 1)
       // Set mid-group signal on next citation if found and not already set
       if (analysis.signal && !next.signal) {
-        ;(next as { signal?: CitationSignal }).signal = analysis.signal
+        setSignal(next, analysis.signal)
       }
     } else {
       // Group breaks — finalize current group if any
@@ -186,6 +204,9 @@ export function detectStringCitations(citations: Citation[], cleanedText: string
     const group = groups[g]
     if (group.length < 2) continue
 
+    // Group IDs are sequential per extractCitations() call. If citations from
+    // multiple documents are merged downstream, IDs may collide — callers
+    // should namespace or regenerate IDs in that scenario.
     const groupId = `sc-${g}`
     for (let idx = 0; idx < group.length; idx++) {
       const citIndex = group[idx]
@@ -207,16 +228,10 @@ export function detectStringCitations(citations: Citation[], cleanedText: string
     const searchStart = Math.max(0, getCitationStart(first) - 30)
     const precedingText = cleanedText.substring(searchStart, getCitationStart(first)).trim()
 
-    // Check if preceding text ends with a signal word
-    // Try each signal pattern against the end of the preceding text
-    for (const { regex, signal } of SIGNAL_PATTERNS) {
-      // Build a regex that matches the signal at the end of the string
-      const endPattern = new RegExp(
-        `${regex.source.replace(/^\^/, "(?<![a-z])")}\\s*$`,
-        regex.flags,
-      )
-      if (endPattern.test(precedingText)) {
-        ;(first as { signal?: CitationSignal }).signal = signal
+    // Check if preceding text ends with a signal word (uses pre-built endRegex)
+    for (const { endRegex, signal } of SIGNAL_PATTERNS) {
+      if (endRegex.test(precedingText)) {
+        setSignal(first, signal)
         break
       }
     }

@@ -27,6 +27,19 @@ import { resolveOriginalSpan, type Span, type TransformationMap } from "@/types/
 import { parseDate, type StructuredDate } from "./dates"
 import { inferCourtFromReporter } from "./courtInference"
 
+/** Valid CitationSignal values for safe validation after regex capture + normalization. */
+const VALID_SIGNALS = new Set([
+  "see",
+  "see also",
+  "see generally",
+  "cf",
+  "but see",
+  "but cf",
+  "compare",
+  "accord",
+  "contra",
+])
+
 /** Parse a volume string as number when purely numeric, string when hyphenated */
 function parseVolume(raw: string): number | string {
   const num = Number.parseInt(raw, 10)
@@ -593,7 +606,7 @@ function extractPartyNames(caseName: string): {
     if (signalMatch) {
       const raw = signalMatch[1].toLowerCase().replace(/\.$/, "")
       if (raw !== "in" && raw !== "also") {
-        signal = raw as CitationSignal
+        signal = VALID_SIGNALS.has(raw) ? (raw as CitationSignal) : undefined
       }
       plaintiff = plaintiff.substring(signalMatch[0].length).trim()
     }

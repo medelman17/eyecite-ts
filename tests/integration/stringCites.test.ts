@@ -104,9 +104,32 @@ describe("string citation grouping (integration)", () => {
     const caseCites = citations.filter((c) => c.type === "case") as FullCaseCitation[]
     // First two should be parallel (comma-separated, same case)
     // The primary parallel cite and the third cite should be in a string group
-
-    // At least verify string grouping is present
     const groupedCites = caseCites.filter((c) => c.stringCitationGroupId)
     expect(groupedCites.length).toBeGreaterThanOrEqual(2)
+
+    // Verify the grouped cites share a single group ID
+    const groupIds = new Set(groupedCites.map((c) => c.stringCitationGroupId))
+    expect(groupIds.size).toBe(1)
+
+    // Verify indices are sequential within the group
+    for (let i = 0; i < groupedCites.length; i++) {
+      expect(groupedCites[i].stringCitationIndex).toBe(i)
+    }
+    expect(groupedCites[0].stringCitationGroupSize).toBe(groupedCites.length)
+  })
+
+  it("does not group when semicolon is inside a parenthetical", () => {
+    // The semicolon after "holding X; noting Y" is inside the parenthetical,
+    // which is part of fullSpan — it should not appear in the gap text.
+    const text =
+      "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (holding that X; noting Y). Doe v. Green, 600 F.3d 456 (2d Cir. 2021)."
+    const citations = extractCitations(text)
+
+    const caseCites = citations.filter((c) => c.type === "case")
+    expect(caseCites.length).toBeGreaterThanOrEqual(2)
+
+    // Should NOT be grouped — the period + space between them is not a semicolon gap
+    expect(caseCites[0].stringCitationGroupId).toBeUndefined()
+    expect(caseCites[1].stringCitationGroupId).toBeUndefined()
   })
 })

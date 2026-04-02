@@ -87,9 +87,6 @@ export interface CitationBase {
 
   /** Total number of citations in this string citation group */
   stringCitationGroupSize?: number
-
-  /** Text the string citation group supports (future enhancement, not yet populated) */
-  propositionText?: string
 }
 
 /**
