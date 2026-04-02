@@ -85,10 +85,18 @@ describe("getSurroundingContext", () => {
     })
 
     it("respects maxLength by trimming to sentence boundary", () => {
-      const text = "A".repeat(300) + ". See 500 F.2d 123 here. End."
+      const text = `${"A".repeat(300)}. See 500 F.2d 123 here. End.`
       const span = { start: 306, end: 318 }
       const result = getSurroundingContext(text, span, { maxLength: 50 })
       expect(result.text.length).toBeLessThanOrEqual(50)
+    })
+
+    it("returns full sentence when no maxLength is specified", () => {
+      const longSentence = `The court in${" very".repeat(80)} important case cited 500 F.2d 123 and held for the plaintiff.`
+      const citeStart = longSentence.indexOf("500 F.2d 123")
+      const span = { start: citeStart, end: citeStart + 12 }
+      const result = getSurroundingContext(longSentence, span)
+      expect(result.text).toBe(longSentence)
     })
   })
 

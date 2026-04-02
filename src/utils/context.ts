@@ -237,15 +237,16 @@ export function getSurroundingContext(
     end = findSentenceEnd(text, span.end)
   }
 
-  let resultText = text.slice(start, end).trim()
-  const trimmedStart = start + (text.slice(start, end).length - text.slice(start, end).trimStart().length)
-  const trimmedEnd = end - (text.slice(start, end).length - text.slice(start, end).trimEnd().length)
+  const raw = text.slice(start, end)
+  const resultText = raw.trim()
+  const trimmedStart = start + (raw.length - raw.trimStart().length)
+  const trimmedEnd = end - (raw.length - raw.trimEnd().length)
 
   if (maxLength && resultText.length > maxLength) {
-    resultText = resultText.slice(0, maxLength)
+    const truncated = resultText.slice(0, maxLength)
     return {
-      text: resultText,
-      span: { start: trimmedStart, end: trimmedStart + resultText.length },
+      text: truncated,
+      span: { start: trimmedStart, end: trimmedStart + truncated.length },
     }
   }
 

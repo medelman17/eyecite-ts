@@ -207,6 +207,18 @@ describe("toBluebook", () => {
       }
       expect(toBluebook(cite)).toBe("U.S. Const. art. I, \u00A7 8, cl. 3")
     })
+
+    it("handles both article and amendment when present", () => {
+      const cite: ConstitutionalCitation = {
+        ...BASE,
+        type: "constitutional",
+        jurisdiction: "US",
+        article: 1,
+        amendment: 14,
+        section: "1",
+      }
+      expect(toBluebook(cite)).toBe("U.S. Const. art. I amend. XIV, \u00A7 1")
+    })
   })
 
   describe("JournalCitation", () => {

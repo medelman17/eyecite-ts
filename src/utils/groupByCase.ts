@@ -1,4 +1,4 @@
-import type { FullCaseCitation } from "../types/citation"
+import type { Citation, FullCaseCitation } from "../types/citation"
 import type { ResolvedCitation, ResolutionResult } from "../resolve/types"
 import type { CaseGroup } from "./types"
 import { toReporterKeys } from "./reporterKey"
@@ -9,6 +9,16 @@ import { toReporterKeys } from "./reporterKey"
  */
 function citeKey(c: FullCaseCitation): string {
   return `${c.volume}-${c.reporter}-${c.page ?? "blank"}`
+}
+
+/** Type guard: narrow a Citation to FullCaseCitation after checking type === "case". */
+function isFullCase(cite: Citation): cite is FullCaseCitation {
+  return cite.type === "case"
+}
+
+/** Extract resolution from a resolved short-form citation. */
+function getResolution(cite: ResolvedCitation): ResolutionResult | undefined {
+  return (cite as ResolvedCitation & { resolution?: ResolutionResult }).resolution
 }
 
 /**
@@ -35,14 +45,12 @@ export function groupByCase(citations: ResolvedCitation[]): CaseGroup[] {
   // First pass: assign full case citations to groups
   for (let i = 0; i < citations.length; i++) {
     const cite = citations[i]
-    if (cite.type !== "case") continue
-
-    const fullCite = cite as unknown as FullCaseCitation
+    if (!isFullCase(cite)) continue
 
     // Check if this citation belongs to an existing group
-    const gid = fullCite.groupId
-    const key = citeKey(fullCite)
-    const existingIdx = keyToGroup.get(gid ?? "") ?? keyToGroup.get(key)
+    const gid = cite.groupId
+    const key = citeKey(cite)
+    const existingIdx = (gid ? keyToGroup.get(gid) : undefined) ?? keyToGroup.get(key)
 
     if (existingIdx !== undefined) {
       // Add to existing group
@@ -52,9 +60,9 @@ export function groupByCase(citations: ResolvedCitation[]): CaseGroup[] {
       // Create new group
       const groupIdx = groups.length
       const group: CaseGroup = {
-        primaryCitation: fullCite,
+        primaryCitation: cite,
         mentions: [cite],
-        parallelCitations: toReporterKeys(fullCite),
+        parallelCitations: toReporterKeys(cite),
       }
       groups.push(group)
       indexToGroup.set(i, groupIdx)
@@ -70,9 +78,7 @@ export function groupByCase(citations: ResolvedCitation[]): CaseGroup[] {
     const cite = citations[i]
     if (cite.type !== "id" && cite.type !== "supra" && cite.type !== "shortFormCase") continue
 
-    // Short-form citations have `resolution: ResolutionResult | undefined`
-    // Access via cast since the distributive conditional type makes direct access tricky
-    const resolution = (cite as unknown as { resolution?: ResolutionResult }).resolution
+    const resolution = getResolution(cite)
     if (resolution?.resolvedTo === undefined) continue
 
     const groupIdx = indexToGroup.get(resolution.resolvedTo)
