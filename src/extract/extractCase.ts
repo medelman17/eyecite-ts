@@ -18,6 +18,7 @@ import type { Token } from "@/tokenize"
 import type { FullCaseCitation } from "@/types/citation"
 import { resolveOriginalSpan, type Span, type TransformationMap } from "@/types/span"
 import { parseDate, type StructuredDate } from "./dates"
+import { inferCourtFromReporter } from "./courtInference"
 
 /** Parse a volume string as number when purely numeric, string when hyphenated */
 function parseVolume(raw: string): number | string {
@@ -53,9 +54,6 @@ const LOOKAHEAD_PINCITE_REGEX = /^,\s*(\d+(?:-\d+)?)/
 
 /** Matches chained parentheticals with disposition */
 const CHAINED_DISPOSITION_REGEX = /\([^)]+\)\s*\((en banc|per curiam)\)/i
-
-/** Identifies Supreme Court reporters for court inference */
-const SCOTUS_REPORTER_REGEX = /^(?:U\.?\s?S\.|S\.?\s?Ct\.|L\.?\s?Ed\.)/
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
@@ -567,8 +565,11 @@ export function extractCase(
     }
   }
 
-  // Infer court from reporter for known Supreme Court reporters
-  if (!court && SCOTUS_REPORTER_REGEX.test(reporter)) {
+  // Infer court level/jurisdiction from reporter series
+  const inferredCourt = inferCourtFromReporter(reporter)
+
+  // Backward compat: set court string for SCOTUS when not already extracted
+  if (!court && inferredCourt?.level === "supreme" && inferredCourt?.jurisdiction === "federal") {
     court = "scotus"
   }
 
@@ -698,5 +699,6 @@ export function extractCase(
     defendant,
     defendantNormalized,
     proceduralPrefix,
+    inferredCourt,
   }
 }

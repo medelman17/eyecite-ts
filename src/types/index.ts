@@ -4,6 +4,7 @@ export type {
   CitationOfType,
   CitationType,
   ConstitutionalCitation,
+  CourtInference,
   ExtractorMap,
   FederalRegisterCitation,
   FullCaseCitation,
