@@ -194,7 +194,11 @@ export interface FullCaseCitation extends CitationBase {
   /** Page number — optional for blank page placeholder citations (e.g., "___" or "---") */
   page?: number
   pincite?: number
+  /** Structured pincite information (page, range, footnote) */
+  pinciteInfo?: import("../extract/pincite").PinciteInfo
   court?: string
+  /** Normalized court string: spaces collapsed, trailing period ensured */
+  normalizedCourt?: string
   year?: number
 
   /** Normalized reporter abbreviation from reporters-db (e.g., "F.2d" vs "F. 2d") */

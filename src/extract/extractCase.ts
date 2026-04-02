@@ -26,6 +26,8 @@ import type {
 import { resolveOriginalSpan, type Span, type TransformationMap } from "@/types/span"
 import { parseDate, type StructuredDate } from "./dates"
 import { inferCourtFromReporter } from "./courtInference"
+import { parsePincite, type PinciteInfo } from "./pincite"
+import { normalizeCourt } from "./courtNormalization"
 
 /** Valid CitationSignal values for safe validation after regex capture + normalization. */
 const VALID_SIGNALS = new Set([
@@ -147,8 +149,20 @@ function normalizeSignal(raw: string): { signal: HistorySignal; matchLength: num
 
 /** Signal words that identify explanatory parentheticals */
 const SIGNAL_WORDS: ReadonlySet<string> = new Set([
-  "holding", "finding", "stating", "noting", "explaining", "quoting", "citing",
-  "discussing", "describing", "recognizing", "applying", "rejecting", "adopting", "requiring",
+  "holding",
+  "finding",
+  "stating",
+  "noting",
+  "explaining",
+  "quoting",
+  "citing",
+  "discussing",
+  "describing",
+  "recognizing",
+  "applying",
+  "rejecting",
+  "adopting",
+  "requiring",
 ])
 
 /** Type guard: validates a string is a known signal word */
@@ -428,17 +442,19 @@ function parseParenthetical(content: string): {
  * @param raw - Raw parenthetical text (content between parens)
  * @returns Classification result with kind discriminator
  */
-function classifyParenthetical(raw: string): {
-  kind: "metadata"
-  court?: string
-  year?: number
-  date?: StructuredDate
-  disposition?: string
-} | {
-  kind: "explanatory"
-  text: string
-  type: ParentheticalType
-} {
+function classifyParenthetical(raw: string):
+  | {
+      kind: "metadata"
+      court?: string
+      year?: number
+      date?: StructuredDate
+      disposition?: string
+    }
+  | {
+      kind: "explanatory"
+      text: string
+      type: ParentheticalType
+    } {
   // Check for signal word first — signal-word parens are always explanatory
   const leadingMatch = LEADING_WORD_REGEX.exec(raw)
   if (leadingMatch) {
@@ -705,6 +721,9 @@ export function extractCase(
   // Pattern: ", digits" (e.g., ", 125")
   const pinciteMatch = PINCITE_REGEX.exec(text)
   let pincite = pinciteMatch ? Number.parseInt(pinciteMatch[1], 10) : undefined
+  let pinciteInfo: PinciteInfo | undefined = pinciteMatch
+    ? (parsePincite(pinciteMatch[1]) ?? undefined)
+    : undefined
 
   // Initialize Phase 6 fields
   let year: number | undefined
@@ -748,6 +767,9 @@ export function extractCase(
         const laPinciteMatch = LOOKAHEAD_PINCITE_REGEX.exec(afterToken)
         if (laPinciteMatch) {
           pincite = Number.parseInt(laPinciteMatch[1], 10)
+          if (!pinciteInfo) {
+            pinciteInfo = parsePincite(laPinciteMatch[1]) ?? undefined
+          }
         }
       }
     }
@@ -826,9 +848,8 @@ export function extractCase(
 
       // Calculate fullSpan: case name start through parenthetical end
       // Reuse allParens from classify loop to avoid scanning twice
-      const parenEnd = allParens && allParens.length > 0
-        ? allParens[allParens.length - 1].end
-        : span.cleanEnd
+      const parenEnd =
+        allParens && allParens.length > 0 ? allParens[allParens.length - 1].end : span.cleanEnd
       const fullCleanStart = caseNameResult.nameStart
       const fullCleanEnd = parenEnd
 
@@ -937,7 +958,9 @@ export function extractCase(
     reporter,
     page,
     pincite,
+    pinciteInfo,
     court,
+    normalizedCourt: normalizeCourt(court),
     year,
     hasBlankPage,
     date,

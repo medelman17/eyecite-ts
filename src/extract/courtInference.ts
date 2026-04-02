@@ -38,17 +38,16 @@ function regional(level: CourtInference["level"]): CourtInference {
  */
 const REPORTER_COURT_MAP = new Map<string, CourtInference>([
   // ── Federal Supreme ──────────────────────────────────────────────
+  // After normalizeReporterSpacing, reporters arrive collapsed (e.g. "S.Ct.").
+  // Spaced forms kept for direct-call / pre-cleaned paths.
   ["U.S.", federal("supreme")],
-  ["S. Ct.", federal("supreme")],
-  ["L. Ed.", federal("supreme")],
-  ["L. Ed. 2d", federal("supreme")],
-  // Spacing variants: the SCOTUS tokenizer pattern uses \s? between
-  // abbreviation parts, so "S.Ct.", "U. S.", "L.Ed.2d" etc. are valid
-  // token outputs that must also resolve.
-  ["U. S.", federal("supreme")],
   ["S.Ct.", federal("supreme")],
   ["L.Ed.", federal("supreme")],
   ["L.Ed.2d", federal("supreme")],
+  ["S. Ct.", federal("supreme")],
+  ["L. Ed.", federal("supreme")],
+  ["L. Ed. 2d", federal("supreme")],
+  ["U. S.", federal("supreme")],
   ["L.Ed. 2d", federal("supreme")],
   ["L. Ed.2d", federal("supreme")],
 
@@ -60,6 +59,10 @@ const REPORTER_COURT_MAP = new Map<string, CourtInference>([
   ["F. App'x", federal("appellate")],
 
   // ── Federal Trial ────────────────────────────────────────────────
+  ["F.Supp.", federal("trial")],
+  ["F.Supp.2d", federal("trial")],
+  ["F.Supp.3d", federal("trial")],
+  ["F.Supp.4th", federal("trial")],
   ["F. Supp.", federal("trial")],
   ["F. Supp. 2d", federal("trial")],
   ["F. Supp. 3d", federal("trial")],

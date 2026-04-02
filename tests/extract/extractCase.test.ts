@@ -378,7 +378,7 @@ describe("reporter with internal spaces (integration)", () => {
     expect(citations).toHaveLength(1)
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
-      expect(citations[0].reporter).toBe("U. S.")
+      expect(citations[0].reporter).toBe("U.S.")
       expect(citations[0].volume).toBe(506)
       expect(citations[0].page).toBe(534)
     }
@@ -936,14 +936,23 @@ describe("explanatory parentheticals (#76)", () => {
 
   it("classifies each signal word type", () => {
     const signals = [
-      "holding", "finding", "stating", "noting", "explaining",
-      "quoting", "citing", "discussing", "describing", "recognizing",
-      "applying", "rejecting", "adopting", "requiring",
+      "holding",
+      "finding",
+      "stating",
+      "noting",
+      "explaining",
+      "quoting",
+      "citing",
+      "discussing",
+      "describing",
+      "recognizing",
+      "applying",
+      "rejecting",
+      "adopting",
+      "requiring",
     ] as const
     for (const signal of signals) {
-      const citations = extractCitations(
-        `Smith v. Jones, 500 F.2d 123 (2020) (${signal} that X)`,
-      )
+      const citations = extractCitations(`Smith v. Jones, 500 F.2d 123 (2020) (${signal} that X)`)
       expect(citations).toHaveLength(1)
       expect(citations[0].type).toBe("case")
       if (citations[0].type === "case") {
@@ -953,22 +962,16 @@ describe("explanatory parentheticals (#76)", () => {
   })
 
   it("classifies unknown signal as other", () => {
-    const citations = extractCitations(
-      "Smith v. Jones, 500 F.2d 123 (2020) (the court found X)",
-    )
+    const citations = extractCitations("Smith v. Jones, 500 F.2d 123 (2020) (the court found X)")
     expect(citations).toHaveLength(1)
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
-      expect(citations[0].parentheticals).toEqual([
-        { text: "the court found X", type: "other" },
-      ])
+      expect(citations[0].parentheticals).toEqual([{ text: "the court found X", type: "other" }])
     }
   })
 
   it("disposition paren not treated as explanatory", () => {
-    const citations = extractCitations(
-      "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc)",
-    )
+    const citations = extractCitations("Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc)")
     expect(citations).toHaveLength(1)
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
@@ -985,22 +988,18 @@ describe("explanatory parentheticals (#76)", () => {
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].disposition).toBe("en banc")
-      expect(citations[0].parentheticals).toEqual([
-        { text: "holding that X", type: "holding" },
-      ])
+      expect(citations[0].parentheticals).toEqual([{ text: "holding that X", type: "holding" }])
     }
   })
 
   it("handles nested parens inside explanatory", () => {
     const citations = extractCitations(
-      'Smith v. Jones, 500 F.2d 123 (2020) (holding that (a) X and (b) Y)',
+      "Smith v. Jones, 500 F.2d 123 (2020) (holding that (a) X and (b) Y)",
     )
     expect(citations).toHaveLength(1)
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
-      expect(citations[0].parentheticals?.[0]?.text).toBe(
-        "holding that (a) X and (b) Y",
-      )
+      expect(citations[0].parentheticals?.[0]?.text).toBe("holding that (a) X and (b) Y")
       expect(citations[0].parentheticals?.[0]?.type).toBe("holding")
     }
   })
@@ -1012,17 +1011,13 @@ describe("explanatory parentheticals (#76)", () => {
     expect(citations).toHaveLength(1)
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
-      expect(citations[0].parentheticals?.[0]?.text).toBe(
-        'quoting "the (original) rule"',
-      )
+      expect(citations[0].parentheticals?.[0]?.text).toBe('quoting "the (original) rule"')
       expect(citations[0].parentheticals?.[0]?.type).toBe("quoting")
     }
   })
 
   it("handles capitalized signal words", () => {
-    const citations = extractCitations(
-      "Smith v. Jones, 500 F.2d 123 (2020) (Holding that X)",
-    )
+    const citations = extractCitations("Smith v. Jones, 500 F.2d 123 (2020) (Holding that X)")
     expect(citations).toHaveLength(1)
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
@@ -1032,9 +1027,7 @@ describe("explanatory parentheticals (#76)", () => {
 
   it("extracts court/year from later metadata paren", () => {
     // "(en banc) (9th Cir. 2021)" — second paren has court+year
-    const citations = extractCitations(
-      "Smith v. Jones, 500 F.2d 123 (en banc) (9th Cir. 2021)",
-    )
+    const citations = extractCitations("Smith v. Jones, 500 F.2d 123 (en banc) (9th Cir. 2021)")
     expect(citations).toHaveLength(1)
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
@@ -1126,9 +1119,7 @@ describe("backward compatibility (Phase 6)", () => {
     )
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
-      expect(citations[0].parentheticals).toEqual([
-        { text: "holding that X", type: "holding" },
-      ])
+      expect(citations[0].parentheticals).toEqual([{ text: "holding that X", type: "holding" }])
       expect(citations[0].subsequentHistoryEntries).toHaveLength(1)
       expect(citations[0].subsequentHistoryEntries?.[0].signal).toBe("affirmed")
     }

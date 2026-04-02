@@ -88,11 +88,7 @@ describe("toReporterKeys", () => {
         { volume: 35, reporter: "L. Ed. 2d", page: 147 },
       ],
     })
-    expect(toReporterKeys(cite)).toEqual([
-      "410 U.S. 113",
-      "93 S. Ct. 705",
-      "35 L. Ed. 2d 147",
-    ])
+    expect(toReporterKeys(cite)).toEqual(["410 U.S. 113", "93 S. Ct. 705", "35 L. Ed. 2d 147"])
   })
 
   it("returns single-element array when parallelCitations is empty", () => {

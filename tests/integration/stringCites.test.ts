@@ -83,8 +83,7 @@ describe("string citation grouping (integration)", () => {
   })
 
   it("groups mixed citation types (case + statute)", () => {
-    const text =
-      "See 42 U.S.C. § 1983; Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)."
+    const text = "See 42 U.S.C. § 1983; Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)."
     const citations = extractCitations(text)
 
     expect(citations.length).toBeGreaterThanOrEqual(2)

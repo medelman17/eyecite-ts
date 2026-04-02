@@ -4,6 +4,7 @@ import {
   decodeHtmlEntities,
   fixSmartQuotes,
   normalizeDashes,
+  normalizeReporterSpacing,
   normalizeUnicode,
   normalizeWhitespace,
   stripHtmlTags,
@@ -31,7 +32,7 @@ export interface CleanTextResult {
  * cleaned text while reporting positions in the original text.
  *
  * @param original - Original input text
- * @param cleaners - Array of cleaner functions to apply (default: stripHtmlTags, decodeHtmlEntities, normalizeWhitespace, normalizeUnicode, normalizeDashes, fixSmartQuotes)
+ * @param cleaners - Array of cleaner functions to apply (default: stripHtmlTags, decodeHtmlEntities, normalizeWhitespace, normalizeUnicode, normalizeDashes, fixSmartQuotes, normalizeReporterSpacing)
  * @returns Cleaned text with position mappings and warnings
  *
  * @example
@@ -48,6 +49,7 @@ export function cleanText(
     normalizeUnicode,
     normalizeDashes,
     fixSmartQuotes,
+    normalizeReporterSpacing,
   ],
 ): CleanTextResult {
   // Initialize 1:1 position mapping

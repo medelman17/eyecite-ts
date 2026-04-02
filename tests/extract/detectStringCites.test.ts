@@ -53,8 +53,7 @@ describe("detectStringCitations", () => {
   describe("basic grouping", () => {
     it("groups two case citations separated by semicolon", () => {
       //   "Smith v. Jones, 500 F.2d 123 (2020); Doe v. Green, 600 F.3d 456 (2021)."
-      const cleaned =
-        "Smith v. Jones, 500 F.2d 123 (2020); Doe v. Green, 600 F.3d 456 (2021)."
+      const cleaned = "Smith v. Jones, 500 F.2d 123 (2020); Doe v. Green, 600 F.3d 456 (2021)."
       const cit1 = makeCase({
         cleanStart: 16,
         cleanEnd: 28,
@@ -138,8 +137,7 @@ describe("detectStringCitations", () => {
     })
 
     it("does not group when no semicolon in gap", () => {
-      const cleaned =
-        "Smith v. Jones, 500 F.2d 123 (2020), Doe v. Green, 600 F.3d 456 (2021)."
+      const cleaned = "Smith v. Jones, 500 F.2d 123 (2020), Doe v. Green, 600 F.3d 456 (2021)."
       const cit1 = makeCase({
         cleanStart: 16,
         cleanEnd: 28,
@@ -161,8 +159,7 @@ describe("detectStringCitations", () => {
     })
 
     it("excludes subsequent history citations from grouping", () => {
-      const cleaned =
-        "Smith v. Jones, 500 F.2d 123 (2020), aff'd, 600 F.3d 456 (2021)."
+      const cleaned = "Smith v. Jones, 500 F.2d 123 (2020), aff'd, 600 F.3d 456 (2021)."
       const cit1 = makeCase({
         cleanStart: 16,
         cleanEnd: 28,

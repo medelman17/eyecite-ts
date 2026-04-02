@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { groupByCase } from "../../src/utils"
-import type { FullCaseCitation, IdCitation, ShortFormCaseCitation, StatuteCitation, SupraCitation } from "../../src/types/citation"
+import type {
+  FullCaseCitation,
+  IdCitation,
+  ShortFormCaseCitation,
+  StatuteCitation,
+  SupraCitation,
+} from "../../src/types/citation"
 import type { ResolvedCitation } from "../../src/resolve/types"
 
 /** Minimal CitationBase fields */
@@ -12,7 +18,12 @@ const BASE = {
   patternsChecked: 0,
 } as const
 
-function span(start: number): { cleanStart: number; cleanEnd: number; originalStart: number; originalEnd: number } {
+function span(start: number): {
+  cleanStart: number
+  cleanEnd: number
+  originalStart: number
+  originalEnd: number
+} {
   return { cleanStart: start, cleanEnd: start + 10, originalStart: start, originalEnd: start + 10 }
 }
 
@@ -207,19 +218,33 @@ describe("groupByCase", () => {
 
   it("preserves document order within groups", () => {
     const cite1: ResolvedCitation<FullCaseCitation> = {
-      ...BASE, type: "case", volume: 500, reporter: "F.2d", page: 123,
-      span: span(0), resolution: undefined,
+      ...BASE,
+      type: "case",
+      volume: 500,
+      reporter: "F.2d",
+      page: 123,
+      span: span(0),
+      resolution: undefined,
     }
     const cite2: ResolvedCitation<FullCaseCitation> = {
-      ...BASE, type: "case", volume: 600, reporter: "F.3d", page: 456,
-      span: span(50), resolution: undefined,
+      ...BASE,
+      type: "case",
+      volume: 600,
+      reporter: "F.3d",
+      page: 456,
+      span: span(50),
+      resolution: undefined,
     }
     const id1: ResolvedCitation<IdCitation> = {
-      ...BASE, type: "id", span: span(100),
+      ...BASE,
+      type: "id",
+      span: span(100),
       resolution: { resolvedTo: 1, confidence: 1 },
     }
     const id2: ResolvedCitation<IdCitation> = {
-      ...BASE, type: "id", span: span(150),
+      ...BASE,
+      type: "id",
+      span: span(150),
       resolution: { resolvedTo: 0, confidence: 1 },
     }
     const groups = groupByCase([cite1, cite2, id1, id2])
@@ -232,12 +257,22 @@ describe("groupByCase", () => {
 
   it("returns groups in document order by first mention", () => {
     const citeB: ResolvedCitation<FullCaseCitation> = {
-      ...BASE, type: "case", volume: 600, reporter: "F.3d", page: 456,
-      span: span(0), resolution: undefined,
+      ...BASE,
+      type: "case",
+      volume: 600,
+      reporter: "F.3d",
+      page: 456,
+      span: span(0),
+      resolution: undefined,
     }
     const citeA: ResolvedCitation<FullCaseCitation> = {
-      ...BASE, type: "case", volume: 500, reporter: "F.2d", page: 123,
-      span: span(50), resolution: undefined,
+      ...BASE,
+      type: "case",
+      volume: 500,
+      reporter: "F.2d",
+      page: 123,
+      span: span(50),
+      resolution: undefined,
     }
     const groups = groupByCase([citeB, citeA])
     expect(groups).toHaveLength(2)
@@ -247,18 +282,30 @@ describe("groupByCase", () => {
 
   it("handles short form resolving to a parallel-grouped citation", () => {
     const primary: ResolvedCitation<FullCaseCitation> = {
-      ...BASE, type: "case", volume: 410, reporter: "U.S.", page: 113,
+      ...BASE,
+      type: "case",
+      volume: 410,
+      reporter: "U.S.",
+      page: 113,
       groupId: "410-U.S.-113",
       parallelCitations: [{ volume: 93, reporter: "S. Ct.", page: 705 }],
-      span: span(0), resolution: undefined,
+      span: span(0),
+      resolution: undefined,
     }
     const secondary: ResolvedCitation<FullCaseCitation> = {
-      ...BASE, type: "case", volume: 93, reporter: "S. Ct.", page: 705,
+      ...BASE,
+      type: "case",
+      volume: 93,
+      reporter: "S. Ct.",
+      page: 705,
       groupId: "410-U.S.-113",
-      span: span(50), resolution: undefined,
+      span: span(50),
+      resolution: undefined,
     }
     const id: ResolvedCitation<IdCitation> = {
-      ...BASE, type: "id", span: span(100),
+      ...BASE,
+      type: "id",
+      span: span(100),
       resolution: { resolvedTo: 1, confidence: 1 },
     }
     const groups = groupByCase([primary, secondary, id])

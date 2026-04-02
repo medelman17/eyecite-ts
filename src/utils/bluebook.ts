@@ -63,8 +63,7 @@ export function toBluebook(citation: Citation): string {
     }
 
     case "constitutional": {
-      const jurisdiction =
-        citation.jurisdiction === "US" ? "U.S." : (citation.jurisdiction ?? "")
+      const jurisdiction = citation.jurisdiction === "US" ? "U.S." : (citation.jurisdiction ?? "")
       const prefix = `${jurisdiction} Const.`
 
       let body = ""
@@ -86,8 +85,7 @@ export function toBluebook(citation: Citation): string {
     case "journal": {
       const vol = citation.volume !== undefined ? `${citation.volume} ` : ""
       const page = citation.page !== undefined ? ` ${citation.page}` : ""
-      const pincite =
-        citation.pincite !== undefined ? `, ${citation.pincite}` : ""
+      const pincite = citation.pincite !== undefined ? `, ${citation.pincite}` : ""
       const year = citation.year !== undefined ? ` (${citation.year})` : ""
       return `${vol}${citation.abbreviation}${page}${pincite}${year}`
     }
