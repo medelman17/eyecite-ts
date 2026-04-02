@@ -3,7 +3,7 @@ import type { Span } from "./span"
 /**
  * Citation type discriminator for type-safe pattern matching.
  */
-export type CitationType = "case" | "statute" | "journal" | "neutral" | "publicLaw" | "federalRegister" | "statutesAtLarge" | "id" | "supra" | "shortFormCase"
+export type CitationType = "case" | "statute" | "journal" | "neutral" | "publicLaw" | "federalRegister" | "statutesAtLarge" | "constitutional" | "id" | "supra" | "shortFormCase"
 
 /**
  * Warning generated during citation parsing.
@@ -300,6 +300,27 @@ export interface StatutesAtLargeCitation extends CitationBase {
 }
 
 /**
+ * Constitutional citation (U.S. or state constitution).
+ *
+ * @example "U.S. Const. art. III, § 2"
+ * @example "U.S. Const. amend. XIV, § 1"
+ * @example "Cal. Const. art. I, § 7"
+ */
+export interface ConstitutionalCitation extends CitationBase {
+  type: "constitutional"
+  /** Jurisdiction code: "US", 2-letter state code, or undefined for bare "Const." */
+  jurisdiction?: string
+  /** Article number (parsed from Roman numerals) — mutually exclusive with amendment */
+  article?: number
+  /** Amendment number (parsed from Roman numerals) — mutually exclusive with article */
+  amendment?: number
+  /** Section identifier (string to handle non-numeric like "3-a") */
+  section?: string
+  /** Clause number (always numeric) */
+  clause?: number
+}
+
+/**
  * Id. citation (refers to immediately preceding citation).
  *
  * @example "Id."
@@ -363,6 +384,7 @@ export type Citation =
   | PublicLawCitation
   | FederalRegisterCitation
   | StatutesAtLargeCitation
+  | ConstitutionalCitation
   | IdCitation
   | SupraCitation
   | ShortFormCaseCitation
@@ -370,13 +392,13 @@ export type Citation =
 /**
  * Citation type discriminators grouped by category.
  */
-export type FullCitationType = 'case' | 'statute' | 'journal' | 'neutral' | 'publicLaw' | 'federalRegister' | 'statutesAtLarge'
+export type FullCitationType = 'case' | 'statute' | 'journal' | 'neutral' | 'publicLaw' | 'federalRegister' | 'statutesAtLarge' | 'constitutional'
 export type ShortFormCitationType = 'id' | 'supra' | 'shortFormCase'
 
 /**
  * Union of all full citation types (not short-form references).
  */
-export type FullCitation = FullCaseCitation | StatuteCitation | JournalCitation | NeutralCitation | PublicLawCitation | FederalRegisterCitation | StatutesAtLargeCitation
+export type FullCitation = FullCaseCitation | StatuteCitation | JournalCitation | NeutralCitation | PublicLawCitation | FederalRegisterCitation | StatutesAtLargeCitation | ConstitutionalCitation
 
 /**
  * Union of all short-form citation types (Id., supra, short-form case).

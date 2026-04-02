@@ -1,7 +1,7 @@
 import type { Citation, CitationType, CitationOfType, FullCitation, ShortFormCitation, FullCaseCitation } from "./citation"
 
 /**
- * Type guard: narrows Citation to a full citation (case, statute, journal, neutral, publicLaw, federalRegister).
+ * Type guard: narrows Citation to a full citation (case, statute, journal, neutral, publicLaw, federalRegister, statutesAtLarge, constitutional).
  */
 export function isFullCitation(citation: Citation): citation is FullCitation {
   return citation.type === 'case'
@@ -11,6 +11,7 @@ export function isFullCitation(citation: Citation): citation is FullCitation {
     || citation.type === 'publicLaw'
     || citation.type === 'federalRegister'
     || citation.type === 'statutesAtLarge'
+    || citation.type === 'constitutional'
 }
 
 /**

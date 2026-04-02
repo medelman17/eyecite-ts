@@ -40,6 +40,7 @@ export type {
 	PublicLawCitation,
 	FederalRegisterCitation,
 	StatutesAtLargeCitation,
+	ConstitutionalCitation,
 	IdCitation,
 	SupraCitation,
 	ShortFormCaseCitation,
