@@ -21,6 +21,7 @@ import {
 	extractPublicLaw,
 	extractFederalRegister,
 	extractStatutesAtLarge,
+	extractConstitutional,
 } from '@/extract'
 import { extractId, extractSupra, extractShortFormCase } from './extractShortForms'
 import {
@@ -29,6 +30,7 @@ import {
 	journalPatterns,
 	neutralPatterns,
 	shortFormPatterns,
+	constitutionalPatterns,
 } from '@/patterns'
 import { resolveCitations } from '../resolve'
 import { detectParallelCitations } from './detectParallel'
@@ -179,11 +181,12 @@ export function extractCitations(
 	// Step 2: Tokenize (synchronous)
 	// Note: Pattern order matters for deduplication - more specific patterns first
 	const allPatterns = options?.patterns || [
-		...neutralPatterns,      // Most specific (year-based format)
-		...shortFormPatterns,    // Short-form (requires " at " keyword)
-		...casePatterns,         // Case citations (reporter-specific)
-		...statutePatterns,      // Statutes (code-specific)
-		...journalPatterns,      // Least specific (broad pattern)
+		...neutralPatterns,          // Most specific (year-based format)
+		...shortFormPatterns,        // Short-form (requires " at " keyword)
+		...casePatterns,             // Case citations (reporter-specific)
+		...constitutionalPatterns,   // Constitutional citations (more specific than statutes)
+		...statutePatterns,          // Statutes (code-specific)
+		...journalPatterns,          // Least specific (broad pattern)
 	]
 	const tokens = tokenize(cleaned, allPatterns)
 
@@ -247,6 +250,9 @@ export function extractCitations(
 				break
 			case 'statutesAtLarge':
 				citation = extractStatutesAtLarge(token, transformationMap)
+				break
+			case 'constitutional':
+				citation = extractConstitutional(token, transformationMap)
 				break
 			default:
 				// Unknown type - skip

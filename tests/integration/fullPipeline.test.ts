@@ -476,6 +476,47 @@ describe('Full Pipeline Integration Tests', () => {
 		})
 	})
 
+	describe('Constitutional citations', () => {
+		it('extracts U.S. constitutional citation through full pipeline', () => {
+			const text = "The right is protected by U.S. Const. amend. XIV, § 1."
+			const citations = extractCitations(text)
+
+			expect(citations).toHaveLength(1)
+			expect(citations[0].type).toBe("constitutional")
+			if (citations[0].type === "constitutional") {
+				expect(citations[0].jurisdiction).toBe("US")
+				expect(citations[0].amendment).toBe(14)
+				expect(citations[0].section).toBe("1")
+				expect(citations[0].span.originalStart).toBe(26)
+				expect(citations[0].matchedText).toBe("U.S. Const. amend. XIV, § 1")
+			}
+		})
+
+		it('extracts state constitutional citation through full pipeline', () => {
+			const text = "See Cal. Const. art. I, § 7 for privacy rights."
+			const citations = extractCitations(text)
+
+			expect(citations).toHaveLength(1)
+			expect(citations[0].type).toBe("constitutional")
+			if (citations[0].type === "constitutional") {
+				expect(citations[0].jurisdiction).toBe("CA")
+				expect(citations[0].article).toBe(1)
+				expect(citations[0].section).toBe("7")
+			}
+		})
+
+		it('coexists with case and statute citations', () => {
+			const text =
+				"Under 42 U.S.C. § 1983 and U.S. Const. amend. XIV, see Smith v. Jones, 500 F.2d 123 (1974)."
+			const citations = extractCitations(text)
+
+			const types = citations.map((c) => c.type)
+			expect(types).toContain("statute")
+			expect(types).toContain("constitutional")
+			expect(types).toContain("case")
+		})
+	})
+
 	describe('Parallel Citation Detection (Phase 8)', () => {
 		it('links parallel citations with groupId and parallelCitations array', () => {
 			const text = 'See 410 U.S. 113, 93 S. Ct. 705 (1973).'

@@ -81,6 +81,7 @@ export {
 	extractPublicLaw,
 	extractFederalRegister,
 	extractStatutesAtLarge,
+	extractConstitutional,
 } from './extract'
 
 // ============================================================================

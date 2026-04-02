@@ -180,7 +180,7 @@ export function extractConstitutional(
 			article = numeral
 		}
 
-		section = bodyMatch[2] || undefined
+		section = bodyMatch[2] ? bodyMatch[2].replace(/\.$/, "") : undefined
 		clause = bodyMatch[3] ? Number.parseInt(bodyMatch[3], 10) : undefined
 	}
 
@@ -214,6 +214,11 @@ export function extractConstitutional(
 		confidence = 0.9
 	}
 
+	// Strip a sentence-terminating trailing period from matchedText.
+	// The section regex ([^\s,;()]+) may greedily consume "§ 1." — the period
+	// belongs to the surrounding sentence, not the citation itself.
+	const matchedText = text.replace(/\.$/, "")
+
 	return {
 		type: "constitutional",
 		text,
@@ -224,7 +229,7 @@ export function extractConstitutional(
 			originalEnd,
 		},
 		confidence,
-		matchedText: text,
+		matchedText,
 		processTimeMs: 0,
 		patternsChecked: 1,
 		jurisdiction,
