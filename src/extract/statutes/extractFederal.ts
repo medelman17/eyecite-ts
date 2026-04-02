@@ -7,10 +7,10 @@
  * @module extract/statutes/extractFederal
  */
 
-import type { Token } from '@/tokenize'
-import type { StatuteCitation } from '@/types/citation'
-import type { TransformationMap } from '@/types/span'
-import { parseBody } from './parseBody'
+import type { Token } from "@/tokenize"
+import type { StatuteCitation } from "@/types/citation"
+import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import { parseBody } from "./parseBody"
 
 /** Regex to parse federal token: title + code + § + body */
 const FEDERAL_SECTION_RE = /^(\d+)\s+(\S+(?:\.\S+)*)\s*§§?\s*(.+)$/
@@ -39,7 +39,7 @@ export function extractFederal(
     rawBody = bodyMatch[3]
   } else {
     // Fallback for edge cases
-    code = token.patternId === 'cfr' ? 'C.F.R.' : 'U.S.C.'
+    code = token.patternId === "cfr" ? "C.F.R." : "U.S.C."
     rawBody = text
     title = undefined
   }
@@ -47,10 +47,7 @@ export function extractFederal(
   const { section, subsection, hasEtSeq } = parseBody(rawBody)
 
   // Translate positions
-  const originalStart =
-    transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-  const originalEnd =
-    transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
   // Confidence: known federal code + § = 0.95 base
   let confidence = 0.95
@@ -59,7 +56,7 @@ export function extractFederal(
   confidence = Math.min(confidence, 1.0)
 
   return {
-    type: 'statute',
+    type: "statute",
     text,
     span: {
       cleanStart: span.cleanStart,
@@ -76,7 +73,7 @@ export function extractFederal(
     section,
     subsection,
     pincite: subsection,
-    jurisdiction: 'US',
+    jurisdiction: "US",
     hasEtSeq: hasEtSeq || undefined,
   }
 }

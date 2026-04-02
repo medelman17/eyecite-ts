@@ -10,57 +10,54 @@
  * @module extract/extractStatutesAtLarge
  */
 
-import type { StatutesAtLargeCitation } from "@/types/citation"
-import type { TransformationMap } from "@/types/span"
 import type { Token } from "@/tokenize/tokenizer"
+import type { StatutesAtLargeCitation } from "@/types/citation"
+import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 
 export function extractStatutesAtLarge(
-	token: Token,
-	transformationMap: TransformationMap,
+  token: Token,
+  transformationMap: TransformationMap,
 ): StatutesAtLargeCitation {
-	const { text, span } = token
+  const { text, span } = token
 
-	// Parse volume-Stat.-page
-	const statRegex = /^(\d+(?:-\d+)?)\s+Stat\.\s+(\d+)/
-	const match = statRegex.exec(text)
+  // Parse volume-Stat.-page
+  const statRegex = /^(\d+(?:-\d+)?)\s+Stat\.\s+(\d+)/
+  const match = statRegex.exec(text)
 
-	if (!match) {
-		throw new Error(`Failed to parse Statutes at Large citation: ${text}`)
-	}
+  if (!match) {
+    throw new Error(`Failed to parse Statutes at Large citation: ${text}`)
+  }
 
-	const rawVolume = match[1]
-	const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
-	const page = Number.parseInt(match[2], 10)
+  const rawVolume = match[1]
+  const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
+  const page = Number.parseInt(match[2], 10)
 
-	// Extract optional year in parentheses
-	const yearRegex = /\((?:.*?\s)?(\d{4})\)/
-	const yearMatch = yearRegex.exec(text)
-	const year = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
+  // Extract optional year in parentheses
+  const yearRegex = /\((?:.*?\s)?(\d{4})\)/
+  const yearMatch = yearRegex.exec(text)
+  const year = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
 
-	// Translate positions from clean → original
-	const originalStart =
-		transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-	const originalEnd =
-		transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+  // Translate positions from clean → original
+  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-	// Confidence: 0.9 (Statutes at Large format is standardized)
-	const confidence = 0.9
+  // Confidence: 0.9 (Statutes at Large format is standardized)
+  const confidence = 0.9
 
-	return {
-		type: 'statutesAtLarge',
-		text,
-		span: {
-			cleanStart: span.cleanStart,
-			cleanEnd: span.cleanEnd,
-			originalStart,
-			originalEnd,
-		},
-		confidence,
-		matchedText: text,
-		processTimeMs: 0,
-		patternsChecked: 1,
-		volume,
-		page,
-		year,
-	}
+  return {
+    type: "statutesAtLarge",
+    text,
+    span: {
+      cleanStart: span.cleanStart,
+      cleanEnd: span.cleanEnd,
+      originalStart,
+      originalEnd,
+    },
+    confidence,
+    matchedText: text,
+    processTimeMs: 0,
+    patternsChecked: 1,
+    volume,
+    page,
+    year,
+  }
 }

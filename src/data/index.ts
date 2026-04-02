@@ -5,5 +5,5 @@
  * lazy loading of reporter data without bloating the core bundle.
  */
 
-export * from "./reporters"
 export * from "./knownCodes"
+export * from "./reporters"

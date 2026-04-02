@@ -7,9 +7,9 @@
  * @module extract/extractNeutral
  */
 
-import type { Token } from '@/tokenize'
-import type { NeutralCitation } from '@/types/citation'
-import type { TransformationMap } from '@/types/span'
+import type { Token } from "@/tokenize"
+import type { NeutralCitation } from "@/types/citation"
+import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 
 /**
  * Extracts neutral citation metadata from a tokenized citation.
@@ -46,48 +46,45 @@ import type { TransformationMap } from '@/types/span'
  * ```
  */
 export function extractNeutral(
-	token: Token,
-	transformationMap: TransformationMap,
+  token: Token,
+  transformationMap: TransformationMap,
 ): NeutralCitation {
-	const { text, span } = token
+  const { text, span } = token
 
-	// Parse year-court-documentNumber using regex
-	// Pattern: 4-digit year + court identifier (WL, LEXIS, state codes, etc.) + document number
-	const neutralRegex = /^(\d{4})\s+(.+?)\s+(\d+)$/
-	const match = neutralRegex.exec(text)
+  // Parse year-court-documentNumber using regex
+  // Pattern: 4-digit year + court identifier (WL, LEXIS, state codes, etc.) + document number
+  const neutralRegex = /^(\d{4})\s+(.+?)\s+(\d+)$/
+  const match = neutralRegex.exec(text)
 
-	if (!match) {
-		throw new Error(`Failed to parse neutral citation: ${text}`)
-	}
+  if (!match) {
+    throw new Error(`Failed to parse neutral citation: ${text}`)
+  }
 
-	const year = Number.parseInt(match[1], 10)
-	const court = match[2]
-	const documentNumber = match[3]
+  const year = Number.parseInt(match[1], 10)
+  const court = match[2]
+  const documentNumber = match[3]
 
-	// Translate positions from clean → original
-	const originalStart =
-		transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-	const originalEnd =
-		transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+  // Translate positions from clean → original
+  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-	// Confidence: 1.0 (neutral format is unambiguous)
-	const confidence = 1.0
+  // Confidence: 1.0 (neutral format is unambiguous)
+  const confidence = 1.0
 
-	return {
-		type: 'neutral',
-		text,
-		span: {
-			cleanStart: span.cleanStart,
-			cleanEnd: span.cleanEnd,
-			originalStart,
-			originalEnd,
-		},
-		confidence,
-		matchedText: text,
-		processTimeMs: 0,
-		patternsChecked: 1,
-		year,
-		court,
-		documentNumber,
-	}
+  return {
+    type: "neutral",
+    text,
+    span: {
+      cleanStart: span.cleanStart,
+      cleanEnd: span.cleanEnd,
+      originalStart,
+      originalEnd,
+    },
+    confidence,
+    matchedText: text,
+    processTimeMs: 0,
+    patternsChecked: 1,
+    year,
+    court,
+    documentNumber,
+  }
 }

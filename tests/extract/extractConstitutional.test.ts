@@ -1,29 +1,9 @@
-import { describe, it, expect } from "vitest"
+import { describe, expect, it } from "vitest"
 import { extractConstitutional } from "@/extract/extractConstitutional"
 import type { Token } from "@/tokenize"
-import type { TransformationMap } from "@/types/span"
+import { createIdentityMap, createOffsetMap } from "../helpers/transformationMap"
 
 describe("extractConstitutional", () => {
-  const createIdentityMap = (): TransformationMap => {
-    const cleanToOriginal = new Map<number, number>()
-    const originalToClean = new Map<number, number>()
-    for (let i = 0; i < 1000; i++) {
-      cleanToOriginal.set(i, i)
-      originalToClean.set(i, i)
-    }
-    return { cleanToOriginal, originalToClean }
-  }
-
-  const createOffsetMap = (offset: number): TransformationMap => {
-    const cleanToOriginal = new Map<number, number>()
-    const originalToClean = new Map<number, number>()
-    for (let i = 0; i < 1000; i++) {
-      cleanToOriginal.set(i, i + offset)
-      originalToClean.set(i + offset, i)
-    }
-    return { cleanToOriginal, originalToClean }
-  }
-
   describe("US Constitution — articles", () => {
     it("extracts article with section", () => {
       const token: Token = {

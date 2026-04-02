@@ -7,9 +7,9 @@
  * @module extract/extractShortForms
  */
 
-import type { Token } from '@/tokenize'
-import type { IdCitation, SupraCitation, ShortFormCaseCitation } from '@/types/citation'
-import type { TransformationMap } from '@/types/span'
+import type { Token } from "@/tokenize"
+import type { IdCitation, ShortFormCaseCitation, SupraCitation } from "@/types/citation"
+import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 
 /**
  * Extracts Id. citation metadata from a tokenized citation.
@@ -41,48 +41,42 @@ import type { TransformationMap } from '@/types/span'
  * // }
  * ```
  */
-export function extractId(
-	token: Token,
-	transformationMap: TransformationMap,
-): IdCitation {
-	const { text, span } = token
+export function extractId(token: Token, transformationMap: TransformationMap): IdCitation {
+  const { text, span } = token
 
-	// Parse Id. with optional pincite
-	// Pattern: Id. or Ibid. with optional "at [page]"
-	const idRegex = /[Ii](?:d|bid)\.(?:\s+at\s+(\d+))?/
-	const match = idRegex.exec(text)
+  // Parse Id. with optional pincite
+  // Pattern: Id. or Ibid. with optional "at [page]"
+  const idRegex = /[Ii](?:d|bid)\.(?:\s+at\s+(\d+))?/
+  const match = idRegex.exec(text)
 
-	if (!match) {
-		throw new Error(`Failed to parse Id. citation: ${text}`)
-	}
+  if (!match) {
+    throw new Error(`Failed to parse Id. citation: ${text}`)
+  }
 
-	// Extract pincite if present
-	const pincite = match[1] ? Number.parseInt(match[1], 10) : undefined
+  // Extract pincite if present
+  const pincite = match[1] ? Number.parseInt(match[1], 10) : undefined
 
-	// Translate positions from clean → original
-	const originalStart =
-		transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-	const originalEnd =
-		transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+  // Translate positions from clean → original
+  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-	// Confidence: 1.0 (Id. format is unambiguous)
-	const confidence = 1.0
+  // Confidence: 1.0 (Id. format is unambiguous)
+  const confidence = 1.0
 
-	return {
-		type: 'id',
-		text,
-		span: {
-			cleanStart: span.cleanStart,
-			cleanEnd: span.cleanEnd,
-			originalStart,
-			originalEnd,
-		},
-		confidence,
-		matchedText: text,
-		processTimeMs: 0,
-		patternsChecked: 1,
-		pincite,
-	}
+  return {
+    type: "id",
+    text,
+    span: {
+      cleanStart: span.cleanStart,
+      cleanEnd: span.cleanEnd,
+      originalStart,
+      originalEnd,
+    },
+    confidence,
+    matchedText: text,
+    processTimeMs: 0,
+    patternsChecked: 1,
+    pincite,
+  }
 }
 
 /**
@@ -117,50 +111,45 @@ export function extractId(
  * // }
  * ```
  */
-export function extractSupra(
-	token: Token,
-	transformationMap: TransformationMap,
-): SupraCitation {
-	const { text, span } = token
+export function extractSupra(token: Token, transformationMap: TransformationMap): SupraCitation {
+  const { text, span } = token
 
-	// Parse party name and optional pincite
-	// Pattern: word(s), supra [, at page]
-	// Note: Matches party names including "v." (e.g., "Smith v. Jones")
-	const supraRegex = /\b([A-Z][a-zA-Z]+(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z]+)*)\s*,?\s+supra(?:,?\s+at\s+(\d+))?/
-	const match = supraRegex.exec(text)
+  // Parse party name and optional pincite
+  // Pattern: word(s), supra [, at page]
+  // Note: Matches party names including "v." (e.g., "Smith v. Jones")
+  const supraRegex =
+    /\b([A-Z][a-zA-Z]+(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z]+)*)\s*,?\s+supra(?:,?\s+at\s+(\d+))?/
+  const match = supraRegex.exec(text)
 
-	if (!match) {
-		throw new Error(`Failed to parse supra citation: ${text}`)
-	}
+  if (!match) {
+    throw new Error(`Failed to parse supra citation: ${text}`)
+  }
 
-	const partyName = match[1]
-	const pincite = match[2] ? Number.parseInt(match[2], 10) : undefined
+  const partyName = match[1]
+  const pincite = match[2] ? Number.parseInt(match[2], 10) : undefined
 
-	// Translate positions from clean → original
-	const originalStart =
-		transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-	const originalEnd =
-		transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+  // Translate positions from clean → original
+  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-	// Confidence: 0.9 (supra format is fairly standard)
-	const confidence = 0.9
+  // Confidence: 0.9 (supra format is fairly standard)
+  const confidence = 0.9
 
-	return {
-		type: 'supra',
-		text,
-		span: {
-			cleanStart: span.cleanStart,
-			cleanEnd: span.cleanEnd,
-			originalStart,
-			originalEnd,
-		},
-		confidence,
-		matchedText: text,
-		processTimeMs: 0,
-		patternsChecked: 1,
-		partyName,
-		pincite,
-	}
+  return {
+    type: "supra",
+    text,
+    span: {
+      cleanStart: span.cleanStart,
+      cleanEnd: span.cleanEnd,
+      originalStart,
+      originalEnd,
+    },
+    confidence,
+    matchedText: text,
+    processTimeMs: 0,
+    patternsChecked: 1,
+    partyName,
+    pincite,
+  }
 }
 
 /**
@@ -198,49 +187,46 @@ export function extractSupra(
  * ```
  */
 export function extractShortFormCase(
-	token: Token,
-	transformationMap: TransformationMap,
+  token: Token,
+  transformationMap: TransformationMap,
 ): ShortFormCaseCitation {
-	const { text, span } = token
+  const { text, span } = token
 
-	// Parse volume-reporter-at-page
-	// Pattern: number space abbreviation space "at" space number
-	const shortFormRegex = /(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.\s]+?(?:\d[a-z])?)\s+at\s+(\d+)/
-	const match = shortFormRegex.exec(text)
+  // Parse volume-reporter-at-page
+  // Pattern: number space abbreviation space "at" space number
+  const shortFormRegex = /(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.\s]+?(?:\d[a-z])?)\s+at\s+(\d+)/
+  const match = shortFormRegex.exec(text)
 
-	if (!match) {
-		throw new Error(`Failed to parse short-form case citation: ${text}`)
-	}
+  if (!match) {
+    throw new Error(`Failed to parse short-form case citation: ${text}`)
+  }
 
-	const rawVolume = match[1]
-	const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
-	const reporter = match[2].trim() // Remove trailing spaces
-	const pincite = Number.parseInt(match[3], 10)
+  const rawVolume = match[1]
+  const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
+  const reporter = match[2].trim() // Remove trailing spaces
+  const pincite = Number.parseInt(match[3], 10)
 
-	// Translate positions from clean → original
-	const originalStart =
-		transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-	const originalEnd =
-		transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+  // Translate positions from clean → original
+  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-	// Confidence: 0.7 (short-form citations are more ambiguous)
-	const confidence = 0.7
+  // Confidence: 0.7 (short-form citations are more ambiguous)
+  const confidence = 0.7
 
-	return {
-		type: 'shortFormCase',
-		text,
-		span: {
-			cleanStart: span.cleanStart,
-			cleanEnd: span.cleanEnd,
-			originalStart,
-			originalEnd,
-		},
-		confidence,
-		matchedText: text,
-		processTimeMs: 0,
-		patternsChecked: 1,
-		volume,
-		reporter,
-		pincite,
-	}
+  return {
+    type: "shortFormCase",
+    text,
+    span: {
+      cleanStart: span.cleanStart,
+      cleanEnd: span.cleanEnd,
+      originalStart,
+      originalEnd,
+    },
+    confidence,
+    matchedText: text,
+    processTimeMs: 0,
+    patternsChecked: 1,
+    volume,
+    reporter,
+    pincite,
+  }
 }

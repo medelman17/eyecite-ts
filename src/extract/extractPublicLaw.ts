@@ -7,9 +7,9 @@
  * @module extract/extractPublicLaw
  */
 
-import type { Token } from '@/tokenize'
-import type { PublicLawCitation } from '@/types/citation'
-import type { TransformationMap } from '@/types/span'
+import type { Token } from "@/tokenize"
+import type { PublicLawCitation } from "@/types/citation"
+import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 
 /**
  * Extracts public law citation metadata from a tokenized citation.
@@ -47,46 +47,43 @@ import type { TransformationMap } from '@/types/span'
  * ```
  */
 export function extractPublicLaw(
-	token: Token,
-	transformationMap: TransformationMap,
+  token: Token,
+  transformationMap: TransformationMap,
 ): PublicLawCitation {
-	const { text, span } = token
+  const { text, span } = token
 
-	// Parse congress-lawNumber using regex
-	// Pattern: "Pub. L." (with optional "No.") + congress number + "-" + law number
-	const publicLawRegex = /Pub\.\s?L\.(?:\s?No\.)?\s?(\d+)-(\d+)/
-	const match = publicLawRegex.exec(text)
+  // Parse congress-lawNumber using regex
+  // Pattern: "Pub. L." (with optional "No.") + congress number + "-" + law number
+  const publicLawRegex = /Pub\.\s?L\.(?:\s?No\.)?\s?(\d+)-(\d+)/
+  const match = publicLawRegex.exec(text)
 
-	if (!match) {
-		throw new Error(`Failed to parse public law citation: ${text}`)
-	}
+  if (!match) {
+    throw new Error(`Failed to parse public law citation: ${text}`)
+  }
 
-	const congress = Number.parseInt(match[1], 10)
-	const lawNumber = Number.parseInt(match[2], 10)
+  const congress = Number.parseInt(match[1], 10)
+  const lawNumber = Number.parseInt(match[2], 10)
 
-	// Translate positions from clean → original
-	const originalStart =
-		transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-	const originalEnd =
-		transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+  // Translate positions from clean → original
+  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-	// Confidence: 0.9 (public law format is fairly standard)
-	const confidence = 0.9
+  // Confidence: 0.9 (public law format is fairly standard)
+  const confidence = 0.9
 
-	return {
-		type: 'publicLaw',
-		text,
-		span: {
-			cleanStart: span.cleanStart,
-			cleanEnd: span.cleanEnd,
-			originalStart,
-			originalEnd,
-		},
-		confidence,
-		matchedText: text,
-		processTimeMs: 0,
-		patternsChecked: 1,
-		congress,
-		lawNumber,
-	}
+  return {
+    type: "publicLaw",
+    text,
+    span: {
+      cleanStart: span.cleanStart,
+      cleanEnd: span.cleanEnd,
+      originalStart,
+      originalEnd,
+    },
+    confidence,
+    matchedText: text,
+    processTimeMs: 0,
+    patternsChecked: 1,
+    congress,
+    lawNumber,
+  }
 }

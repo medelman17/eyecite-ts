@@ -5,8 +5,8 @@
  * an antecedent citation is within the resolution scope.
  */
 
-import type { Citation } from '../types/citation'
-import type { ScopeStrategy } from './types'
+import type { Citation } from "../types/citation"
+import type { ScopeStrategy } from "./types"
 
 /**
  * Detects paragraph boundaries from text and assigns each citation to a paragraph.
@@ -19,7 +19,7 @@ import type { ScopeStrategy } from './types'
 export function detectParagraphBoundaries(
   text: string,
   citations: Citation[],
-  boundaryPattern: RegExp = /\n\n+/g
+  boundaryPattern: RegExp = /\n\n+/g,
 ): Map<number, number> {
   const paragraphMap = new Map<number, number>()
 
@@ -67,9 +67,9 @@ export function isWithinBoundary(
   antecedentIndex: number,
   currentIndex: number,
   paragraphMap: Map<number, number>,
-  strategy: ScopeStrategy
+  strategy: ScopeStrategy,
 ): boolean {
-  if (strategy === 'none') {
+  if (strategy === "none") {
     // No boundary restriction - can resolve across entire document
     return true
   }

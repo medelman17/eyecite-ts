@@ -11,13 +11,14 @@
  * - Simple structure to avoid ReDoS
  */
 
-import type { Pattern } from './casePatterns'
+import type { Pattern } from "./casePatterns"
 
 export const journalPatterns: Pattern[] = [
   {
-    id: 'law-review',
+    id: "law-review",
     regex: /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.\s]+)\s+(\d+)\b/g,
-    description: 'Law review citations (e.g., "120 Harv. L. Rev. 500"), validated against journals-db in Phase 3',
-    type: 'journal',
+    description:
+      'Law review citations (e.g., "120 Harv. L. Rev. 500"), validated against journals-db in Phase 3',
+    type: "journal",
   },
 ]

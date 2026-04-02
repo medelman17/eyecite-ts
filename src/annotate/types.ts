@@ -1,4 +1,4 @@
-import type { Citation } from '../types/citation'
+import type { Citation } from "../types/citation"
 
 /**
  * Options for annotating citations in text.

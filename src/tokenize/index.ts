@@ -5,4 +5,4 @@
  * to cleaned text and producing citation candidate tokens.
  */
 
-export * from './tokenizer'
+export * from "./tokenizer"

@@ -1,10 +1,10 @@
 import type {
   Citation,
-  CitationType,
   CitationOfType,
+  CitationType,
+  FullCaseCitation,
   FullCitation,
   ShortFormCitation,
-  FullCaseCitation,
 } from "./citation"
 
 /**

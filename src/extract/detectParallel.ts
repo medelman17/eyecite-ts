@@ -10,7 +10,7 @@
  * @module extract/detectParallel
  */
 
-import type { Token } from '@/tokenize/tokenizer'
+import type { Token } from "@/tokenize/tokenizer"
 
 /**
  * Maximum characters allowed between end of comma and start of next citation.
@@ -55,100 +55,97 @@ const MAX_GAP_FOR_PARALLEL = 20
  * // result = Map { 0 => [1] }
  * ```
  */
-export function detectParallelCitations(
-	tokens: Token[],
-	cleanedText = '',
-): Map<number, number[]> {
-	const parallelGroups = new Map<number, number[]>()
+export function detectParallelCitations(tokens: Token[], cleanedText = ""): Map<number, number[]> {
+  const parallelGroups = new Map<number, number[]>()
 
-	// Edge cases: empty array or no text
-	if (tokens.length === 0 || cleanedText === '') {
-		return parallelGroups
-	}
+  // Edge cases: empty array or no text
+  if (tokens.length === 0 || cleanedText === "") {
+    return parallelGroups
+  }
 
-	// Track which tokens are already in a parallel group (as secondary)
-	const usedAsSecondary = new Set<number>()
+  // Track which tokens are already in a parallel group (as secondary)
+  const usedAsSecondary = new Set<number>()
 
-	for (let i = 0; i < tokens.length; i++) {
-		const primary = tokens[i]
+  for (let i = 0; i < tokens.length; i++) {
+    const primary = tokens[i]
 
-		// Skip if not a case citation
-		if (primary.type !== 'case') {
-			continue
-		}
+    // Skip if not a case citation
+    if (primary.type !== "case") {
+      continue
+    }
 
-		// Skip if already used as secondary in another group
-		if (usedAsSecondary.has(i)) {
-			continue
-		}
+    // Skip if already used as secondary in another group
+    if (usedAsSecondary.has(i)) {
+      continue
+    }
 
-		const secondaryIndices: number[] = []
+    const secondaryIndices: number[] = []
 
-		// Look ahead for potential secondary citations
-		// Chain detection: "A, B, C (year)" where A is primary, B and C are secondaries
-		for (let j = i + 1; j < tokens.length; j++) {
-			const secondary = tokens[j]
+    // Look ahead for potential secondary citations
+    // Chain detection: "A, B, C (year)" where A is primary, B and C are secondaries
+    for (let j = i + 1; j < tokens.length; j++) {
+      const secondary = tokens[j]
 
-			// Only case citations can be parallel
-			if (secondary.type !== 'case') {
-				break // Stop looking once we hit non-case citation
-			}
+      // Only case citations can be parallel
+      if (secondary.type !== "case") {
+        break // Stop looking once we hit non-case citation
+      }
 
-			// Check proximity: comma should be right after primary (or previous secondary in chain)
-			const prevToken = j === i + 1 ? primary : tokens[j - 1]
-			const gapStart = prevToken.span.cleanEnd
-			const gapEnd = secondary.span.cleanStart
+      // Check proximity: comma should be right after primary (or previous secondary in chain)
+      const prevToken = j === i + 1 ? primary : tokens[j - 1]
+      const gapStart = prevToken.span.cleanEnd
+      const gapEnd = secondary.span.cleanStart
 
-			// Early exit: If gap is too large, no need to check comma/parenthetical
-			// This optimization reduces O(n²) to O(n×k) where k is avg tokens within MAX_GAP
-			const gapSize = gapEnd - gapStart
-			if (gapSize > MAX_GAP_FOR_PARALLEL) {
-				break // Too far apart to be parallel, stop looking
-			}
+      // Early exit: If gap is too large, no need to check comma/parenthetical
+      // This optimization reduces O(n²) to O(n×k) where k is avg tokens within MAX_GAP
+      const gapSize = gapEnd - gapStart
+      if (gapSize > MAX_GAP_FOR_PARALLEL) {
+        break // Too far apart to be parallel, stop looking
+      }
 
-			// Extract the gap text between citations
-			const gapText = cleanedText.substring(gapStart, gapEnd)
+      // Extract the gap text between citations
+      const gapText = cleanedText.substring(gapStart, gapEnd)
 
-			// Bluebook requires comma separator for parallel citations
-			if (!gapText.includes(',')) {
-				break // No comma = not parallel, stop looking
-			}
+      // Bluebook requires comma separator for parallel citations
+      if (!gapText.includes(",")) {
+        break // No comma = not parallel, stop looking
+      }
 
-			// Check proximity: distance from comma to next citation start
-			// MAX_PROXIMITY enforces tight spacing: "A, B" not "A,      B"
-			const commaIndex = gapText.indexOf(',')
-			const distanceAfterComma = gapText.length - commaIndex - 1
+      // Check proximity: distance from comma to next citation start
+      // MAX_PROXIMITY enforces tight spacing: "A, B" not "A,      B"
+      const commaIndex = gapText.indexOf(",")
+      const distanceAfterComma = gapText.length - commaIndex - 1
 
-			if (distanceAfterComma > MAX_PROXIMITY) {
-				break // Too far apart, stop looking
-			}
+      if (distanceAfterComma > MAX_PROXIMITY) {
+        break // Too far apart, stop looking
+      }
 
-			// Check for shared parenthetical
-			// Both citations must share the SAME closing parenthetical
-			// Reject: "A (1970), B (1971)" - separate parens = different cases
-			// Accept: "A, B (1970)" - shared paren = parallel citations
-			const textBetween = cleanedText.substring(primary.span.cleanEnd, secondary.span.cleanEnd)
-			if (textBetween.includes(')')) {
-				break // Separate parentheticals = not parallel, stop looking
-			}
+      // Check for shared parenthetical
+      // Both citations must share the SAME closing parenthetical
+      // Reject: "A (1970), B (1971)" - separate parens = different cases
+      // Accept: "A, B (1970)" - shared paren = parallel citations
+      const textBetween = cleanedText.substring(primary.span.cleanEnd, secondary.span.cleanEnd)
+      if (textBetween.includes(")")) {
+        break // Separate parentheticals = not parallel, stop looking
+      }
 
-			// Check that there IS a parenthetical after the secondary citation
-			if (!hasSharedParenthetical(cleanedText, secondary.span.cleanEnd)) {
-				break // No shared parenthetical, stop looking
-			}
+      // Check that there IS a parenthetical after the secondary citation
+      if (!hasSharedParenthetical(cleanedText, secondary.span.cleanEnd)) {
+        break // No shared parenthetical, stop looking
+      }
 
-			// All conditions met - this is a parallel citation
-			secondaryIndices.push(j)
-			usedAsSecondary.add(j)
-		}
+      // All conditions met - this is a parallel citation
+      secondaryIndices.push(j)
+      usedAsSecondary.add(j)
+    }
 
-		// If we found any secondary citations, record the group
-		if (secondaryIndices.length > 0) {
-			parallelGroups.set(i, secondaryIndices)
-		}
-	}
+    // If we found any secondary citations, record the group
+    if (secondaryIndices.length > 0) {
+      parallelGroups.set(i, secondaryIndices)
+    }
+  }
 
-	return parallelGroups
+  return parallelGroups
 }
 
 /**
@@ -162,28 +159,28 @@ export function detectParallelCitations(
  * @returns true if closing parenthetical found
  */
 function hasSharedParenthetical(cleanedText: string, position: number): boolean {
-	// Look ahead up to 200 characters for opening parenthesis
-	const searchText = cleanedText.substring(position, position + 200)
+  // Look ahead up to 200 characters for opening parenthesis
+  const searchText = cleanedText.substring(position, position + 200)
 
-	// Find opening parenthesis
-	const openIndex = searchText.indexOf('(')
-	if (openIndex === -1) {
-		return false
-	}
+  // Find opening parenthesis
+  const openIndex = searchText.indexOf("(")
+  if (openIndex === -1) {
+    return false
+  }
 
-	// Find matching closing parenthesis (simple depth tracking)
-	let depth = 0
-	for (let i = openIndex; i < searchText.length; i++) {
-		if (searchText[i] === '(') {
-			depth++
-		} else if (searchText[i] === ')') {
-			depth--
-			if (depth === 0) {
-				// Found matching closing parenthesis
-				return true
-			}
-		}
-	}
+  // Find matching closing parenthesis (simple depth tracking)
+  let depth = 0
+  for (let i = openIndex; i < searchText.length; i++) {
+    if (searchText[i] === "(") {
+      depth++
+    } else if (searchText[i] === ")") {
+      depth--
+      if (depth === 0) {
+        // Found matching closing parenthesis
+        return true
+      }
+    }
+  }
 
-	return false
+  return false
 }

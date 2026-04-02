@@ -10,7 +10,7 @@
  * - Word boundaries to prevent false positives (e.g., "Idaho" vs "Id.")
  */
 
-import type { Pattern } from './casePatterns'
+import type { Pattern } from "./casePatterns"
 
 /** Id. with optional pincite: "Id." or "Id. at 253" */
 export const ID_PATTERN: RegExp = /\b[Ii]d\.(?:\s+at\s+(\d+))?/g
@@ -24,14 +24,16 @@ export const IBID_PATTERN: RegExp = /\b[Ii]bid\.(?:\s+at\s+(\d+))?/g
  * Captures: (1) party name, (2) pincite
  * Note: Matches party names including "v." (e.g., "Smith v. Jones, supra")
  */
-export const SUPRA_PATTERN: RegExp = /\b([A-Z][a-zA-Z]+(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z]+)*)\s*,?\s+supra(?:,?\s+at\s+(\d+))?/g
+export const SUPRA_PATTERN: RegExp =
+  /\b([A-Z][a-zA-Z]+(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z]+)*)\s*,?\s+supra(?:,?\s+at\s+(\d+))?/g
 
 /**
  * Short-form case: volume reporter at page
  * Pattern: number space abbreviation space "at" space number
  * Simplified detection; full parsing in extraction layer
  */
-export const SHORT_FORM_CASE_PATTERN: RegExp = /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.\s]+?(?:\d[a-z])?)\s+at\s+(\d+)\b/g
+export const SHORT_FORM_CASE_PATTERN: RegExp =
+  /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.\s]+?(?:\d[a-z])?)\s+at\s+(\d+)\b/g
 
 /** All short-form patterns for tokenization */
 export const SHORT_FORM_PATTERNS: readonly RegExp[] = [
@@ -44,27 +46,27 @@ export const SHORT_FORM_PATTERNS: readonly RegExp[] = [
 /** Pattern objects for consistency with other pattern modules */
 export const shortFormPatterns: Pattern[] = [
   {
-    id: 'id',
+    id: "id",
     regex: ID_PATTERN,
     description: 'Id. citations (e.g., "Id." or "Id. at 253")',
-    type: 'case', // Will be typed as 'id' in extraction layer
+    type: "case", // Will be typed as 'id' in extraction layer
   },
   {
-    id: 'ibid',
+    id: "ibid",
     regex: IBID_PATTERN,
     description: 'Ibid. citations (e.g., "Ibid." or "Ibid. at 125")',
-    type: 'case', // Will be typed as 'id' in extraction layer
+    type: "case", // Will be typed as 'id' in extraction layer
   },
   {
-    id: 'supra',
+    id: "supra",
     regex: SUPRA_PATTERN,
     description: 'Supra citations (e.g., "Smith, supra" or "Smith, supra, at 460")',
-    type: 'case', // Will be typed as 'supra' in extraction layer
+    type: "case", // Will be typed as 'supra' in extraction layer
   },
   {
-    id: 'shortFormCase',
+    id: "shortFormCase",
     regex: SHORT_FORM_CASE_PATTERN,
     description: 'Short-form case citations (e.g., "500 F.2d at 125")',
-    type: 'case', // Will be typed as 'shortFormCase' in extraction layer
+    type: "case", // Will be typed as 'shortFormCase' in extraction layer
   },
 ]

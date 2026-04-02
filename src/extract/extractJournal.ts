@@ -7,9 +7,9 @@
  * @module extract/extractJournal
  */
 
-import type { Token } from '@/tokenize'
-import type { JournalCitation } from '@/types/citation'
-import type { TransformationMap } from '@/types/span'
+import type { Token } from "@/tokenize"
+import type { JournalCitation } from "@/types/citation"
+import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 
 /**
  * Extracts journal citation metadata from a tokenized citation.
@@ -50,56 +50,53 @@ import type { TransformationMap } from '@/types/span'
  * ```
  */
 export function extractJournal(
-	token: Token,
-	transformationMap: TransformationMap,
+  token: Token,
+  transformationMap: TransformationMap,
 ): JournalCitation {
-	const { text, span } = token
+  const { text, span } = token
 
-	// Parse volume-journal-page using regex
-	// Pattern: volume (digits) + journal (letters/periods/spaces) + page (digits)
-	const journalRegex = /^(\d+(?:-\d+)?)\s+([A-Za-z.\s]+?)\s+(\d+)/
-	const match = journalRegex.exec(text)
+  // Parse volume-journal-page using regex
+  // Pattern: volume (digits) + journal (letters/periods/spaces) + page (digits)
+  const journalRegex = /^(\d+(?:-\d+)?)\s+([A-Za-z.\s]+?)\s+(\d+)/
+  const match = journalRegex.exec(text)
 
-	if (!match) {
-		throw new Error(`Failed to parse journal citation: ${text}`)
-	}
+  if (!match) {
+    throw new Error(`Failed to parse journal citation: ${text}`)
+  }
 
-	const rawVolume = match[1]
-	const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
-	const journal = match[2].trim()
-	const page = Number.parseInt(match[3], 10)
+  const rawVolume = match[1]
+  const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
+  const journal = match[2].trim()
+  const page = Number.parseInt(match[3], 10)
 
-	// Extract optional pincite (page reference after comma)
-	const pinciteRegex = /,\s*(\d+)/
-	const pinciteMatch = pinciteRegex.exec(text)
-	const pincite = pinciteMatch ? Number.parseInt(pinciteMatch[1], 10) : undefined
+  // Extract optional pincite (page reference after comma)
+  const pinciteRegex = /,\s*(\d+)/
+  const pinciteMatch = pinciteRegex.exec(text)
+  const pincite = pinciteMatch ? Number.parseInt(pinciteMatch[1], 10) : undefined
 
-	// Translate positions from clean → original
-	const originalStart =
-		transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-	const originalEnd =
-		transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+  // Translate positions from clean → original
+  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-	// Confidence: 0.6 base (journal validation against database happens in Phase 3)
-	const confidence = 0.6
+  // Confidence: 0.6 base (journal validation against database happens in Phase 3)
+  const confidence = 0.6
 
-	return {
-		type: 'journal',
-		text,
-		span: {
-			cleanStart: span.cleanStart,
-			cleanEnd: span.cleanEnd,
-			originalStart,
-			originalEnd,
-		},
-		confidence,
-		matchedText: text,
-		processTimeMs: 0,
-		patternsChecked: 1,
-		volume,
-		journal,
-		abbreviation: journal, // For Phase 2, abbreviation = journal name
-		page,
-		pincite,
-	}
+  return {
+    type: "journal",
+    text,
+    span: {
+      cleanStart: span.cleanStart,
+      cleanEnd: span.cleanEnd,
+      originalStart,
+      originalEnd,
+    },
+    confidence,
+    matchedText: text,
+    processTimeMs: 0,
+    patternsChecked: 1,
+    volume,
+    journal,
+    abbreviation: journal, // For Phase 2, abbreviation = journal name
+    page,
+    pincite,
+  }
 }

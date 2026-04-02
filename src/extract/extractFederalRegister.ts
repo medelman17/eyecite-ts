@@ -7,9 +7,9 @@
  * @module extract/extractFederalRegister
  */
 
-import type { Token } from '@/tokenize'
-import type { FederalRegisterCitation } from '@/types/citation'
-import type { TransformationMap } from '@/types/span'
+import type { Token } from "@/tokenize"
+import type { FederalRegisterCitation } from "@/types/citation"
+import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 
 /**
  * Extracts Federal Register citation metadata from a tokenized citation.
@@ -45,54 +45,51 @@ import type { TransformationMap } from '@/types/span'
  * ```
  */
 export function extractFederalRegister(
-	token: Token,
-	transformationMap: TransformationMap,
+  token: Token,
+  transformationMap: TransformationMap,
 ): FederalRegisterCitation {
-	const { text, span } = token
+  const { text, span } = token
 
-	// Parse volume-page using regex
-	// Pattern: volume (digits) + "Fed. Reg." + page (digits)
-	const federalRegisterRegex = /^(\d+(?:-\d+)?)\s+Fed\.\s?Reg\.\s+(\d+)/
-	const match = federalRegisterRegex.exec(text)
+  // Parse volume-page using regex
+  // Pattern: volume (digits) + "Fed. Reg." + page (digits)
+  const federalRegisterRegex = /^(\d+(?:-\d+)?)\s+Fed\.\s?Reg\.\s+(\d+)/
+  const match = federalRegisterRegex.exec(text)
 
-	if (!match) {
-		throw new Error(`Failed to parse Federal Register citation: ${text}`)
-	}
+  if (!match) {
+    throw new Error(`Failed to parse Federal Register citation: ${text}`)
+  }
 
-	const rawVolume = match[1]
-	const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
-	const page = Number.parseInt(match[2], 10)
+  const rawVolume = match[1]
+  const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
+  const page = Number.parseInt(match[2], 10)
 
-	// Extract optional year in parentheses
-	// Pattern: "(year)" or "(month day, year)"
-	const yearRegex = /\((?:.*?\s)?(\d{4})\)/
-	const yearMatch = yearRegex.exec(text)
-	const year = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
+  // Extract optional year in parentheses
+  // Pattern: "(year)" or "(month day, year)"
+  const yearRegex = /\((?:.*?\s)?(\d{4})\)/
+  const yearMatch = yearRegex.exec(text)
+  const year = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
 
-	// Translate positions from clean → original
-	const originalStart =
-		transformationMap.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart
-	const originalEnd =
-		transformationMap.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd
+  // Translate positions from clean → original
+  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-	// Confidence: 0.9 (Federal Register format is standardized)
-	const confidence = 0.9
+  // Confidence: 0.9 (Federal Register format is standardized)
+  const confidence = 0.9
 
-	return {
-		type: 'federalRegister',
-		text,
-		span: {
-			cleanStart: span.cleanStart,
-			cleanEnd: span.cleanEnd,
-			originalStart,
-			originalEnd,
-		},
-		confidence,
-		matchedText: text,
-		processTimeMs: 0,
-		patternsChecked: 1,
-		volume,
-		page,
-		year,
-	}
+  return {
+    type: "federalRegister",
+    text,
+    span: {
+      cleanStart: span.cleanStart,
+      cleanEnd: span.cleanEnd,
+      originalStart,
+      originalEnd,
+    },
+    confidence,
+    matchedText: text,
+    processTimeMs: 0,
+    patternsChecked: 1,
+    volume,
+    page,
+    year,
+  }
 }

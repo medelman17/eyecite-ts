@@ -5,13 +5,13 @@
  * and resolves short-form citations (Id./supra/short-form case) to their full forms.
  */
 
-import type { Citation, ShortFormCitation } from '../types/citation'
+import type { Citation, ShortFormCitation } from "../types/citation"
 
 /**
  * Scope boundary strategy for resolution.
  * Determines how far back to search for antecedent citations.
  */
-export type ScopeStrategy = 'paragraph' | 'section' | 'footnote' | 'none'
+export type ScopeStrategy = "paragraph" | "section" | "footnote" | "none"
 
 /**
  * Options for citation resolution.
@@ -99,10 +99,9 @@ export interface ResolutionResult {
  * meaningfully present on short-form citations (Id., supra, short-form case).
  * On full citations, `resolution` is typed as `undefined`.
  */
-export type ResolvedCitation<C extends Citation = Citation> =
-  C extends ShortFormCitation
-    ? C & { resolution: ResolutionResult | undefined }
-    : C & { resolution?: undefined }
+export type ResolvedCitation<C extends Citation = Citation> = C extends ShortFormCitation
+  ? C & { resolution: ResolutionResult | undefined }
+  : C & { resolution?: undefined }
 
 /**
  * Internal context for resolution process.
