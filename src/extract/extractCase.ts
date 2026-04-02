@@ -82,7 +82,7 @@ const SIGNAL_TABLE: ReadonlyArray<readonly [RegExp, HistorySignal]> = [
   [/^reversed\b/i, "reversed"],
   // cert denied
   [/^certiorari\s+denied\b/i, "cert_denied"],
-  [/^cert\.\s*den(ied|\.)\b/i, "cert_denied"],
+  [/^cert\.\s*den(ied|\.)(?=[\s,;(]|$)/i, "cert_denied"],
   // cert granted
   [/^certiorari\s+granted\b/i, "cert_granted"],
   [/^cert\.\s*granted\b/i, "cert_granted"],
@@ -762,6 +762,33 @@ export function extractCase(
     }
   }
 
+  // Build subsequentHistoryEntries from captured signals
+  let subsequentHistoryEntries: SubsequentHistoryEntry[] | undefined
+  if (cleanedText && collected && collected.signals.length > 0) {
+    for (let i = 0; i < collected.signals.length; i++) {
+      const { signal: rawSig } = collected.signals[i]
+      const normalized = normalizeSignal(rawSig.text)
+      if (normalized) {
+        subsequentHistoryEntries ??= []
+        const { originalStart: sigOrigStart, originalEnd: sigOrigEnd } = resolveOriginalSpan(
+          { cleanStart: rawSig.start, cleanEnd: rawSig.end },
+          transformationMap,
+        )
+        subsequentHistoryEntries.push({
+          signal: normalized.signal,
+          rawSignal: rawSig.text,
+          signalSpan: {
+            cleanStart: rawSig.start,
+            cleanEnd: rawSig.end,
+            originalStart: sigOrigStart,
+            originalEnd: sigOrigEnd,
+          },
+          order: i,
+        })
+      }
+    }
+  }
+
   // Infer court level/jurisdiction from reporter series
   const inferredCourt = inferCourtFromReporter(reporter)
 
@@ -895,6 +922,7 @@ export function extractCase(
     caseName,
     disposition,
     parentheticals,
+    subsequentHistoryEntries,
     plaintiff,
     plaintiffNormalized,
     defendant,
