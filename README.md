@@ -15,7 +15,7 @@ Extract, resolve, and annotate legal citations from court opinions and legal doc
 
 ## Features
 
-- **Full citation extraction**: Case citations, statutes (20 jurisdictions), journal articles, neutral citations, public laws, federal register
+- **Full citation extraction**: Case citations, statutes (20 jurisdictions), constitutional citations (U.S. + 50 states), journal articles, neutral citations, public laws, federal register
 - **Case name & full span**: Backward search extracts case names ("Smith v. Jones", "In re Smith"), `fullSpan` covers case name through closing parenthetical
 - **Parallel citation linking**: Automatic detection and grouping of comma-separated citations sharing a parenthetical (e.g., "410 U.S. 113, 93 S. Ct. 705 (1973)")
 - **Complex parentheticals**: Unified parser handles court+year, full dates (Jan. 15, 2020 / January 15, 2020 / 1/15/2020), disposition (en banc, per curiam), and chained parentheticals
@@ -114,6 +114,35 @@ const citations = extractCitations(text)
 | Named-code | NY (21 laws), CA (29 codes), TX (29 codes), MD (36 articles), VA, AL, MA |
 | Abbreviated-code | FL, OH, MI, UT, CO, WA, NC, GA, PA, IN, NJ, DE |
 | Chapter-act | IL (ILCS) |
+
+### Constitutional Citations
+
+Extract U.S. and state constitutional citations with article, amendment, section, and clause parsing:
+
+```typescript
+import { extractCitations } from 'eyecite-ts'
+
+const text = `
+  Under U.S. Const. amend. XIV, § 1, equal protection is guaranteed.
+  See also Cal. Const. art. I, § 7.
+  And U.S. Const. art. I, § 8, cl. 3.
+`
+const citations = extractCitations(text)
+
+// U.S. amendment with section
+// { type: 'constitutional', jurisdiction: 'US', amendment: 14,
+//   section: '1', confidence: 0.95 }
+
+// California article with section
+// { type: 'constitutional', jurisdiction: 'CA', article: 1,
+//   section: '7', confidence: 0.9 }
+
+// Commerce Clause (article + section + clause)
+// { type: 'constitutional', jurisdiction: 'US', article: 1,
+//   section: '8', clause: 3, confidence: 0.95 }
+```
+
+Roman numerals (I–XXVII) are automatically parsed to integers. All 50 state abbreviations are supported.
 
 ### Async API
 
@@ -410,9 +439,10 @@ All citation types use a discriminated union on the `type` field:
 
 ```typescript
 import type {
-  Citation,           // Union of all 9 types
+  Citation,                // Union of all 11 types
   FullCaseCitation,
   StatuteCitation,
+  ConstitutionalCitation,
   JournalCitation,
   NeutralCitation,
   PublicLawCitation,
@@ -420,10 +450,10 @@ import type {
   IdCitation,
   SupraCitation,
   ShortFormCaseCitation,
-  CitationOfType,     // Extract subtype: CitationOfType<'case'> = FullCaseCitation
-  ExtractorMap,       // Maps FullCitationType keys to citation subtypes
-  FullCitation,       // Union of full citation types
-  ShortFormCitation,  // Union of short-form types
+  CitationOfType,          // Extract subtype: CitationOfType<'case'> = FullCaseCitation
+  ExtractorMap,            // Maps FullCitationType keys to citation subtypes
+  FullCitation,            // Union of full citation types
+  ShortFormCitation,       // Union of short-form types
 } from 'eyecite-ts'
 ```
 
@@ -452,7 +482,7 @@ if (isCitationType(citation, 'statute')) {
 switch (citation.type) {
   case 'case': /* ... */ break
   case 'statute': /* ... */ break
-  // ... all 9 types ...
+  // ... all 11 types ...
   default: assertUnreachable(citation.type)
 }
 ```
@@ -509,7 +539,7 @@ pnpm lint            # Lint with Biome
 pnpm format          # Format with Biome
 ```
 
-985+ tests across 32 test files.
+1030+ tests across 34 test files.
 
 ## License
 
