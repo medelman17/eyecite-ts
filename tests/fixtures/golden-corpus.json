@@ -17,14 +17,14 @@
         {
           "type": "case",
           "volume": 93,
-          "reporter": "S. Ct.",
+          "reporter": "S.Ct.",
           "page": 705,
           "groupId": "410-U.S.-113"
         },
         {
           "type": "case",
           "volume": 35,
-          "reporter": "L. Ed. 2d",
+          "reporter": "L.Ed.2d",
           "page": 147,
           "groupId": "410-U.S.-113"
         }
@@ -45,7 +45,7 @@
         {
           "type": "case",
           "volume": 200,
-          "reporter": "F. Supp.",
+          "reporter": "F.Supp.",
           "page": 50,
           "groupId": "500-F.2d-100"
         }
@@ -59,16 +59,16 @@
         {
           "type": "case",
           "volume": 100,
-          "reporter": "Cal.App. 2d",
+          "reporter": "Cal.App.2d",
           "page": 200,
-          "groupId": "100-Cal.App..2d-200"
+          "groupId": "100-Cal.App.2d-200"
         },
         {
           "type": "case",
           "volume": 300,
           "reporter": "P.2d",
           "page": 400,
-          "groupId": "100-Cal.App..2d-200"
+          "groupId": "100-Cal.App.2d-200"
         }
       ]
     },
@@ -87,7 +87,7 @@
         {
           "type": "case",
           "volume": 25,
-          "reporter": "F. Supp. 2d",
+          "reporter": "F.Supp.2d",
           "page": 50,
           "groupId": "50-F.3d-100"
         }
@@ -171,7 +171,7 @@
         {
           "type": "case",
           "volume": 700,
-          "reporter": "F. Supp. 2d",
+          "reporter": "F.Supp.2d",
           "page": 300,
           "caseName": "Acme Corp. v. Beta Inc.",
           "plaintiff": "Acme Corp.",
@@ -284,7 +284,7 @@
         {
           "type": "case",
           "volume": 300,
-          "reporter": "F. Supp. 3d",
+          "reporter": "F.Supp.3d",
           "hasBlankPage": true,
           "court": "N.D. Cal.",
           "year": 2024

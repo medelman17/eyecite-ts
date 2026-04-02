@@ -64,6 +64,10 @@ const REPORTER_COURT_MAP = new Map<string, CourtInference>([
   ["F. Supp. 2d", federal("trial")],
   ["F. Supp. 3d", federal("trial")],
   ["F. Supp. 4th", federal("trial")],
+  ["F.Supp.", federal("trial")],
+  ["F.Supp.2d", federal("trial")],
+  ["F.Supp.3d", federal("trial")],
+  ["F.Supp.4th", federal("trial")],
   ["F.R.D.", federal("trial")],
   ["B.R.", federal("trial")],
 

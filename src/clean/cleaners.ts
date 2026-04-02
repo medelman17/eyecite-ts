@@ -119,3 +119,34 @@ export function decodeHtmlEntities(text: string): string {
       })
   )
 }
+
+/**
+ * Normalize spacing in reporter abbreviations.
+ *
+ * Collapses "letter. space" sequences common in legal reporter abbreviations
+ * where the space is inconsistent (e.g., OCR or copy-paste artifacts).
+ *
+ * @example
+ * normalizeReporterSpacing("550 U. S. 544")    // => "550 U.S. 544"
+ * normalizeReporterSpacing("500 F. 2d 123")    // => "500 F.2d 123"
+ * normalizeReporterSpacing("127 S. Ct. 1955")  // => "127 S.Ct. 1955"
+ */
+export function normalizeReporterSpacing(text: string): string {
+  // Targeted approach: collapse spacing in known reporter abbreviation patterns,
+  // then apply a general ordinal-suffix rule. This avoids affecting non-reporter
+  // abbreviations like "L. Rev." or "L. J." in journal citations.
+  let result = text
+
+  // Specific reporter abbreviation collapses
+  result = result.replace(/\bU\.\s+S\./g, "U.S.")
+  result = result.replace(/\bS\.\s+Ct\./g, "S.Ct.")
+  result = result.replace(/\bL\.\s+Ed\./g, "L.Ed.")
+  result = result.replace(/\bF\.\s+Supp\./g, "F.Supp.")
+  result = result.replace(/\bF\.\s+(\d+[a-z]+)/g, "F.$1")
+
+  // General ordinal-suffix collapse: "Supp. 2d" → "Supp.2d", "Ed. 2d" → "Ed.2d",
+  // "St. 3d" → "St.3d", "So. 2d" → "So.2d", "Wis. 2d" → "Wis.2d"
+  result = result.replace(/([A-Za-z])\.\s+(\d+[a-z]+)/g, "$1.$2")
+
+  return result
+}

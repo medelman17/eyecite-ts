@@ -47,7 +47,7 @@
         {
           "type": "case",
           "volume": 100,
-          "reporter": "F. Supp. 4th",
+          "reporter": "F.Supp.4th",
           "page": 50,
           "court": "D. Mass.",
           "year": 2024
@@ -110,7 +110,7 @@
         {
           "type": "case",
           "volume": 179,
-          "reporter": "F. Supp.",
+          "reporter": "F.Supp.",
           "page": 824,
           "court": "M.D. Tenn.",
           "year": 1959
@@ -126,7 +126,7 @@
         {
           "type": "case",
           "volume": 416,
-          "reporter": "F. Supp. 2d",
+          "reporter": "F.Supp.2d",
           "page": 828,
           "court": "C.D. Cal.",
           "year": 2006
@@ -142,7 +142,7 @@
         {
           "type": "case",
           "volume": 324,
-          "reporter": "F. Supp. 3d",
+          "reporter": "F.Supp.3d",
           "page": 1157,
           "court": "D. Nev.",
           "year": 2018
@@ -252,7 +252,7 @@
         {
           "type": "case",
           "volume": 142,
-          "reporter": "S. Ct.",
+          "reporter": "S.Ct.",
           "page": 2407,
           "year": 2022
         }
@@ -267,7 +267,7 @@
         {
           "type": "case",
           "volume": 200,
-          "reporter": "L. Ed. 2d",
+          "reporter": "L.Ed.2d",
           "page": 500,
           "year": 2018
         }
@@ -417,7 +417,7 @@
         {
           "type": "case",
           "volume": 250,
-          "reporter": "So. 2d",
+          "reporter": "So.2d",
           "page": 100,
           "year": 2015
         }
@@ -432,7 +432,7 @@
         {
           "type": "case",
           "volume": 180,
-          "reporter": "So. 3d",
+          "reporter": "So.3d",
           "page": 75,
           "year": 2016
         }
@@ -567,7 +567,7 @@
         {
           "type": "case",
           "volume": 85,
-          "reporter": "Ohio St. 3d",
+          "reporter": "Ohio St.3d",
           "page": 632,
           "year": 1999
         }
@@ -1275,13 +1275,13 @@
         {
           "type": "case",
           "volume": 74,
-          "reporter": "S. Ct.",
+          "reporter": "S.Ct.",
           "page": 686
         },
         {
           "type": "case",
           "volume": 98,
-          "reporter": "L. Ed.",
+          "reporter": "L.Ed.",
           "page": 873
         }
       ]
@@ -1301,7 +1301,7 @@
         {
           "type": "case",
           "volume": 150,
-          "reporter": "F. Supp. 2d",
+          "reporter": "F.Supp.2d",
           "page": 200
         }
       ]
@@ -1351,7 +1351,7 @@
         {
           "type": "case",
           "volume": 300,
-          "reporter": "F. Supp. 3d",
+          "reporter": "F.Supp.3d",
           "page": 500,
           "court": "S.D.N.Y.",
           "year": 2021
@@ -1398,7 +1398,7 @@
         {
           "type": "case",
           "volume": 140,
-          "reporter": "S. Ct.",
+          "reporter": "S.Ct.",
           "page": 2000,
           "year": 2020
         }
@@ -1453,7 +1453,7 @@
         {
           "type": "case",
           "volume": 100,
-          "reporter": "S. Ct.",
+          "reporter": "S.Ct.",
           "page": 200,
           "year": 2015,
           "disposition": "per curiam"
@@ -1563,7 +1563,7 @@
         {
           "type": "case",
           "volume": 200,
-          "reporter": "F. Supp. 3d",
+          "reporter": "F.Supp.3d",
           "hasBlankPage": true,
           "year": 2023
         }
@@ -1578,7 +1578,7 @@
         {
           "type": "case",
           "volume": 50,
-          "reporter": "S. Ct.",
+          "reporter": "S.Ct.",
           "hasBlankPage": true,
           "year": 2024
         }
@@ -2036,7 +2036,7 @@
         {
           "type": "case",
           "volume": 144,
-          "reporter": "S. Ct.",
+          "reporter": "S.Ct.",
           "page": 2244,
           "year": 2024
         },
@@ -2398,13 +2398,13 @@
         {
           "type": "case",
           "volume": 86,
-          "reporter": "S. Ct.",
+          "reporter": "S.Ct.",
           "page": 1602
         },
         {
           "type": "case",
           "volume": 16,
-          "reporter": "L. Ed. 2d",
+          "reporter": "L.Ed.2d",
           "page": 694
         }
       ]
@@ -2608,7 +2608,7 @@
         {
           "type": "case",
           "volume": 186,
-          "reporter": "L. Ed. 2d",
+          "reporter": "L.Ed.2d",
           "page": 474
         }
       ]
@@ -2745,7 +2745,7 @@
         {
           "type": "case",
           "volume": 143,
-          "reporter": "S. Ct.",
+          "reporter": "S.Ct.",
           "page": 2688,
           "year": 2023
         }
@@ -2827,7 +2827,7 @@
         {
           "type": "case",
           "volume": 285,
-          "reporter": "Wis. 2d",
+          "reporter": "Wis.2d",
           "page": 143,
           "year": 2005
         }
@@ -3186,7 +3186,7 @@
         {
           "type": "case",
           "volume": 141,
-          "reporter": "S. Ct.",
+          "reporter": "S.Ct.",
           "page": 52,
           "year": 2020,
           "disposition": "per curiam"

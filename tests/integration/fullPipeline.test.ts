@@ -500,7 +500,7 @@ describe("Full Pipeline Integration Tests", () => {
         expect(primary.parallelCitations).toHaveLength(1)
         expect(primary.parallelCitations?.[0]).toMatchObject({
           volume: 93,
-          reporter: "S. Ct.",
+          reporter: "S.Ct.",
           page: 705,
         })
 
@@ -526,12 +526,12 @@ describe("Full Pipeline Integration Tests", () => {
         // Verify both secondary citations are in the array
         expect(primary.parallelCitations?.[0]).toMatchObject({
           volume: 93,
-          reporter: "S. Ct.",
+          reporter: "S.Ct.",
           page: 705,
         })
         expect(primary.parallelCitations?.[1]).toMatchObject({
           volume: 35,
-          reporter: "L. Ed. 2d",
+          reporter: "L.Ed.2d",
           page: 147,
         })
       }
@@ -568,7 +568,7 @@ describe("Full Pipeline Integration Tests", () => {
       // First group
       const group1Primary = citations.find((c) => c.type === "case" && c.volume === 500)
       const group1Secondary = citations.find(
-        (c) => c.type === "case" && c.volume === 200 && c.reporter === "F. Supp.",
+        (c) => c.type === "case" && c.volume === 200 && c.reporter === "F.Supp.",
       )
 
       // Second group
