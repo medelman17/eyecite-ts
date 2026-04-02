@@ -902,6 +902,7 @@ describe("explanatory parentheticals (#76)", () => {
       "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (holding that X requires Y)",
     )
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].parentheticals).toEqual([
         { text: "holding that X requires Y", type: "holding" },
@@ -914,6 +915,7 @@ describe("explanatory parentheticals (#76)", () => {
       "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (holding that X) (citing Doe v. City)",
     )
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].parentheticals).toEqual([
         { text: "holding that X", type: "holding" },
@@ -925,6 +927,7 @@ describe("explanatory parentheticals (#76)", () => {
   it("no parentheticals when only court/year paren present", () => {
     const citations = extractCitations("Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)")
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].parentheticals).toBeUndefined()
     }
@@ -941,6 +944,7 @@ describe("explanatory parentheticals (#76)", () => {
         `Smith v. Jones, 500 F.2d 123 (2020) (${signal} that X)`,
       )
       expect(citations).toHaveLength(1)
+      expect(citations[0].type).toBe("case")
       if (citations[0].type === "case") {
         expect(citations[0].parentheticals?.[0]?.type).toBe(signal)
       }
@@ -952,6 +956,7 @@ describe("explanatory parentheticals (#76)", () => {
       "Smith v. Jones, 500 F.2d 123 (2020) (the court found X)",
     )
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].parentheticals).toEqual([
         { text: "the court found X", type: "other" },
@@ -964,6 +969,7 @@ describe("explanatory parentheticals (#76)", () => {
       "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc)",
     )
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].disposition).toBe("en banc")
       expect(citations[0].parentheticals).toBeUndefined()
@@ -975,6 +981,7 @@ describe("explanatory parentheticals (#76)", () => {
       "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc) (holding that X)",
     )
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].disposition).toBe("en banc")
       expect(citations[0].parentheticals).toEqual([
@@ -988,6 +995,7 @@ describe("explanatory parentheticals (#76)", () => {
       'Smith v. Jones, 500 F.2d 123 (2020) (holding that (a) X and (b) Y)',
     )
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].parentheticals?.[0]?.text).toBe(
         "holding that (a) X and (b) Y",
@@ -1001,6 +1009,7 @@ describe("explanatory parentheticals (#76)", () => {
       'Smith v. Jones, 500 F.2d 123 (2020) (quoting "the (original) rule")',
     )
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].parentheticals?.[0]?.text).toBe(
         'quoting "the (original) rule"',
@@ -1014,8 +1023,24 @@ describe("explanatory parentheticals (#76)", () => {
       "Smith v. Jones, 500 F.2d 123 (2020) (Holding that X)",
     )
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].parentheticals?.[0]?.type).toBe("holding")
+    }
+  })
+
+  it("extracts court/year from later metadata paren", () => {
+    // "(en banc) (9th Cir. 2021)" — second paren has court+year
+    const citations = extractCitations(
+      "Smith v. Jones, 500 F.2d 123 (en banc) (9th Cir. 2021)",
+    )
+    expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
+    if (citations[0].type === "case") {
+      expect(citations[0].disposition).toBe("en banc")
+      expect(citations[0].court).toBe("9th Cir.")
+      expect(citations[0].year).toBe(2021)
+      expect(citations[0].parentheticals).toBeUndefined()
     }
   })
 })
@@ -1065,6 +1090,7 @@ describe("backward compatibility (Phase 6)", () => {
   it("disposition extraction still works via classify", () => {
     const citations = extractCitations("500 F.2d 123 (9th Cir. 2020) (en banc)")
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].disposition).toBe("en banc")
       expect(citations[0].parentheticals).toBeUndefined()
@@ -1074,6 +1100,7 @@ describe("backward compatibility (Phase 6)", () => {
   it("per curiam still extracted from chained paren", () => {
     const citations = extractCitations("500 F.2d 123 (9th Cir. 2020) (per curiam)")
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].disposition).toBe("per curiam")
       expect(citations[0].parentheticals).toBeUndefined()

@@ -61,9 +61,19 @@ const PAREN_SKIP_REGEX = /[\s,]/
 /** Subsequent history signals between parentheticals */
 const HISTORY_SIGNAL_REGEX = /^(aff'd|rev'd|cert\.\s*denied|overruled\s+by|vacated\s+by)/i
 
-/** Signal words that identify explanatory parentheticals (matched at start, case-insensitive) */
-const SIGNAL_WORD_REGEX =
-  /^(holding|finding|stating|noting|explaining|quoting|citing|discussing|describing|recognizing|applying|rejecting|adopting|requiring)\b/i
+/** Signal words that identify explanatory parentheticals */
+const SIGNAL_WORDS: ReadonlySet<string> = new Set([
+  "holding", "finding", "stating", "noting", "explaining", "quoting", "citing",
+  "discussing", "describing", "recognizing", "applying", "rejecting", "adopting", "requiring",
+])
+
+/** Type guard: validates a string is a known signal word */
+function isSignalWord(word: string): word is ParentheticalType {
+  return SIGNAL_WORDS.has(word)
+}
+
+/** Matches a leading word (used to extract signal word candidate) */
+const LEADING_WORD_REGEX = /^([a-z]+)\b/i
 
 /** Standard "v." or "vs." case name format */
 const V_CASE_NAME_REGEX =
@@ -238,7 +248,6 @@ function collectParentheticals(
   return results
 }
 
-
 /**
  * Parse parenthetical content to extract court, year, date, and disposition.
  * Unified parser replacing the old year-only logic.
@@ -312,12 +321,11 @@ function classifyParenthetical(raw: string): {
   type: ParentheticalType
 } {
   // Check for signal word first — signal-word parens are always explanatory
-  const signalMatch = SIGNAL_WORD_REGEX.exec(raw)
-  if (signalMatch) {
-    return {
-      kind: "explanatory",
-      text: raw,
-      type: signalMatch[1].toLowerCase() as ParentheticalType,
+  const leadingMatch = LEADING_WORD_REGEX.exec(raw)
+  if (leadingMatch) {
+    const candidate = leadingMatch[1].toLowerCase()
+    if (isSignalWord(candidate)) {
+      return { kind: "explanatory", text: raw, type: candidate }
     }
   }
 
@@ -325,6 +333,10 @@ function classifyParenthetical(raw: string): {
   // Note: "other"-type parens with embedded years (e.g., "the court, in 2019, held X")
   // will be classified as metadata. This is a known limitation — most explanatory
   // parentheticals start with a signal word and are handled above.
+  // Note: meta.court alone is insufficient — stripDateFromCourt returns any
+  // text with letters as a "court", so a standalone court-only second paren
+  // like "(9th Cir.)" will fall through to "other". This is acceptable since
+  // court-only parens without year/date are extremely rare in legal text.
   const meta = parseParenthetical(raw)
   if (meta.year || meta.date || meta.disposition) {
     return { kind: "metadata", ...meta }
@@ -621,6 +633,16 @@ export function extractCase(
     for (const raw of remaining) {
       const classified = classifyParenthetical(raw.text)
       if (classified.kind === "metadata") {
+        // Accept court from later metadata parens if we don't have a real one.
+        // The primary parse can set court to the disposition text (e.g., "en banc")
+        // as a side effect of stripDateFromCourt, so treat that as unset.
+        if (classified.court && (!court || court === disposition)) {
+          court = classified.court
+        }
+        if (classified.year && !year) {
+          year = classified.year
+          date = classified.date
+        }
         if (classified.disposition && !disposition) {
           disposition = classified.disposition
         }
