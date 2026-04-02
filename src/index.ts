@@ -29,6 +29,7 @@ export type {
   Citation,
   CitationBase,
   CitationOfType,
+  CitationSignal,
   CitationType,
   ConstitutionalCitation,
   CourtInference,

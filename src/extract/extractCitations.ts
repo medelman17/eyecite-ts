@@ -36,6 +36,7 @@ import type { Citation } from "@/types/citation"
 import { resolveCitations } from "../resolve"
 import type { ResolutionOptions, ResolvedCitation } from "../resolve/types"
 import { detectParallelCitations } from "./detectParallel"
+import { detectStringCitations } from "./detectStringCites"
 import { extractId, extractShortFormCase, extractSupra } from "./extractShortForms"
 
 /**
@@ -358,6 +359,9 @@ export function extractCitations(
       }
     }
   }
+
+  // Step 4.75: Detect string citation groups (semicolon-separated)
+  detectStringCitations(citations, cleaned)
 
   // Step 5: Resolve short-form citations if requested
   if (options?.resolve) {

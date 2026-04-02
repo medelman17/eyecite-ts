@@ -16,6 +16,7 @@
 
 import type { Token } from "@/tokenize"
 import type {
+  CitationSignal,
   FullCaseCitation,
   HistorySignal,
   Parenthetical,
@@ -25,6 +26,19 @@ import type {
 import { resolveOriginalSpan, type Span, type TransformationMap } from "@/types/span"
 import { parseDate, type StructuredDate } from "./dates"
 import { inferCourtFromReporter } from "./courtInference"
+
+/** Valid CitationSignal values for safe validation after regex capture + normalization. */
+const VALID_SIGNALS = new Set([
+  "see",
+  "see also",
+  "see generally",
+  "cf",
+  "but see",
+  "but cf",
+  "compare",
+  "accord",
+  "contra",
+])
 
 /** Parse a volume string as number when purely numeric, string when hyphenated */
 function parseVolume(raw: string): number | string {
@@ -527,7 +541,9 @@ function extractPartyNames(caseName: string): {
   defendant?: string
   defendantNormalized?: string
   proceduralPrefix?: string
+  signal?: CitationSignal
 } {
+  let signal: CitationSignal | undefined
   // Procedural prefix patterns (anchored to start, case-insensitive)
   const proceduralPrefixes = [
     "In re",
@@ -583,15 +599,24 @@ function extractPartyNames(caseName: string): {
 
     // Strip signal words from plaintiff (e.g., "In Smith" → "Smith", "See Jones" → "Jones")
     // Preserve "In re" which is a procedural prefix, not a signal word
-    plaintiff = plaintiff
-      .replace(/^(?:In(?!\s+re\b)|See(?:\s+[Aa]lso)?|Compare|But(?:\s+[Ss]ee)?|Cf\.?|Also)\s+/i, "")
-      .trim()
+    // Capture the signal for the citation's signal field
+    const signalMatch = plaintiff.match(
+      /^(See\s+[Aa]lso|See\s+[Gg]enerally|But\s+[Ss]ee|But\s+[Cc]f\.?|Compare|Accord|Contra|See|Cf\.?|Also|In(?!\s+re\b))\s+/i,
+    )
+    if (signalMatch) {
+      const raw = signalMatch[1].toLowerCase().replace(/\.$/, "")
+      if (raw !== "in" && raw !== "also") {
+        signal = VALID_SIGNALS.has(raw) ? (raw as CitationSignal) : undefined
+      }
+      plaintiff = plaintiff.substring(signalMatch[0].length).trim()
+    }
 
     return {
       plaintiff: plaintiff || vMatch[1].trim(), // Fallback to original if strip leaves nothing
       plaintiffNormalized: normalizePartyName(plaintiff || vMatch[1].trim()),
       defendant,
       defendantNormalized: normalizePartyName(defendant),
+      signal,
     }
   }
 
@@ -828,6 +853,7 @@ export function extractCase(
   let defendantNormalized: string | undefined
   let proceduralPrefix: string | undefined
 
+  let signal: CitationSignal | undefined
   if (caseName) {
     const partyResult = extractPartyNames(caseName)
     plaintiff = partyResult.plaintiff
@@ -835,6 +861,7 @@ export function extractCase(
     defendant = partyResult.defendant
     defendantNormalized = partyResult.defendantNormalized
     proceduralPrefix = partyResult.proceduralPrefix
+    signal = partyResult.signal
   }
 
   // Translate positions from clean → original (citation core only - span unchanged)
@@ -925,5 +952,6 @@ export function extractCase(
     defendantNormalized,
     proceduralPrefix,
     inferredCourt,
+    signal,
   }
 }
