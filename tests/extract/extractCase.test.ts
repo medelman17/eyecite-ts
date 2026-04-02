@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { extractCase, extractCitations } from "@/extract"
 import type { Token } from "@/tokenize"
+import type { FullCaseCitation } from "@/types/citation"
 import { createIdentityMap, createOffsetMap } from "../helpers/transformationMap"
 
 describe("extractCase", () => {
@@ -1638,5 +1639,57 @@ describe("subsequent history signals (#73)", () => {
       )
       expect(signalText).toBe("aff'd")
     }
+  })
+})
+
+describe("signal word extraction", () => {
+  it("captures 'see' signal from case citation", () => {
+    const text = "See Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)"
+    const citations = extractCitations(text)
+    const caseCite = citations.find((c) => c.type === "case")
+    expect(caseCite?.signal).toBe("see")
+  })
+
+  it("captures 'see also' signal", () => {
+    const text = "See also Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)"
+    const citations = extractCitations(text)
+    const caseCite = citations.find((c) => c.type === "case")
+    expect(caseCite?.signal).toBe("see also")
+  })
+
+  it("captures 'cf' signal (with period)", () => {
+    const text = "Cf. Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)"
+    const citations = extractCitations(text)
+    const caseCite = citations.find((c) => c.type === "case")
+    expect(caseCite?.signal).toBe("cf")
+  })
+
+  it("captures 'but see' signal", () => {
+    const text = "But see Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)"
+    const citations = extractCitations(text)
+    const caseCite = citations.find((c) => c.type === "case")
+    expect(caseCite?.signal).toBe("but see")
+  })
+
+  it("captures 'compare' signal", () => {
+    const text = "Compare Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)"
+    const citations = extractCitations(text)
+    const caseCite = citations.find((c) => c.type === "case")
+    expect(caseCite?.signal).toBe("compare")
+  })
+
+  it("does not set signal when none present", () => {
+    const text = "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)"
+    const citations = extractCitations(text)
+    const caseCite = citations.find((c) => c.type === "case")
+    expect(caseCite?.signal).toBeUndefined()
+  })
+
+  it("strips signal from plaintiff name", () => {
+    const text = "See Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)"
+    const citations = extractCitations(text)
+    const caseCite = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(caseCite?.plaintiff).toBe("Smith")
+    expect(caseCite?.signal).toBe("see")
   })
 })
