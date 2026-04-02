@@ -11,7 +11,13 @@
  * @module extract/filterFalsePositives
  */
 
-import type { Citation, FullCaseCitation, JournalCitation, Warning } from "@/types/citation"
+import type {
+  Citation,
+  FullCaseCitation,
+  JournalCitation,
+  ShortFormCaseCitation,
+  Warning,
+} from "@/types/citation"
 
 /** Year threshold: US legal reporting starts ~1790 (Dallas Reports). 1750 gives headroom. */
 const MIN_PLAUSIBLE_YEAR = 1750
@@ -59,9 +65,8 @@ const BLOCKED_REPORTERS: ReadonlySet<string> = new Set([
  * Returns undefined for citation types that don't have a reporter.
  */
 function getReporter(citation: Citation): string | undefined {
-  if (citation.type === "case" || citation.type === "shortFormCase") {
-    return (citation as FullCaseCitation).reporter
-  }
+  if (citation.type === "case") return (citation as FullCaseCitation).reporter
+  if (citation.type === "shortFormCase") return (citation as ShortFormCaseCitation).reporter
   if (citation.type === "journal") {
     return (citation as JournalCitation).abbreviation
   }
