@@ -238,30 +238,6 @@ function collectParentheticals(
   return results
 }
 
-/**
- * Find the end of parenthetical content, including chained parentheticals and subsequent history.
- * Thin wrapper around collectParentheticals() for backward compatibility.
- *
- * @param cleanedText - Full cleaned text
- * @param searchStart - Position to start searching from (after citation core)
- * @param maxLookahead - Maximum characters to search forward (default 500)
- * @returns Position after final closing paren (exclusive), or searchStart if no parens
- *
- * @example
- * ```typescript
- * findParentheticalEnd(text, 20, 500)
- * // For "(2020) (en banc)" returns position after final ")"
- * ```
- */
-function findParentheticalEnd(
-  cleanedText: string,
-  searchStart: number,
-  maxLookahead = 500,
-): number {
-  const parens = collectParentheticals(cleanedText, searchStart, maxLookahead)
-  if (parens.length === 0) return searchStart
-  return parens[parens.length - 1].end
-}
 
 /**
  * Parse parenthetical content to extract court, year, date, and disposition.
@@ -637,8 +613,9 @@ export function extractCase(
 
   // Classify chained parentheticals: extract disposition and explanatory content
   let parentheticals: Parenthetical[] | undefined
+  let allParens: RawParenthetical[] | undefined
   if (cleanedText) {
-    const allParens = collectParentheticals(cleanedText, span.cleanEnd)
+    allParens = collectParentheticals(cleanedText, span.cleanEnd)
     // Skip first paren (already parsed above as court/year)
     const remaining = parentheticalContent ? allParens.slice(1) : allParens
     for (const raw of remaining) {
@@ -669,9 +646,12 @@ export function extractCase(
       caseName = caseNameResult.caseName
 
       // Calculate fullSpan: case name start through parenthetical end
-      const parenEnd = findParentheticalEnd(cleanedText, span.cleanEnd)
+      // Reuse allParens from classify loop to avoid scanning twice
+      const parenEnd = allParens && allParens.length > 0
+        ? allParens[allParens.length - 1].end
+        : span.cleanEnd
       const fullCleanStart = caseNameResult.nameStart
-      const fullCleanEnd = parenEnd > span.cleanEnd ? parenEnd : span.cleanEnd
+      const fullCleanEnd = parenEnd
 
       // Translate to original positions
       const fullOriginalStart =
