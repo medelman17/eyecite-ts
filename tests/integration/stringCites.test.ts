@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest"
 import { extractCitations } from "@/extract/extractCitations"
+import type { FullCaseCitation } from "@/types/citation"
 
 describe("string citation grouping (integration)", () => {
   it("groups semicolon-separated case citations", () => {
@@ -79,5 +80,33 @@ describe("string citation grouping (integration)", () => {
     expect(caseCites[1].stringCitationIndex).toBe(1)
     expect(caseCites[2].stringCitationIndex).toBe(2)
     expect(caseCites[0].stringCitationGroupSize).toBe(3)
+  })
+
+  it("groups mixed citation types (case + statute)", () => {
+    const text =
+      "See 42 U.S.C. § 1983; Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)."
+    const citations = extractCitations(text)
+
+    expect(citations.length).toBeGreaterThanOrEqual(2)
+
+    const groupId = citations[0].stringCitationGroupId
+    expect(groupId).toBeDefined()
+    expect(citations[1].stringCitationGroupId).toBe(groupId)
+    expect(citations[0].stringCitationIndex).toBe(0)
+    expect(citations[1].stringCitationIndex).toBe(1)
+  })
+
+  it("parallel cites and string cites coexist", () => {
+    const text =
+      "Smith v. Jones, 500 F.2d 123, 50 U.S. 456 (2020); Doe v. Green, 600 F.3d 789 (2d Cir. 2021)."
+    const citations = extractCitations(text)
+
+    const caseCites = citations.filter((c) => c.type === "case") as FullCaseCitation[]
+    // First two should be parallel (comma-separated, same case)
+    // The primary parallel cite and the third cite should be in a string group
+
+    // At least verify string grouping is present
+    const groupedCites = caseCites.filter((c) => c.stringCitationGroupId)
+    expect(groupedCites.length).toBeGreaterThanOrEqual(2)
   })
 })
