@@ -254,6 +254,24 @@ interface RawParenthetical {
   end: number
 }
 
+/** A subsequent history signal found between parenthetical groups */
+interface RawSignal {
+  /** Raw signal text (e.g., "aff'd", "cert. denied") */
+  text: string
+  /** Position of signal start in the text */
+  start: number
+  /** Position after signal end (exclusive) */
+  end: number
+}
+
+/** Result of collecting parentheticals with signal awareness */
+interface CollectedParentheticals {
+  /** All parenthetical blocks in order */
+  parens: RawParenthetical[]
+  /** Signals found between groups, each paired with the index of the next paren */
+  signals: Array<{ signal: RawSignal; nextParenIndex: number }>
+}
+
 /**
  * Collect all top-level parenthetical blocks starting from a position.
  * Uses depth tracking to handle nested parens. Continues scanning through
@@ -262,16 +280,18 @@ interface RawParenthetical {
  * @param text - Full text to scan
  * @param startPos - Position to start scanning (typically after citation core)
  * @param maxLookahead - Maximum characters to scan forward (default 500)
- * @returns Array of raw parenthetical blocks in order of appearance
+ * @returns Collected parentheticals with associated signals
  */
 function collectParentheticals(
   text: string,
   startPos: number,
   maxLookahead = 500,
-): RawParenthetical[] {
-  const results: RawParenthetical[] = []
+): CollectedParentheticals {
+  const parens: RawParenthetical[] = []
+  const signals: CollectedParentheticals["signals"] = []
   let pos = startPos
   const endLimit = Math.min(text.length, startPos + maxLookahead)
+  let pendingSignal: RawSignal | undefined
 
   while (pos < endLimit) {
     // Skip whitespace and commas between parentheticals
@@ -284,6 +304,11 @@ function collectParentheticals(
       const remainingText = text.substring(pos, endLimit)
       const signalMatch = HISTORY_SIGNAL_REGEX.exec(remainingText)
       if (signalMatch) {
+        pendingSignal = {
+          text: signalMatch[0].replace(/\s+$/, ""),
+          start: pos,
+          end: pos + signalMatch[0].length,
+        }
         pos += signalMatch[0].length
         continue
       }
@@ -305,11 +330,12 @@ function collectParentheticals(
           pos++ // move past closing paren
           const content = text.substring(contentStart, pos - 1).trim()
           if (content.length > 0) {
-            results.push({
-              text: content,
-              start: parenStart,
-              end: pos,
-            })
+            parens.push({ text: content, start: parenStart, end: pos })
+            // If there was a pending signal, associate it with this paren
+            if (pendingSignal) {
+              signals.push({ signal: pendingSignal, nextParenIndex: parens.length - 1 })
+              pendingSignal = undefined
+            }
           }
           break
         }
@@ -321,7 +347,12 @@ function collectParentheticals(
     if (depth > 0) break
   }
 
-  return results
+  // Handle trailing signal with no following paren
+  if (pendingSignal) {
+    signals.push({ signal: pendingSignal, nextParenIndex: -1 })
+  }
+
+  return { parens, signals }
 }
 
 /**
@@ -702,8 +733,10 @@ export function extractCase(
   // Classify chained parentheticals: extract disposition and explanatory content
   let parentheticals: Parenthetical[] | undefined
   let allParens: RawParenthetical[] | undefined
+  let collected: CollectedParentheticals | undefined
   if (cleanedText) {
-    allParens = collectParentheticals(cleanedText, span.cleanEnd)
+    collected = collectParentheticals(cleanedText, span.cleanEnd)
+    allParens = collected.parens
     // Skip first paren (already parsed above as court/year)
     const remaining = parentheticalContent ? allParens.slice(1) : allParens
     for (const raw of remaining) {
