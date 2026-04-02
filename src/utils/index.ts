@@ -11,3 +11,4 @@
  */
 
 export type { CaseGroup, ContextOptions, SurroundingContext } from "./types"
+export { toReporterKey, toReporterKeys } from "./reporterKey"
