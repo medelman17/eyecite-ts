@@ -211,7 +211,10 @@ export function detectStringCitations(citations: Citation[], cleanedText: string
     // Try each signal pattern against the end of the preceding text
     for (const { regex, signal } of SIGNAL_PATTERNS) {
       // Build a regex that matches the signal at the end of the string
-      const endPattern = new RegExp(`${regex.source.replace(/^\^/, "")}\\s*$`, regex.flags)
+      const endPattern = new RegExp(
+        regex.source.replace(/^\^/, "(?<![a-z])") + "\\s*$",
+        regex.flags,
+      )
       if (endPattern.test(precedingText)) {
         ;(first as { signal?: CitationSignal }).signal = signal
         break

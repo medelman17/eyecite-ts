@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest"
 import { detectStringCitations } from "@/extract/detectStringCites"
-import type { Citation, FullCaseCitation } from "@/types/citation"
+import type { Citation, FullCaseCitation, StatuteCitation } from "@/types/citation"
 import type { Span } from "@/types/span"
 
 /** Helper to create a minimal case citation for testing */
@@ -242,6 +242,104 @@ describe("detectStringCitations", () => {
       expect(cit3.stringCitationGroupId).toBeDefined()
       expect(cit4.stringCitationGroupId).toBe(cit3.stringCitationGroupId)
       expect(cit1.stringCitationGroupId).not.toBe(cit3.stringCitationGroupId)
+    })
+  })
+
+  describe("mid-group signal detection", () => {
+    it("captures mid-group 'see also' signal", () => {
+      const cleaned = "A, 500 F.2d 123 (2020); see also B, 600 F.3d 456 (2021)."
+      const cit1 = makeCase({
+        cleanStart: 3,
+        cleanEnd: 15,
+        fullSpanStart: 0,
+        fullSpanEnd: 22,
+      })
+      const cit2 = makeCase({
+        cleanStart: 36,
+        cleanEnd: 48,
+        fullSpanStart: 33,
+        fullSpanEnd: 55,
+      })
+      const citations: Citation[] = [cit1, cit2]
+
+      detectStringCitations(citations, cleaned)
+
+      expect(cit1.stringCitationGroupId).toBeDefined()
+      expect(cit2.stringCitationGroupId).toBe(cit1.stringCitationGroupId)
+      expect(cit2.signal).toBe("see also")
+    })
+
+    it("captures mid-group 'but see' signal", () => {
+      const cleaned = "A, 500 F.2d 123 (2020); but see B, 600 F.3d 456 (2021)."
+      const cit1 = makeCase({
+        cleanStart: 3,
+        cleanEnd: 15,
+        fullSpanStart: 0,
+        fullSpanEnd: 22,
+      })
+      const cit2 = makeCase({
+        cleanStart: 35,
+        cleanEnd: 47,
+        fullSpanStart: 32,
+        fullSpanEnd: 54,
+      })
+      const citations: Citation[] = [cit1, cit2]
+
+      detectStringCitations(citations, cleaned)
+
+      expect(cit2.signal).toBe("but see")
+    })
+
+    it("does not overwrite signal already set by extractCase", () => {
+      const cleaned = "A, 500 F.2d 123 (2020); see also B, 600 F.3d 456 (2021)."
+      const cit1 = makeCase({
+        cleanStart: 3,
+        cleanEnd: 15,
+        fullSpanStart: 0,
+        fullSpanEnd: 22,
+      })
+      const cit2 = makeCase({
+        cleanStart: 36,
+        cleanEnd: 48,
+        fullSpanStart: 33,
+        fullSpanEnd: 55,
+      })
+      // Simulate extractCase having already set the signal
+      cit2.signal = "cf"
+      const citations: Citation[] = [cit1, cit2]
+
+      detectStringCitations(citations, cleaned)
+
+      expect(cit2.signal).toBe("cf") // Not overwritten
+    })
+  })
+
+  describe("leading signal detection for non-case citations", () => {
+    it("detects leading signal for statute as first group member", () => {
+      const cleaned = "See 42 U.S.C. 1983; Smith v. Jones, 500 F.2d 123 (2020)."
+      const statute: StatuteCitation = {
+        type: "statute",
+        text: "42 U.S.C. 1983",
+        span: { cleanStart: 4, cleanEnd: 18, originalStart: 4, originalEnd: 18 },
+        confidence: 0.8,
+        matchedText: "42 U.S.C. 1983",
+        processTimeMs: 0,
+        patternsChecked: 1,
+        code: "U.S.C.",
+        section: "1983",
+      }
+      const caseCite = makeCase({
+        cleanStart: 36,
+        cleanEnd: 48,
+        fullSpanStart: 20,
+        fullSpanEnd: 55,
+      })
+      const citations: Citation[] = [statute, caseCite]
+
+      detectStringCitations(citations, cleaned)
+
+      expect(statute.signal).toBe("see")
+      expect(statute.stringCitationGroupId).toBeDefined()
     })
   })
 })
