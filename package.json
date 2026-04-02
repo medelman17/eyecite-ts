@@ -18,6 +18,11 @@
       "types": "./dist/annotate/index.d.ts",
       "import": "./dist/annotate/index.mjs",
       "require": "./dist/annotate/index.cjs"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "import": "./dist/utils/index.mjs",
+      "require": "./dist/utils/index.cjs"
     }
   },
   "main": "./dist/index.cjs",
@@ -55,6 +60,10 @@
     {
       "path": "dist/index.mjs",
       "limit": "50 KB"
+    },
+    {
+      "path": "dist/utils/index.mjs",
+      "limit": "3 KB"
     }
   ],
   "keywords": [
