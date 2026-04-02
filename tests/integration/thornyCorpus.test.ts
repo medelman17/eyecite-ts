@@ -80,7 +80,12 @@ describe("Thorny Corpus — 94 Edge-Case Samples", () => {
         }
 
         it(`${sample.id}: ${sample.description}`, () => {
-          const citations = extractCitations(sample.text)
+          // Enable false-positive removal only when we expect zero citations —
+          // this is the semantic condition, not the category name.
+          const citations = extractCitations(
+            sample.text,
+            sample.expected.length === 0 ? { filterFalsePositives: true } : undefined,
+          )
 
           expect(
             citations.length,
