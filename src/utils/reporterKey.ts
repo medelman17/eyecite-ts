@@ -3,11 +3,7 @@ import type { FullCaseCitation } from "../types/citation"
 /**
  * Format a volume-reporter-page key from citation fields.
  */
-function formatKey(
-  volume: number | string,
-  reporter: string,
-  page: number | undefined,
-): string {
+function formatKey(volume: number | string, reporter: string, page: number | undefined): string {
   if (page === undefined) {
     return `${volume} ${reporter}`
   }

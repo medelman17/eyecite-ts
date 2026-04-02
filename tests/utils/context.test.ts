@@ -4,7 +4,8 @@ import { getSurroundingContext } from "../../src/utils"
 describe("getSurroundingContext", () => {
   describe("sentence mode (default)", () => {
     it("extracts sentence containing the span", () => {
-      const text = "First sentence. In Smith v. Doe, 500 F.2d 123 (2020), the Court held X. Third sentence."
+      const text =
+        "First sentence. In Smith v. Doe, 500 F.2d 123 (2020), the Court held X. Third sentence."
       // The citation span: "500 F.2d 123 (2020)"
       const span = { start: 33, end: 52 }
       const result = getSurroundingContext(text, span)
@@ -26,7 +27,8 @@ describe("getSurroundingContext", () => {
     })
 
     it("does not split on period in Corp.", () => {
-      const text = "Previously, in Bell Atl. Corp. v. Twombly, 550 U.S. 544 (2007), the Court held that a complaint must plead plausible facts. Next."
+      const text =
+        "Previously, in Bell Atl. Corp. v. Twombly, 550 U.S. 544 (2007), the Court held that a complaint must plead plausible facts. Next."
       const span = { start: 43, end: 62 }
       const result = getSurroundingContext(text, span)
       expect(result.text).toContain("Bell Atl. Corp. v. Twombly")
@@ -102,7 +104,8 @@ describe("getSurroundingContext", () => {
 
   describe("paragraph mode", () => {
     it("extracts paragraph containing the span", () => {
-      const text = "First paragraph.\n\nIn the second paragraph, see 500 F.2d 123 for the holding.\n\nThird paragraph."
+      const text =
+        "First paragraph.\n\nIn the second paragraph, see 500 F.2d 123 for the holding.\n\nThird paragraph."
       const span = { start: 48, end: 60 }
       const result = getSurroundingContext(text, span, { type: "paragraph" })
       expect(result.text).toBe("In the second paragraph, see 500 F.2d 123 for the holding.")

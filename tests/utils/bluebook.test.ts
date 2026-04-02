@@ -36,9 +36,7 @@ describe("toBluebook", () => {
         year: 2007,
         caseName: "Bell Atl. Corp. v. Twombly",
       }
-      expect(toBluebook(cite)).toBe(
-        "Bell Atl. Corp. v. Twombly, 550 U.S. 544 (2007)",
-      )
+      expect(toBluebook(cite)).toBe("Bell Atl. Corp. v. Twombly, 550 U.S. 544 (2007)")
     })
 
     it("includes pincite when present", () => {
@@ -52,9 +50,7 @@ describe("toBluebook", () => {
         year: 2007,
         caseName: "Bell Atl. Corp. v. Twombly",
       }
-      expect(toBluebook(cite)).toBe(
-        "Bell Atl. Corp. v. Twombly, 550 U.S. 544, 570 (2007)",
-      )
+      expect(toBluebook(cite)).toBe("Bell Atl. Corp. v. Twombly, 550 U.S. 544, 570 (2007)")
     })
 
     it("omits case name when absent", () => {
