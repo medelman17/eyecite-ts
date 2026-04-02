@@ -31,6 +31,21 @@ export interface Warning {
 }
 
 /**
+ * Introductory signal word classification for citation support level.
+ * Based on Bluebook signal categories (Rule 1.2).
+ */
+export type CitationSignal =
+  | "see"
+  | "see also"
+  | "see generally"
+  | "cf"
+  | "but see"
+  | "but cf"
+  | "compare"
+  | "accord"
+  | "contra"
+
+/**
  * Base fields shared by all citation types.
  */
 export interface CitationBase {
@@ -60,6 +75,21 @@ export interface CitationBase {
 
   /** Warnings for malformed or ambiguous regions */
   warnings?: Warning[]
+
+  /** Introductory signal word (e.g., "see", "see also", "but see") */
+  signal?: CitationSignal
+
+  /** Group ID for string citations sharing the same proposition */
+  stringCitationGroupId?: string
+
+  /** Position within the string citation group (0-indexed) */
+  stringCitationIndex?: number
+
+  /** Total number of citations in this string citation group */
+  stringCitationGroupSize?: number
+
+  /** Text the string citation group supports (future enhancement, not yet populated) */
+  propositionText?: string
 }
 
 /**
@@ -188,9 +218,6 @@ export interface FullCaseCitation extends CitationBase {
     reporter: string
     page: number
   }>
-
-  /** Citation signal (introductory phrase) */
-  signal?: "see" | "see also" | "cf" | "but see" | "compare"
 
   /**
    * Explanatory parentheticals following the citation.
