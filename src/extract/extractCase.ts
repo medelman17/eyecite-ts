@@ -15,7 +15,13 @@
  */
 
 import type { Token } from "@/tokenize"
-import type { FullCaseCitation, Parenthetical, ParentheticalType } from "@/types/citation"
+import type {
+  FullCaseCitation,
+  HistorySignal,
+  Parenthetical,
+  ParentheticalType,
+  SubsequentHistoryEntry,
+} from "@/types/citation"
 import { resolveOriginalSpan, type Span, type TransformationMap } from "@/types/span"
 import { parseDate, type StructuredDate } from "./dates"
 import { inferCourtFromReporter } from "./courtInference"
@@ -58,8 +64,78 @@ const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
 /** Whitespace/comma skip pattern for parenthetical scanning */
 const PAREN_SKIP_REGEX = /[\s,]/
 
-/** Subsequent history signals between parentheticals */
-const HISTORY_SIGNAL_REGEX = /^(aff'd|rev'd|cert\.\s*denied|overruled\s+by|vacated\s+by)/i
+/**
+ * Signal normalization table. Longer patterns first so "aff'd on other grounds"
+ * matches before "aff'd". Each entry: [regex, normalized HistorySignal].
+ */
+const SIGNAL_TABLE: ReadonlyArray<readonly [RegExp, HistorySignal]> = [
+  // affirmed (longer variants first)
+  [/^aff'?d\s+on\s+other\s+grounds\b/i, "affirmed"],
+  [/^affirmed\s+on\s+other\s+grounds\b/i, "affirmed"],
+  [/^aff'?d\b/i, "affirmed"],
+  [/^affirmed\b/i, "affirmed"],
+  // reversed
+  [/^rev'?d\s+and\s+remanded\b/i, "reversed"],
+  [/^rev'?d\s+on\s+other\s+grounds\b/i, "reversed"],
+  [/^reversed\s+and\s+remanded\b/i, "reversed"],
+  [/^rev'?d\b/i, "reversed"],
+  [/^reversed\b/i, "reversed"],
+  // cert denied
+  [/^certiorari\s+denied\b/i, "cert_denied"],
+  [/^cert\.\s*den(ied|\.)\b/i, "cert_denied"],
+  // cert granted
+  [/^certiorari\s+granted\b/i, "cert_granted"],
+  [/^cert\.\s*granted\b/i, "cert_granted"],
+  // overruled
+  [/^overruled\s+by\b/i, "overruled"],
+  [/^overruled\s+in\b/i, "overruled"],
+  [/^overruling\b/i, "overruled"],
+  [/^overruled\b/i, "overruled"],
+  // vacated
+  [/^vacated\s+by\b/i, "vacated"],
+  [/^vacated\b/i, "vacated"],
+  // remanded
+  [/^remanded\s+for\s+reconsideration\b/i, "remanded"],
+  [/^remanded\b/i, "remanded"],
+  // modified
+  [/^modified\s+by\b/i, "modified"],
+  [/^modified\b/i, "modified"],
+  // abrogated
+  [/^abrogated\s+by\b/i, "abrogated"],
+  [/^abrogated\s+in\b/i, "abrogated"],
+  [/^abrogated\b/i, "abrogated"],
+  // additional signals
+  [/^superseded\s+by\b/i, "superseded"],
+  [/^superseded\b/i, "superseded"],
+  [/^disapproved\s+of\b/i, "disapproved"],
+  [/^disapproved\b/i, "disapproved"],
+  [/^questioned\s+by\b/i, "questioned"],
+  [/^questioned\b/i, "questioned"],
+  [/^distinguished\s+by\b/i, "distinguished"],
+  [/^distinguished\b/i, "distinguished"],
+  [/^withdrawn\b/i, "withdrawn"],
+  [/^reinstated\b/i, "reinstated"],
+]
+
+/** Detection regex for all subsequent history signals (used by collectParentheticals) */
+const HISTORY_SIGNAL_REGEX = new RegExp(
+  `^(${SIGNAL_TABLE.map(([re]) => re.source).join("|")})`,
+  "i",
+)
+
+/**
+ * Normalize a raw signal string to a HistorySignal value.
+ * Returns undefined if the string doesn't match any known signal.
+ */
+function normalizeSignal(raw: string): { signal: HistorySignal; matchLength: number } | undefined {
+  for (const [regex, signal] of SIGNAL_TABLE) {
+    const match = regex.exec(raw)
+    if (match) {
+      return { signal, matchLength: match[0].length }
+    }
+  }
+  return undefined
+}
 
 /** Signal words that identify explanatory parentheticals */
 const SIGNAL_WORDS: ReadonlySet<string> = new Set([

@@ -1506,3 +1506,94 @@ describe("party name extraction (Phase 7)", () => {
     })
   })
 })
+
+describe("subsequent history signals (#73)", () => {
+  it("captures single affirmed signal", () => {
+    const citations = extractCitations(
+      "Smith v. Jones, 500 F.2d 123 (2d Cir. 1990), aff'd, 501 U.S. 1 (1991)",
+    )
+    const parent = citations[0]
+    if (parent.type === "case") {
+      expect(parent.subsequentHistoryEntries).toBeDefined()
+      expect(parent.subsequentHistoryEntries).toHaveLength(1)
+      expect(parent.subsequentHistoryEntries![0].signal).toBe("affirmed")
+      expect(parent.subsequentHistoryEntries![0].rawSignal).toBe("aff'd")
+      expect(parent.subsequentHistoryEntries![0].order).toBe(0)
+    }
+  })
+
+  it("captures chained history signals with correct order", () => {
+    const citations = extractCitations(
+      "Smith v. Jones, 500 F.2d 123 (2d Cir. 1990), aff'd, 501 U.S. 1 (1991), cert. denied, 502 U.S. 2 (1992)",
+    )
+    const parent = citations[0]
+    if (parent.type === "case") {
+      expect(parent.subsequentHistoryEntries).toHaveLength(2)
+      expect(parent.subsequentHistoryEntries![0].signal).toBe("affirmed")
+      expect(parent.subsequentHistoryEntries![0].order).toBe(0)
+      expect(parent.subsequentHistoryEntries![1].signal).toBe("cert_denied")
+      expect(parent.subsequentHistoryEntries![1].order).toBe(1)
+    }
+  })
+
+  it("normalizes signal variants", () => {
+    const variants: Array<[string, string]> = [
+      ["aff'd", "affirmed"],
+      ["affirmed", "affirmed"],
+      ["rev'd", "reversed"],
+      ["reversed", "reversed"],
+      ["cert. denied", "cert_denied"],
+      ["cert. den.", "cert_denied"],
+      ["certiorari denied", "cert_denied"],
+      ["cert. granted", "cert_granted"],
+      ["certiorari granted", "cert_granted"],
+      ["overruled by", "overruled"],
+      ["overruling", "overruled"],
+      ["vacated by", "vacated"],
+      ["vacated", "vacated"],
+      ["remanded", "remanded"],
+      ["modified by", "modified"],
+      ["modified", "modified"],
+      ["abrogated by", "abrogated"],
+      ["abrogated", "abrogated"],
+      ["superseded by", "superseded"],
+      ["superseded", "superseded"],
+      ["disapproved of", "disapproved"],
+      ["disapproved", "disapproved"],
+      ["questioned by", "questioned"],
+      ["questioned", "questioned"],
+      ["distinguished by", "distinguished"],
+      ["distinguished", "distinguished"],
+      ["withdrawn", "withdrawn"],
+      ["reinstated", "reinstated"],
+    ]
+    for (const [raw, expected] of variants) {
+      const citations = extractCitations(
+        `Smith v. Jones, 500 F.2d 123 (2020), ${raw}, 501 U.S. 1 (2021)`,
+      )
+      const parent = citations[0]
+      if (parent.type === "case") {
+        expect(parent.subsequentHistoryEntries?.[0]?.signal, `signal for "${raw}"`).toBe(expected)
+      }
+    }
+  })
+
+  it("no history entries when no signals present", () => {
+    const citations = extractCitations("Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)")
+    const parent = citations[0]
+    if (parent.type === "case") {
+      expect(parent.subsequentHistoryEntries).toBeUndefined()
+    }
+  })
+
+  it("signal span has correct positions", () => {
+    const text = "Smith v. Jones, 500 F.2d 123 (2020), aff'd, 501 U.S. 1 (2021)"
+    const citations = extractCitations(text)
+    const parent = citations[0]
+    if (parent.type === "case") {
+      const entry = parent.subsequentHistoryEntries![0]
+      const signalText = text.substring(entry.signalSpan.originalStart, entry.signalSpan.originalEnd)
+      expect(signalText).toBe("aff'd")
+    }
+  })
+})
