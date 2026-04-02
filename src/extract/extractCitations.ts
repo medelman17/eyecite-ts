@@ -38,6 +38,7 @@ import type { ResolutionOptions, ResolvedCitation } from "../resolve/types"
 import { detectParallelCitations } from "./detectParallel"
 import { detectStringCitations } from "./detectStringCites"
 import { extractId, extractShortFormCase, extractSupra } from "./extractShortForms"
+import { applyFalsePositiveFilters } from "./filterFalsePositives"
 
 /**
  * Regex to parse "volume reporter page" from a citation token's text.
@@ -381,12 +382,15 @@ export function extractCitations(
   // Step 4.75: Detect string citation groups (semicolon-separated)
   detectStringCitations(citations, cleaned)
 
+  // Step 4.9: Apply false positive filters (blocklist + year heuristic)
+  const filtered = applyFalsePositiveFilters(citations, options?.filterFalsePositives ?? false)
+
   // Step 5: Resolve short-form citations if requested
   if (options?.resolve) {
-    return resolveCitations(citations, text, options.resolutionOptions)
+    return resolveCitations(filtered, text, options.resolutionOptions)
   }
 
-  return citations
+  return filtered
 }
 
 /**
