@@ -71,6 +71,7 @@ export {
 
 export type { ExtractOptions } from "./extract/extractCitations"
 export { extractCitations, extractCitationsAsync } from "./extract/extractCitations"
+export { applyFalsePositiveFilters } from "./extract/filterFalsePositives"
 
 // ============================================================================
 // Granular APIs (Phase 2) - For Power Users

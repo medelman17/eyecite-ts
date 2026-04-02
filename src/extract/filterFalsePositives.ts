@@ -13,9 +13,10 @@
 
 import type {
   Citation,
+  FederalRegisterCitation,
   FullCaseCitation,
   JournalCitation,
-  ShortFormCaseCitation,
+  StatutesAtLargeCitation,
   Warning,
 } from "@/types/citation"
 
@@ -62,14 +63,13 @@ const BLOCKED_REPORTERS: ReadonlySet<string> = new Set([
 
 /**
  * Get the reporter string to check against the blocklist.
- * Returns undefined for citation types that don't have a reporter.
+ * Returns undefined for citation types that don't have a reporter,
+ * or for short-form types (id, supra, shortFormCase) which inherit
+ * their reporter from an antecedent — filtering the antecedent is sufficient.
  */
 function getReporter(citation: Citation): string | undefined {
   if (citation.type === "case") return (citation as FullCaseCitation).reporter
-  if (citation.type === "shortFormCase") return (citation as ShortFormCaseCitation).reporter
-  if (citation.type === "journal") {
-    return (citation as JournalCitation).abbreviation
-  }
+  if (citation.type === "journal") return (citation as JournalCitation).abbreviation
   return undefined
 }
 
@@ -84,21 +84,35 @@ function getYear(citation: Citation): number | undefined {
     case "journal":
       return (citation as JournalCitation).year
     case "federalRegister":
+      return (citation as FederalRegisterCitation).year
     case "statutesAtLarge":
-      return (citation as { year?: number }).year
+      return (citation as StatutesAtLargeCitation).year
     default:
       return undefined
   }
 }
 
 /**
+ * Check if a citation is a likely false positive (short-circuit, no allocations).
+ */
+function isFalsePositive(citation: Citation): boolean {
+  const reporter = getReporter(citation)
+  if (reporter && BLOCKED_REPORTERS.has(reporter.toLowerCase().trim())) return true
+
+  const year = getYear(citation)
+  if (year !== undefined && year < MIN_PLAUSIBLE_YEAR) return true
+
+  return false
+}
+
+/**
  * Collect all false positive reasons for a citation.
  * Returns an empty array if the citation is clean.
+ * Only called in penalize mode where we need the reason strings for warnings.
  */
 function collectFalsePositiveReasons(citation: Citation): string[] {
   const reasons: string[] = []
 
-  // Check reporter against blocklist
   const reporter = getReporter(citation)
   if (reporter) {
     const normalized = reporter.toLowerCase().trim()
@@ -107,7 +121,6 @@ function collectFalsePositiveReasons(citation: Citation): string[] {
     }
   }
 
-  // Check year plausibility
   const year = getYear(citation)
   if (year !== undefined && year < MIN_PLAUSIBLE_YEAR) {
     reasons.push(`Year ${year} predates US legal reporting (threshold: ${MIN_PLAUSIBLE_YEAR})`)
@@ -125,10 +138,13 @@ function collectFalsePositiveReasons(citation: Citation): string[] {
  */
 export function applyFalsePositiveFilters(citations: Citation[], remove: boolean): Citation[] {
   if (remove) {
-    return citations.filter((c) => collectFalsePositiveReasons(c).length === 0)
+    return citations.filter((c) => !isFalsePositive(c))
   }
 
   for (const citation of citations) {
+    // Skip if already penalized (idempotency guard)
+    if (citation.confidence === FLAGGED_CONFIDENCE && citation.warnings?.length) continue
+
     const reasons = collectFalsePositiveReasons(citation)
     if (reasons.length > 0) {
       citation.confidence = FLAGGED_CONFIDENCE

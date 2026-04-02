@@ -154,5 +154,59 @@ describe("applyFalsePositiveFilters", () => {
       const result = applyFalsePositiveFilters([cit], true)
       expect(result).toHaveLength(0)
     })
+
+    it("preserves string cite group metadata on remaining members", () => {
+      const blocked = makeCase("I.C.J.")
+      blocked.stringCitationGroupId = "sc-0"
+      blocked.stringCitationIndex = 0
+      blocked.stringCitationGroupSize = 2
+
+      const valid = makeCase("F.2d")
+      valid.stringCitationGroupId = "sc-0"
+      valid.stringCitationIndex = 1
+      valid.stringCitationGroupSize = 2
+
+      const result = applyFalsePositiveFilters([blocked, valid], true)
+      expect(result).toHaveLength(1)
+      // Group metadata is preserved as-is — the groupSize reflects the
+      // original grouping, not the post-filter count
+      expect(result[0].stringCitationGroupId).toBe("sc-0")
+      expect(result[0].stringCitationIndex).toBe(1)
+      expect(result[0].stringCitationGroupSize).toBe(2)
+    })
+  })
+
+  describe("idempotency", () => {
+    it("does not duplicate warnings when penalize mode runs twice", () => {
+      const cit = makeCase("I.C.J.")
+      applyFalsePositiveFilters([cit], false)
+      expect(cit.warnings).toHaveLength(1)
+      expect(cit.confidence).toBe(0.1)
+
+      // Run again — should not add another warning
+      applyFalsePositiveFilters([cit], false)
+      expect(cit.warnings).toHaveLength(1)
+      expect(cit.confidence).toBe(0.1)
+    })
+  })
+
+  describe("short-form citations", () => {
+    it("does not filter shortFormCase citations (they reference an antecedent)", () => {
+      const shortForm = {
+        type: "shortFormCase" as const,
+        text: "",
+        span: { cleanStart: 0, cleanEnd: 10, originalStart: 0, originalEnd: 10 },
+        confidence: 0.7,
+        matchedText: "",
+        processTimeMs: 0,
+        patternsChecked: 1,
+        reporter: "I.C.J.",
+        volume: 1986,
+        page: 14,
+        antecedent: undefined,
+      }
+      const result = applyFalsePositiveFilters([shortForm], false)
+      expect(result[0].confidence).toBe(0.7) // unchanged
+    })
   })
 })
