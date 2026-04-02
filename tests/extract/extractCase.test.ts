@@ -1106,6 +1106,42 @@ describe("backward compatibility (Phase 6)", () => {
       expect(citations[0].parentheticals).toBeUndefined()
     }
   })
+
+  it("subsequent history does not break fullSpan", () => {
+    const text = "Smith v. Jones, 500 F.2d 123 (2d Cir. 1990), aff'd, 501 U.S. 1 (1991)"
+    const citations = extractCitations(text)
+    if (citations[0].type === "case") {
+      expect(citations[0].fullSpan).toBeDefined()
+      // fullSpan covers from case name through the citation's own closing paren
+      const closingParenPos = text.indexOf(")") + 1 // end of "(2d Cir. 1990)"
+      expect(citations[0].fullSpan!.originalEnd).toBe(closingParenPos)
+    }
+  })
+
+  it("explanatory parentheticals still work with subsequent history", () => {
+    const citations = extractCitations(
+      "Smith v. Jones, 500 F.2d 123 (2020) (holding that X), aff'd, 501 U.S. 1 (2021)",
+    )
+    const parent = citations[0]
+    if (parent.type === "case") {
+      expect(parent.parentheticals).toEqual([
+        { text: "holding that X", type: "holding" },
+      ])
+      expect(parent.subsequentHistoryEntries).toHaveLength(1)
+      expect(parent.subsequentHistoryEntries![0].signal).toBe("affirmed")
+    }
+  })
+
+  it("disposition still extracted when followed by history", () => {
+    const citations = extractCitations(
+      "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc), aff'd, 501 U.S. 1 (2021)",
+    )
+    const parent = citations[0]
+    if (parent.type === "case") {
+      expect(parent.disposition).toBe("en banc")
+      expect(parent.subsequentHistoryEntries).toHaveLength(1)
+    }
+  })
 })
 
 describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
