@@ -319,6 +319,7 @@ export function extractCitations(
   // For each parent with subsequentHistoryEntries, find the next case citation
   // after each signal span and set back-pointers. Also aggregate chained entries
   // from children onto the root parent.
+  // Invariant: citations are in text order (guaranteed by token-order processing above).
   for (let i = 0; i < citations.length; i++) {
     const parent = citations[i]
     if (parent.type !== "case" || !parent.subsequentHistoryEntries) continue

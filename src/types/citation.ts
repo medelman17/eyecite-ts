@@ -209,7 +209,8 @@ export interface FullCaseCitation extends CitationBase {
 
   /**
    * Back-pointer indicating this citation is a subsequent history citation.
-   * Points to the parent citation's index in the results array.
+   * `index` is the parent's position in the results array returned by
+   * `extractCitations()` — it becomes invalid if the array is filtered or reordered.
    * @example { index: 0, signal: "affirmed" }
    */
   subsequentHistoryOf?: { index: number; signal: HistorySignal }

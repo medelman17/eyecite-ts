@@ -117,15 +117,9 @@ const SIGNAL_TABLE: ReadonlyArray<readonly [RegExp, HistorySignal]> = [
   [/^reinstated\b/i, "reinstated"],
 ]
 
-/** Detection regex for all subsequent history signals (used by collectParentheticals) */
-const HISTORY_SIGNAL_REGEX = new RegExp(
-  `^(${SIGNAL_TABLE.map(([re]) => re.source.replace(/^\^/, "")).join("|")})`,
-  "i",
-)
-
 /**
- * Normalize a raw signal string to a HistorySignal value.
- * Returns undefined if the string doesn't match any known signal.
+ * Match a string against SIGNAL_TABLE and return the normalized signal + match length.
+ * Returns undefined if the string doesn't start with a known signal.
  */
 function normalizeSignal(raw: string): { signal: HistorySignal; matchLength: number } | undefined {
   for (const [regex, signal] of SIGNAL_TABLE) {
@@ -258,6 +252,8 @@ interface RawParenthetical {
 interface RawSignal {
   /** Raw signal text (e.g., "aff'd", "cert. denied") */
   text: string
+  /** Normalized signal classification */
+  normalized: HistorySignal
   /** Position of signal start in the text */
   start: number
   /** Position after signal end (exclusive) */
@@ -300,16 +296,18 @@ function collectParentheticals(
     }
 
     if (pos >= endLimit || text[pos] !== "(") {
-      // Check for subsequent history signal before giving up
+      // Check for subsequent history signal before giving up.
+      // Normalize in-place to avoid a second SIGNAL_TABLE scan later.
       const remainingText = text.substring(pos, endLimit)
-      const signalMatch = HISTORY_SIGNAL_REGEX.exec(remainingText)
-      if (signalMatch) {
+      const normalized = normalizeSignal(remainingText)
+      if (normalized) {
         pendingSignal = {
-          text: signalMatch[0].replace(/\s+$/, ""),
+          text: remainingText.substring(0, normalized.matchLength).replace(/\s+$/, ""),
+          normalized: normalized.signal,
           start: pos,
-          end: pos + signalMatch[0].length,
+          end: pos + normalized.matchLength,
         }
-        pos += signalMatch[0].length
+        pos += normalized.matchLength
         continue
       }
       break
@@ -762,30 +760,28 @@ export function extractCase(
     }
   }
 
-  // Build subsequentHistoryEntries from captured signals
+  // Build subsequentHistoryEntries from captured signals (already normalized
+  // during collection to avoid a second SIGNAL_TABLE scan)
   let subsequentHistoryEntries: SubsequentHistoryEntry[] | undefined
   if (cleanedText && collected && collected.signals.length > 0) {
     for (let i = 0; i < collected.signals.length; i++) {
       const { signal: rawSig } = collected.signals[i]
-      const normalized = normalizeSignal(rawSig.text)
-      if (normalized) {
-        subsequentHistoryEntries ??= []
-        const { originalStart: sigOrigStart, originalEnd: sigOrigEnd } = resolveOriginalSpan(
-          { cleanStart: rawSig.start, cleanEnd: rawSig.end },
-          transformationMap,
-        )
-        subsequentHistoryEntries.push({
-          signal: normalized.signal,
-          rawSignal: rawSig.text,
-          signalSpan: {
-            cleanStart: rawSig.start,
-            cleanEnd: rawSig.end,
-            originalStart: sigOrigStart,
-            originalEnd: sigOrigEnd,
-          },
-          order: i,
-        })
-      }
+      subsequentHistoryEntries ??= []
+      const { originalStart: sigOrigStart, originalEnd: sigOrigEnd } = resolveOriginalSpan(
+        { cleanStart: rawSig.start, cleanEnd: rawSig.end },
+        transformationMap,
+      )
+      subsequentHistoryEntries.push({
+        signal: rawSig.normalized,
+        rawSignal: rawSig.text,
+        signalSpan: {
+          cleanStart: rawSig.start,
+          cleanEnd: rawSig.end,
+          originalStart: sigOrigStart,
+          originalEnd: sigOrigEnd,
+        },
+        order: i,
+      })
     }
   }
 
