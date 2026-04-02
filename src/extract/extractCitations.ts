@@ -39,6 +39,12 @@ import type { Pattern } from "@/patterns"
 import type { ResolutionOptions, ResolvedCitation } from "../resolve/types"
 
 /**
+ * Regex to parse "volume reporter page" from a citation token's text.
+ * Used to build groupId and parallelCitations metadata for parallel citation groups.
+ */
+const CITATION_PARTS_RE = /^(\S+)\s+(.+)\s+(\d+)$/
+
+/**
  * Options for customizing citation extraction behavior.
  */
 export interface ExtractOptions {
@@ -214,6 +220,12 @@ export function extractCitations(
   // Map of primary token index -> array of secondary token indices
   const parallelGroups = detectParallelCitations(deduplicatedTokens, cleaned)
 
+  // Build reverse-lookup: secondary index -> primary index (O(1) instead of O(N×M))
+  const secondaryToGroup = new Map<number, number>()
+  for (const [primary, secondaries] of parallelGroups.entries()) {
+    for (const s of secondaries) secondaryToGroup.set(s, primary)
+  }
+
   // Step 4: Extract citations from deduplicated tokens
   const citations: Citation[] = []
   for (let i = 0; i < deduplicatedTokens.length; i++) {
@@ -269,40 +281,22 @@ export function extractCitations(
 
     // Populate parallel citation metadata (Phase 8)
     if (citation.type === "case") {
-      // Check if this citation is part of a parallel group
       const isPrimary = parallelGroups.has(i)
-      const isSecondary = Array.from(parallelGroups.values()).some((secondaries) =>
-        secondaries.includes(i),
-      )
+      const isSecondary = secondaryToGroup.has(i)
 
       if (isPrimary || isSecondary) {
-        // Find the primary citation for this group
-        let primaryIndex = i
-        if (isSecondary) {
-          // Find which group this is a secondary of
-          for (const [primary, secondaries] of parallelGroups.entries()) {
-            if (secondaries.includes(i)) {
-              primaryIndex = primary
-              break
-            }
-          }
-        }
-
-        // Get the primary token to build groupId
+        const primaryIndex = isSecondary ? (secondaryToGroup.get(i) ?? i) : i
         const primaryToken = deduplicatedTokens[primaryIndex]
-        // Extract volume, reporter, page from primary token text
-        // Match: "volume reporter page" where reporter is everything except last number
-        const match = /^(\S+)\s+(.+)\s+(\d+)$/.exec(primaryToken.text)
+        const match = CITATION_PARTS_RE.exec(primaryToken.text)
         if (match) {
           const [, volume, reporter, page] = match
           citation.groupId = `${volume}-${reporter.replace(/\s+/g, ".")}-${page}`
 
-          // Only primary citation gets parallelCitations array
           if (isPrimary) {
-            const secondaryIndices = parallelGroups.get(i)!
+            const secondaryIndices = parallelGroups.get(i) ?? []
             citation.parallelCitations = secondaryIndices.map((secIdx) => {
               const secToken = deduplicatedTokens[secIdx]
-              const secMatch = /^(\S+)\s+(.+)\s+(\d+)$/.exec(secToken.text)
+              const secMatch = CITATION_PARTS_RE.exec(secToken.text)
               if (secMatch) {
                 const [, secVol, secRep, secPage] = secMatch
                 return {
@@ -311,7 +305,7 @@ export function extractCitations(
                   page: Number.parseInt(secPage, 10),
                 }
               }
-              return { volume: 0, reporter: "", page: 0 } // Fallback (shouldn't happen)
+              return { volume: 0, reporter: "", page: 0 }
             })
           }
         }
