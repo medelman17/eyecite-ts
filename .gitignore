@@ -22,3 +22,4 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+mise.local.toml
