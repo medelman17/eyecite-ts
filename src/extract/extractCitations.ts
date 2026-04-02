@@ -339,7 +339,10 @@ export function extractCitations(
           signal: entries[entryIdx].signal,
         }
 
-        // Aggregate any entries the child has onto the parent (chained history)
+        // Aggregate any entries the child has onto the parent (chained history).
+        // Intentionally mutates `entries` (alias for parent.subsequentHistoryEntries):
+        // pushed entries increase entries.length, which the outer loop re-checks,
+        // enabling transitive chaining (A→B→C all aggregated onto A).
         if (child.subsequentHistoryEntries) {
           for (const childEntry of child.subsequentHistoryEntries) {
             entries.push({

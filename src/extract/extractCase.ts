@@ -119,7 +119,7 @@ const SIGNAL_TABLE: ReadonlyArray<readonly [RegExp, HistorySignal]> = [
 
 /** Detection regex for all subsequent history signals (used by collectParentheticals) */
 const HISTORY_SIGNAL_REGEX = new RegExp(
-  `^(${SIGNAL_TABLE.map(([re]) => re.source).join("|")})`,
+  `^(${SIGNAL_TABLE.map(([re]) => re.source.replace(/^\^/, "")).join("|")})`,
   "i",
 )
 
