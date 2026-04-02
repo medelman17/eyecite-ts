@@ -26,6 +26,8 @@ import type {
 import { resolveOriginalSpan, type Span, type TransformationMap } from "@/types/span"
 import { parseDate, type StructuredDate } from "./dates"
 import { inferCourtFromReporter } from "./courtInference"
+import { parsePincite, type PinciteInfo } from "./pincite"
+import { normalizeCourt } from "./courtNormalization"
 
 /** Valid CitationSignal values for safe validation after regex capture + normalization. */
 const VALID_SIGNALS = new Set([
@@ -705,6 +707,7 @@ export function extractCase(
   // Pattern: ", digits" (e.g., ", 125")
   const pinciteMatch = PINCITE_REGEX.exec(text)
   let pincite = pinciteMatch ? Number.parseInt(pinciteMatch[1], 10) : undefined
+  let pinciteInfo: PinciteInfo | undefined = pinciteMatch ? parsePincite(pinciteMatch[1]) ?? undefined : undefined
 
   // Initialize Phase 6 fields
   let year: number | undefined
@@ -748,6 +751,9 @@ export function extractCase(
         const laPinciteMatch = LOOKAHEAD_PINCITE_REGEX.exec(afterToken)
         if (laPinciteMatch) {
           pincite = Number.parseInt(laPinciteMatch[1], 10)
+          if (!pinciteInfo) {
+            pinciteInfo = parsePincite(laPinciteMatch[1]) ?? undefined
+          }
         }
       }
     }
@@ -937,7 +943,9 @@ export function extractCase(
     reporter,
     page,
     pincite,
+    pinciteInfo,
     court,
+    normalizedCourt: normalizeCourt(court),
     year,
     hasBlankPage,
     date,
