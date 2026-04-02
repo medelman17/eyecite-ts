@@ -514,6 +514,7 @@ describe("court inference from reporter (#78)", () => {
   it("infers federal appellate from F.3d", () => {
     const citations = extractCitations("500 F.3d 123 (9th Cir. 2020)")
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].court).toBe("9th Cir.")
       expect(citations[0].inferredCourt).toEqual({
@@ -527,6 +528,7 @@ describe("court inference from reporter (#78)", () => {
   it("infers federal trial from F. Supp. 3d", () => {
     const citations = extractCitations("350 F. Supp. 3d 100 (D. Mass. 2019)")
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].court).toBe("D. Mass.")
       expect(citations[0].inferredCourt).toEqual({
@@ -540,6 +542,7 @@ describe("court inference from reporter (#78)", () => {
   it("infers federal supreme from U.S. reporter", () => {
     const citations = extractCitations("491 U.S. 397 (1989)")
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].court).toBe("scotus")
       expect(citations[0].inferredCourt).toEqual({
@@ -553,6 +556,7 @@ describe("court inference from reporter (#78)", () => {
   it("populates inferredCourt even when parenthetical has court", () => {
     const citations = extractCitations("500 F.3d 123 (9th Cir. 2020)")
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].court).toBe("9th Cir.")
       expect(citations[0].inferredCourt).toBeDefined()
@@ -562,6 +566,7 @@ describe("court inference from reporter (#78)", () => {
   it("returns undefined inferredCourt for unknown reporter", () => {
     const citations = extractCitations("10 Wheat. 66 (1825)")
     expect(citations).toHaveLength(1)
+    expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].inferredCourt).toBeUndefined()
     }

@@ -33,8 +33,8 @@ function regional(level: CourtInference["level"]): CourtInference {
 /**
  * Curated reporter → court inference mapping.
  *
- * Covers the ~40 most common reporters. Unknown reporters return undefined
- * from inferCourtFromReporter() — no guessing.
+ * Covers ~80 reporter abbreviations (including spacing variants). Unknown
+ * reporters return undefined from inferCourtFromReporter() — no guessing.
  */
 const REPORTER_COURT_MAP = new Map<string, CourtInference>([
   // ── Federal Supreme ──────────────────────────────────────────────
@@ -42,6 +42,15 @@ const REPORTER_COURT_MAP = new Map<string, CourtInference>([
   ["S. Ct.", federal("supreme")],
   ["L. Ed.", federal("supreme")],
   ["L. Ed. 2d", federal("supreme")],
+  // Spacing variants: the SCOTUS tokenizer pattern uses \s? between
+  // abbreviation parts, so "S.Ct.", "U. S.", "L.Ed.2d" etc. are valid
+  // token outputs that must also resolve.
+  ["U. S.", federal("supreme")],
+  ["S.Ct.", federal("supreme")],
+  ["L.Ed.", federal("supreme")],
+  ["L.Ed.2d", federal("supreme")],
+  ["L.Ed. 2d", federal("supreme")],
+  ["L. Ed.2d", federal("supreme")],
 
   // ── Federal Appellate ────────────────────────────────────────────
   ["F.", federal("appellate")],
@@ -54,44 +63,92 @@ const REPORTER_COURT_MAP = new Map<string, CourtInference>([
   ["F. Supp.", federal("trial")],
   ["F. Supp. 2d", federal("trial")],
   ["F. Supp. 3d", federal("trial")],
+  ["F. Supp. 4th", federal("trial")],
   ["F.R.D.", federal("trial")],
   ["B.R.", federal("trial")],
 
   // ── California ───────────────────────────────────────────────────
+  ["Cal.", state("supreme", "CA")],
+  ["Cal.2d", state("supreme", "CA")],
+  ["Cal.3d", state("supreme", "CA")],
+  ["Cal.4th", state("supreme", "CA")],
+  ["Cal.5th", state("supreme", "CA")],
+  ["Cal.App.", state("appellate", "CA")],
+  ["Cal.App.2d", state("appellate", "CA")],
+  ["Cal.App.3d", state("appellate", "CA")],
   ["Cal.App.4th", state("appellate", "CA")],
   ["Cal.App.5th", state("appellate", "CA")],
   ["Cal.Rptr.", state("unknown", "CA")],
   ["Cal.Rptr.2d", state("unknown", "CA")],
   ["Cal.Rptr.3d", state("unknown", "CA")],
-  ["Cal.2d", state("supreme", "CA")],
-  ["Cal.3d", state("supreme", "CA")],
-  ["Cal.4th", state("supreme", "CA")],
-  ["Cal.5th", state("supreme", "CA")],
 
   // ── New York ─────────────────────────────────────────────────────
+  ["N.Y.", state("supreme", "NY")],
+  ["N.Y.2d", state("supreme", "NY")],
   ["N.Y.3d", state("supreme", "NY")],
+  ["A.D.", state("appellate", "NY")],
+  ["A.D.2d", state("appellate", "NY")],
   ["A.D.3d", state("appellate", "NY")],
+  ["Misc.", state("trial", "NY")],
+  ["Misc.2d", state("trial", "NY")],
   ["Misc.3d", state("trial", "NY")],
-  ["N.Y.S.3d", state("unknown", "NY")],
+  ["N.Y.S.", state("unknown", "NY")],
   ["N.Y.S.2d", state("unknown", "NY")],
+  ["N.Y.S.3d", state("unknown", "NY")],
 
   // ── Illinois ─────────────────────────────────────────────────────
+  ["Ill.", state("supreme", "IL")],
   ["Ill.2d", state("supreme", "IL")],
+  ["Ill.App.", state("appellate", "IL")],
+  ["Ill.App.2d", state("appellate", "IL")],
   ["Ill.App.3d", state("appellate", "IL")],
   ["Ill.Dec.", state("unknown", "IL")],
 
+  // ── Ohio ────────────────────────────────────────────────────────
+  ["Ohio St.", state("supreme", "OH")],
+  ["Ohio St.2d", state("supreme", "OH")],
+  ["Ohio St.3d", state("supreme", "OH")],
+  ["Ohio App.3d", state("appellate", "OH")],
+
+  // ── Pennsylvania ────────────────────────────────────────────────
+  ["Pa.", state("supreme", "PA")],
+  ["Pa. Super.", state("appellate", "PA")],
+
+  // ── Texas ───────────────────────────────────────────────────────
+  ["Tex.", state("supreme", "TX")],
+
+  // ── Florida ─────────────────────────────────────────────────────
+  ["Fla.", state("supreme", "FL")],
+
+  // ── Massachusetts ───────────────────────────────────────────────
+  ["Mass.", state("supreme", "MA")],
+  ["Mass. App. Ct.", state("appellate", "MA")],
+
   // ── Regional (multi-state, no state field) ───────────────────────
-  ["A.2d", regional("appellate")],
-  ["A.3d", regional("appellate")],
-  ["S.E.2d", regional("appellate")],
-  ["N.E.2d", regional("appellate")],
-  ["N.E.3d", regional("appellate")],
-  ["N.W.2d", regional("appellate")],
-  ["S.W.3d", regional("appellate")],
-  ["So.2d", regional("appellate")],
-  ["So.3d", regional("appellate")],
-  ["P.2d", regional("appellate")],
-  ["P.3d", regional("appellate")],
+  // Level is "unknown" because regional reporters carry both supreme
+  // and appellate court opinions (e.g., A.3d includes MD Court of
+  // Appeals decisions). The lower confidence already signals ambiguity.
+  ["A.", regional("unknown")],
+  ["A.2d", regional("unknown")],
+  ["A.3d", regional("unknown")],
+  ["S.E.", regional("unknown")],
+  ["S.E.2d", regional("unknown")],
+  ["S.E.3d", regional("unknown")],
+  ["S.W.", regional("unknown")],
+  ["S.W.2d", regional("unknown")],
+  ["S.W.3d", regional("unknown")],
+  ["N.E.", regional("unknown")],
+  ["N.E.2d", regional("unknown")],
+  ["N.E.3d", regional("unknown")],
+  ["N.W.", regional("unknown")],
+  ["N.W.2d", regional("unknown")],
+  ["N.W.3d", regional("unknown")],
+  ["So.", regional("unknown")],
+  ["So.2d", regional("unknown")],
+  ["So.3d", regional("unknown")],
+  ["P.", regional("unknown")],
+  ["P.2d", regional("unknown")],
+  ["P.3d", regional("unknown")],
 ])
 
 /**
