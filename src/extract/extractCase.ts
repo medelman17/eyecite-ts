@@ -15,7 +15,13 @@
  */
 
 import type { Token } from "@/tokenize"
-import type { FullCaseCitation, Parenthetical, ParentheticalType } from "@/types/citation"
+import type {
+  FullCaseCitation,
+  HistorySignal,
+  Parenthetical,
+  ParentheticalType,
+  SubsequentHistoryEntry,
+} from "@/types/citation"
 import { resolveOriginalSpan, type Span, type TransformationMap } from "@/types/span"
 import { parseDate, type StructuredDate } from "./dates"
 import { inferCourtFromReporter } from "./courtInference"
@@ -58,8 +64,72 @@ const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
 /** Whitespace/comma skip pattern for parenthetical scanning */
 const PAREN_SKIP_REGEX = /[\s,]/
 
-/** Subsequent history signals between parentheticals */
-const HISTORY_SIGNAL_REGEX = /^(aff'd|rev'd|cert\.\s*denied|overruled\s+by|vacated\s+by)/i
+/**
+ * Signal normalization table. Longer patterns first so "aff'd on other grounds"
+ * matches before "aff'd". Each entry: [regex, normalized HistorySignal].
+ */
+const SIGNAL_TABLE: ReadonlyArray<readonly [RegExp, HistorySignal]> = [
+  // affirmed (longer variants first)
+  [/^aff'?d\s+on\s+other\s+grounds\b/i, "affirmed"],
+  [/^affirmed\s+on\s+other\s+grounds\b/i, "affirmed"],
+  [/^aff'?d\b/i, "affirmed"],
+  [/^affirmed\b/i, "affirmed"],
+  // reversed
+  [/^rev'?d\s+and\s+remanded\b/i, "reversed"],
+  [/^rev'?d\s+on\s+other\s+grounds\b/i, "reversed"],
+  [/^reversed\s+and\s+remanded\b/i, "reversed"],
+  [/^rev'?d\b/i, "reversed"],
+  [/^reversed\b/i, "reversed"],
+  // cert denied
+  [/^certiorari\s+denied\b/i, "cert_denied"],
+  [/^cert\.\s*den(ied|\.)(?=[\s,;(]|$)/i, "cert_denied"],
+  // cert granted
+  [/^certiorari\s+granted\b/i, "cert_granted"],
+  [/^cert\.\s*granted\b/i, "cert_granted"],
+  // overruled
+  [/^overruled\s+by\b/i, "overruled"],
+  [/^overruled\s+in\b/i, "overruled"],
+  [/^overruling\b/i, "overruled"],
+  [/^overruled\b/i, "overruled"],
+  // vacated
+  [/^vacated\s+by\b/i, "vacated"],
+  [/^vacated\b/i, "vacated"],
+  // remanded
+  [/^remanded\s+for\s+reconsideration\b/i, "remanded"],
+  [/^remanded\b/i, "remanded"],
+  // modified
+  [/^modified\s+by\b/i, "modified"],
+  [/^modified\b/i, "modified"],
+  // abrogated
+  [/^abrogated\s+by\b/i, "abrogated"],
+  [/^abrogated\s+in\b/i, "abrogated"],
+  [/^abrogated\b/i, "abrogated"],
+  // additional signals
+  [/^superseded\s+by\b/i, "superseded"],
+  [/^superseded\b/i, "superseded"],
+  [/^disapproved\s+of\b/i, "disapproved"],
+  [/^disapproved\b/i, "disapproved"],
+  [/^questioned\s+by\b/i, "questioned"],
+  [/^questioned\b/i, "questioned"],
+  [/^distinguished\s+by\b/i, "distinguished"],
+  [/^distinguished\b/i, "distinguished"],
+  [/^withdrawn\b/i, "withdrawn"],
+  [/^reinstated\b/i, "reinstated"],
+]
+
+/**
+ * Match a string against SIGNAL_TABLE and return the normalized signal + match length.
+ * Returns undefined if the string doesn't start with a known signal.
+ */
+function normalizeSignal(raw: string): { signal: HistorySignal; matchLength: number } | undefined {
+  for (const [regex, signal] of SIGNAL_TABLE) {
+    const match = regex.exec(raw)
+    if (match) {
+      return { signal, matchLength: match[0].length }
+    }
+  }
+  return undefined
+}
 
 /** Signal words that identify explanatory parentheticals */
 const SIGNAL_WORDS: ReadonlySet<string> = new Set([
@@ -178,6 +248,26 @@ interface RawParenthetical {
   end: number
 }
 
+/** A subsequent history signal found between parenthetical groups */
+interface RawSignal {
+  /** Raw signal text (e.g., "aff'd", "cert. denied") */
+  text: string
+  /** Normalized signal classification */
+  normalized: HistorySignal
+  /** Position of signal start in the text */
+  start: number
+  /** Position after signal end (exclusive) */
+  end: number
+}
+
+/** Result of collecting parentheticals with signal awareness */
+interface CollectedParentheticals {
+  /** All parenthetical blocks in order */
+  parens: RawParenthetical[]
+  /** Signals found between groups, each paired with the index of the next paren */
+  signals: Array<{ signal: RawSignal; nextParenIndex: number }>
+}
+
 /**
  * Collect all top-level parenthetical blocks starting from a position.
  * Uses depth tracking to handle nested parens. Continues scanning through
@@ -186,16 +276,18 @@ interface RawParenthetical {
  * @param text - Full text to scan
  * @param startPos - Position to start scanning (typically after citation core)
  * @param maxLookahead - Maximum characters to scan forward (default 500)
- * @returns Array of raw parenthetical blocks in order of appearance
+ * @returns Collected parentheticals with associated signals
  */
 function collectParentheticals(
   text: string,
   startPos: number,
   maxLookahead = 500,
-): RawParenthetical[] {
-  const results: RawParenthetical[] = []
+): CollectedParentheticals {
+  const parens: RawParenthetical[] = []
+  const signals: CollectedParentheticals["signals"] = []
   let pos = startPos
   const endLimit = Math.min(text.length, startPos + maxLookahead)
+  let pendingSignal: RawSignal | undefined
 
   while (pos < endLimit) {
     // Skip whitespace and commas between parentheticals
@@ -204,11 +296,18 @@ function collectParentheticals(
     }
 
     if (pos >= endLimit || text[pos] !== "(") {
-      // Check for subsequent history signal before giving up
+      // Check for subsequent history signal before giving up.
+      // Normalize in-place to avoid a second SIGNAL_TABLE scan later.
       const remainingText = text.substring(pos, endLimit)
-      const signalMatch = HISTORY_SIGNAL_REGEX.exec(remainingText)
-      if (signalMatch) {
-        pos += signalMatch[0].length
+      const normalized = normalizeSignal(remainingText)
+      if (normalized) {
+        pendingSignal = {
+          text: remainingText.substring(0, normalized.matchLength).replace(/\s+$/, ""),
+          normalized: normalized.signal,
+          start: pos,
+          end: pos + normalized.matchLength,
+        }
+        pos += normalized.matchLength
         continue
       }
       break
@@ -229,11 +328,12 @@ function collectParentheticals(
           pos++ // move past closing paren
           const content = text.substring(contentStart, pos - 1).trim()
           if (content.length > 0) {
-            results.push({
-              text: content,
-              start: parenStart,
-              end: pos,
-            })
+            parens.push({ text: content, start: parenStart, end: pos })
+            // If there was a pending signal, associate it with this paren
+            if (pendingSignal) {
+              signals.push({ signal: pendingSignal, nextParenIndex: parens.length - 1 })
+              pendingSignal = undefined
+            }
           }
           break
         }
@@ -245,7 +345,12 @@ function collectParentheticals(
     if (depth > 0) break
   }
 
-  return results
+  // Handle trailing signal with no following paren
+  if (pendingSignal) {
+    signals.push({ signal: pendingSignal, nextParenIndex: -1 })
+  }
+
+  return { parens, signals }
 }
 
 /**
@@ -626,8 +731,10 @@ export function extractCase(
   // Classify chained parentheticals: extract disposition and explanatory content
   let parentheticals: Parenthetical[] | undefined
   let allParens: RawParenthetical[] | undefined
+  let collected: CollectedParentheticals | undefined
   if (cleanedText) {
-    allParens = collectParentheticals(cleanedText, span.cleanEnd)
+    collected = collectParentheticals(cleanedText, span.cleanEnd)
+    allParens = collected.parens
     // Skip first paren (already parsed above as court/year)
     const remaining = parentheticalContent ? allParens.slice(1) : allParens
     for (const raw of remaining) {
@@ -650,6 +757,31 @@ export function extractCase(
         parentheticals ??= []
         parentheticals.push({ text: classified.text, type: classified.type })
       }
+    }
+  }
+
+  // Build subsequentHistoryEntries from captured signals (already normalized
+  // during collection to avoid a second SIGNAL_TABLE scan)
+  let subsequentHistoryEntries: SubsequentHistoryEntry[] | undefined
+  if (cleanedText && collected && collected.signals.length > 0) {
+    for (let i = 0; i < collected.signals.length; i++) {
+      const { signal: rawSig } = collected.signals[i]
+      subsequentHistoryEntries ??= []
+      const { originalStart: sigOrigStart, originalEnd: sigOrigEnd } = resolveOriginalSpan(
+        { cleanStart: rawSig.start, cleanEnd: rawSig.end },
+        transformationMap,
+      )
+      subsequentHistoryEntries.push({
+        signal: rawSig.normalized,
+        rawSignal: rawSig.text,
+        signalSpan: {
+          cleanStart: rawSig.start,
+          cleanEnd: rawSig.end,
+          originalStart: sigOrigStart,
+          originalEnd: sigOrigEnd,
+        },
+        order: i,
+      })
     }
   }
 
@@ -786,6 +918,7 @@ export function extractCase(
     caseName,
     disposition,
     parentheticals,
+    subsequentHistoryEntries,
     plaintiff,
     plaintiffNormalized,
     defendant,

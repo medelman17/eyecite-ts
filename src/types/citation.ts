@@ -115,6 +115,46 @@ export interface Parenthetical {
 }
 
 /**
+ * Normalized subsequent history signal classification.
+ * Maps variant spellings (aff'd, affirmed) to canonical forms.
+ */
+export type HistorySignal =
+  | "affirmed"
+  | "reversed"
+  | "cert_denied"
+  | "cert_granted"
+  | "overruled"
+  | "vacated"
+  | "remanded"
+  | "modified"
+  | "abrogated"
+  | "superseded"
+  | "disapproved"
+  | "questioned"
+  | "distinguished"
+  | "withdrawn"
+  | "reinstated"
+
+/**
+ * A single subsequent history entry from a case citation.
+ *
+ * @example
+ * ```typescript
+ * { signal: "affirmed", rawSignal: "aff'd", signalSpan: { ... }, order: 0 }
+ * ```
+ */
+export interface SubsequentHistoryEntry {
+  /** Normalized signal classification */
+  signal: HistorySignal
+  /** Raw signal text as it appeared in the document */
+  rawSignal: string
+  /** Position of the signal text in the document */
+  signalSpan: Span
+  /** Order in the history chain (0-based) */
+  order: number
+}
+
+/**
  * Full case citation (volume-reporter-page format).
  *
  * @example "500 F.2d 123"
@@ -159,8 +199,21 @@ export interface FullCaseCitation extends CitationBase {
    */
   parentheticals?: Parenthetical[]
 
-  /** Subsequent procedural history (e.g., "aff'd", "rev'd", "cert. denied") */
-  subsequentHistory?: string
+  /**
+   * Subsequent history entries for this citation.
+   * Each entry describes a procedural event (affirmed, reversed, etc.).
+   * Only populated on the parent (original) citation.
+   * @example [{ signal: "affirmed", rawSignal: "aff'd", signalSpan: {...}, order: 0 }]
+   */
+  subsequentHistoryEntries?: SubsequentHistoryEntry[]
+
+  /**
+   * Back-pointer indicating this citation is a subsequent history citation.
+   * `index` is the parent's position in the results array returned by
+   * `extractCitations()` — it becomes invalid if the array is filtered or reordered.
+   * @example { index: 0, signal: "affirmed" }
+   */
+  subsequentHistoryOf?: { index: number; signal: HistorySignal }
 
   /**
    * Date information in multiple formats.

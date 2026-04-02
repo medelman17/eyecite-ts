@@ -10,6 +10,7 @@ export type {
   FullCaseCitation,
   FullCitation,
   FullCitationType,
+  HistorySignal,
   IdCitation,
   JournalCitation,
   NeutralCitation,
@@ -21,6 +22,7 @@ export type {
   ShortFormCitationType,
   StatuteCitation,
   StatutesAtLargeCitation,
+  SubsequentHistoryEntry,
   SupraCitation,
   Warning,
 } from "./citation"
