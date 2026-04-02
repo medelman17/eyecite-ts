@@ -1,19 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { extractFederal } from '@/extract/statutes/extractFederal'
 import type { Token } from '@/tokenize'
-import type { TransformationMap } from '@/types/span'
+import { createIdentityMap } from '../../helpers/transformationMap'
 
 describe('extractFederal', () => {
-  const createIdentityMap = (): TransformationMap => {
-    const cleanToOriginal = new Map<number, number>()
-    const originalToClean = new Map<number, number>()
-    for (let i = 0; i < 1000; i++) {
-      cleanToOriginal.set(i, i)
-      originalToClean.set(i, i)
-    }
-    return { cleanToOriginal, originalToClean }
-  }
-
   const map = createIdentityMap()
 
   const makeToken = (text: string, patternId: string): Token => ({

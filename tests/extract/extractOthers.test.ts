@@ -8,19 +8,9 @@ import {
 } from '@/extract'
 import type { Token } from '@/tokenize'
 import type { TransformationMap } from '@/types/span'
+import { createIdentityMap } from '../helpers/transformationMap'
 
 describe('Other extraction functions', () => {
-	// Helper: Create mock TransformationMap with 1:1 mapping
-	const createIdentityMap = (): TransformationMap => {
-		const cleanToOriginal = new Map<number, number>()
-		const originalToClean = new Map<number, number>()
-		for (let i = 0; i < 1000; i++) {
-			cleanToOriginal.set(i, i)
-			originalToClean.set(i, i)
-		}
-		return { cleanToOriginal, originalToClean }
-	}
-
 	describe('extractJournal', () => {
 		it('should extract volume, journal, and page from basic journal citation', () => {
 			const token: Token = {

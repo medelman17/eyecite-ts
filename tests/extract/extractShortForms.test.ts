@@ -1,32 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { extractId, extractSupra, extractShortFormCase, extractCitations } from '@/extract'
 import type { Token } from '@/tokenize'
-import type { TransformationMap } from '@/types/span'
+import { createIdentityMap, createOffsetMap } from '../helpers/transformationMap'
 
 describe('extractShortForms', () => {
-	// Helper: Create mock TransformationMap with 1:1 mapping (no transformations)
-	const createIdentityMap = (): TransformationMap => {
-		const cleanToOriginal = new Map<number, number>()
-		const originalToClean = new Map<number, number>()
-		// Map positions 0-1000 with identity mapping
-		for (let i = 0; i < 1000; i++) {
-			cleanToOriginal.set(i, i)
-			originalToClean.set(i, i)
-		}
-		return { cleanToOriginal, originalToClean }
-	}
-
-	// Helper: Create mock TransformationMap with offset (e.g., +2 for original)
-	const createOffsetMap = (offset: number): TransformationMap => {
-		const cleanToOriginal = new Map<number, number>()
-		const originalToClean = new Map<number, number>()
-		for (let i = 0; i < 1000; i++) {
-			cleanToOriginal.set(i, i + offset)
-			originalToClean.set(i + offset, i)
-		}
-		return { cleanToOriginal, originalToClean }
-	}
-
 	describe('extractId', () => {
 		it('should extract Id. without pincite', () => {
 			const token: Token = {

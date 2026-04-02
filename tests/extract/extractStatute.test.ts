@@ -1,31 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { extractStatute, extractCitations } from '@/extract'
 import type { Token } from '@/tokenize'
-import type { TransformationMap } from '@/types/span'
+import { createIdentityMap, createOffsetMap } from '../helpers/transformationMap'
 
 describe('extractStatute', () => {
-	// Helper: Create mock TransformationMap with 1:1 mapping
-	const createIdentityMap = (): TransformationMap => {
-		const cleanToOriginal = new Map<number, number>()
-		const originalToClean = new Map<number, number>()
-		for (let i = 0; i < 1000; i++) {
-			cleanToOriginal.set(i, i)
-			originalToClean.set(i, i)
-		}
-		return { cleanToOriginal, originalToClean }
-	}
-
-	// Helper: Create mock TransformationMap with offset
-	const createOffsetMap = (offset: number): TransformationMap => {
-		const cleanToOriginal = new Map<number, number>()
-		const originalToClean = new Map<number, number>()
-		for (let i = 0; i < 1000; i++) {
-			cleanToOriginal.set(i, i + offset)
-			originalToClean.set(i + offset, i)
-		}
-		return { cleanToOriginal, originalToClean }
-	}
-
 	describe('code-section parsing', () => {
 		it('should extract title, code, and section from U.S.C. citation', () => {
 			const token: Token = {

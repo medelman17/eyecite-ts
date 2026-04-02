@@ -2,19 +2,9 @@ import { describe, it, expect } from "vitest"
 import { extractCitations } from "@/extract/extractCitations"
 import { extractStatutesAtLarge } from "@/extract/extractStatutesAtLarge"
 import type { Token } from "@/tokenize"
-import type { TransformationMap } from "@/types/span"
+import { createIdentityMap } from "../helpers/transformationMap"
 
 describe("extractStatutesAtLarge", () => {
-	const createIdentityMap = (): TransformationMap => {
-		const cleanToOriginal = new Map<number, number>()
-		const originalToClean = new Map<number, number>()
-		for (let i = 0; i < 1000; i++) {
-			cleanToOriginal.set(i, i)
-			originalToClean.set(i, i)
-		}
-		return { cleanToOriginal, originalToClean }
-	}
-
 	it("should extract volume and page from basic Stat. citation", () => {
 		const token: Token = {
 			text: "124 Stat. 119",

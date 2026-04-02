@@ -27,17 +27,7 @@ import type { Token } from '@/tokenize'
 import type { TransformationMap } from '@/types/span'
 import type { Pattern } from '@/patterns'
 import type { FullCaseCitation, Citation } from '@/types/citation'
-
-// Helper: identity TransformationMap
-const createIdentityMap = (): TransformationMap => {
-	const cleanToOriginal = new Map<number, number>()
-	const originalToClean = new Map<number, number>()
-	for (let i = 0; i < 1000; i++) {
-		cleanToOriginal.set(i, i)
-		originalToClean.set(i, i)
-	}
-	return { cleanToOriginal, originalToClean }
-}
+import { createIdentityMap } from '../helpers/transformationMap'
 
 // Helper: empty TransformationMap (no entries → fallback branches)
 const createEmptyMap = (): TransformationMap => ({
