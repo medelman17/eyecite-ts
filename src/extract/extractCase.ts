@@ -15,7 +15,7 @@
  */
 
 import type { Token } from "@/tokenize"
-import type { FullCaseCitation } from "@/types/citation"
+import type { FullCaseCitation, Parenthetical, ParentheticalType } from "@/types/citation"
 import { resolveOriginalSpan, type Span, type TransformationMap } from "@/types/span"
 import { parseDate, type StructuredDate } from "./dates"
 import { inferCourtFromReporter } from "./courtInference"
@@ -52,9 +52,6 @@ const LOOKAHEAD_PAREN_REGEX = /^(?:,\s*\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d
 /** Extracts pincite from look-ahead text */
 const LOOKAHEAD_PINCITE_REGEX = /^,\s*(\d+(?:-\d+)?)/
 
-/** Matches chained parentheticals with disposition */
-const CHAINED_DISPOSITION_REGEX = /\([^)]+\)\s*\((en banc|per curiam)\)/i
-
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
 
@@ -63,6 +60,10 @@ const PAREN_SKIP_REGEX = /[\s,]/
 
 /** Subsequent history signals between parentheticals */
 const HISTORY_SIGNAL_REGEX = /^(aff'd|rev'd|cert\.\s*denied|overruled\s+by|vacated\s+by)/i
+
+/** Signal words that identify explanatory parentheticals (matched at start, case-insensitive) */
+const SIGNAL_WORD_REGEX =
+  /^(holding|finding|stating|noting|explaining|quoting|citing|discussing|describing|recognizing|applying|rejecting|adopting|requiring)\b/i
 
 /** Standard "v." or "vs." case name format */
 const V_CASE_NAME_REGEX =
@@ -315,6 +316,46 @@ function parseParenthetical(content: string): {
   }
 
   return result
+}
+
+/**
+ * Classify a raw parenthetical block as metadata or explanatory.
+ *
+ * @param raw - Raw parenthetical text (content between parens)
+ * @returns Classification result with kind discriminator
+ */
+function classifyParenthetical(raw: string): {
+  kind: "metadata"
+  court?: string
+  year?: number
+  date?: StructuredDate
+  disposition?: string
+} | {
+  kind: "explanatory"
+  text: string
+  type: ParentheticalType
+} {
+  // Check for signal word first — signal-word parens are always explanatory
+  const signalMatch = SIGNAL_WORD_REGEX.exec(raw)
+  if (signalMatch) {
+    return {
+      kind: "explanatory",
+      text: raw,
+      type: signalMatch[1].toLowerCase() as ParentheticalType,
+    }
+  }
+
+  // Try metadata parse: court, year, date, disposition
+  // Note: "other"-type parens with embedded years (e.g., "the court, in 2019, held X")
+  // will be classified as metadata. This is a known limitation — most explanatory
+  // parentheticals start with a signal word and are handled above.
+  const meta = parseParenthetical(raw)
+  if (meta.year || meta.date || meta.disposition) {
+    return { kind: "metadata", ...meta }
+  }
+
+  // No signal word and no metadata — classify as "other" explanatory
+  return { kind: "explanatory", text: raw, type: "other" }
 }
 
 /**
@@ -594,13 +635,22 @@ export function extractCase(
     }
   }
 
-  // Check for chained parentheticals with disposition (e.g., "(2020) (en banc)")
-  if (cleanedText && !disposition) {
-    const afterToken = cleanedText.substring(span.cleanEnd)
-    // Look for second parenthetical after first one
-    const chainedMatch = CHAINED_DISPOSITION_REGEX.exec(afterToken)
-    if (chainedMatch) {
-      disposition = chainedMatch[1].toLowerCase()
+  // Classify chained parentheticals: extract disposition and explanatory content
+  let parentheticals: Parenthetical[] | undefined
+  if (cleanedText) {
+    const allParens = collectParentheticals(cleanedText, span.cleanEnd)
+    // Skip first paren (already parsed above as court/year)
+    const remaining = parentheticalContent ? allParens.slice(1) : allParens
+    for (const raw of remaining) {
+      const classified = classifyParenthetical(raw.text)
+      if (classified.kind === "metadata") {
+        if (classified.disposition && !disposition) {
+          disposition = classified.disposition
+        }
+      } else {
+        parentheticals ??= []
+        parentheticals.push({ text: classified.text, type: classified.type })
+      }
     }
   }
 
@@ -733,6 +783,7 @@ export function extractCase(
     fullSpan,
     caseName,
     disposition,
+    parentheticals,
     plaintiff,
     plaintiffNormalized,
     defendant,

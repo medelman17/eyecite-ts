@@ -929,6 +929,85 @@ describe("explanatory parentheticals (#76)", () => {
       expect(citations[0].parentheticals).toBeUndefined()
     }
   })
+
+  it("classifies each signal word type", () => {
+    const signals = [
+      "holding", "finding", "stating", "noting", "explaining",
+      "quoting", "citing", "discussing", "describing", "recognizing",
+      "applying", "rejecting", "adopting", "requiring",
+    ] as const
+    for (const signal of signals) {
+      const citations = extractCitations(
+        `Smith v. Jones, 500 F.2d 123 (2020) (${signal} that X)`,
+      )
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "case") {
+        expect(citations[0].parentheticals?.[0]?.type).toBe(signal)
+      }
+    }
+  })
+
+  it("classifies unknown signal as other", () => {
+    const citations = extractCitations(
+      "Smith v. Jones, 500 F.2d 123 (2020) (the court found X)",
+    )
+    expect(citations).toHaveLength(1)
+    if (citations[0].type === "case") {
+      expect(citations[0].parentheticals).toEqual([
+        { text: "the court found X", type: "other" },
+      ])
+    }
+  })
+
+  it("disposition paren not treated as explanatory", () => {
+    const citations = extractCitations(
+      "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc)",
+    )
+    expect(citations).toHaveLength(1)
+    if (citations[0].type === "case") {
+      expect(citations[0].disposition).toBe("en banc")
+      expect(citations[0].parentheticals).toBeUndefined()
+    }
+  })
+
+  it("extracts disposition AND explanatory from mixed chain", () => {
+    const citations = extractCitations(
+      "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc) (holding that X)",
+    )
+    expect(citations).toHaveLength(1)
+    if (citations[0].type === "case") {
+      expect(citations[0].disposition).toBe("en banc")
+      expect(citations[0].parentheticals).toEqual([
+        { text: "holding that X", type: "holding" },
+      ])
+    }
+  })
+
+  it("handles nested parens inside explanatory", () => {
+    const citations = extractCitations(
+      'Smith v. Jones, 500 F.2d 123 (2020) (holding that (a) X and (b) Y)',
+    )
+    expect(citations).toHaveLength(1)
+    if (citations[0].type === "case") {
+      expect(citations[0].parentheticals?.[0]?.text).toBe(
+        "holding that (a) X and (b) Y",
+      )
+      expect(citations[0].parentheticals?.[0]?.type).toBe("holding")
+    }
+  })
+
+  it("handles quoted text with parens inside explanatory", () => {
+    const citations = extractCitations(
+      'Smith v. Jones, 500 F.2d 123 (2020) (quoting "the (original) rule")',
+    )
+    expect(citations).toHaveLength(1)
+    if (citations[0].type === "case") {
+      expect(citations[0].parentheticals?.[0]?.text).toBe(
+        'quoting "the (original) rule"',
+      )
+      expect(citations[0].parentheticals?.[0]?.type).toBe("quoting")
+    }
+  })
 })
 
 describe("backward compatibility (Phase 6)", () => {
