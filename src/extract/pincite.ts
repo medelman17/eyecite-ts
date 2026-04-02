@@ -14,9 +14,9 @@ export interface PinciteInfo {
   raw: string
 }
 
-/** Matches: optional "at ", digits, optional "-digits", optional "n./note digits" */
+/** Matches: optional "at ", digits, optional "-/–/—digits", optional "n./note digits" */
 const PINCITE_PARSE_REGEX =
-  /^(?:at\s+)?(\d+)(?:-(\d+))?\s*(?:(?:n|note)\s*\.?\s*(\d+))?$/i
+  /^(?:at\s+)?(\d+)(?:[-–—](\d+))?\s*(?:(?:n|note)\s*\.?\s*(\d+))?$/i
 
 /**
  * Parse a pincite string into structured components.

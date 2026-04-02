@@ -15,8 +15,8 @@ export function normalizeCourt(court: string | undefined): string | undefined {
 
   let normalized = court.trim()
 
-  // Collapse spaces after periods before uppercase letters: "S.D. N.Y." → "S.D.N.Y."
-  normalized = normalized.replace(/\.\s+(?=[A-Z])/g, ".")
+  // Collapse spaces after periods before letters: "S.D. N.Y." → "S.D.N.Y.", "D. del." → "D.del."
+  normalized = normalized.replace(/\.\s+(?=[A-Za-z])/g, ".")
 
   // Ensure trailing period on abbreviated forms that end with a letter
   // Only add period when the string contains a period (abbreviation) or

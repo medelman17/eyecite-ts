@@ -93,6 +93,7 @@ export {
 } from "./extract"
 export { parsePincite } from "./extract/pincite"
 export type { PinciteInfo } from "./extract/pincite"
+export { normalizeCourt } from "./extract/courtNormalization"
 // Tokenization Layer
 export { tokenize } from "./tokenize"
 export type { Token } from "./tokenize/tokenizer"

@@ -77,4 +77,22 @@ describe("parsePincite", () => {
       raw: "at 570-75",
     })
   })
+
+  it("handles en-dash range", () => {
+    expect(parsePincite("570\u201375")).toEqual({
+      page: 570,
+      endPage: 575,
+      isRange: true,
+      raw: "570\u201375",
+    })
+  })
+
+  it("handles em-dash range", () => {
+    expect(parsePincite("570\u201475")).toEqual({
+      page: 570,
+      endPage: 575,
+      isRange: true,
+      raw: "570\u201475",
+    })
+  })
 })

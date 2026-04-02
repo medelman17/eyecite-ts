@@ -721,7 +721,9 @@ export function extractCase(
   // Pattern: ", digits" (e.g., ", 125")
   const pinciteMatch = PINCITE_REGEX.exec(text)
   let pincite = pinciteMatch ? Number.parseInt(pinciteMatch[1], 10) : undefined
-  let pinciteInfo: PinciteInfo | undefined = pinciteMatch ? parsePincite(pinciteMatch[1]) ?? undefined : undefined
+  let pinciteInfo: PinciteInfo | undefined = pinciteMatch
+    ? (parsePincite(pinciteMatch[1]) ?? undefined)
+    : undefined
 
   // Initialize Phase 6 fields
   let year: number | undefined

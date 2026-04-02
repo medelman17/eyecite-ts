@@ -45,4 +45,8 @@ describe("normalizeCourt", () => {
   it("normalizes 'N.D. Ill.' → 'N.D.Ill.'", () => {
     expect(normalizeCourt("N.D. Ill.")).toBe("N.D.Ill.")
   })
+
+  it("collapses spaces before lowercase letters: 'D. del.' → 'D.del.'", () => {
+    expect(normalizeCourt("D. del.")).toBe("D.del.")
+  })
 })

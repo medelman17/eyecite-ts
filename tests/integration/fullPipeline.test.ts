@@ -475,6 +475,63 @@ describe("Full Pipeline Integration Tests", () => {
     })
   })
 
+  describe("Structured pinciteInfo on extraction output", () => {
+    it("populates pinciteInfo for a simple pincite", () => {
+      const citations = extractCitations("Roe v. Wade, 410 U.S. 113, 115 (1973)")
+      const cite = citations.find((c) => c.type === "case" && c.volume === 410)
+      expect(cite).toBeDefined()
+      if (cite && cite.type === "case") {
+        expect(cite.pincite).toBe(115)
+        expect(cite.pinciteInfo).toEqual({
+          page: 115,
+          isRange: false,
+          raw: "115",
+        })
+      }
+    })
+
+    it("pinciteInfo is undefined when no pincite", () => {
+      const citations = extractCitations("Smith v. Doe, 500 F.2d 123 (2020)")
+      const cite = citations.find((c) => c.type === "case" && c.volume === 500)
+      expect(cite).toBeDefined()
+      if (cite && cite.type === "case") {
+        expect(cite.pincite).toBeUndefined()
+        expect(cite.pinciteInfo).toBeUndefined()
+      }
+    })
+  })
+
+  describe("normalizedCourt on extraction output", () => {
+    it("populates normalizedCourt with collapsed spaces", () => {
+      const citations = extractCitations("Smith v. Doe, 500 F.2d 123 (S.D. N.Y. 2020)")
+      const cite = citations.find((c) => c.type === "case" && c.volume === 500)
+      expect(cite).toBeDefined()
+      if (cite && cite.type === "case") {
+        expect(cite.court).toBe("S.D. N.Y.")
+        expect(cite.normalizedCourt).toBe("S.D.N.Y.")
+      }
+    })
+
+    it("normalizedCourt adds trailing period to circuit abbreviations", () => {
+      const citations = extractCitations("Smith v. Doe, 500 F.2d 123 (9th Cir. 2020)")
+      const cite = citations.find((c) => c.type === "case" && c.volume === 500)
+      expect(cite).toBeDefined()
+      if (cite && cite.type === "case") {
+        expect(cite.normalizedCourt).toBe("9th Cir.")
+      }
+    })
+
+    it("normalizedCourt is undefined when no court in parenthetical", () => {
+      const citations = extractCitations("Smith v. Doe, 500 F.2d 123 (2020)")
+      const cite = citations.find((c) => c.type === "case" && c.volume === 500)
+      expect(cite).toBeDefined()
+      if (cite && cite.type === "case") {
+        expect(cite.court).toBeUndefined()
+        expect(cite.normalizedCourt).toBeUndefined()
+      }
+    })
+  })
+
   describe("Parallel Citation Detection (Phase 8)", () => {
     it("links parallel citations with groupId and parallelCitations array", () => {
       const text = "See 410 U.S. 113, 93 S. Ct. 705 (1973)."
