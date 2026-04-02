@@ -63,6 +63,21 @@ export interface CitationBase {
 }
 
 /**
+ * Court level and jurisdiction inferred from reporter series.
+ * Populated independently of the parenthetical-extracted `court` field.
+ */
+export interface CourtInference {
+  /** Court level classification */
+  level: "supreme" | "appellate" | "trial" | "unknown"
+  /** Jurisdiction classification */
+  jurisdiction: "federal" | "state" | "unknown"
+  /** 2-letter state code, only for state-specific reporters */
+  state?: string
+  /** Confidence score 0.0-1.0 (1.0 for unambiguous, 0.7 for regional multi-state) */
+  confidence: number
+}
+
+/**
  * Full case citation (volume-reporter-page format).
  *
  * @example "500 F.2d 123"
@@ -190,6 +205,14 @@ export interface FullCaseCitation extends CitationBase {
    * @example "en banc", "per curiam"
    */
   disposition?: string
+
+  /**
+   * Court level/jurisdiction inferred from reporter series.
+   * Always populated independently of the parenthetical `court` field.
+   * Uses a curated static lookup table — does not depend on the reporter DB
+   * to preserve tree-shaking of the `eyecite-ts/data` entry point.
+   */
+  inferredCourt?: CourtInference
 }
 
 /**
