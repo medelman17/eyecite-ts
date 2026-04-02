@@ -15,7 +15,7 @@
  */
 
 import type { Token } from "@/tokenize"
-import type { FullCaseCitation } from "@/types/citation"
+import type { FullCaseCitation, Parenthetical, ParentheticalType } from "@/types/citation"
 import { resolveOriginalSpan, type Span, type TransformationMap } from "@/types/span"
 import { parseDate, type StructuredDate } from "./dates"
 import { inferCourtFromReporter } from "./courtInference"
@@ -52,11 +52,28 @@ const LOOKAHEAD_PAREN_REGEX = /^(?:,\s*\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d
 /** Extracts pincite from look-ahead text */
 const LOOKAHEAD_PINCITE_REGEX = /^,\s*(\d+(?:-\d+)?)/
 
-/** Matches chained parentheticals with disposition */
-const CHAINED_DISPOSITION_REGEX = /\([^)]+\)\s*\((en banc|per curiam)\)/i
-
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
+
+/** Whitespace/comma skip pattern for parenthetical scanning */
+const PAREN_SKIP_REGEX = /[\s,]/
+
+/** Subsequent history signals between parentheticals */
+const HISTORY_SIGNAL_REGEX = /^(aff'd|rev'd|cert\.\s*denied|overruled\s+by|vacated\s+by)/i
+
+/** Signal words that identify explanatory parentheticals */
+const SIGNAL_WORDS: ReadonlySet<string> = new Set([
+  "holding", "finding", "stating", "noting", "explaining", "quoting", "citing",
+  "discussing", "describing", "recognizing", "applying", "rejecting", "adopting", "requiring",
+])
+
+/** Type guard: validates a string is a known signal word */
+function isSignalWord(word: string): word is ParentheticalType {
+  return SIGNAL_WORDS.has(word)
+}
+
+/** Matches a leading word (used to extract signal word candidate) */
+const LEADING_WORD_REGEX = /^([a-z]+)\b/i
 
 /** Standard "v." or "vs." case name format */
 const V_CASE_NAME_REGEX =
@@ -151,76 +168,84 @@ function extractCaseName(
   return undefined
 }
 
+/** A raw parenthetical block extracted from text */
+interface RawParenthetical {
+  /** Content between the parentheses (excluding parens themselves) */
+  text: string
+  /** Position of opening '(' in the text */
+  start: number
+  /** Position after closing ')' in the text (exclusive) */
+  end: number
+}
+
 /**
- * Find the end of parenthetical content, including chained parentheticals and subsequent history.
- * Tracks paren depth to handle nested parens, and continues scanning for chained parens.
+ * Collect all top-level parenthetical blocks starting from a position.
+ * Uses depth tracking to handle nested parens. Continues scanning through
+ * chained parentheticals and subsequent history signals.
  *
- * @param cleanedText - Full cleaned text
- * @param searchStart - Position to start searching from (after citation core)
- * @param maxLookahead - Maximum characters to search forward (default 200)
- * @returns Position after final closing paren (exclusive), or searchStart if no parens
- *
- * @example
- * ```typescript
- * findParentheticalEnd(text, 20, 200)
- * // For "(2020) (en banc)" returns position after final ")"
- * ```
+ * @param text - Full text to scan
+ * @param startPos - Position to start scanning (typically after citation core)
+ * @param maxLookahead - Maximum characters to scan forward (default 500)
+ * @returns Array of raw parenthetical blocks in order of appearance
  */
-function findParentheticalEnd(
-  cleanedText: string,
-  searchStart: number,
-  maxLookahead = 200,
-): number {
-  let pos = searchStart
-  const endLimit = Math.min(cleanedText.length, searchStart + maxLookahead)
-  let depth = 0
-  let foundAnyParen = false
+function collectParentheticals(
+  text: string,
+  startPos: number,
+  maxLookahead = 500,
+): RawParenthetical[] {
+  const results: RawParenthetical[] = []
+  let pos = startPos
+  const endLimit = Math.min(text.length, startPos + maxLookahead)
 
   while (pos < endLimit) {
-    const char = cleanedText[pos]
-
-    if (char === "(") {
-      depth++
-      foundAnyParen = true
-      pos++
-    } else if (char === ")") {
-      depth--
-      pos++
-
-      // When depth returns to 0, check for chained paren or subsequent history
-      if (depth === 0) {
-        // Skip whitespace
-        let nextPos = pos
-        while (nextPos < endLimit && /\s/.test(cleanedText[nextPos])) {
-          nextPos++
-        }
-
-        // Check for chained parenthetical
-        if (cleanedText[nextPos] === "(") {
-          pos = nextPos
-          continue
-        }
-
-        // Check for subsequent history signals
-        const remainingText = cleanedText.substring(nextPos, endLimit)
-        const historyRegex = /^,\s*(aff'd|rev'd|cert\.\s*denied|overruled\s+by|vacated\s+by)/i
-        if (historyRegex.test(remainingText)) {
-          // Continue scanning - subsequent history has its own paren
-          pos = nextPos
-          continue
-        }
-
-        // No chained paren or subsequent history - we're done
-        return pos
-      }
-    } else {
+    // Skip whitespace and commas between parentheticals
+    while (pos < endLimit && PAREN_SKIP_REGEX.test(text[pos])) {
       pos++
     }
+
+    if (pos >= endLimit || text[pos] !== "(") {
+      // Check for subsequent history signal before giving up
+      const remainingText = text.substring(pos, endLimit)
+      const signalMatch = HISTORY_SIGNAL_REGEX.exec(remainingText)
+      if (signalMatch) {
+        pos += signalMatch[0].length
+        continue
+      }
+      break
+    }
+
+    // Found opening paren — track depth to find matching close
+    const parenStart = pos
+    let depth = 0
+    const contentStart = pos + 1
+
+    while (pos < endLimit) {
+      const char = text[pos]
+      if (char === "(") {
+        depth++
+      } else if (char === ")") {
+        depth--
+        if (depth === 0) {
+          pos++ // move past closing paren
+          const content = text.substring(contentStart, pos - 1).trim()
+          if (content.length > 0) {
+            results.push({
+              text: content,
+              start: parenStart,
+              end: pos,
+            })
+          }
+          break
+        }
+      }
+      pos++
+    }
+
+    // If we never closed the paren, stop
+    if (depth > 0) break
   }
 
-  // If we found parens but didn't close them all, return where we stopped
-  // If we never found parens, return searchStart
-  return foundAnyParen ? pos : searchStart
+  return results
 }
 
 /**
@@ -276,6 +301,49 @@ function parseParenthetical(content: string): {
   }
 
   return result
+}
+
+/**
+ * Classify a raw parenthetical block as metadata or explanatory.
+ *
+ * @param raw - Raw parenthetical text (content between parens)
+ * @returns Classification result with kind discriminator
+ */
+function classifyParenthetical(raw: string): {
+  kind: "metadata"
+  court?: string
+  year?: number
+  date?: StructuredDate
+  disposition?: string
+} | {
+  kind: "explanatory"
+  text: string
+  type: ParentheticalType
+} {
+  // Check for signal word first — signal-word parens are always explanatory
+  const leadingMatch = LEADING_WORD_REGEX.exec(raw)
+  if (leadingMatch) {
+    const candidate = leadingMatch[1].toLowerCase()
+    if (isSignalWord(candidate)) {
+      return { kind: "explanatory", text: raw, type: candidate }
+    }
+  }
+
+  // Try metadata parse: court, year, date, disposition
+  // Note: "other"-type parens with embedded years (e.g., "the court, in 2019, held X")
+  // will be classified as metadata. This is a known limitation — most explanatory
+  // parentheticals start with a signal word and are handled above.
+  // Note: meta.court alone is insufficient — stripDateFromCourt returns any
+  // text with letters as a "court", so a standalone court-only second paren
+  // like "(9th Cir.)" will fall through to "other". This is acceptable since
+  // court-only parens without year/date are extremely rare in legal text.
+  const meta = parseParenthetical(raw)
+  if (meta.year || meta.date || meta.disposition) {
+    return { kind: "metadata", ...meta }
+  }
+
+  // No signal word and no metadata — classify as "other" explanatory
+  return { kind: "explanatory", text: raw, type: "other" }
 }
 
 /**
@@ -555,13 +623,33 @@ export function extractCase(
     }
   }
 
-  // Check for chained parentheticals with disposition (e.g., "(2020) (en banc)")
-  if (cleanedText && !disposition) {
-    const afterToken = cleanedText.substring(span.cleanEnd)
-    // Look for second parenthetical after first one
-    const chainedMatch = CHAINED_DISPOSITION_REGEX.exec(afterToken)
-    if (chainedMatch) {
-      disposition = chainedMatch[1].toLowerCase()
+  // Classify chained parentheticals: extract disposition and explanatory content
+  let parentheticals: Parenthetical[] | undefined
+  let allParens: RawParenthetical[] | undefined
+  if (cleanedText) {
+    allParens = collectParentheticals(cleanedText, span.cleanEnd)
+    // Skip first paren (already parsed above as court/year)
+    const remaining = parentheticalContent ? allParens.slice(1) : allParens
+    for (const raw of remaining) {
+      const classified = classifyParenthetical(raw.text)
+      if (classified.kind === "metadata") {
+        // Accept court from later metadata parens if we don't have a real one.
+        // The primary parse can set court to the disposition text (e.g., "en banc")
+        // as a side effect of stripDateFromCourt, so treat that as unset.
+        if (classified.court && (!court || court === disposition)) {
+          court = classified.court
+        }
+        if (classified.year && !year) {
+          year = classified.year
+          date = classified.date
+        }
+        if (classified.disposition && !disposition) {
+          disposition = classified.disposition
+        }
+      } else {
+        parentheticals ??= []
+        parentheticals.push({ text: classified.text, type: classified.type })
+      }
     }
   }
 
@@ -580,9 +668,12 @@ export function extractCase(
       caseName = caseNameResult.caseName
 
       // Calculate fullSpan: case name start through parenthetical end
-      const parenEnd = findParentheticalEnd(cleanedText, span.cleanEnd)
+      // Reuse allParens from classify loop to avoid scanning twice
+      const parenEnd = allParens && allParens.length > 0
+        ? allParens[allParens.length - 1].end
+        : span.cleanEnd
       const fullCleanStart = caseNameResult.nameStart
-      const fullCleanEnd = parenEnd > span.cleanEnd ? parenEnd : span.cleanEnd
+      const fullCleanEnd = parenEnd
 
       // Translate to original positions
       const fullOriginalStart =
@@ -694,6 +785,7 @@ export function extractCase(
     fullSpan,
     caseName,
     disposition,
+    parentheticals,
     plaintiff,
     plaintiffNormalized,
     defendant,
