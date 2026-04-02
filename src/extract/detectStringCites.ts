@@ -18,12 +18,12 @@ const SIGNAL_PATTERNS: ReadonlyArray<{ regex: RegExp; signal: CitationSignal }> 
   { regex: /^see\s+generally\b/i, signal: "see generally" },
   { regex: /^see\s+also\b/i, signal: "see also" },
   { regex: /^but\s+see\b/i, signal: "but see" },
-  { regex: /^but\s+cf\.?\b/i, signal: "but cf" },
+  { regex: /^but\s+cf\.?(?=\s|$)/i, signal: "but cf" },
   { regex: /^compare\b/i, signal: "compare" },
   { regex: /^accord\b/i, signal: "accord" },
   { regex: /^contra\b/i, signal: "contra" },
   { regex: /^see\b/i, signal: "see" },
-  { regex: /^cf\.?\b/i, signal: "cf" },
+  { regex: /^cf\.?(?=\s|$)/i, signal: "cf" },
 ]
 
 /**
@@ -212,7 +212,7 @@ export function detectStringCitations(citations: Citation[], cleanedText: string
     for (const { regex, signal } of SIGNAL_PATTERNS) {
       // Build a regex that matches the signal at the end of the string
       const endPattern = new RegExp(
-        regex.source.replace(/^\^/, "(?<![a-z])") + "\\s*$",
+        `${regex.source.replace(/^\^/, "(?<![a-z])")}\\s*$`,
         regex.flags,
       )
       if (endPattern.test(precedingText)) {

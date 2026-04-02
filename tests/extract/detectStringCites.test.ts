@@ -290,6 +290,71 @@ describe("detectStringCitations", () => {
       expect(cit2.signal).toBe("but see")
     })
 
+    it("captures mid-group 'cf.' signal with trailing period", () => {
+      const cleaned = "A, 500 F.2d 123 (2020); cf. B, 600 F.3d 456 (2021)."
+      const cit1 = makeCase({
+        cleanStart: 3,
+        cleanEnd: 15,
+        fullSpanStart: 0,
+        fullSpanEnd: 22,
+      })
+      const cit2 = makeCase({
+        cleanStart: 31,
+        cleanEnd: 43,
+        fullSpanStart: 28,
+        fullSpanEnd: 50,
+      })
+      const citations: Citation[] = [cit1, cit2]
+
+      detectStringCitations(citations, cleaned)
+
+      expect(cit1.stringCitationGroupId).toBeDefined()
+      expect(cit2.stringCitationGroupId).toBe(cit1.stringCitationGroupId)
+      expect(cit2.signal).toBe("cf")
+    })
+
+    it("captures mid-group 'accord' signal", () => {
+      const cleaned = "A, 500 F.2d 123 (2020); accord B, 600 F.3d 456 (2021)."
+      const cit1 = makeCase({
+        cleanStart: 3,
+        cleanEnd: 15,
+        fullSpanStart: 0,
+        fullSpanEnd: 22,
+      })
+      const cit2 = makeCase({
+        cleanStart: 34,
+        cleanEnd: 46,
+        fullSpanStart: 31,
+        fullSpanEnd: 53,
+      })
+      const citations: Citation[] = [cit1, cit2]
+
+      detectStringCitations(citations, cleaned)
+
+      expect(cit2.signal).toBe("accord")
+    })
+
+    it("captures mid-group 'see generally' signal", () => {
+      const cleaned = "A, 500 F.2d 123 (2020); see generally B, 600 F.3d 456 (2021)."
+      const cit1 = makeCase({
+        cleanStart: 3,
+        cleanEnd: 15,
+        fullSpanStart: 0,
+        fullSpanEnd: 22,
+      })
+      const cit2 = makeCase({
+        cleanStart: 41,
+        cleanEnd: 53,
+        fullSpanStart: 38,
+        fullSpanEnd: 60,
+      })
+      const citations: Citation[] = [cit1, cit2]
+
+      detectStringCitations(citations, cleaned)
+
+      expect(cit2.signal).toBe("see generally")
+    })
+
     it("does not overwrite signal already set by extractCase", () => {
       const cleaned = "A, 500 F.2d 123 (2020); see also B, 600 F.3d 456 (2021)."
       const cit1 = makeCase({
