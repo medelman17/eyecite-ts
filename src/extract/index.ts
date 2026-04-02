@@ -14,13 +14,14 @@
  * @module extract
  */
 
-export * from './extractCase'
-export * from './extractStatute'
-export * from './extractJournal'
-export * from './extractNeutral'
-export * from './extractPublicLaw'
-export * from './extractFederalRegister'
-export * from './extractStatutesAtLarge'
-export * from './extractShortForms'
-export * from './extractCitations'
-export * from './validation'
+export * from "./extractCase"
+export * from "./extractStatute"
+export * from "./extractJournal"
+export * from "./extractNeutral"
+export * from "./extractPublicLaw"
+export * from "./extractFederalRegister"
+export * from "./extractStatutesAtLarge"
+export * from "./extractConstitutional"
+export * from "./extractShortForms"
+export * from "./extractCitations"
+export * from "./validation"

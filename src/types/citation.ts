@@ -3,14 +3,25 @@ import type { Span } from "./span"
 /**
  * Citation type discriminator for type-safe pattern matching.
  */
-export type CitationType = "case" | "statute" | "journal" | "neutral" | "publicLaw" | "federalRegister" | "statutesAtLarge" | "id" | "supra" | "shortFormCase"
+export type CitationType =
+  | "case"
+  | "statute"
+  | "journal"
+  | "neutral"
+  | "publicLaw"
+  | "federalRegister"
+  | "statutesAtLarge"
+  | "constitutional"
+  | "id"
+  | "supra"
+  | "shortFormCase"
 
 /**
  * Warning generated during citation parsing.
  */
 export interface Warning {
   /** Severity level */
-  level: 'error' | 'warning' | 'info'
+  level: "error" | "warning" | "info"
   /** Description of the issue */
   message: string
   /** Position of the problematic region */
@@ -87,7 +98,7 @@ export interface FullCaseCitation extends CitationBase {
   }>
 
   /** Citation signal (introductory phrase) */
-  signal?: 'see' | 'see also' | 'cf' | 'but see' | 'compare'
+  signal?: "see" | "see also" | "cf" | "but see" | "compare"
 
   /** Parenthetical explanation following the citation */
   parenthetical?: string
@@ -215,7 +226,7 @@ export interface StatuteCitation extends CitationBase {
  * @example "Jane Doe, Article Title, 75 Yale L.J. 456, 460 (2020)"
  */
 export interface JournalCitation extends CitationBase {
-  type: 'journal'
+  type: "journal"
   /** Author name (if extracted) */
   author?: string
   /** Article title (if extracted) */
@@ -243,7 +254,7 @@ export interface JournalCitation extends CitationBase {
  * @example "2020 U.S. LEXIS 456" (Lexis)
  */
 export interface NeutralCitation extends CitationBase {
-  type: 'neutral'
+  type: "neutral"
   /** Year of decision */
   year: number
   /** Court identifier (e.g., "WL", "U.S. LEXIS") */
@@ -261,7 +272,7 @@ export interface NeutralCitation extends CitationBase {
  * @example "Pub. L. 117-58 (Infrastructure Investment and Jobs Act)"
  */
 export interface PublicLawCitation extends CitationBase {
-  type: 'publicLaw'
+  type: "publicLaw"
   /** Congress number (e.g., 116) */
   congress: number
   /** Law number within that Congress */
@@ -279,7 +290,7 @@ export interface PublicLawCitation extends CitationBase {
  * @example "86 Fed. Reg. 56789 (Jan. 15, 2021)"
  */
 export interface FederalRegisterCitation extends CitationBase {
-  type: 'federalRegister'
+  type: "federalRegister"
   /** Federal Register volume */
   volume: number | string
   /** Page number */
@@ -290,13 +301,34 @@ export interface FederalRegisterCitation extends CitationBase {
 
 /** Citation to the Statutes at Large (session law compilation) */
 export interface StatutesAtLargeCitation extends CitationBase {
-  type: 'statutesAtLarge'
+  type: "statutesAtLarge"
   /** Statutes at Large volume */
   volume: number | string
   /** Page number */
   page: number
   /** Publication year (if extracted) */
   year?: number
+}
+
+/**
+ * Constitutional citation (U.S. or state constitution).
+ *
+ * @example "U.S. Const. art. III, § 2"
+ * @example "U.S. Const. amend. XIV, § 1"
+ * @example "Cal. Const. art. I, § 7"
+ */
+export interface ConstitutionalCitation extends CitationBase {
+  type: "constitutional"
+  /** Jurisdiction code: "US", 2-letter state code, or undefined for bare "Const." */
+  jurisdiction?: string
+  /** Article number (parsed from Roman numerals) — mutually exclusive with amendment */
+  article?: number
+  /** Amendment number (parsed from Roman numerals) — mutually exclusive with article */
+  amendment?: number
+  /** Section identifier (string to handle non-numeric like "3-a") */
+  section?: string
+  /** Clause number (always numeric) */
+  clause?: number
 }
 
 /**
@@ -363,6 +395,7 @@ export type Citation =
   | PublicLawCitation
   | FederalRegisterCitation
   | StatutesAtLargeCitation
+  | ConstitutionalCitation
   | IdCitation
   | SupraCitation
   | ShortFormCaseCitation
@@ -370,13 +403,29 @@ export type Citation =
 /**
  * Citation type discriminators grouped by category.
  */
-export type FullCitationType = 'case' | 'statute' | 'journal' | 'neutral' | 'publicLaw' | 'federalRegister' | 'statutesAtLarge'
-export type ShortFormCitationType = 'id' | 'supra' | 'shortFormCase'
+export type FullCitationType =
+  | "case"
+  | "statute"
+  | "journal"
+  | "neutral"
+  | "publicLaw"
+  | "federalRegister"
+  | "statutesAtLarge"
+  | "constitutional"
+export type ShortFormCitationType = "id" | "supra" | "shortFormCase"
 
 /**
  * Union of all full citation types (not short-form references).
  */
-export type FullCitation = FullCaseCitation | StatuteCitation | JournalCitation | NeutralCitation | PublicLawCitation | FederalRegisterCitation | StatutesAtLargeCitation
+export type FullCitation =
+  | FullCaseCitation
+  | StatuteCitation
+  | JournalCitation
+  | NeutralCitation
+  | PublicLawCitation
+  | FederalRegisterCitation
+  | StatutesAtLargeCitation
+  | ConstitutionalCitation
 
 /**
  * Union of all short-form citation types (Id., supra, short-form case).

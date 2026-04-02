@@ -1,32 +1,40 @@
-import type { Citation, CitationType, CitationOfType, FullCitation, ShortFormCitation, FullCaseCitation } from "./citation"
+import type {
+  Citation,
+  CitationType,
+  CitationOfType,
+  FullCitation,
+  ShortFormCitation,
+  FullCaseCitation,
+} from "./citation"
 
 /**
- * Type guard: narrows Citation to a full citation (case, statute, journal, neutral, publicLaw, federalRegister).
+ * Type guard: narrows Citation to a full citation (case, statute, journal, neutral, publicLaw, federalRegister, statutesAtLarge, constitutional).
  */
 export function isFullCitation(citation: Citation): citation is FullCitation {
-  return citation.type === 'case'
-    || citation.type === 'statute'
-    || citation.type === 'journal'
-    || citation.type === 'neutral'
-    || citation.type === 'publicLaw'
-    || citation.type === 'federalRegister'
-    || citation.type === 'statutesAtLarge'
+  return (
+    citation.type === "case" ||
+    citation.type === "statute" ||
+    citation.type === "journal" ||
+    citation.type === "neutral" ||
+    citation.type === "publicLaw" ||
+    citation.type === "federalRegister" ||
+    citation.type === "statutesAtLarge" ||
+    citation.type === "constitutional"
+  )
 }
 
 /**
  * Type guard: narrows Citation to a short-form citation (id, supra, shortFormCase).
  */
 export function isShortFormCitation(citation: Citation): citation is ShortFormCitation {
-  return citation.type === 'id'
-    || citation.type === 'supra'
-    || citation.type === 'shortFormCase'
+  return citation.type === "id" || citation.type === "supra" || citation.type === "shortFormCase"
 }
 
 /**
  * Type guard: narrows Citation to a full case citation.
  */
 export function isCaseCitation(citation: Citation): citation is FullCaseCitation {
-  return citation.type === 'case'
+  return citation.type === "case"
 }
 
 /**
@@ -35,7 +43,7 @@ export function isCaseCitation(citation: Citation): citation is FullCaseCitation
  */
 export function isCitationType<T extends CitationType>(
   citation: Citation,
-  type: T
+  type: T,
 ): citation is CitationOfType<T> {
   return citation.type === type
 }

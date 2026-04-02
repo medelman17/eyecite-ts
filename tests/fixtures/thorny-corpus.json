@@ -289,14 +289,29 @@
       "category": "constitutional",
       "description": "Constitutional amendment citation",
       "text": "U.S. Const. amend. XIV, § 1",
-      "expected": []
+      "expected": [
+        {
+          "type": "constitutional",
+          "jurisdiction": "US",
+          "amendment": 14,
+          "section": "1"
+        }
+      ]
     },
     {
       "id": "constitutional-article",
       "category": "constitutional",
       "description": "Constitutional article citation",
       "text": "U.S. Const. art. III, § 2, cl. 1",
-      "expected": []
+      "expected": [
+        {
+          "type": "constitutional",
+          "jurisdiction": "US",
+          "article": 3,
+          "section": "2",
+          "clause": 1
+        }
+      ]
     },
     {
       "id": "court-rule-frcp",
@@ -1352,6 +1367,13 @@
           "reporter": "U.S.",
           "page": 544,
           "year": 1981
+        },
+        {
+          "type": "constitutional",
+          "jurisdiction": "US",
+          "article": 1,
+          "section": "8",
+          "clause": 3
         },
         {
           "type": "statute",

@@ -11,97 +11,99 @@
  * @module extract/extractCitations
  */
 
-import { cleanText } from '@/clean'
-import { tokenize } from '@/tokenize'
+import { cleanText } from "@/clean"
+import { tokenize } from "@/tokenize"
 import {
-	extractCase,
-	extractStatute,
-	extractJournal,
-	extractNeutral,
-	extractPublicLaw,
-	extractFederalRegister,
-	extractStatutesAtLarge,
-} from '@/extract'
-import { extractId, extractSupra, extractShortFormCase } from './extractShortForms'
+  extractCase,
+  extractStatute,
+  extractJournal,
+  extractNeutral,
+  extractPublicLaw,
+  extractFederalRegister,
+  extractStatutesAtLarge,
+  extractConstitutional,
+} from "@/extract"
+import { extractId, extractSupra, extractShortFormCase } from "./extractShortForms"
 import {
-	casePatterns,
-	statutePatterns,
-	journalPatterns,
-	neutralPatterns,
-	shortFormPatterns,
-} from '@/patterns'
-import { resolveCitations } from '../resolve'
-import { detectParallelCitations } from './detectParallel'
-import type { Citation } from '@/types/citation'
-import type { Pattern } from '@/patterns'
-import type { ResolutionOptions, ResolvedCitation } from '../resolve/types'
+  casePatterns,
+  statutePatterns,
+  journalPatterns,
+  neutralPatterns,
+  shortFormPatterns,
+  constitutionalPatterns,
+} from "@/patterns"
+import { resolveCitations } from "../resolve"
+import { detectParallelCitations } from "./detectParallel"
+import type { Citation } from "@/types/citation"
+import type { Pattern } from "@/patterns"
+import type { ResolutionOptions, ResolvedCitation } from "../resolve/types"
 
 /**
  * Options for customizing citation extraction behavior.
  */
 export interface ExtractOptions {
-	/**
-	 * Custom text cleaners (overrides defaults).
-	 *
-	 * If provided, these cleaners replace the default pipeline:
-	 * [stripHtmlTags, normalizeWhitespace, normalizeUnicode, fixSmartQuotes]
-	 *
-	 * @example
-	 * ```typescript
-	 * // Use only HTML stripping, skip Unicode normalization
-	 * const citations = extractCitations(text, {
-	 *   cleaners: [stripHtmlTags]
-	 * })
-	 * ```
-	 */
-	cleaners?: Array<(text: string) => string>
+  /**
+   * Custom text cleaners (overrides defaults).
+   *
+   * If provided, these cleaners replace the default pipeline:
+   * [stripHtmlTags, normalizeWhitespace, normalizeUnicode, fixSmartQuotes]
+   *
+   * @example
+   * ```typescript
+   * // Use only HTML stripping, skip Unicode normalization
+   * const citations = extractCitations(text, {
+   *   cleaners: [stripHtmlTags]
+   * })
+   * ```
+   */
+  cleaners?: Array<(text: string) => string>
 
-	/**
-	 * Custom regex patterns (overrides defaults).
-	 *
-	 * If provided, these patterns replace the default pattern set:
-	 * [casePatterns, statutePatterns, journalPatterns, neutralPatterns, shortFormPatterns]
-	 *
-	 * @example
-	 * ```typescript
-	 * // Extract only case citations
-	 * const citations = extractCitations(text, {
-	 *   patterns: casePatterns
-	 * })
-	 * ```
-	 */
-	patterns?: Pattern[]
+  /**
+   * Custom regex patterns (overrides defaults).
+   *
+   * If provided, these patterns replace the default pattern set:
+   * [casePatterns, statutePatterns, journalPatterns, neutralPatterns, shortFormPatterns]
+   *
+   * @example
+   * ```typescript
+   * // Extract only case citations
+   * const citations = extractCitations(text, {
+   *   patterns: casePatterns
+   * })
+   * ```
+   */
+  patterns?: Pattern[]
 
-	/**
-	 * Resolve short-form citations to their full antecedents (default: false).
-	 *
-	 * If true, returns ResolvedCitation[] with resolution metadata for short-form citations
-	 * (Id., supra, short-form case). Full citations are unchanged.
-	 *
-	 * @example
-	 * ```typescript
-	 * const text = "Smith v. Jones, 500 F.2d 100 (1974). Id. at 105."
-	 * const citations = extractCitations(text, { resolve: true })
-	 * // citations[1].resolution.resolvedTo === 0 (points to Smith v. Jones)
-	 * ```
-	 */
-	resolve?: boolean
+  /**
+   * Resolve short-form citations to their full antecedents (default: false).
+   *
+   * If true, returns ResolvedCitation[] with resolution metadata for short-form citations
+   * (Id., supra, short-form case). Full citations are unchanged.
+   *
+   * @example
+   * ```typescript
+   * const text = "Smith v. Jones, 500 F.2d 100 (1974). Id. at 105."
+   * const citations = extractCitations(text, { resolve: true })
+   * // citations[1].resolution.resolvedTo === 0 (points to Smith v. Jones)
+   * ```
+   */
+  resolve?: boolean
 
-	/**
-	 * Options for citation resolution (only used if resolve: true).
-	 *
-	 * @example
-	 * ```typescript
-	 * const citations = extractCitations(text, {
-	 *   resolve: true,
-	 *   resolutionOptions: {
-	 *     scopeStrategy: 'paragraph',
-	 *     fuzzyPartyMatching: true
-	 *   }
-	 * })
-	 * ```
-	 */
-	resolutionOptions?: ResolutionOptions
+  /**
+   * Options for citation resolution (only used if resolve: true).
+   *
+   * @example
+   * ```typescript
+   * const citations = extractCitations(text, {
+   *   resolve: true,
+   *   resolutionOptions: {
+   *     scopeStrategy: 'paragraph',
+   *     fuzzyPartyMatching: true
+   *   }
+   * })
+   * ```
+   */
+  resolutionOptions?: ResolutionOptions
 }
 
 /**
@@ -162,163 +164,169 @@ export interface ExtractOptions {
  * // citations[2].type === "journal"
  * ```
  */
-export function extractCitations(text: string, options: ExtractOptions & { resolve: true }): ResolvedCitation[]
+export function extractCitations(
+  text: string,
+  options: ExtractOptions & { resolve: true },
+): ResolvedCitation[]
 export function extractCitations(text: string, options?: ExtractOptions): Citation[]
 export function extractCitations(
-	text: string,
-	options?: ExtractOptions,
+  text: string,
+  options?: ExtractOptions,
 ): Citation[] | ResolvedCitation[] {
-	const startTime = performance.now()
+  const startTime = performance.now()
 
-	// Step 1: Clean text
-	const { cleaned, transformationMap, warnings } = cleanText(
-		text,
-		options?.cleaners,
-	)
+  // Step 1: Clean text
+  const { cleaned, transformationMap, warnings } = cleanText(text, options?.cleaners)
 
-	// Step 2: Tokenize (synchronous)
-	// Note: Pattern order matters for deduplication - more specific patterns first
-	const allPatterns = options?.patterns || [
-		...neutralPatterns,      // Most specific (year-based format)
-		...shortFormPatterns,    // Short-form (requires " at " keyword)
-		...casePatterns,         // Case citations (reporter-specific)
-		...statutePatterns,      // Statutes (code-specific)
-		...journalPatterns,      // Least specific (broad pattern)
-	]
-	const tokens = tokenize(cleaned, allPatterns)
+  // Step 2: Tokenize (synchronous)
+  // Note: Pattern order matters for deduplication - more specific patterns first
+  const allPatterns = options?.patterns || [
+    ...neutralPatterns, // Most specific (year-based format)
+    ...shortFormPatterns, // Short-form (requires " at " keyword)
+    ...casePatterns, // Case citations (reporter-specific)
+    ...constitutionalPatterns, // Constitutional citations (more specific than statutes)
+    ...statutePatterns, // Statutes (code-specific)
+    ...journalPatterns, // Least specific (broad pattern)
+  ]
+  const tokens = tokenize(cleaned, allPatterns)
 
-	// Step 3: Deduplicate overlapping tokens
-	// Multiple patterns may match the same text (e.g., "500 F.2d 123" matches both federal-reporter and state-reporter)
-	// Keep only the most specific match for each position
-	const deduplicatedTokens: typeof tokens = []
-	const seenPositions = new Set<number | string>()
+  // Step 3: Deduplicate overlapping tokens
+  // Multiple patterns may match the same text (e.g., "500 F.2d 123" matches both federal-reporter and state-reporter)
+  // Keep only the most specific match for each position
+  const deduplicatedTokens: typeof tokens = []
+  const seenPositions = new Set<number | string>()
 
-	// Performance optimization: Use bitpacking for typical documents (<65K chars)
-	// For larger documents, fall back to string keys
-	const useBitpacking = cleaned.length < 65536
+  // Performance optimization: Use bitpacking for typical documents (<65K chars)
+  // For larger documents, fall back to string keys
+  const useBitpacking = cleaned.length < 65536
 
-	for (const token of tokens) {
-		const posKey = useBitpacking
-			? (token.span.cleanStart << 16) | token.span.cleanEnd
-			: `${token.span.cleanStart}-${token.span.cleanEnd}`
-		if (!seenPositions.has(posKey)) {
-			seenPositions.add(posKey)
-			deduplicatedTokens.push(token)
-		}
-	}
+  for (const token of tokens) {
+    const posKey = useBitpacking
+      ? (token.span.cleanStart << 16) | token.span.cleanEnd
+      : `${token.span.cleanStart}-${token.span.cleanEnd}`
+    if (!seenPositions.has(posKey)) {
+      seenPositions.add(posKey)
+      deduplicatedTokens.push(token)
+    }
+  }
 
-	// Step 3.5: Detect parallel citation groups
-	// Map of primary token index -> array of secondary token indices
-	const parallelGroups = detectParallelCitations(deduplicatedTokens, cleaned)
+  // Step 3.5: Detect parallel citation groups
+  // Map of primary token index -> array of secondary token indices
+  const parallelGroups = detectParallelCitations(deduplicatedTokens, cleaned)
 
-	// Step 4: Extract citations from deduplicated tokens
-	const citations: Citation[] = []
-	for (let i = 0; i < deduplicatedTokens.length; i++) {
-		const token = deduplicatedTokens[i]
-		let citation: Citation
+  // Step 4: Extract citations from deduplicated tokens
+  const citations: Citation[] = []
+  for (let i = 0; i < deduplicatedTokens.length; i++) {
+    const token = deduplicatedTokens[i]
+    let citation: Citation
 
-		switch (token.type) {
-			case 'case':
-				// Check pattern ID to distinguish short-form from full citations
-				if (token.patternId === 'id' || token.patternId === 'ibid') {
-					citation = extractId(token, transformationMap)
-				} else if (token.patternId === 'supra') {
-					citation = extractSupra(token, transformationMap)
-				} else if (token.patternId === 'shortFormCase') {
-					citation = extractShortFormCase(token, transformationMap)
-				} else {
-					citation = extractCase(token, transformationMap, cleaned)
-				}
-				break
-			case 'statute':
-				citation = extractStatute(token, transformationMap)
-				break
-			case 'journal':
-				citation = extractJournal(token, transformationMap)
-				break
-			case 'neutral':
-				citation = extractNeutral(token, transformationMap)
-				break
-			case 'publicLaw':
-				citation = extractPublicLaw(token, transformationMap)
-				break
-			case 'federalRegister':
-				citation = extractFederalRegister(token, transformationMap)
-				break
-			case 'statutesAtLarge':
-				citation = extractStatutesAtLarge(token, transformationMap)
-				break
-			default:
-				// Unknown type - skip
-				continue
-		}
+    switch (token.type) {
+      case "case":
+        // Check pattern ID to distinguish short-form from full citations
+        if (token.patternId === "id" || token.patternId === "ibid") {
+          citation = extractId(token, transformationMap)
+        } else if (token.patternId === "supra") {
+          citation = extractSupra(token, transformationMap)
+        } else if (token.patternId === "shortFormCase") {
+          citation = extractShortFormCase(token, transformationMap)
+        } else {
+          citation = extractCase(token, transformationMap, cleaned)
+        }
+        break
+      case "statute":
+        citation = extractStatute(token, transformationMap)
+        break
+      case "journal":
+        citation = extractJournal(token, transformationMap)
+        break
+      case "neutral":
+        citation = extractNeutral(token, transformationMap)
+        break
+      case "publicLaw":
+        citation = extractPublicLaw(token, transformationMap)
+        break
+      case "federalRegister":
+        citation = extractFederalRegister(token, transformationMap)
+        break
+      case "statutesAtLarge":
+        citation = extractStatutesAtLarge(token, transformationMap)
+        break
+      case "constitutional":
+        citation = extractConstitutional(token, transformationMap)
+        break
+      default:
+        // Unknown type - skip
+        continue
+    }
 
-		// Attach cleaning warnings to citation if any
-		if (warnings.length > 0) {
-			citation.warnings = [...(citation.warnings || []), ...warnings]
-		}
+    // Attach cleaning warnings to citation if any
+    if (warnings.length > 0) {
+      citation.warnings = [...(citation.warnings || []), ...warnings]
+    }
 
-		// Update processing time
-		citation.processTimeMs = performance.now() - startTime
+    // Update processing time
+    citation.processTimeMs = performance.now() - startTime
 
-		// Populate parallel citation metadata (Phase 8)
-		if (citation.type === 'case') {
-			// Check if this citation is part of a parallel group
-			const isPrimary = parallelGroups.has(i)
-			const isSecondary = Array.from(parallelGroups.values()).some(secondaries => secondaries.includes(i))
+    // Populate parallel citation metadata (Phase 8)
+    if (citation.type === "case") {
+      // Check if this citation is part of a parallel group
+      const isPrimary = parallelGroups.has(i)
+      const isSecondary = Array.from(parallelGroups.values()).some((secondaries) =>
+        secondaries.includes(i),
+      )
 
-			if (isPrimary || isSecondary) {
-				// Find the primary citation for this group
-				let primaryIndex = i
-				if (isSecondary) {
-					// Find which group this is a secondary of
-					for (const [primary, secondaries] of parallelGroups.entries()) {
-						if (secondaries.includes(i)) {
-							primaryIndex = primary
-							break
-						}
-					}
-				}
+      if (isPrimary || isSecondary) {
+        // Find the primary citation for this group
+        let primaryIndex = i
+        if (isSecondary) {
+          // Find which group this is a secondary of
+          for (const [primary, secondaries] of parallelGroups.entries()) {
+            if (secondaries.includes(i)) {
+              primaryIndex = primary
+              break
+            }
+          }
+        }
 
-				// Get the primary token to build groupId
-				const primaryToken = deduplicatedTokens[primaryIndex]
-				// Extract volume, reporter, page from primary token text
-				// Match: "volume reporter page" where reporter is everything except last number
-				const match = /^(\S+)\s+(.+)\s+(\d+)$/.exec(primaryToken.text)
-				if (match) {
-					const [, volume, reporter, page] = match
-					citation.groupId = `${volume}-${reporter.replace(/\s+/g, '.')}-${page}`
+        // Get the primary token to build groupId
+        const primaryToken = deduplicatedTokens[primaryIndex]
+        // Extract volume, reporter, page from primary token text
+        // Match: "volume reporter page" where reporter is everything except last number
+        const match = /^(\S+)\s+(.+)\s+(\d+)$/.exec(primaryToken.text)
+        if (match) {
+          const [, volume, reporter, page] = match
+          citation.groupId = `${volume}-${reporter.replace(/\s+/g, ".")}-${page}`
 
-					// Only primary citation gets parallelCitations array
-					if (isPrimary) {
-						const secondaryIndices = parallelGroups.get(i)!
-						citation.parallelCitations = secondaryIndices.map(secIdx => {
-							const secToken = deduplicatedTokens[secIdx]
-							const secMatch = /^(\S+)\s+(.+)\s+(\d+)$/.exec(secToken.text)
-							if (secMatch) {
-								const [, secVol, secRep, secPage] = secMatch
-								return {
-									volume: /^\d+$/.test(secVol) ? Number.parseInt(secVol, 10) : secVol,
-									reporter: secRep,
-									page: Number.parseInt(secPage, 10),
-								}
-							}
-							return { volume: 0, reporter: '', page: 0 } // Fallback (shouldn't happen)
-						})
-					}
-				}
-			}
-		}
+          // Only primary citation gets parallelCitations array
+          if (isPrimary) {
+            const secondaryIndices = parallelGroups.get(i)!
+            citation.parallelCitations = secondaryIndices.map((secIdx) => {
+              const secToken = deduplicatedTokens[secIdx]
+              const secMatch = /^(\S+)\s+(.+)\s+(\d+)$/.exec(secToken.text)
+              if (secMatch) {
+                const [, secVol, secRep, secPage] = secMatch
+                return {
+                  volume: /^\d+$/.test(secVol) ? Number.parseInt(secVol, 10) : secVol,
+                  reporter: secRep,
+                  page: Number.parseInt(secPage, 10),
+                }
+              }
+              return { volume: 0, reporter: "", page: 0 } // Fallback (shouldn't happen)
+            })
+          }
+        }
+      }
+    }
 
-		citations.push(citation)
-	}
+    citations.push(citation)
+  }
 
-	// Step 5: Resolve short-form citations if requested
-	if (options?.resolve) {
-		return resolveCitations(citations, text, options.resolutionOptions)
-	}
+  // Step 5: Resolve short-form citations if requested
+  if (options?.resolve) {
+    return resolveCitations(citations, text, options.resolutionOptions)
+  }
 
-	return citations
+  return citations
 }
 
 /**
@@ -343,13 +351,19 @@ export function extractCitations(
  * // Returns ResolvedCitation[] with resolution metadata
  * ```
  */
-export async function extractCitationsAsync(text: string, options: ExtractOptions & { resolve: true }): Promise<ResolvedCitation[]>
-export async function extractCitationsAsync(text: string, options?: ExtractOptions): Promise<Citation[]>
 export async function extractCitationsAsync(
-	text: string,
-	options?: ExtractOptions,
+  text: string,
+  options: ExtractOptions & { resolve: true },
+): Promise<ResolvedCitation[]>
+export async function extractCitationsAsync(
+  text: string,
+  options?: ExtractOptions,
+): Promise<Citation[]>
+export async function extractCitationsAsync(
+  text: string,
+  options?: ExtractOptions,
 ): Promise<Citation[] | ResolvedCitation[]> {
-	// Async wrapper for future extensibility (e.g., async reporters-db lookup)
-	// For MVP, wraps synchronous extractCitations
-	return extractCitations(text, options)
+  // Async wrapper for future extensibility (e.g., async reporters-db lookup)
+  // For MVP, wraps synchronous extractCitations
+  return extractCitations(text, options)
 }
