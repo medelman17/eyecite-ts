@@ -20,6 +20,12 @@ export type {
   ShortFormCitationType,
   FullCitation,
   ShortFormCitation,
-  Warning
+  Warning,
 } from "./citation"
-export { isFullCitation, isShortFormCitation, isCaseCitation, isCitationType, assertUnreachable } from "./guards"
+export {
+  isFullCitation,
+  isShortFormCitation,
+  isCaseCitation,
+  isCitationType,
+  assertUnreachable,
+} from "./guards"

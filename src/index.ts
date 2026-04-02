@@ -26,63 +26,69 @@
 // ============================================================================
 
 export type {
-	Span,
-	TransformationMap,
-	Citation,
-	CitationType,
-	CitationBase,
-	CitationOfType,
-	ExtractorMap,
-	FullCaseCitation,
-	StatuteCitation,
-	JournalCitation,
-	NeutralCitation,
-	PublicLawCitation,
-	FederalRegisterCitation,
-	StatutesAtLargeCitation,
-	ConstitutionalCitation,
-	IdCitation,
-	SupraCitation,
-	ShortFormCaseCitation,
-	FullCitationType,
-	ShortFormCitationType,
-	FullCitation,
-	ShortFormCitation,
-	Warning,
-} from './types'
+  Span,
+  TransformationMap,
+  Citation,
+  CitationType,
+  CitationBase,
+  CitationOfType,
+  ExtractorMap,
+  FullCaseCitation,
+  StatuteCitation,
+  JournalCitation,
+  NeutralCitation,
+  PublicLawCitation,
+  FederalRegisterCitation,
+  StatutesAtLargeCitation,
+  ConstitutionalCitation,
+  IdCitation,
+  SupraCitation,
+  ShortFormCaseCitation,
+  FullCitationType,
+  ShortFormCitationType,
+  FullCitation,
+  ShortFormCitation,
+  Warning,
+} from "./types"
 
-export { isFullCitation, isShortFormCitation, isCaseCitation, isCitationType, assertUnreachable } from './types'
+export {
+  isFullCitation,
+  isShortFormCitation,
+  isCaseCitation,
+  isCitationType,
+  assertUnreachable,
+} from "./types"
 
 // ============================================================================
 // Main API (Phase 2) - Convenience Functions
 // ============================================================================
 
-export { extractCitations, extractCitationsAsync } from './extract/extractCitations'
-export type { ExtractOptions } from './extract/extractCitations'
+export { extractCitations, extractCitationsAsync } from "./extract/extractCitations"
+export type { ExtractOptions } from "./extract/extractCitations"
 
 // ============================================================================
 // Granular APIs (Phase 2) - For Power Users
 // ============================================================================
 
 // Text Cleaning Layer
-export { cleanText } from './clean'
-export type { CleanTextResult } from './clean/cleanText'
+export { cleanText } from "./clean"
+export type { CleanTextResult } from "./clean/cleanText"
 
 // Tokenization Layer
-export { tokenize } from './tokenize'
-export type { Token } from './tokenize/tokenizer'
+export { tokenize } from "./tokenize"
+export type { Token } from "./tokenize/tokenizer"
 
 // Extraction Functions (for advanced use cases)
 export {
-	extractCase,
-	extractStatute,
-	extractJournal,
-	extractNeutral,
-	extractPublicLaw,
-	extractFederalRegister,
-	extractStatutesAtLarge,
-	extractConstitutional,
-} from './extract'
+  extractCase,
+  extractStatute,
+  extractJournal,
+  extractNeutral,
+  extractPublicLaw,
+  extractFederalRegister,
+  extractStatutesAtLarge,
+  extractConstitutional,
+} from "./extract"
 
 // ============================================================================
 // Phase 3: Annotation
@@ -95,10 +101,10 @@ export {
 // Phase 4: Resolution
 // ============================================================================
 
-export { resolveCitations, DocumentResolver } from './resolve'
+export { resolveCitations, DocumentResolver } from "./resolve"
 export type {
-	ResolutionOptions,
-	ResolutionResult,
-	ResolvedCitation,
-	ScopeStrategy,
-} from './resolve/types'
+  ResolutionOptions,
+  ResolutionResult,
+  ResolvedCitation,
+  ScopeStrategy,
+} from "./resolve/types"

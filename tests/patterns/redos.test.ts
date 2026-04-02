@@ -10,7 +10,7 @@
  * - Fail if any pattern exceeds 100ms threshold (PERF requirement from plan)
  */
 
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from "vitest"
 import {
   casePatterns,
   statutePatterns,
@@ -18,9 +18,9 @@ import {
   neutralPatterns,
   shortFormPatterns,
   constitutionalPatterns,
-} from '@/patterns'
+} from "@/patterns"
 
-describe('ReDoS protection', () => {
+describe("ReDoS protection", () => {
   const allPatterns = [
     ...casePatterns,
     ...statutePatterns,
@@ -32,12 +32,12 @@ describe('ReDoS protection', () => {
 
   // Malformed inputs that could trigger catastrophic backtracking
   const malformedInputs = [
-    'Smith v. Doe, 500 F.2d 123 ('.repeat(100), // Missing closing paren
-    `${'123 '.repeat(1000)}U.S. 456`, // Excessive numbers
-    'a'.repeat(10000), // Long non-matching text
-    `${'((((('.repeat(100)}123 F.2d 456`, // Nested parens
-    `${'F.'.repeat(500)} 123`, // Repeated reporter abbreviations
-    `${'§ § § '.repeat(500)}123`, // Repeated section symbols
+    "Smith v. Doe, 500 F.2d 123 (".repeat(100), // Missing closing paren
+    `${"123 ".repeat(1000)}U.S. 456`, // Excessive numbers
+    "a".repeat(10000), // Long non-matching text
+    `${"(((((".repeat(100)}123 F.2d 456`, // Nested parens
+    `${"F.".repeat(500)} 123`, // Repeated reporter abbreviations
+    `${"§ § § ".repeat(500)}123`, // Repeated section symbols
   ]
 
   for (const pattern of allPatterns) {
@@ -55,7 +55,7 @@ describe('ReDoS protection', () => {
     })
   }
 
-  it('should test all defined patterns', () => {
+  it("should test all defined patterns", () => {
     // Sanity check: ensure we have patterns from all modules
     expect(casePatterns.length).toBeGreaterThan(0)
     expect(statutePatterns.length).toBeGreaterThan(0)

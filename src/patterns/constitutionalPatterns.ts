@@ -15,8 +15,8 @@ import type { Pattern } from "./casePatterns"
 // Shared tail: art./amend. + numeral + optional § section + optional cl. clause
 // Roman numerals: I, II, III, IV, V, VI, VII, VIII, IX, X, XI, XII, XIII, XIV, XV, XVI, XVII, XVIII, XIX, XX, XXI, XXII, XXIII, XXIV, XXV, XXVI, XXVII
 // Also accepts Arabic numerals as fallback
-const ARTICLE_OR_AMENDMENT = String.raw`(?:art(?:icle)?\.?|amend(?:ment)?\.?)\s+([IVXLC]+|\d+)`
-const OPTIONAL_SECTION = String.raw`(?:[,;]\s*§\s*([^\s,;()]+))?`
+const ARTICLE_OR_AMENDMENT = String.raw`(?:art(?:icle)?\.?|amend(?:ment)?\.?)\s+([IVX]+|\d+)`
+const OPTIONAL_SECTION = String.raw`(?:[,;]\s*§\s*([\w-]+))?`
 const OPTIONAL_CLAUSE = String.raw`(?:[,;]\s*cl\.?\s*(\d+))?`
 const BODY_TAIL = `${ARTICLE_OR_AMENDMENT}${OPTIONAL_SECTION}${OPTIONAL_CLAUSE}`
 
@@ -37,7 +37,7 @@ export const constitutionalPatterns: Pattern[] = [
   {
     id: "state-constitution",
     regex: new RegExp(
-      String.raw`\b(?:Ala|Alaska|Ariz|Ark|Cal(?:if)?|Colo|Conn|Del|Fla|Ga|Haw|Idaho|Ill|Ind|Iowa|Kan|Ky|La|Me|Md|Mass|Mich|Minn|Miss|Mo|Mont|Neb|Nev|N\.?\s*H|N\.?\s*J|N\.?\s*M|N\.?\s*Y|N\.?\s*C|N\.?\s*D|Ohio|Okla|Or(?:e)?|Pa|R\.?\s*I|S\.?\s*C|S\.?\s*D|Tenn|Tex|Utah|Vt|Va|Wash|W\.?\s*Va|Wis|Wyo)\.?\s+Const\.?\s+${BODY_TAIL}`,
+      String.raw`\b(?:Ala|Alaska|Ariz|Ark|Cal(?:if)?|Colo|Conn|Del|Fla|Ga|Haw|Idaho|Ill|Ind|Iowa|Kan|Ky|La|Me|Md|Mass|Mich|Minn|Miss|Mo|Mont|Neb|Nev|N\.?\s*H|N\.?\s*J|N\.?\s*M|N\.?\s*Y|N\.?\s*C|N\.?\s*D|Ohio|Okla|Or(?:e)?|Pa|R\.?\s*I|S\.?\s*C|S\.?\s*D|Tenn|Tex|Utah|Vt|W\.?\s*Va|Va|Wash|Wis|Wyo)\.?\s+Const\.?\s+${BODY_TAIL}`,
       "gi",
     ),
     description:
@@ -49,10 +49,9 @@ export const constitutionalPatterns: Pattern[] = [
     // "g" (not "gi") is intentional: the lookbehind uses [A-Z] which requires case sensitivity.
     // Consequence: lowercase "const." is never matched — acceptable in formal legal citations.
     // Consequence: all-caps preceding words like "THE Const." won't match due to [A-Z]\s lookbehind — rare, acceptable tradeoff.
-    regex: new RegExp(
-      String.raw`(?<!\.\s)(?<![A-Z]\s)\bConst\.?\s+${BODY_TAIL}`,
-      "g",
-    ),
+    // Known limitation: multi-character state abbreviations ending in lowercase (Alaska, Idaho, etc.)
+    // bypass the lookbehind and produce a second bare match — tokenizer span dedup handles this.
+    regex: new RegExp(String.raw`(?<!\.\s)(?<![A-Z]\s)\bConst\.?\s+${BODY_TAIL}`, "g"),
     description:
       'Bare constitutional citations without jurisdiction prefix (e.g., "Const. art. I, § 8, cl. 3")',
     type: "constitutional",
