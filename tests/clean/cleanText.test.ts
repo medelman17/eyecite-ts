@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { cleanText, fixSmartQuotes, normalizeWhitespace, stripHtmlTags } from "../../src/clean"
+import {
+  cleanText,
+  fixSmartQuotes,
+  normalizeDashes,
+  normalizeWhitespace,
+  stripHtmlTags,
+} from "../../src/clean"
 
 describe("cleanText position tracking", () => {
   it("should maintain identity transformation when no changes occur", () => {
@@ -159,5 +165,23 @@ describe("cleanText position tracking", () => {
 
     // First character 't' is at position 0 in cleaned, position 11 in original (after "<div><span>")
     expect(result.transformationMap.cleanToOriginal.get(0)).toBe(11)
+  })
+})
+
+describe("normalizeDashes (issue #54)", () => {
+  it("converts en-dash to single hyphen", () => {
+    expect(normalizeDashes("105\u2013107")).toBe("105-107")
+  })
+
+  it("converts em-dash to triple hyphen for blank page matching", () => {
+    expect(normalizeDashes("500 F.4th \u2014 (2024)")).toBe("500 F.4th --- (2024)")
+  })
+
+  it("handles mixed dashes", () => {
+    expect(normalizeDashes("100\u2013200 and \u2014")).toBe("100-200 and ---")
+  })
+
+  it("leaves regular hyphens unchanged", () => {
+    expect(normalizeDashes("105-107")).toBe("105-107")
   })
 })
