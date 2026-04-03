@@ -19,7 +19,7 @@ import type {
 } from "../types/citation"
 import { isFullCitation } from "../types/guards"
 import { normalizedLevenshteinDistance } from "./levenshtein"
-import { detectParagraphBoundaries, isWithinBoundary } from "./scopeBoundary"
+import { buildFootnoteScopes, detectParagraphBoundaries, isWithinBoundary } from "./scopeBoundary"
 import type {
   ResolutionContext,
   ResolutionOptions,
@@ -34,7 +34,9 @@ import type {
 export class DocumentResolver {
   private readonly citations: Citation[]
   private readonly text: string
-  private readonly options: Required<ResolutionOptions>
+  private readonly options: Required<Omit<ResolutionOptions, "footnoteMap">> & {
+    footnoteMap: ResolutionOptions["footnoteMap"]
+  }
   private readonly context: ResolutionContext
 
   /**
@@ -57,6 +59,7 @@ export class DocumentResolver {
       partyMatchThreshold: options.partyMatchThreshold ?? 0.8,
       allowNestedResolution: options.allowNestedResolution ?? false,
       reportUnresolved: options.reportUnresolved ?? true,
+      footnoteMap: options.footnoteMap,
     }
 
     // Initialize resolution context
@@ -75,6 +78,11 @@ export class DocumentResolver {
         citations,
         this.options.paragraphBoundaryPattern,
       )
+    }
+
+    // Override with footnote scopes when available
+    if (this.options.scopeStrategy === "footnote" && this.options.footnoteMap) {
+      this.context.paragraphMap = buildFootnoteScopes(citations, this.options.footnoteMap)
     }
   }
 
@@ -166,8 +174,8 @@ export class DocumentResolver {
     let bestMatch: { index: number; similarity: number } | undefined
 
     for (const [partyName, citationIndex] of this.context.fullCitationHistory) {
-      // Check scope boundary
-      if (!this.isWithinScope(citationIndex, currentIndex)) {
+      // Check scope boundary (supra allows cross-zone: footnote -> body)
+      if (!this.isWithinScope(citationIndex, currentIndex, true)) {
         continue
       }
 
@@ -224,8 +232,8 @@ export class DocumentResolver {
         candidate.volume === citation.volume &&
         this.normalizeReporter(candidate.reporter) === this.normalizeReporter(citation.reporter)
       ) {
-        // Check scope boundary
-        if (!this.isWithinScope(i, currentIndex)) {
+        // Check scope boundary (short-form case allows cross-zone: footnote -> body)
+        if (!this.isWithinScope(i, currentIndex, true)) {
           return this.createFailureResult("Matching citation outside scope boundary")
         }
 
@@ -335,12 +343,17 @@ export class DocumentResolver {
   /**
    * Checks if antecedent citation is within scope boundary.
    */
-  private isWithinScope(antecedentIndex: number, currentIndex: number): boolean {
+  private isWithinScope(
+    antecedentIndex: number,
+    currentIndex: number,
+    allowCrossZone = false,
+  ): boolean {
     return isWithinBoundary(
       antecedentIndex,
       currentIndex,
       this.context.paragraphMap,
       this.options.scopeStrategy,
+      allowCrossZone,
     )
   }
 

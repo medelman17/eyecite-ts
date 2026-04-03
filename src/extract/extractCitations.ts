@@ -409,10 +409,7 @@ export function extractCitations(
   // Step 5: Resolve short-form citations if requested
   if (options?.resolve) {
     const resolutionOpts = cleanFootnoteMap
-      ? {
-          ...options.resolutionOptions,
-          footnoteMap: cleanFootnoteMap,
-        } as ResolutionOptions & { footnoteMap: FootnoteMap }
+      ? { ...options.resolutionOptions, footnoteMap: cleanFootnoteMap }
       : options.resolutionOptions
     return resolveCitations(filtered, text, resolutionOpts)
   }
