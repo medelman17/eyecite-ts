@@ -63,21 +63,22 @@ export function removeOcrArtifacts(text: string): string {
 }
 
 /**
- * Normalize Unicode dashes to ASCII hyphens.
+ * Normalize Unicode dashes to ASCII equivalents.
  *
- * Converts en-dash (U+2013) and em-dash (U+2014) to ASCII hyphen-minus (U+002D).
- * This ensures extraction regexes that expect ASCII hyphens work correctly.
- *
- * @example
- * normalizeDashes("Smith v. Doe, 500 F.2d 123–125")  // en-dash
- * // => "Smith v. Doe, 500 F.2d 123-125"
+ * En-dash (U+2013) → single hyphen (used in page ranges like 105–107).
+ * Em-dash (U+2014) → triple hyphen (used as blank page placeholder in citations
+ * like "500 F.4th — (2024)", matching the existing `-{3,}` blank page pattern).
  *
  * @example
- * normalizeDashes("Smith v. Doe—500 F.2d 123")  // em-dash
- * // => "Smith v. Doe-500 F.2d 123"
+ * normalizeDashes("500 F.2d 123, 125–130")  // en-dash in range
+ * // => "500 F.2d 123, 125-130"
+ *
+ * @example
+ * normalizeDashes("500 F.4th — (2024)")  // em-dash blank page
+ * // => "500 F.4th --- (2024)"
  */
 export function normalizeDashes(text: string): string {
-  return text.replace(/[\u2013\u2014]/g, "-")
+  return text.replace(/\u2014/g, "---").replace(/\u2013/g, "-")
 }
 
 /**

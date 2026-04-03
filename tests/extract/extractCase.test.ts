@@ -1272,6 +1272,54 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
       }
     })
   })
+
+  describe("Unicode dash handling (issue #54)", () => {
+    it("should parse en-dash pincite range correctly", () => {
+      const citations = extractCitations("500 F.3d 100, 105\u2013107 (2020)")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "case") {
+        expect(citations[0].year).toBe(2020)
+        expect(citations[0].pincite).toBe(105)
+        expect(citations[0].pinciteInfo?.endPage).toBe(107)
+        expect(citations[0].pinciteInfo?.isRange).toBe(true)
+      }
+    })
+
+    it("should recognize em-dash as blank page placeholder", () => {
+      const citations = extractCitations("500 F.4th \u2014 (2024)")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "case") {
+        expect(citations[0].volume).toBe(500)
+        expect(citations[0].reporter).toBe("F.4th")
+        expect(citations[0].page).toBeUndefined()
+        expect(citations[0].hasBlankPage).toBe(true)
+        expect(citations[0].year).toBe(2024)
+        expect(citations[0].confidence).toBe(0.8)
+      }
+    })
+
+    it("should recognize em-dash blank page in Supreme Court citation", () => {
+      const citations = extractCitations("600 U.S. \u2014 (2024)")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "case") {
+        expect(citations[0].volume).toBe(600)
+        expect(citations[0].reporter).toBe("U.S.")
+        expect(citations[0].page).toBeUndefined()
+        expect(citations[0].hasBlankPage).toBe(true)
+        expect(citations[0].year).toBe(2024)
+      }
+    })
+
+    it("should recognize em-dash blank page with court and year", () => {
+      const citations = extractCitations("500 F.4th \u2014 (9th Cir. 2024)")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "case") {
+        expect(citations[0].hasBlankPage).toBe(true)
+        expect(citations[0].court).toBe("9th Cir.")
+        expect(citations[0].year).toBe(2024)
+      }
+    })
+  })
 })
 
 describe("party name extraction (Phase 7)", () => {
