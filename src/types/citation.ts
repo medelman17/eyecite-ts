@@ -315,6 +315,20 @@ export interface FullCaseCitation extends CitationBase {
   proceduralPrefix?: string
 
   /**
+   * Nominative (historical) reporter volume for early SCOTUS citations.
+   * Present only when citation includes a nominative parenthetical, e.g.,
+   * `67 U.S. (2 Black) 635` → nominativeVolume: 2
+   */
+  nominativeVolume?: number
+
+  /**
+   * Nominative (historical) reporter abbreviation for early SCOTUS citations.
+   * Present only when citation includes a nominative parenthetical, e.g.,
+   * `67 U.S. (2 Black) 635` → nominativeReporter: "Black"
+   */
+  nominativeReporter?: string
+
+  /**
    * True when page position contains a blank placeholder ("___" or "---").
    * Populated by Phase 5 (Blank Page support).
    * When true, page field will be undefined and confidence reduced to 0.8.
