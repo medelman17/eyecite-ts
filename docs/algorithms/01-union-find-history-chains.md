@@ -1,6 +1,6 @@
 # ALG-01: Union-Find for Subsequent History Chains
 
-**Status:** Ready
+**Status:** Complete
 **Priority:** 4 (implement after ALG-02)
 **Textbook References:** CLRS Ch.19 (disjoint-set forests, path compression, union by rank), Sedgewick Ch.1.5 (weighted quick-union with path compression)
 **Target Files:** `src/extract/extractCitations.ts` lines 338-380, new `src/extract/unionFind.ts`

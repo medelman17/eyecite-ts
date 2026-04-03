@@ -12,6 +12,7 @@
  */
 
 import { cleanText } from "@/clean"
+import { UnionFind } from "@/extract/unionFind"
 import { detectFootnotes } from "@/footnotes/detectFootnotes"
 import { mapFootnoteZones } from "@/footnotes/mapZones"
 import { tagCitationsWithFootnotes } from "@/footnotes/tagging"
@@ -36,7 +37,7 @@ import {
   statutePatterns,
 } from "@/patterns"
 import { tokenize } from "@/tokenize"
-import type { Citation } from "@/types/citation"
+import type { Citation, HistorySignal } from "@/types/citation"
 import { resolveCitations } from "../resolve"
 import type { ResolutionOptions, ResolvedCitation } from "../resolve/types"
 import { detectParallelCitations } from "./detectParallel"
@@ -351,49 +352,10 @@ export function extractCitations(
     citations.push(citation)
   }
 
-  // Step 4.5: Link subsequent history citations
-  // For each parent with subsequentHistoryEntries, find the next case citation
-  // after each signal span and set back-pointers. Also aggregate chained entries
-  // from children onto the root parent.
+  // Step 4.5: Link subsequent history citations using Union-Find.
+  // Three-phase approach: match signals → union chains → aggregate entries.
   // Invariant: citations are in text order (guaranteed by token-order processing above).
-  for (let i = 0; i < citations.length; i++) {
-    const parent = citations[i]
-    if (parent.type !== "case" || !parent.subsequentHistoryEntries) continue
-
-    const entries = parent.subsequentHistoryEntries
-    let entryIdx = 0
-
-    for (let j = i + 1; j < citations.length && entryIdx < entries.length; j++) {
-      const child = citations[j]
-      if (child.type !== "case") continue
-
-      // Match child to signal: child must start after the signal ends
-      // (the signal text like "aff'd" precedes the child citation)
-      const signalEnd = entries[entryIdx].signalSpan.cleanEnd
-      if (child.span.cleanStart >= signalEnd) {
-        child.subsequentHistoryOf = {
-          index: i,
-          signal: entries[entryIdx].signal,
-        }
-
-        // Aggregate any entries the child has onto the parent (chained history).
-        // Intentionally mutates `entries` (alias for parent.subsequentHistoryEntries):
-        // pushed entries increase entries.length, which the outer loop re-checks,
-        // enabling transitive chaining (A→B→C all aggregated onto A).
-        if (child.subsequentHistoryEntries) {
-          for (const childEntry of child.subsequentHistoryEntries) {
-            entries.push({
-              ...childEntry,
-              order: entries.length,
-            })
-          }
-          child.subsequentHistoryEntries = undefined
-        }
-
-        entryIdx++
-      }
-    }
-  }
+  linkSubsequentHistory(citations)
 
   // Step 4.75: Detect string citation groups (semicolon-separated)
   detectStringCitations(citations, cleaned)
@@ -454,4 +416,81 @@ export async function extractCitationsAsync(
   // Async wrapper for future extensibility (e.g., async reporters-db lookup)
   // For MVP, wraps synchronous extractCitations
   return extractCitations(text, options)
+}
+
+/**
+ * Link subsequent history citations using a three-phase Union-Find approach.
+ * Replaces the old mutation-during-iteration pattern with cleanly separated phases.
+ */
+function linkSubsequentHistory(citations: Citation[]): void {
+  // Phase 1: Signal matching — collect (parent, child) pairs without mutating citations.
+  // Also record each child's signal text for back-pointer assignment in Phase 3.
+  const pairs: Array<{ parentIdx: number; childIdx: number; signal: HistorySignal }> = []
+
+  for (let i = 0; i < citations.length; i++) {
+    const parent = citations[i]
+    if (parent.type !== "case" || !parent.subsequentHistoryEntries) continue
+
+    const entries = parent.subsequentHistoryEntries
+    let entryIdx = 0
+
+    for (let j = i + 1; j < citations.length && entryIdx < entries.length; j++) {
+      const child = citations[j]
+      if (child.type !== "case") continue
+
+      const signalEnd = entries[entryIdx].signalSpan.cleanEnd
+      if (child.span.cleanStart >= signalEnd) {
+        pairs.push({ parentIdx: i, childIdx: j, signal: entries[entryIdx].signal })
+        entryIdx++
+      }
+    }
+  }
+
+  if (pairs.length === 0) return
+
+  // Phase 2: Union — build connected components from parent-child pairs.
+  const uf = new UnionFind(citations.length)
+  for (const pair of pairs) {
+    uf.union(pair.parentIdx, pair.childIdx)
+  }
+
+  // Build lookup: childIdx → signal (for back-pointer assignment)
+  const childSignals = new Map<number, HistorySignal>()
+  for (const pair of pairs) {
+    childSignals.set(pair.childIdx, pair.signal)
+  }
+
+  // Phase 3: Aggregation — set back-pointers and collect entries onto chain roots.
+  for (const [root, members] of uf.components()) {
+    if (members.length === 1) continue
+
+    const rootCitation = citations[root]
+    if (rootCitation.type !== "case") continue
+
+    const allEntries = [...(rootCitation.subsequentHistoryEntries ?? [])]
+
+    for (const memberIdx of members) {
+      if (memberIdx === root) continue
+
+      const member = citations[memberIdx]
+      if (member.type !== "case") continue
+
+      // Set back-pointer to chain root.
+      // Signal is guaranteed to exist: every non-root member was recorded as a
+      // child in Phase 1, which always stores the signal in childSignals.
+      const signal = childSignals.get(memberIdx)
+      if (!signal) continue
+      member.subsequentHistoryOf = { index: root, signal }
+
+      // Aggregate entries from non-root members onto the root
+      if (member.subsequentHistoryEntries) {
+        for (const entry of member.subsequentHistoryEntries) {
+          allEntries.push({ ...entry, order: allEntries.length })
+        }
+        member.subsequentHistoryEntries = undefined
+      }
+    }
+
+    rootCitation.subsequentHistoryEntries = allEntries
+  }
 }
