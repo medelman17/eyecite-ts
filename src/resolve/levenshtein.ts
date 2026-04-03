@@ -10,53 +10,52 @@
 /**
  * Calculates Levenshtein distance (edit distance) between two strings.
  *
- * The edit distance is the minimum number of single-character edits
- * (insertions, deletions, substitutions) needed to change one string into the other.
+ * Uses a space-optimized rolling two-row DP approach: only the previous and
+ * current rows are kept in memory (O(min(m,n)) space instead of O(m*n)).
  *
  * @param a - First string
  * @param b - Second string
- * @returns Number of edits required (0 = identical)
+ * @param maxDistance - Optional threshold for early termination. When provided,
+ *   the function returns `maxDistance + 1` as soon as it determines the true
+ *   distance must exceed the threshold. This avoids unnecessary computation
+ *   for obviously dissimilar strings.
+ * @returns Exact edit distance if ≤ maxDistance, otherwise maxDistance + 1
  */
-export function levenshteinDistance(a: string, b: string): number {
-  // Handle empty strings
-  if (a.length === 0) return b.length
-  if (b.length === 0) return a.length
+export function levenshteinDistance(a: string, b: string, maxDistance: number = Infinity): number {
+  if (a.length === 0) return Math.min(b.length, maxDistance + 1)
+  if (b.length === 0) return Math.min(a.length, maxDistance + 1)
 
-  // Create 2D array for dynamic programming
-  // dp[i][j] = edit distance between a[0...i-1] and b[0...j-1]
-  const dp: number[][] = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0))
+  // Ensure short is the shorter string so rows are min(m,n) long
+  const short = a.length <= b.length ? a : b
+  const long = a.length <= b.length ? b : a
 
-  // Initialize base cases
-  for (let i = 0; i <= a.length; i++) {
-    dp[i][0] = i // Distance from a[0...i-1] to empty string
-  }
-  for (let j = 0; j <= b.length; j++) {
-    dp[0][j] = j // Distance from empty string to b[0...j-1]
-  }
+  const cols = short.length
+  let prev = Array.from({ length: cols + 1 }, (_, k) => k) // base-case row
+  let curr = new Array<number>(cols + 1)
 
-  // Fill the DP table
-  for (let i = 1; i <= a.length; i++) {
-    for (let j = 1; j <= b.length; j++) {
-      if (a[i - 1] === b[j - 1]) {
-        // Characters match - no edit needed
-        dp[i][j] = dp[i - 1][j - 1]
+  for (let i = 1; i <= long.length; i++) {
+    curr[0] = i
+    let rowMin = i // curr[0] is always i
+
+    for (let j = 1; j <= cols; j++) {
+      if (long[i - 1] === short[j - 1]) {
+        curr[j] = prev[j - 1]
       } else {
-        // Characters differ - take minimum of:
-        // 1. Insert: dp[i][j-1] + 1
-        // 2. Delete: dp[i-1][j] + 1
-        // 3. Substitute: dp[i-1][j-1] + 1
-        dp[i][j] =
-          1 +
-          Math.min(
-            dp[i - 1][j], // Delete from a
-            dp[i][j - 1], // Insert into a
-            dp[i - 1][j - 1], // Substitute
-          )
+        curr[j] = 1 + Math.min(prev[j], curr[j - 1], prev[j - 1])
       }
+      if (curr[j] < rowMin) rowMin = curr[j]
     }
+
+    // Early termination: row minimums are non-decreasing, so if the
+    // cheapest cell already exceeds the threshold, no future row can help
+    if (rowMin > maxDistance) return maxDistance + 1
+
+    const swap = prev
+    prev = curr
+    curr = swap
   }
 
-  return dp[a.length][b.length]
+  return prev[cols]
 }
 
 /**

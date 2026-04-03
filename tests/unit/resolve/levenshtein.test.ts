@@ -44,6 +44,88 @@ describe("levenshteinDistance", () => {
   })
 })
 
+describe("levenshteinDistance — correctness invariants", () => {
+  it("is symmetric: d(a, b) === d(b, a)", () => {
+    const pairs: [string, string][] = [
+      ["kitten", "sitting"],
+      ["Saturday", "Sunday"],
+      ["National Association of Machinists", "National Assoc. of Machinists"],
+      ["", "nonempty"],
+      ["a", "b"],
+    ]
+    for (const [a, b] of pairs) {
+      expect(levenshteinDistance(a, b)).toBe(levenshteinDistance(b, a))
+    }
+  })
+
+  it("satisfies triangle inequality: d(a, c) <= d(a, b) + d(b, c)", () => {
+    const triples: [string, string, string][] = [
+      ["kitten", "sitting", "smitten"],
+      ["abc", "def", "ghi"],
+      ["Smith", "Smyth", "Smithson"],
+      ["United States", "United State", "United Kingdom"],
+    ]
+    for (const [a, b, c] of triples) {
+      const ab = levenshteinDistance(a, b)
+      const bc = levenshteinDistance(b, c)
+      const ac = levenshteinDistance(a, c)
+      expect(ac).toBeLessThanOrEqual(ab + bc)
+    }
+  })
+
+  it("upper bound: d(a, b) <= max(a.length, b.length)", () => {
+    const pairs: [string, string][] = [
+      ["abc", "xyz"],
+      ["short", "a very long string indeed"],
+      ["", "anything"],
+    ]
+    for (const [a, b] of pairs) {
+      expect(levenshteinDistance(a, b)).toBeLessThanOrEqual(Math.max(a.length, b.length))
+    }
+  })
+})
+
+describe("levenshteinDistance — early termination", () => {
+  it("returns exact distance when within maxDistance", () => {
+    expect(levenshteinDistance("abc", "abd", 1)).toBe(1)
+    expect(levenshteinDistance("abc", "abc", 0)).toBe(0)
+    expect(levenshteinDistance("kitten", "sitting", 3)).toBe(3)
+    expect(levenshteinDistance("kitten", "sitting", 5)).toBe(3)
+  })
+
+  it("returns maxDistance + 1 when distance exceeds threshold", () => {
+    expect(levenshteinDistance("abc", "xyz", 1)).toBe(2)
+    expect(levenshteinDistance("abc", "xyz", 2)).toBe(3)
+    expect(levenshteinDistance("kitten", "sitting", 2)).toBe(3)
+  })
+
+  it("handles maxDistance = 0 (exact match only)", () => {
+    expect(levenshteinDistance("abc", "abc", 0)).toBe(0)
+    expect(levenshteinDistance("abc", "abd", 0)).toBe(1)
+  })
+
+  it("handles empty strings with maxDistance", () => {
+    expect(levenshteinDistance("", "abc", 2)).toBe(3)
+    expect(levenshteinDistance("", "abc", 5)).toBe(3)
+    expect(levenshteinDistance("abc", "", 2)).toBe(3)
+    expect(levenshteinDistance("", "", 0)).toBe(0)
+  })
+
+  it("produces same result as without maxDistance when threshold is high", () => {
+    const pairs: [string, string][] = [
+      ["kitten", "sitting"],
+      ["Saturday", "Sunday"],
+      ["Smith", "Smyth"],
+      ["National Association of Machinists", "National Assoc. of Machinists"],
+    ]
+    for (const [a, b] of pairs) {
+      const exact = levenshteinDistance(a, b)
+      expect(levenshteinDistance(a, b, 100)).toBe(exact)
+      expect(levenshteinDistance(a, b, exact)).toBe(exact)
+    }
+  })
+})
+
 describe("normalizedLevenshteinDistance", () => {
   it("returns 1.0 for identical strings", () => {
     expect(normalizedLevenshteinDistance("hello", "hello")).toBe(1.0)
