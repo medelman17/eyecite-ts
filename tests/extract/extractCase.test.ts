@@ -1732,3 +1732,75 @@ describe("signal word extraction", () => {
     expect(caseCite?.signal).toBe("see")
   })
 })
+
+describe("nominative reporter support (#49, #16)", () => {
+  describe("extraction — citations with nominative parenthetical", () => {
+    it("extracts 67 U.S. (2 Black) 635 (1862)", () => {
+      const citations = extractCitations("67 U.S. (2 Black) 635 (1862)")
+      expect(citations.length).toBeGreaterThanOrEqual(1)
+      const cite = citations[0] as FullCaseCitation
+      expect(cite.type).toBe("case")
+      expect(cite.volume).toBe(67)
+      expect(cite.reporter).toBe("U.S.")
+      expect(cite.page).toBe(635)
+      expect(cite.year).toBe(1862)
+      expect(cite.nominativeVolume).toBe(2)
+      expect(cite.nominativeReporter).toBe("Black")
+    })
+
+    it("extracts Marbury v. Madison, 5 U.S. (1 Cranch) 137 (1803)", () => {
+      const citations = extractCitations(
+        "Marbury v. Madison, 5 U.S. (1 Cranch) 137 (1803)",
+      )
+      expect(citations.length).toBeGreaterThanOrEqual(1)
+      const cite = citations[0] as FullCaseCitation
+      expect(cite.volume).toBe(5)
+      expect(cite.reporter).toBe("U.S.")
+      expect(cite.page).toBe(137)
+      expect(cite.nominativeVolume).toBe(1)
+      expect(cite.nominativeReporter).toBe("Cranch")
+      expect(cite.caseName).toContain("Marbury")
+    })
+
+    it("extracts multi-digit nominative volume: 60 U.S. (19 How.) 393", () => {
+      const citations = extractCitations("60 U.S. (19 How.) 393 (1856)")
+      expect(citations.length).toBeGreaterThanOrEqual(1)
+      const cite = citations[0] as FullCaseCitation
+      expect(cite.volume).toBe(60)
+      expect(cite.reporter).toBe("U.S.")
+      expect(cite.page).toBe(393)
+      expect(cite.nominativeVolume).toBe(19)
+      expect(cite.nominativeReporter).toBe("How.")
+    })
+
+    it("extracts Wallace reporter: 74 U.S. (7 Wall.) 506 (1868)", () => {
+      const citations = extractCitations("74 U.S. (7 Wall.) 506 (1868)")
+      expect(citations.length).toBeGreaterThanOrEqual(1)
+      const cite = citations[0] as FullCaseCitation
+      expect(cite.volume).toBe(74)
+      expect(cite.reporter).toBe("U.S.")
+      expect(cite.page).toBe(506)
+      expect(cite.nominativeVolume).toBe(7)
+      expect(cite.nominativeReporter).toBe("Wall.")
+    })
+  })
+
+  describe("backward compatibility — no nominative fields when absent", () => {
+    it("500 U.S. 123 has no nominative fields", () => {
+      const citations = extractCitations("500 U.S. 123 (1991)")
+      const cite = citations[0] as FullCaseCitation
+      expect(cite.volume).toBe(500)
+      expect(cite.reporter).toBe("U.S.")
+      expect(cite.page).toBe(123)
+      expect(cite.nominativeVolume).toBeUndefined()
+      expect(cite.nominativeReporter).toBeUndefined()
+    })
+
+    it("410 F.2d 999 has no nominative fields", () => {
+      const citations = extractCitations("410 F.2d 999 (1969)")
+      const cite = citations[0] as FullCaseCitation
+      expect(cite.nominativeVolume).toBeUndefined()
+      expect(cite.nominativeReporter).toBeUndefined()
+    })
+  })
+})

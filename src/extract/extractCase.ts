@@ -56,8 +56,9 @@ const MONTH_PATTERN =
 // Compiled regex patterns for performance (hoisted to module level)
 // ============================================================================
 
-/** Matches volume-reporter-page format in citation core */
-const VOLUME_REPORTER_PAGE_REGEX = /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s']+)\s+(\d+|_{3,}|-{3,})/
+/** Matches volume-reporter-page format in citation core, with optional nominative reporter parenthetical */
+const VOLUME_REPORTER_PAGE_REGEX =
+  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s']+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})/
 
 /** Detects blank page placeholders (3+ underscores or dashes) */
 const BLANK_PAGE_REGEX = /^[_-]{3,}$/
@@ -711,8 +712,12 @@ export function extractCase(
   const volume = parseVolume(match[1])
   const reporter = match[2].trim()
 
-  // Check if page is a blank placeholder
-  const pageStr = match[3]
+  // Extract nominative reporter if present (e.g., "1 Cranch" from "5 U.S. (1 Cranch) 137")
+  const nominativeVolume = match[3] ? Number.parseInt(match[3], 10) : undefined
+  const nominativeReporter = match[4] || undefined
+
+  // Check if page is a blank placeholder (group 5 after nominative groups)
+  const pageStr = match[5]
   const isBlankPage = BLANK_PAGE_REGEX.test(pageStr)
   const page = isBlankPage ? undefined : Number.parseInt(pageStr, 10)
   const hasBlankPage = isBlankPage ? true : undefined
@@ -736,8 +741,10 @@ export function extractCase(
   // Extract parenthetical from token text
   let parentheticalContent: string | undefined
   // Match any parenthetical (with or without letters)
+  // When a nominative reporter is present, the first paren in token text is the
+  // nominative (e.g., "(2 Black)") — skip it so the year/court look-ahead runs.
   const parenMatch = PAREN_REGEX.exec(text)
-  if (parenMatch) {
+  if (parenMatch && !nominativeVolume) {
     parentheticalContent = parenMatch[1]
     // Parse parenthetical using unified parser
     const parenResult = parseParenthetical(parentheticalContent)
@@ -957,6 +964,8 @@ export function extractCase(
     volume,
     reporter,
     page,
+    nominativeVolume,
+    nominativeReporter,
     pincite,
     pinciteInfo,
     court,
