@@ -1,12 +1,14 @@
 import type { FootnoteMap, FootnoteZone } from "./types"
 
 /**
- * Regex matching opening tags for footnote container elements.
+ * Source pattern for opening tags of footnote container elements.
  * Matches: <footnote ...>, <fn ...>, <div class="footnote" ...>,
  * <div id="fn1" ...>, <aside class="footnote" ...>, etc.
+ *
+ * Created as a fresh RegExp per call to avoid shared mutable lastIndex state.
  */
-const FOOTNOTE_OPEN_RE =
-  /<(footnote|fn)\b[^>]*>|<(div|aside|section|p|span)\b[^>]*(?:class\s*=\s*["'][^"']*\bfootnote\b[^"']*["']|id\s*=\s*["'](?:fn|footnote)\d*["'])[^>]*>/gi
+const FOOTNOTE_OPEN_SRC =
+  /<(footnote|fn)\b[^>]*>|<(div|aside|section|p|span)\b[^>]*(?:class\s*=\s*["'][^"']*\bfootnote\b[^"']*["']|id\s*=\s*["'](?:fn|footnote)\d*["'])[^>]*>/gi.source
 
 /**
  * Extract a footnote number from an HTML tag's attributes or from leading content.
@@ -34,11 +36,26 @@ function extractFootnoteNumber(tag: string, content: string, sequentialIndex: nu
 }
 
 /**
+ * Result of closing-tag search: the position where inner content ends
+ * (start of `</tag>`) and the position after the closing tag.
+ */
+interface ClosingTagResult {
+  /** Index of the `<` in `</tagName>` — marks the end of inner content */
+  contentEnd: number
+  /** Index of the character after `</tagName>` — marks the end of the element */
+  tagEnd: number
+}
+
+/**
  * Find the matching closing tag for a given element, handling nesting.
  *
- * @returns Index of the character after the closing tag, or -1 if not found.
+ * @returns Positions of the closing tag, or null if unmatched.
  */
-function findClosingTag(html: string, tagName: string, startAfterOpen: number): number {
+function findClosingTag(
+  html: string,
+  tagName: string,
+  startAfterOpen: number,
+): ClosingTagResult | null {
   const openPattern = new RegExp(`<${tagName}\\b[^>]*>`, "gi")
   const closePattern = new RegExp(`</${tagName}\\s*>`, "gi")
 
@@ -51,7 +68,7 @@ function findClosingTag(html: string, tagName: string, startAfterOpen: number): 
     const nextOpen = openPattern.exec(html)
     const nextClose = closePattern.exec(html)
 
-    if (!nextClose) return -1
+    if (!nextClose) return null
 
     if (nextOpen && nextOpen.index < nextClose.index) {
       depth++
@@ -59,13 +76,13 @@ function findClosingTag(html: string, tagName: string, startAfterOpen: number): 
     } else {
       depth--
       if (depth === 0) {
-        return nextClose.index + nextClose[0].length
+        return { contentEnd: nextClose.index, tagEnd: nextClose.index + nextClose[0].length }
       }
       openPattern.lastIndex = nextClose.index + nextClose[0].length
     }
   }
 
-  return -1
+  return null
 }
 
 /**
@@ -81,33 +98,29 @@ export function detectHtmlFootnotes(html: string): FootnoteMap {
   const zones: FootnoteZone[] = []
   let match: RegExpExecArray | null
 
-  FOOTNOTE_OPEN_RE.lastIndex = 0
+  // Fresh regex per call to avoid shared mutable lastIndex state
+  const footnoteOpenRe = new RegExp(FOOTNOTE_OPEN_SRC, "gi")
 
-  while ((match = FOOTNOTE_OPEN_RE.exec(html)) !== null) {
+  while ((match = footnoteOpenRe.exec(html)) !== null) {
     const openTag = match[0]
     const openTagStart = match.index
     const contentStart = openTagStart + openTag.length
 
     const tagName = match[1] || match[2]
 
-    const closingEnd = findClosingTag(html, tagName, contentStart)
-    if (closingEnd === -1) continue
+    const closing = findClosingTag(html, tagName, contentStart)
+    if (!closing) continue
 
-    const closingTagStart = html.lastIndexOf(`</${tagName}`, closingEnd)
-    const content = html.slice(
-      contentStart,
-      closingTagStart > contentStart ? closingTagStart : closingEnd,
-    )
-
+    const content = html.slice(contentStart, closing.contentEnd)
     const footnoteNumber = extractFootnoteNumber(openTag, content, zones.length)
 
     zones.push({
       start: contentStart,
-      end: closingTagStart > contentStart ? closingTagStart : closingEnd,
+      end: closing.contentEnd,
       footnoteNumber,
     })
 
-    FOOTNOTE_OPEN_RE.lastIndex = closingEnd
+    footnoteOpenRe.lastIndex = closing.tagEnd
   }
 
   return zones.sort((a, b) => a.start - b.start)

@@ -58,6 +58,10 @@ export function detectParagraphBoundaries(
 /**
  * Build a scope map from footnote zones.
  * Zone 0 = body text, Zone N = footnote N.
+ *
+ * The footnoteMap must be in the same coordinate space as the citation spans
+ * being looked up. When called from extractCitations, both are in clean-text
+ * coordinates (zones mapped through TransformationMap, spans set during extraction).
  */
 export function buildFootnoteScopes(
   citations: Citation[],
@@ -66,7 +70,7 @@ export function buildFootnoteScopes(
   const scopeMap = new Map<number, number>()
 
   for (let i = 0; i < citations.length; i++) {
-    const pos = citations[i].span.originalStart
+    const pos = citations[i].span.cleanStart
 
     let zoneId = 0
     let lo = 0
@@ -132,5 +136,7 @@ export function isWithinBoundary(
     return true
   }
 
+  // For paragraph/section strategies, citations must be in same boundary.
+  // (section currently behaves the same as paragraph — future enhancement.)
   return false
 }

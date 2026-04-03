@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest"
 import { tagCitationsWithFootnotes } from "@/footnotes/tagging"
-import type { Citation } from "@/types/citation"
+import type { FullCaseCitation } from "@/types/citation"
 import type { FootnoteMap } from "@/footnotes/types"
 
-function mockCitation(cleanStart: number, cleanEnd: number): Citation {
+function mockCitation(cleanStart: number, cleanEnd: number): FullCaseCitation {
   return {
     type: "case",
     text: "cite",
@@ -15,7 +15,7 @@ function mockCitation(cleanStart: number, cleanEnd: number): Citation {
     volume: 100,
     reporter: "F.2d",
     page: 100,
-  } as Citation
+  }
 }
 
 describe("tagCitationsWithFootnotes", () => {

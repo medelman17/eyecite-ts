@@ -4,11 +4,12 @@ import type { FootnoteMap } from "./types"
 const SEPARATOR_RE = /^\s*[-_]{5,}\s*$/m
 
 /**
- * Global regex matching any footnote marker at line start.
+ * Source pattern for footnote markers at line start.
  * Captures the footnote number from whichever group matches.
+ * Created as a fresh RegExp per call to avoid shared mutable lastIndex state.
  */
-const GLOBAL_MARKER_RE =
-  /^\s*(?:FN\s*(\d+)[.\s:)]|\[(\d+)\]\s|n\.\s*(\d+)\s|(\d+)\.\s)/gm
+const MARKER_SRC =
+  /^\s*(?:FN\s*(\d+)[.\s:)]|\[(\d+)\]\s|n\.\s*(\d+)\s|(\d+)\.\s)/gm.source
 
 /**
  * Detect footnote zones in plain text using separator + marker heuristics.
@@ -28,11 +29,12 @@ export function detectTextFootnotes(text: string): FootnoteMap {
 
   const footnoteSection = text.slice(sectionOffset)
 
-  GLOBAL_MARKER_RE.lastIndex = 0
+  // Fresh regex per call to avoid shared mutable lastIndex state
+  const markerRe = new RegExp(MARKER_SRC, "gm")
   const markers: { index: number; footnoteNumber: number }[] = []
   let match: RegExpExecArray | null
 
-  while ((match = GLOBAL_MARKER_RE.exec(footnoteSection)) !== null) {
+  while ((match = markerRe.exec(footnoteSection)) !== null) {
     const numStr = match[1] || match[2] || match[3] || match[4]
     if (!numStr) continue
     markers.push({

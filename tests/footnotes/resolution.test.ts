@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { DocumentResolver } from "@/resolve/DocumentResolver"
-import type { Citation } from "@/types/citation"
+import type { FullCaseCitation, IdCitation, SupraCitation } from "@/types/citation"
 
-function mockCase(start: number, end: number, overrides: Record<string, unknown> = {}): Citation {
+function mockCase(
+  start: number,
+  end: number,
+  overrides: Partial<Omit<FullCaseCitation, "type">> = {},
+): FullCaseCitation {
   return {
     type: "case",
     text: `cite-${start}`,
@@ -15,10 +19,10 @@ function mockCase(start: number, end: number, overrides: Record<string, unknown>
     reporter: "F.2d",
     page: 123,
     ...overrides,
-  } as Citation
+  }
 }
 
-function mockId(start: number, end: number): Citation {
+function mockId(start: number, end: number): IdCitation {
   return {
     type: "id",
     text: "Id.",
@@ -27,10 +31,10 @@ function mockId(start: number, end: number): Citation {
     confidence: 1.0,
     processTimeMs: 0,
     patternsChecked: 0,
-  } as Citation
+  }
 }
 
-function mockSupra(start: number, end: number, partyName: string): Citation {
+function mockSupra(start: number, end: number, partyName: string): SupraCitation {
   return {
     type: "supra",
     text: `${partyName}, supra`,
@@ -40,7 +44,7 @@ function mockSupra(start: number, end: number, partyName: string): Citation {
     processTimeMs: 0,
     patternsChecked: 0,
     partyName,
-  } as Citation
+  }
 }
 
 describe("Footnote-aware resolution", () => {
