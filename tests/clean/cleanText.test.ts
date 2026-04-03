@@ -3,7 +3,9 @@ import {
   cleanText,
   fixSmartQuotes,
   normalizeDashes,
+  normalizeTypography,
   normalizeWhitespace,
+  stripDiacritics,
   stripHtmlTags,
 } from "../../src/clean"
 
@@ -183,5 +185,144 @@ describe("normalizeDashes (issue #54)", () => {
 
   it("leaves regular hyphens unchanged", () => {
     expect(normalizeDashes("105-107")).toBe("105-107")
+  })
+
+  it("converts horizontal bar (U+2015) to triple hyphen", () => {
+    expect(normalizeDashes("500 F.4th \u2015 (2024)")).toBe("500 F.4th --- (2024)")
+  })
+
+  it("converts Unicode hyphen (U+2010) to ASCII hyphen", () => {
+    expect(normalizeDashes("105\u2010107")).toBe("105-107")
+  })
+
+  it("converts figure dash (U+2012) to ASCII hyphen", () => {
+    expect(normalizeDashes("105\u2012107")).toBe("105-107")
+  })
+})
+
+describe("normalizeWhitespace — Unicode whitespace (issue #11)", () => {
+  it("converts non-breaking space (U+00A0) to regular space", () => {
+    expect(normalizeWhitespace("42\u00A0U.S.C.")).toBe("42 U.S.C.")
+  })
+
+  it("collapses consecutive non-breaking spaces", () => {
+    expect(normalizeWhitespace("42\u00A0\u00A0U.S.C.")).toBe("42 U.S.C.")
+  })
+
+  it("converts thin space (U+2009) to regular space", () => {
+    expect(normalizeWhitespace("500\u2009F.2d")).toBe("500 F.2d")
+  })
+
+  it("converts en space (U+2002) and em space (U+2003) to regular space", () => {
+    expect(normalizeWhitespace("500\u2002F.2d\u2003123")).toBe("500 F.2d 123")
+  })
+
+  it("converts narrow no-break space (U+202F) to regular space", () => {
+    expect(normalizeWhitespace("§\u202F1983")).toBe("§ 1983")
+  })
+
+  it("converts ideographic space (U+3000) to regular space", () => {
+    expect(normalizeWhitespace("500\u3000F.2d")).toBe("500 F.2d")
+  })
+})
+
+describe("normalizeTypography (issue #11)", () => {
+  it("converts prime mark (U+2032) to apostrophe", () => {
+    expect(normalizeTypography("Doe\u2032s")).toBe("Doe's")
+  })
+
+  it("converts reversed prime (U+2035) to apostrophe", () => {
+    expect(normalizeTypography("Doe\u2035s")).toBe("Doe's")
+  })
+
+  it("strips zero-width space (U+200B)", () => {
+    expect(normalizeTypography("500\u200BF.2d")).toBe("500F.2d")
+  })
+
+  it("strips word joiner (U+2060)", () => {
+    expect(normalizeTypography("42\u2060 U.S.C.")).toBe("42 U.S.C.")
+  })
+
+  it("strips BOM/ZWNBSP (U+FEFF) inline", () => {
+    expect(normalizeTypography("\uFEFF500 F.2d 123")).toBe("500 F.2d 123")
+  })
+
+  it("strips zero-width non-joiner (U+200C) and joiner (U+200D)", () => {
+    expect(normalizeTypography("F.\u200C2d")).toBe("F.2d")
+    expect(normalizeTypography("F.\u200D2d")).toBe("F.2d")
+  })
+
+  it("leaves normal text unchanged", () => {
+    expect(normalizeTypography("Smith v. Doe, 500 F.2d 123")).toBe("Smith v. Doe, 500 F.2d 123")
+  })
+})
+
+describe("stripDiacritics — opt-in OCR cleaner (issue #11)", () => {
+  it("strips acute accents (é → e)", () => {
+    expect(stripDiacritics("Hernández")).toBe("Hernandez")
+  })
+
+  it("strips umlauts (ü → u)", () => {
+    expect(stripDiacritics("Müller")).toBe("Muller")
+  })
+
+  it("strips cedilla (ç → c)", () => {
+    expect(stripDiacritics("François")).toBe("Francois")
+  })
+
+  it("strips tilde (ñ → n)", () => {
+    expect(stripDiacritics("Muñoz")).toBe("Munoz")
+  })
+
+  it("handles multiple diacritics in one string", () => {
+    expect(stripDiacritics("Hérnandéz v. García")).toBe("Hernandez v. Garcia")
+  })
+
+  it("leaves ASCII text unchanged", () => {
+    expect(stripDiacritics("Smith v. Doe, 500 F.2d 123")).toBe("Smith v. Doe, 500 F.2d 123")
+  })
+
+  it("preserves section symbols and other non-diacritic Unicode", () => {
+    expect(stripDiacritics("42 U.S.C. § 1983")).toBe("42 U.S.C. § 1983")
+  })
+})
+
+describe("full pipeline — OCR-like legal text (issue #11)", () => {
+  it("normalizes Unicode whitespace and dashes in default pipeline", () => {
+    // Simulates OCR text with NBSP, em-dash placeholder, and en-dash range
+    const input = "See Smith v. Doe, 500\u00A0F.4th\u00A0\u2014 (2024), 105\u2013107"
+    const result = cleanText(input)
+    expect(result.cleaned).toContain("500 F.4th --- (2024)")
+    expect(result.cleaned).toContain("105-107")
+  })
+
+  it("strips zero-width characters that would break patterns", () => {
+    const input = "500\u200B F.2d 123"
+    const result = cleanText(input)
+    expect(result.cleaned).toBe("500 F.2d 123")
+  })
+
+  it("handles horizontal bar as blank page placeholder", () => {
+    const input = "500 F.4th \u2015 (2024)"
+    const result = cleanText(input)
+    expect(result.cleaned).toContain("500 F.4th --- (2024)")
+  })
+
+  it("supports opt-in stripDiacritics in custom pipeline", () => {
+    const input = "Hernández v. García, 500 F.2d 123"
+    const result = cleanText(input, [stripDiacritics])
+    expect(result.cleaned).toBe("Hernandez v. Garcia, 500 F.2d 123")
+  })
+
+  it("tracks positions correctly through typography normalization", () => {
+    // Prime mark (1 char) → apostrophe (1 char) = same-length replacement
+    const input = "Doe\u2032s case, 500 F.2d 123"
+    const result = cleanText(input, [normalizeTypography])
+    expect(result.cleaned).toBe("Doe's case, 500 F.2d 123")
+
+    // Position of "5" in "500" should be preserved
+    const cleanPos = result.cleaned.indexOf("500")
+    const originalPos = result.transformationMap.cleanToOriginal.get(cleanPos)
+    expect(originalPos).toBe(input.indexOf("500"))
   })
 })
