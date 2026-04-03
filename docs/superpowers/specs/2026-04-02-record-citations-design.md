@@ -2,13 +2,13 @@
 
 **Date:** 2026-04-02
 **Issue:** #74
-**Status:** Approved
+**Status:** Draft
 
 ## Overview
 
 Add extraction of record citations — references to documents within a case's own record (transcripts, exhibits, docket entries, pleadings, appendices, etc.). These appear in appellate briefs, trial briefs, summary judgment motions, and other litigation filings.
 
-Record citations are fundamentally different from authority citations: they reference the trial record, not published law, and are never shepherdized. This spec covers ~50 abbreviation forms across 7 categories of court documents.
+Record citations are fundamentally different from authority citations: they reference the trial record, not published law, and are never shepardized. This spec covers ~50 abbreviation forms across 7 categories of court documents.
 
 ---
 
@@ -22,6 +22,19 @@ Record citations are fundamentally different from authority citations: they refe
 | Resolution | `Id.` can resolve to record citations in v1 | Bluebook explicitly permits `Id.` for record cites. `extractAllCitations()` merges both sets for resolver input. |
 | State-specific forms | Always active | TX (`CR`, `RR`) and CA (`CT`, `RT`) forms are distinctive enough with trailing numbers. No opt-in flag needed. |
 | `A.` disambiguation | Support with low confidence (0.45), require no preceding volume number and no series suffix (`2d`, `3d`) | Distinguishes `A. 123` (appendix) from `123 A.2d 456` (Atlantic Reporter). |
+| Range modeling | Flat fields throughout | Consistent with existing codebase style (`FullCaseCitation` uses flat optional fields). All range types use `start`/`end` pairs as flat fields. |
+| Merge strategy | Two-pass extraction with span-conflict resolution | Authority and record extraction run independently. Overlapping spans resolved by confidence, with authority winning ties. |
+| `Reply` disambiguation | Require party prefix, parenthetical wrapping, or paragraph symbol | `Reply` is a complete English word; bare `Reply 5` produces too many false positives. |
+| Transcript dates | Deferred to v2 | `Tr. 50:1, Jan. 15, 2024` — date extraction adds complexity with low signal value for citation identification. |
+| Non-contiguous paragraphs | Deferred to v2 | `Compl. ¶¶ 10, 12, 15` — comma-separated lists require list-type fields. Ranges (`¶¶ 10-12`) are sufficient for v1. |
+
+---
+
+## Versioning Impact
+
+Adding `"record"` to the `CitationType` discriminated union is a **breaking change** for consumers with exhaustive `switch(citation.type)` statements. Their code will get a compile error until they add a `"record"` case.
+
+This requires a **semver-major bump** (or a minor bump with a prominent changeset note, per project convention). The changeset must call out the type union expansion.
 
 ---
 
@@ -31,17 +44,34 @@ Record citations are fundamentally different from authority citations: they refe
 interface RecordCitation extends CitationBase {
   type: "record"
   recordType: RecordType
+
+  // Context
   party?: string          // "Def.", "Pl.", "Gov't", etc.
   declarant?: string      // "Smith", "Jones" — backward search from abbreviation
+
+  // Page pinpoint (used by page-ref and transcript groups)
   page?: number
-  pageSuffix?: string     // "a" in "12a"
-  line?: { start: number; end?: number }
+  pageEnd?: number        // for ranges: R. at 45-52
+  pageSuffix?: string     // "a" in "12a" (Pet. App. 12a)
+  pageEndSuffix?: string  // "a" in "32a" (Pet. App. 12a-32a)
+
+  // Line pinpoint (transcripts: Tr. 50:1-15)
+  line?: number
+  lineEnd?: number
+
+  // Paragraph pinpoint (pleadings: Compl. ¶¶ 10-12)
   paragraph?: number
-  paragraphEnd?: number   // for ranges: ¶¶ 10-12
-  entryNumber?: number    // Dkt. No. 45, ECF No. 12
-  attachmentNumber?: number // ECF 12-2 → 2
+  paragraphEnd?: number
+
+  // Entry pinpoint (docket/ECF)
+  entryNumber?: number
+  attachmentNumber?: number  // ECF 12-2 → 2
+
+  // Exhibit/designation
   designation?: string    // "A" in Ex. A (letter/number exhibit designation)
-  volume?: number         // multi-volume records: 2CR4, Vol. 2
+
+  // Multi-volume records
+  volume?: number         // 2CR4, Vol. 2
 }
 
 type RecordType =
@@ -67,7 +97,7 @@ type RecordType =
   | "declaration"             // Decl.
   | "motion"                  // Mot.
   | "opposition"              // Opp'n, Opp.
-  | "reply"                   // Reply
+  | "reply"                   // Reply (requires party prefix or ¶)
   | "memorandum"              // Mem.
   | "stipulation"             // Stip., Jt. Stip.
   | "interrogatory"           // Interrog.
@@ -78,6 +108,22 @@ type RecordType =
   | "clerks_transcript"       // CT (California)
   | "reporters_transcript"    // RT (California)
 ```
+
+### Field Applicability
+
+Not every field applies to every `recordType`. This table documents which fields are populated by which pattern groups, so consumers know what to expect:
+
+| Field | Page-ref group | Paragraph-ref group | Entry-ref group | Transcript group |
+|---|---|---|---|---|
+| `page` / `pageEnd` | yes | — | optional (`at PAGE`) | yes |
+| `pageSuffix` / `pageEndSuffix` | yes (appendixes) | — | — | — |
+| `line` / `lineEnd` | — | — | — | yes |
+| `paragraph` / `paragraphEnd` | — | yes | — | — |
+| `entryNumber` / `attachmentNumber` | — | — | yes | — |
+| `designation` | — | — | yes (exhibits) | — |
+| `volume` | yes (TX multi-vol) | — | — | — |
+| `party` | any | any | any | — |
+| `declarant` | — | affidavit, declaration | — | deposition |
 
 ---
 
@@ -104,7 +150,7 @@ interface RecordCitationOptions {
 
 interface ExtractAllOptions {
   cleaners?: Cleaner[]
-  // existing extractCitations options pass through
+  // All existing extractCitations options pass through
 }
 ```
 
@@ -131,12 +177,34 @@ Both `extractRecordCitations` and `extractAllCitations` export from the main `ey
 
 ---
 
+## Merge Semantics: `extractAllCitations()`
+
+`extractAllCitations()` runs two independent extraction passes and merges results:
+
+1. **Pass 1:** `extractCitations(text, options)` → authority citations
+2. **Pass 2:** `extractRecordCitations(text, options)` → record citations
+3. **Merge:** Concatenate, sort by `span.cleanStart`, then resolve overlaps
+
+### Span-Conflict Resolution
+
+When two citations from different passes overlap in span position:
+
+1. **Higher confidence wins.** The citation with the greater `confidence` value is kept; the other is discarded.
+2. **Authority wins ties.** If confidence is equal (or within 0.01), the authority citation is kept. Authority citations have stronger downstream utility (verification, shepardization).
+3. **No partial overlap.** If spans partially overlap (one starts inside another), both are kept with a `warning` added to each noting the overlap. This is rare but possible with adjacent abbreviations.
+
+### Performance Note
+
+Two-pass extraction doubles tokenization work. For typical legal briefs (5,000–50,000 words) this is negligible. For very large documents (100K+ words), callers who only need one type should use the standalone functions directly.
+
+---
+
 ## Pattern Strategy
 
 ### Pattern Group 1: Page-Reference
 
 ```
-[PARTY]? ABBREV [at]? PAGE[SUFFIX]?
+[PARTY]? ABBREV [at]? PAGE[-PAGE]?[SUFFIX]?
 ```
 
 | Abbreviation(s) | `recordType` | Notes |
@@ -172,7 +240,7 @@ Both `extractRecordCitations` and `extractAllCitations` export from the main `ey
 | `Decl.` | `declaration` | Declarant backward search applies. |
 | `Mot.` | `motion` | |
 | `Opp'n`, `Opp.` | `opposition` | |
-| `Reply` | `reply` | |
+| `Reply` | `reply` | **Requires** party prefix (`Def. Reply`), parenthetical wrapping (`(Reply 5.)`), or paragraph symbol (`Reply ¶ 5`). Bare `Reply 5` does not match. |
 | `Mem.` | `memorandum` | |
 | `Stip.`, `Jt. Stip.` | `stipulation` | |
 | `Interrog.` | `interrogatory` | Uses "No." instead of ¶. |
@@ -219,7 +287,7 @@ Both `extractRecordCitations` and `extractAllCitations` export from the main `ey
 Longer/more-specific abbreviations match first:
 1. Multi-word compounds: `Pet. App.`, `Am. Compl.`, `ECF No.`, `Hr'g Tr.`, `Dep. Tr.`, etc.
 2. Single abbreviations with periods: `Compl.`, `Aff.`, `Decl.`, `Dkt.`, etc.
-3. Short/ambiguous forms: `R.`, `A.`, `Ex.`, `Br.`, `CR`, `RR`, etc.
+3. Short/ambiguous forms: `R.`, `A.`, `Ex.`, `Doc.`, `DE`, `Br.`, `CR`, `RR`, etc.
 
 ---
 
@@ -229,7 +297,16 @@ Follows the `extractCaseName` architectural pattern.
 
 **When:** After matching the citation core for depositions, affidavits, and declarations.
 
-**How:** From the start of the abbreviation, search backward up to 50 characters for capitalized words. Stop at sentence boundaries (`. [A-Z]`), semicolons, opening parentheses, or commas followed by non-name text.
+**How:** From the start of the abbreviation, search backward up to 50 characters for capitalized words.
+
+**Boundary stops:** The search terminates at:
+- Double newline (paragraph boundary)
+- Semicolon (citation list separator)
+- Opening parenthesis
+- Comma followed by lowercase text (not a name continuation)
+- A digit-period-space sequence (`\d\.\s`) — prevents crossing into a prior numbered citation
+
+**Not** a sentence boundary stop: single period followed by uppercase (`Dr. Smith`, `St. Louis`). These are common abbreviation-period patterns within names. The existing `extractCaseName` uses `/\d\.\s+/g` as its boundary, not `/\.\s+[A-Z]/` — this extractor follows the same approach.
 
 **Examples:**
 - `Smith Dep. 45:3` → declarant: `Smith`
@@ -250,10 +327,30 @@ Merges authority citations (`extractCitations()`) and record citations (`extract
 
 ### `DocumentResolver` Changes
 
-- Record citations become valid antecedents for `Id.` resolution.
-- When `Id.` resolves to a record citation, the resolved reference carries forward the `recordType`.
+**Eligible antecedents for `Id.`:**
+- Record citations become valid antecedents for `Id.` resolution, alongside existing case citations.
+- The resolver uses "most recent antecedent" — whichever citation (authority or record) is physically closest before the `Id.` wins.
 - Only `Id.` can resolve to record citations. `supra` and short-form case citations cannot.
 - Same scope boundary rules as authority citations (paragraph/footnote scope).
+
+**Pincite forwarding:**
+- When `Id.` has a pincite (e.g., `Id. at 50`), the pincite overrides the antecedent's page, same as for case citations.
+- When `Id.` has no pincite, it inherits the antecedent's full pinpoint unchanged.
+- The resolved reference carries forward the antecedent's `recordType`.
+
+**Type narrowing impact:**
+- Currently, a resolved `IdCitation` always points to a `FullCaseCitation`. After this change, it may point to a `RecordCitation`.
+- Consumers who access the resolved antecedent must handle both types. The `resolvedTo` index already requires consumers to look up the target citation and check its type — no API change needed, but the **behavioral contract** changes.
+
+**Example resolution sequence:**
+```
+Smith v. Jones, 500 F.2d 123    ← authority citation (index 0)
+R. at 45                        ← record citation (index 1)
+Id. at 50                       ← resolves to R. (index 1), page=50
+Id.                             ← resolves to Id. → R. (index 1), page=50
+600 F.2d 789                    ← authority citation (index 4)
+Id. at 800                      ← resolves to 600 F.2d (index 4), pincite=800
+```
 
 This is a surgical change: add `"record"` to the set of types eligible as `Id.` antecedents in the resolver.
 
@@ -267,12 +364,25 @@ This is a surgical change: add `"record"` to the set of types eligible as `Id.` 
 |---|---|---|
 | High (0.85) | Multi-word compounds | `Pet. App.`, `ECF No.`, `Hr'g Tr.`, `Sent. Tr.`, `Plea Tr.`, `Arg. Tr.`, `Jt. Stip.`, `Am. Compl.`, `Dep. Tr.`, `Trial Tr.`, `Dkt. No.`, `Doc. No.`, `Req. Admis.`, `Supp. CR`, `Supp. RR` |
 | Medium (0.65) | Abbreviation + distinctive pinpoint | `Tr.` + page:line, `Compl.` + ¶, `Aff.` + ¶, `Decl.` + ¶, `Dkt.` + number, `J.A.` + page, `S.A.` + page, `CR`/`RR` + number, `SMF`/`SOMF` + ¶ |
-| Lower (0.45) | Short/ambiguous forms | `R. at`, `A.`, `Ex.`, `Doc.`, `DE`, `Br.`, `Mot.`, `Opp'n`, `Reply`, `Mem.`, `Ans.` |
+| Lower (0.45) | Short/ambiguous forms | `R. at`, `A.`, `Ex.`, `Doc.`, `DE`, `Br.`, `Mot.`, `Opp'n`, `Mem.`, `Ans.` |
 
 ### Confidence Bumps
 
 - **+0.1** if wrapped in parentheses — `(R. at 45.)` is more likely a citation than bare `R. at 45`
 - **+0.05** if party prefix present — `Def. Mot. 12` is more clearly a record cite than `Mot. 12`
+
+---
+
+## Explicitly Deferred to v2
+
+These features are out of scope for v1 to keep the initial implementation focused:
+
+| Feature | Example | Why deferred |
+|---|---|---|
+| Transcript dates | `Tr. 50:1, Jan. 15, 2024` | Date parsing adds complexity with low signal value for citation identification. The date doesn't affect what was cited. |
+| Non-contiguous paragraph lists | `Compl. ¶¶ 10, 12, 15` | Requires a list-type field (`paragraphs: number[]`) rather than a simple range. Ranges (`¶¶ 10-12`) cover the most common case. |
+| `supra` resolution for record cites | `Aff., supra, ¶ 5` | Rare in practice. `Id.` covers the vast majority of record citation back-references. |
+| Record-to-record short forms | — | No established convention exists. |
 
 ---
 
@@ -283,7 +393,7 @@ This is a surgical change: add `"record"` to the set of types eligible as `Id.` 
 - One `describe` block per record type category (page-ref, para-ref, entry-ref, transcript)
 - Mock tokens with `createIdentityMap()`, same pattern as existing extractors
 - Test each abbreviation variant, pinpoint parsing, party prefix, declarant backward search
-- Edge cases: missing page, page suffix letters, line ranges, paragraph ranges, multi-volume (TX)
+- Edge cases: missing page, page suffix letters, page ranges, line ranges, paragraph ranges, multi-volume (TX)
 
 ### Integration Tests (`tests/integration/recordCitations.test.ts`)
 
@@ -297,6 +407,26 @@ This is a surgical change: add `"record"` to the set of types eligible as `Id.` 
 - `Ex.` in non-citation context
 - `R.` as a person's initial
 - Authority + record citations in same sentence don't interfere
+
+### Regression Tests (`tests/extract/recordRegression.test.ts`)
+
+- Run the existing authority citation test suite with `extractAllCitations()` instead of `extractCitations()` and confirm identical results for all authority citations
+- Ensure no existing test changes output when record extraction is added
+
+### Merge & Overlap Tests (`tests/integration/extractAllMerge.test.ts`)
+
+- `A.` span that could be either appendix or Atlantic Reporter — verify confidence-based resolution picks the right one
+- Authority citation immediately adjacent to a record citation (no gap between spans) — both preserved
+- Same sentence containing `500 F.2d 123` and `R. at 45` — both extracted, correctly ordered
+- `Doc. 45 at 3` does not collide with any authority pattern
+
+### Boundary Tests (`tests/integration/recordBoundary.test.ts`)
+
+- Record citation at start of document, end of document, inside parenthetical
+- `Reply 5` without party prefix/parens/¶ — should NOT match
+- `Def. Reply 5` — should match
+- `(Reply 5.)` — should match
+- `Reply ¶ 5` — should match
 
 ---
 
