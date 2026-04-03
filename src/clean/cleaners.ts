@@ -24,7 +24,9 @@ export function stripHtmlTags(text: string): string {
  * // => "Smith v. Doe, 500 F.2d 123"
  */
 export function normalizeWhitespace(text: string): string {
-  return text.replace(/[\t\n\r]+/g, " ").replace(/ {2,}/g, " ")
+  return text
+    .replace(/[\t\n\r\u00A0\u2000-\u200A\u202F\u205F\u3000]+/g, " ")
+    .replace(/ {2,}/g, " ")
 }
 
 /**
@@ -78,7 +80,9 @@ export function removeOcrArtifacts(text: string): string {
  * // => "500 F.4th --- (2024)"
  */
 export function normalizeDashes(text: string): string {
-  return text.replace(/\u2014/g, "---").replace(/\u2013/g, "-")
+  return text
+    .replace(/[\u2014\u2015]/g, "---") // em-dash, horizontal bar → triple hyphen
+    .replace(/[\u2010\u2012\u2013]/g, "-") // hyphen, figure dash, en-dash → hyphen
 }
 
 /**
@@ -150,4 +154,41 @@ export function normalizeReporterSpacing(text: string): string {
   result = result.replace(/([A-Za-z])\.\s+(\d+[a-z]+)/g, "$1.$2")
 
   return result
+}
+
+/**
+ * Normalize typographical symbols and strip zero-width characters.
+ *
+ * Handles prime marks (common OCR substitution for apostrophes) and invisible
+ * Unicode characters that can silently break regex pattern matching.
+ *
+ * @example
+ * normalizeTypography("Doe\u2032s case")  // prime mark
+ * // => "Doe's case"
+ *
+ * @example
+ * normalizeTypography("500\u200BF.2d")  // zero-width space
+ * // => "500F.2d"
+ */
+export function normalizeTypography(text: string): string {
+  return text
+    .replace(/[\u2032\u2035]/g, "'") // prime, reversed prime → apostrophe
+    .replace(/\u200B|\u200C|\u200D|\u2060|\uFEFF/g, "") // zero-width chars
+}
+
+/**
+ * Strip diacritical marks from text (opt-in OCR cleaner).
+ *
+ * Uses Unicode NFD decomposition to separate base characters from combining
+ * marks, then strips the marks. Useful for OCR'd legal documents where
+ * accented characters are artifacts of misrecognition.
+ *
+ * NOT included in the default pipeline — call explicitly or pass in cleaners array.
+ *
+ * @example
+ * stripDiacritics("Hernández v. García")
+ * // => "Hernandez v. Garcia"
+ */
+export function stripDiacritics(text: string): string {
+  return text.normalize("NFD").replace(/[\u0300-\u036F]/g, "")
 }
