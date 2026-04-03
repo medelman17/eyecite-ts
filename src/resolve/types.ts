@@ -5,6 +5,7 @@
  * and resolves short-form citations (Id./supra/short-form case) to their full forms.
  */
 
+import type { FootnoteMap } from "../footnotes/types"
 import type { Citation, ShortFormCitation } from "../types/citation"
 
 /**
@@ -63,6 +64,13 @@ export interface ResolutionOptions {
    * If false: resolution field will be undefined for unresolved citations
    */
   reportUnresolved?: boolean
+
+  /**
+   * Footnote zone map for footnote-aware scoping.
+   * When scopeStrategy is "footnote" and this is provided, citations are
+   * scoped by footnote zones instead of paragraphs.
+   */
+  footnoteMap?: FootnoteMap | undefined
 }
 
 /**

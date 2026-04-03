@@ -116,3 +116,10 @@ export type {
   ResolvedCitation,
   ScopeStrategy,
 } from "./resolve/types"
+
+// ============================================================================
+// Footnote Detection
+// ============================================================================
+
+export { detectFootnotes } from "./footnotes"
+export type { FootnoteMap, FootnoteZone } from "./footnotes"

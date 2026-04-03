@@ -12,6 +12,10 @@
  */
 
 import { cleanText } from "@/clean"
+import { detectFootnotes } from "@/footnotes/detectFootnotes"
+import { mapFootnoteZones } from "@/footnotes/mapZones"
+import { tagCitationsWithFootnotes } from "@/footnotes/tagging"
+import type { FootnoteMap } from "@/footnotes/types"
 import {
   extractCase,
   extractConstitutional,
@@ -130,6 +134,9 @@ export interface ExtractOptions {
    * ```
    */
   filterFalsePositives?: boolean
+
+  /** Detect footnote zones and annotate citations with inFootnote/footnoteNumber (default: false) */
+  detectFootnotes?: boolean
 }
 
 /**
@@ -203,6 +210,15 @@ export function extractCitations(
 
   // Step 1: Clean text
   const { cleaned, transformationMap, warnings } = cleanText(text, options?.cleaners)
+
+  // Step 1.5: Detect footnote zones (opt-in)
+  let cleanFootnoteMap: FootnoteMap | undefined
+  if (options?.detectFootnotes) {
+    const rawZones = detectFootnotes(text)
+    if (rawZones.length > 0) {
+      cleanFootnoteMap = mapFootnoteZones(rawZones, transformationMap)
+    }
+  }
 
   // Step 2: Tokenize (synchronous)
   // Note: Pattern order matters for deduplication - more specific patterns first
@@ -385,9 +401,17 @@ export function extractCitations(
   // Step 4.9: Apply false positive filters (blocklist + year heuristic)
   const filtered = applyFalsePositiveFilters(citations, options?.filterFalsePositives ?? false)
 
+  // Step 4.95: Tag citations with footnote metadata
+  if (cleanFootnoteMap) {
+    tagCitationsWithFootnotes(filtered, cleanFootnoteMap)
+  }
+
   // Step 5: Resolve short-form citations if requested
   if (options?.resolve) {
-    return resolveCitations(filtered, text, options.resolutionOptions)
+    const resolutionOpts = cleanFootnoteMap
+      ? { ...options.resolutionOptions, footnoteMap: cleanFootnoteMap }
+      : options.resolutionOptions
+    return resolveCitations(filtered, text, resolutionOpts)
   }
 
   return filtered

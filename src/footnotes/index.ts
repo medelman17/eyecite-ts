@@ -1,0 +1,6 @@
+export type { FootnoteMap, FootnoteZone } from "./types"
+export { detectHtmlFootnotes } from "./htmlDetector"
+export { detectTextFootnotes } from "./textDetector"
+export { detectFootnotes } from "./detectFootnotes"
+export { tagCitationsWithFootnotes } from "./tagging"
+export { mapFootnoteZones } from "./mapZones"

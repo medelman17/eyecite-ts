@@ -87,6 +87,12 @@ export interface CitationBase {
 
   /** Total number of citations in this string citation group */
   stringCitationGroupSize?: number
+
+  /** Whether this citation appears in a footnote (only populated when detectFootnotes enabled) */
+  inFootnote?: boolean
+
+  /** Footnote number, if applicable (only populated when detectFootnotes enabled) */
+  footnoteNumber?: number
 }
 
 /**

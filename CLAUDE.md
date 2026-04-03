@@ -33,6 +33,14 @@ Citations flow through a 4-stage pipeline: **clean → tokenize → extract → 
    - `dates.ts` provides date parsing utilities (`parseMonth`, `parseDate`, `toIsoDate`) for structured date extraction from parentheticals.
 4. **Resolve** (`src/resolve/`): Link short-form citations (Id., supra, short-form case) to their full antecedents. `DocumentResolver` uses scope boundaries and Levenshtein matching.
 
+### Footnote Detection
+
+Opt-in via `extractCitations(text, { detectFootnotes: true })`. Runs before cleaning on the raw text to preserve newline structure. Two strategies:
+- **HTML** (`src/footnotes/htmlDetector.ts`): Regex-based tag scanner for `<footnote>`, `<fn>`, and elements with footnote class/id attributes. No DOM dependency.
+- **Plain text** (`src/footnotes/textDetector.ts`): Finds separator lines (5+ dashes/underscores) followed by numbered markers (`1.`, `FN1.`, `[1]`, `n.1`).
+
+`detectFootnotes(text)` selects the strategy (HTML first, text fallback) and returns a `FootnoteMap` (array of `{ start, end, footnoteNumber }` zones). The pipeline maps zones through `TransformationMap` to clean-text coordinates, then tags citations with `inFootnote`/`footnoteNumber` via binary search. The `"footnote"` scope strategy in the resolver enforces zone-based isolation: Id. is strict (same zone only), supra/shortFormCase can cross from footnotes to body.
+
 Annotation (`src/annotate/`) and reporter data (`src/data/`) are separate entry points to enable tree-shaking.
 
 ### Position Tracking
