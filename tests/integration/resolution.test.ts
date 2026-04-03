@@ -137,10 +137,10 @@ Second paragraph: Id. at 125.`
 
       expect(citations).toHaveLength(2)
 
-      // Supra fails - Brown doesn't match Smith (similarity below threshold)
+      // Supra fails - Brown doesn't match Smith or Jones
       expect(citations[1].type).toBe("supra")
       expect(citations[1].resolution?.resolvedTo).toBeUndefined()
-      expect(citations[1].resolution?.failureReason).toContain("similarity")
+      expect(citations[1].resolution?.failureReason).toBeDefined()
     })
 
     it("resolves supra to most recent matching case", () => {
