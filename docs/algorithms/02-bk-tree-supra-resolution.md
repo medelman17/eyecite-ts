@@ -1,6 +1,6 @@
 # ALG-02: BK-Tree for Supra Resolution
 
-**Status:** Ready
+**Status:** Complete
 **Priority:** 3 (implement after ALG-03)
 **Textbook References:** CLRS Ch.32 (string matching), Sedgewick Ch.5.2 (tries and string search)
 **Target Files:** `src/resolve/DocumentResolver.ts` lines 161-204, new `src/resolve/bkTree.ts`

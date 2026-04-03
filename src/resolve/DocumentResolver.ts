@@ -18,7 +18,8 @@ import type {
   SupraCitation,
 } from "../types/citation"
 import { isFullCitation } from "../types/guards"
-import { normalizedLevenshteinDistance } from "./levenshtein"
+import { BKTree } from "./bkTree"
+import { levenshteinDistance } from "./levenshtein"
 import { buildFootnoteScopes, detectParagraphBoundaries, isWithinBoundary } from "./scopeBoundary"
 import type {
   ResolutionContext,
@@ -38,6 +39,7 @@ export class DocumentResolver {
     footnoteMap: ResolutionOptions["footnoteMap"]
   }
   private readonly context: ResolutionContext
+  private readonly partyNameTree: BKTree
 
   /**
    * Creates a new DocumentResolver.
@@ -61,6 +63,8 @@ export class DocumentResolver {
       reportUnresolved: options.reportUnresolved ?? true,
       footnoteMap: options.footnoteMap,
     }
+
+    this.partyNameTree = new BKTree(levenshteinDistance)
 
     // Initialize resolution context
     this.context = {
@@ -170,19 +174,30 @@ export class DocumentResolver {
     const currentIndex = this.context.citationIndex
     const targetPartyName = this.normalizePartyName(citation.partyName)
 
-    // Search full citation history for matching party name
+    // Query BK-Tree for candidates within distance threshold, then filter by scope
+    const queryLen = targetPartyName.length
+    const threshold = this.options.partyMatchThreshold
+    // Safe upper bound: guarantees no match with similarity >= threshold is missed
+    const maxDistance = queryLen === 0 ? 0 : Math.ceil((queryLen * (1 - threshold)) / threshold)
+    const candidates = this.partyNameTree.query(targetPartyName, maxDistance)
+
+    // Sort by insertion order to match Map iteration behavior (first-inserted wins on ties)
+    candidates.sort((a, b) => a.insertionOrder - b.insertionOrder)
+
     let bestMatch: { index: number; similarity: number } | undefined
 
-    for (const [partyName, citationIndex] of this.context.fullCitationHistory) {
+    for (const candidate of candidates) {
+      const citationIndex = this.context.fullCitationHistory.get(candidate.key)
+      if (citationIndex === undefined) continue
+
       // Check scope boundary (supra allows cross-zone: footnote -> body)
-      if (!this.isWithinScope(citationIndex, currentIndex, true)) {
-        continue
-      }
+      if (!this.isWithinScope(citationIndex, currentIndex, true)) continue
 
-      // Calculate similarity
-      const similarity = normalizedLevenshteinDistance(targetPartyName, partyName)
+      // Convert distance to normalized similarity
+      const maxLen = Math.max(queryLen, candidate.key.length)
+      const similarity = maxLen === 0 ? 1.0 : 1 - candidate.distance / maxLen
 
-      // Update best match if this is better
+      // Update best match if this is better (strict > preserves first-wins tie-breaking)
       if (!bestMatch || similarity > bestMatch.similarity) {
         bestMatch = { index: citationIndex, similarity }
       }
@@ -260,9 +275,11 @@ export class DocumentResolver {
       // Defendant name stored first (preferred for Bluebook-style supra matching)
       if (citation.defendantNormalized) {
         this.context.fullCitationHistory.set(citation.defendantNormalized, index)
+        this.partyNameTree.insert(citation.defendantNormalized)
       }
       if (citation.plaintiffNormalized) {
         this.context.fullCitationHistory.set(citation.plaintiffNormalized, index)
+        this.partyNameTree.insert(citation.plaintiffNormalized)
       }
 
       // Fallback: backward search from text (pre-Phase 7 compatibility)
@@ -271,6 +288,7 @@ export class DocumentResolver {
         if (partyName) {
           const normalized = this.normalizePartyName(partyName)
           this.context.fullCitationHistory.set(normalized, index)
+          this.partyNameTree.insert(normalized)
         }
       }
     }
