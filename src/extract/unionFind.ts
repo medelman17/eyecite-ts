@@ -16,11 +16,12 @@ export class UnionFind {
 
   /** Find the root (canonical representative) of the set containing x. */
   find(x: number): number {
-    while (this.parent[x] !== x) {
-      this.parent[x] = this.parent[this.parent[x]] // path halving
-      x = this.parent[x]
+    let current = x
+    while (this.parent[current] !== current) {
+      this.parent[current] = this.parent[this.parent[current]] // path halving
+      current = this.parent[current]
     }
-    return x
+    return current
   }
 
   /** Merge the sets containing x and y. Lower index becomes root. */
