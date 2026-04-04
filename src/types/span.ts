@@ -41,6 +41,9 @@ export interface TransformationMap {
 
   /** Maps original text position to cleaned text position */
   originalToClean: Map<number, number>
+
+  /** Compressed segment-based clean→original mapping for O(log k) lookup */
+  cleanToOriginalSegments?: import("../clean/segmentMap").SegmentMap
 }
 
 /** Translate clean-text span positions back to original-text positions. */
@@ -48,6 +51,13 @@ export function resolveOriginalSpan(
   span: { cleanStart: number; cleanEnd: number },
   map: TransformationMap,
 ): { originalStart: number; originalEnd: number } {
+  // Prefer segment map (binary search) when available
+  if (map.cleanToOriginalSegments) {
+    return {
+      originalStart: map.cleanToOriginalSegments.lookup(span.cleanStart),
+      originalEnd: map.cleanToOriginalSegments.lookup(span.cleanEnd),
+    }
+  }
   return {
     originalStart: map.cleanToOriginal.get(span.cleanStart) ?? span.cleanStart,
     originalEnd: map.cleanToOriginal.get(span.cleanEnd) ?? span.cleanEnd,
