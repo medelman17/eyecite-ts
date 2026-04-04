@@ -1,5 +1,15 @@
 # eyecite-ts
 
+## 0.7.2
+
+### Patch Changes
+
+- [#118](https://github.com/medelman17/eyecite-ts/pull/118) [`2f7b964`](https://github.com/medelman17/eyecite-ts/commit/2f7b96457b65a582d67df09f7e9d0ca1d6e29f2e) Thanks [@medelman17](https://github.com/medelman17)! - Improve short-form citation recall for Id., supra, and shortFormCase patterns.
+
+  - Id: handle comma before pincite (`Id., at 105`) and page range pincites (`Id. at 5-6`)
+  - Supra: support hyphenated names, apostrophes, period-ending names, and `supra note N` with pincite
+  - ShortFormCase: fix two-letter ordinal suffixes in reporters (`F.4th`, `Cal.4th`)
+
 ## 0.7.1
 
 ### Patch Changes
