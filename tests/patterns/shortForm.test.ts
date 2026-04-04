@@ -59,6 +59,24 @@ describe("ID_PATTERN", () => {
     const match = ID_PATTERN.exec(text)
     expect(match).toBeNull()
   })
+
+  it("should match Id. with comma before pincite", () => {
+    ID_PATTERN.lastIndex = 0
+    const text = "Id., at 105"
+    const match = ID_PATTERN.exec(text)
+    expect(match).not.toBeNull()
+    expect(match?.[0]).toBe("Id., at 105")
+    expect(match?.[1]).toBe("105")
+  })
+
+  it("should match Id. with page range pincite", () => {
+    ID_PATTERN.lastIndex = 0
+    const text = "Id. at 5-6"
+    const match = ID_PATTERN.exec(text)
+    expect(match).not.toBeNull()
+    expect(match?.[0]).toBe("Id. at 5-6")
+    expect(match?.[1]).toBe("5-6")
+  })
 })
 
 describe("IBID_PATTERN", () => {
@@ -102,7 +120,7 @@ describe("SUPRA_PATTERN", () => {
     expect(match).not.toBeNull()
     expect(match?.[0]).toBe("Smith, supra, at 460")
     expect(match?.[1]).toBe("Smith")
-    expect(match?.[2]).toBe("460") // Capture group for pincite
+    expect(match?.[3]).toBe("460") // Capture group 3 for pincite (group 2 is note number)
   })
 
   it("should match supra without comma before at", () => {
@@ -111,7 +129,7 @@ describe("SUPRA_PATTERN", () => {
     const match = SUPRA_PATTERN.exec(text)
     expect(match).not.toBeNull()
     expect(match?.[1]).toBe("Jones")
-    expect(match?.[2]).toBe("125")
+    expect(match?.[3]).toBe("125")
   })
 
   it("should match multi-word party name", () => {
@@ -120,7 +138,7 @@ describe("SUPRA_PATTERN", () => {
     const match = SUPRA_PATTERN.exec(text)
     expect(match).not.toBeNull()
     expect(match?.[1]).toBe("United States")
-    expect(match?.[2]).toBe("200")
+    expect(match?.[3]).toBe("200")
   })
 
   it("should match supra without comma after party name", () => {
@@ -129,7 +147,7 @@ describe("SUPRA_PATTERN", () => {
     const match = SUPRA_PATTERN.exec(text)
     expect(match).not.toBeNull()
     expect(match?.[1]).toBe("Brown")
-    expect(match?.[2]).toBe("50")
+    expect(match?.[3]).toBe("50")
   })
 
   it("should NOT match lowercase party name (requires capitalization)", () => {
@@ -137,6 +155,43 @@ describe("SUPRA_PATTERN", () => {
     const text = "smith, supra"
     const match = SUPRA_PATTERN.exec(text)
     expect(match).toBeNull()
+  })
+
+  it("should match supra with note number and pincite", () => {
+    SUPRA_PATTERN.lastIndex = 0
+    const text = "Smith, supra note 5, at 130"
+    const match = SUPRA_PATTERN.exec(text)
+    expect(match).not.toBeNull()
+    expect(match?.[1]).toBe("Smith")
+    expect(match?.[2]).toBe("5") // note number
+    expect(match?.[3]).toBe("130") // pincite
+  })
+
+  it("should match supra with hyphenated party name", () => {
+    SUPRA_PATTERN.lastIndex = 0
+    const text = "Martinez-Fernandez, supra, at 100"
+    const match = SUPRA_PATTERN.exec(text)
+    expect(match).not.toBeNull()
+    expect(match?.[1]).toBe("Martinez-Fernandez")
+    expect(match?.[3]).toBe("100")
+  })
+
+  it("should match supra with apostrophe in party name", () => {
+    SUPRA_PATTERN.lastIndex = 0
+    const text = "O'Brien, supra, at 100"
+    const match = SUPRA_PATTERN.exec(text)
+    expect(match).not.toBeNull()
+    expect(match?.[1]).toBe("O'Brien")
+    expect(match?.[3]).toBe("100")
+  })
+
+  it("should match supra with period-ending party name", () => {
+    SUPRA_PATTERN.lastIndex = 0
+    const text = "Bros., supra, at 100"
+    const match = SUPRA_PATTERN.exec(text)
+    expect(match).not.toBeNull()
+    expect(match?.[1]).toBe("Bros.")
+    expect(match?.[3]).toBe("100")
   })
 })
 
@@ -169,6 +224,26 @@ describe("SHORT_FORM_CASE_PATTERN", () => {
     expect(match?.[1]).toBe("123")
     expect(match?.[2]).toBe("Cal.Rptr.")
     expect(match?.[3]).toBe("456")
+  })
+
+  it("should match F.4th reporter (two-letter ordinal suffix)", () => {
+    SHORT_FORM_CASE_PATTERN.lastIndex = 0
+    const text = "74 F.4th at 30"
+    const match = SHORT_FORM_CASE_PATTERN.exec(text)
+    expect(match).not.toBeNull()
+    expect(match?.[1]).toBe("74")
+    expect(match?.[2]).toBe("F.4th")
+    expect(match?.[3]).toBe("30")
+  })
+
+  it("should match Cal.4th reporter", () => {
+    SHORT_FORM_CASE_PATTERN.lastIndex = 0
+    const text = "500 Cal.4th at 120"
+    const match = SHORT_FORM_CASE_PATTERN.exec(text)
+    expect(match).not.toBeNull()
+    expect(match?.[1]).toBe("500")
+    expect(match?.[2]).toBe("Cal.4th")
+    expect(match?.[3]).toBe("120")
   })
 })
 

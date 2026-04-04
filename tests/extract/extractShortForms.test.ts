@@ -367,6 +367,121 @@ describe("extractShortForms", () => {
     })
   })
 
+  describe("Id. with comma before pincite", () => {
+    it("should extract pincite from 'Id., at 105'", () => {
+      const token: Token = {
+        text: "Id., at 105",
+        span: { cleanStart: 0, cleanEnd: 11 },
+        type: "case",
+        patternId: "id",
+      }
+      const citation = extractId(token, createIdentityMap())
+
+      expect(citation.type).toBe("id")
+      expect(citation.pincite).toBe(105)
+      expect(citation.text).toBe("Id., at 105")
+    })
+
+    it("should extract pincite from 'id., at 200'", () => {
+      const token: Token = {
+        text: "id., at 200",
+        span: { cleanStart: 5, cleanEnd: 16 },
+        type: "case",
+        patternId: "id",
+      }
+      const citation = extractId(token, createIdentityMap())
+
+      expect(citation.type).toBe("id")
+      expect(citation.pincite).toBe(200)
+    })
+  })
+
+  describe("supra with note number and pincite", () => {
+    it("should extract pincite from 'Smith, supra note 5, at 130'", () => {
+      const token: Token = {
+        text: "Smith, supra note 5, at 130",
+        span: { cleanStart: 0, cleanEnd: 27 },
+        type: "case",
+        patternId: "supra",
+      }
+      const citation = extractSupra(token, createIdentityMap())
+
+      expect(citation.type).toBe("supra")
+      expect(citation.partyName).toBe("Smith")
+      expect(citation.pincite).toBe(130)
+    })
+
+    it("should extract hyphenated party name", () => {
+      const token: Token = {
+        text: "Martinez-Fernandez, supra, at 100",
+        span: { cleanStart: 0, cleanEnd: 33 },
+        type: "case",
+        patternId: "supra",
+      }
+      const citation = extractSupra(token, createIdentityMap())
+
+      expect(citation.partyName).toBe("Martinez-Fernandez")
+      expect(citation.pincite).toBe(100)
+    })
+
+    it("should extract party name with apostrophe", () => {
+      const token: Token = {
+        text: "O'Brien, supra, at 100",
+        span: { cleanStart: 0, cleanEnd: 22 },
+        type: "case",
+        patternId: "supra",
+      }
+      const citation = extractSupra(token, createIdentityMap())
+
+      expect(citation.partyName).toBe("O'Brien")
+      expect(citation.pincite).toBe(100)
+    })
+
+    it("should extract party name ending with period", () => {
+      const token: Token = {
+        text: "Bros., supra, at 100",
+        span: { cleanStart: 0, cleanEnd: 20 },
+        type: "case",
+        patternId: "supra",
+      }
+      const citation = extractSupra(token, createIdentityMap())
+
+      expect(citation.partyName).toBe("Bros.")
+      expect(citation.pincite).toBe(100)
+    })
+  })
+
+  describe("shortFormCase with 4th-series reporters", () => {
+    it("should extract F.4th short-form", () => {
+      const token: Token = {
+        text: "74 F.4th at 30",
+        span: { cleanStart: 0, cleanEnd: 14 },
+        type: "case",
+        patternId: "shortFormCase",
+      }
+      const citation = extractShortFormCase(token, createIdentityMap())
+
+      expect(citation.type).toBe("shortFormCase")
+      expect(citation.volume).toBe(74)
+      expect(citation.reporter).toBe("F.4th")
+      expect(citation.pincite).toBe(30)
+    })
+
+    it("should extract Cal.4th short-form", () => {
+      const token: Token = {
+        text: "500 Cal.4th at 120",
+        span: { cleanStart: 0, cleanEnd: 18 },
+        type: "case",
+        patternId: "shortFormCase",
+      }
+      const citation = extractShortFormCase(token, createIdentityMap())
+
+      expect(citation.volume).toBe(500)
+      expect(citation.reporter).toBe("Cal.4th")
+      expect(citation.pincite).toBe(120)
+    })
+  })
+
   describe("confidence scoring", () => {
     it("should assign confidence 1.0 to Id. citations", () => {
       const token: Token = {
@@ -460,5 +575,137 @@ describe("supra with HTML cleaning artifacts (integration)", () => {
       expect(supra.partyName).toBe("Twombly")
       expect(supra.pincite).toBe(553)
     }
+  })
+})
+
+describe("short-form recall improvements (integration)", () => {
+  describe("Id. with comma before pincite", () => {
+    it("should capture pincite from 'Id., at 105' in full text", () => {
+      const text = "Smith v. Jones, 500 F.2d 100 (2d Cir. 1974). Id., at 105."
+      const citations = extractCitations(text)
+      const id = citations.find((c) => c.type === "id")
+
+      expect(id).toBeDefined()
+      if (id?.type === "id") {
+        expect(id.pincite).toBe(105)
+      }
+    })
+
+    it("should capture pincite from 'Id., at 105' across newline", () => {
+      const text = "Smith v. Jones, 500 F.2d 100 (2d Cir. 1974).\nId., at 105."
+      const citations = extractCitations(text)
+      const id = citations.find((c) => c.type === "id")
+
+      expect(id).toBeDefined()
+      if (id?.type === "id") {
+        expect(id.pincite).toBe(105)
+      }
+    })
+  })
+
+  describe("supra with newlines and note numbers", () => {
+    it("should extract supra with newline before pincite", () => {
+      const text = "Smith, supra,\nat 130"
+      const citations = extractCitations(text)
+      const supra = citations.find((c) => c.type === "supra")
+
+      expect(supra).toBeDefined()
+      if (supra?.type === "supra") {
+        expect(supra.partyName).toBe("Smith")
+        expect(supra.pincite).toBe(130)
+        // Verify span points to correct location in original text
+        expect(text.substring(supra.span.originalStart, supra.span.originalEnd)).toBe(text)
+      }
+    })
+
+    it("should extract supra with note number and pincite", () => {
+      const text = "Smith, supra note 5, at 130"
+      const citations = extractCitations(text)
+      const supra = citations.find((c) => c.type === "supra")
+
+      expect(supra).toBeDefined()
+      if (supra?.type === "supra") {
+        expect(supra.partyName).toBe("Smith")
+        expect(supra.pincite).toBe(130)
+      }
+    })
+
+    it("should extract supra with hyphenated party name", () => {
+      const text = "Martinez-Fernandez, supra, at 100"
+      const citations = extractCitations(text)
+      const supra = citations.find((c) => c.type === "supra")
+
+      expect(supra).toBeDefined()
+      if (supra?.type === "supra") {
+        expect(supra.partyName).toBe("Martinez-Fernandez")
+        expect(supra.pincite).toBe(100)
+      }
+    })
+
+    it("should extract supra with apostrophe in party name", () => {
+      const text = "O'Brien, supra, at 100"
+      const citations = extractCitations(text)
+      const supra = citations.find((c) => c.type === "supra")
+
+      expect(supra).toBeDefined()
+      if (supra?.type === "supra") {
+        expect(supra.partyName).toBe("O'Brien")
+        expect(supra.pincite).toBe(100)
+      }
+    })
+  })
+
+  describe("shortFormCase with 4th-series reporters", () => {
+    it("should detect '74 F.4th at 30' as shortFormCase", () => {
+      const text = "74 F.4th at 30"
+      const citations = extractCitations(text)
+      const shortForm = citations.find((c) => c.type === "shortFormCase")
+
+      expect(shortForm).toBeDefined()
+      if (shortForm?.type === "shortFormCase") {
+        expect(shortForm.volume).toBe(74)
+        expect(shortForm.reporter).toBe("F.4th")
+        expect(shortForm.pincite).toBe(30)
+      }
+    })
+
+    it("should detect '500 Cal.4th at 120' as shortFormCase", () => {
+      const text = "500 Cal.4th at 120"
+      const citations = extractCitations(text)
+      const shortForm = citations.find((c) => c.type === "shortFormCase")
+
+      expect(shortForm).toBeDefined()
+      if (shortForm?.type === "shortFormCase") {
+        expect(shortForm.volume).toBe(500)
+        expect(shortForm.reporter).toBe("Cal.4th")
+        expect(shortForm.pincite).toBe(120)
+      }
+    })
+
+    it("should detect '563 U.S. at 735' as shortFormCase", () => {
+      const text = "563 U.S. at 735"
+      const citations = extractCitations(text)
+      const shortForm = citations.find((c) => c.type === "shortFormCase")
+
+      expect(shortForm).toBeDefined()
+      if (shortForm?.type === "shortFormCase") {
+        expect(shortForm.volume).toBe(563)
+        expect(shortForm.reporter).toBe("U.S.")
+        expect(shortForm.pincite).toBe(735)
+      }
+    })
+
+    it("should detect '942 F.3d at 146' as shortFormCase", () => {
+      const text = "942 F.3d at 146"
+      const citations = extractCitations(text)
+      const shortForm = citations.find((c) => c.type === "shortFormCase")
+
+      expect(shortForm).toBeDefined()
+      if (shortForm?.type === "shortFormCase") {
+        expect(shortForm.volume).toBe(942)
+        expect(shortForm.reporter).toBe("F.3d")
+        expect(shortForm.pincite).toBe(146)
+      }
+    })
   })
 })
