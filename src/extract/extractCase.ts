@@ -81,6 +81,10 @@ const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
 /** Whitespace/comma skip pattern for parenthetical scanning */
 const PAREN_SKIP_REGEX = /[\s,]/
 
+/** Pincite-like text that appears between the citation core and opening paren.
+ *  Matches patterns like ", 999-1000", ", 125 n.2", ", 130 note 5" */
+const PAREN_PINCITE_SKIP_REGEX = /^[\s,]*\d+(?:-\d+)?(?:\s+(?:n|note)\s*\.?\s*\d+)?/
+
 /**
  * Signal normalization table. Longer patterns first so "aff'd on other grounds"
  * matches before "aff'd". Each entry: [regex, normalized HistorySignal].
@@ -344,9 +348,16 @@ function collectParentheticals(
     }
 
     if (pos >= endLimit || text[pos] !== "(") {
+      // Try to skip over pincite-like text (e.g., "999-1000", "125 n.2")
+      // that appears between the citation core and the opening parenthetical.
+      const remainingText = text.substring(pos, endLimit)
+      const pinciteSkip = PAREN_PINCITE_SKIP_REGEX.exec(remainingText)
+      if (pinciteSkip && pinciteSkip[0].length > 0) {
+        pos += pinciteSkip[0].length
+        continue
+      }
       // Check for subsequent history signal before giving up.
       // Normalize in-place to avoid a second SIGNAL_TABLE scan later.
-      const remainingText = text.substring(pos, endLimit)
       const normalized = normalizeSignal(remainingText)
       if (normalized) {
         pendingSignal = {

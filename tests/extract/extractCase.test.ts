@@ -774,6 +774,33 @@ describe("fullSpan calculation (Phase 6)", () => {
     }
   })
 
+  it("fullSpan extends through pincite and closing parenthetical", () => {
+    const text =
+      "see also Lagasse v. Horton, 982 N.W.2d 189, 199 n.2 (Minn. 2022) (explaining that...)"
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case")
+    expect(c).toBeDefined()
+    if (c?.type === "case") {
+      expect(c.fullSpan).toBeDefined()
+      const fullText = text.slice(c.fullSpan!.originalStart, c.fullSpan!.originalEnd)
+      // fullSpan should extend from case name through closing parenthetical
+      expect(fullText).toContain("Lagasse v. Horton")
+      expect(fullText).toContain("(Minn. 2022)")
+    }
+  })
+
+  it("fullSpan extends through pincite range and parenthetical", () => {
+    const text = "United States v. Ashburn, 865 F.3d 997, 999-1000 (8th Cir. 2017)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case")
+    expect(c).toBeDefined()
+    if (c?.type === "case") {
+      expect(c.fullSpan).toBeDefined()
+      const fullText = text.slice(c.fullSpan!.originalStart, c.fullSpan!.originalEnd)
+      expect(fullText).toContain("(8th Cir. 2017)")
+    }
+  })
+
   it("fullSpan includes subsequent history", () => {
     const text = "Smith v. Jones, 500 F.2d 123 (2d Cir. 1990), aff'd, 501 U.S. 1 (1991)"
     const citations = extractCitations(text)
