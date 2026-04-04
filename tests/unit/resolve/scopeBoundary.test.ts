@@ -125,6 +125,49 @@ describe("detectParagraphBoundaries", () => {
   })
 })
 
+describe("detectParagraphBoundaries — binary search edge cases", () => {
+  function makeCitation(originalStart: number): Citation {
+    return {
+      type: "case",
+      text: "cite",
+      span: { originalStart, originalEnd: originalStart + 4, cleanStart: originalStart, cleanEnd: originalStart + 4 },
+      matchedText: "cite",
+      confidence: 1.0,
+      processTimeMs: 0,
+      patternsChecked: 0,
+      volume: 100,
+      reporter: "F.2d",
+      page: 100,
+    }
+  }
+
+  it("assigns citation at position 0 to paragraph 0", () => {
+    const text = "Start.\n\nEnd."
+    const map = detectParagraphBoundaries(text, [makeCitation(0)])
+    expect(map.get(0)).toBe(0)
+  })
+
+  it("assigns citation at exact boundary start to that paragraph", () => {
+    // "Hello.\n\nWorld." — boundary at position 8
+    const text = "Hello.\n\nWorld."
+    const map = detectParagraphBoundaries(text, [makeCitation(8)])
+    expect(map.get(0)).toBe(1) // paragraph 1 starts at position 8
+  })
+
+  it("assigns citation near end of document to last paragraph", () => {
+    const text = "A.\n\nB.\n\nC."
+    const map = detectParagraphBoundaries(text, [makeCitation(8)])
+    expect(map.get(0)).toBe(2) // last paragraph
+  })
+
+  it("handles two citations in the same paragraph", () => {
+    const text = "First citation and second citation.\n\nOther."
+    const map = detectParagraphBoundaries(text, [makeCitation(0), makeCitation(20)])
+    expect(map.get(0)).toBe(0)
+    expect(map.get(1)).toBe(0)
+  })
+})
+
 describe("isWithinBoundary", () => {
   it("returns true for citations in same paragraph", () => {
     const map = new Map<number, number>([

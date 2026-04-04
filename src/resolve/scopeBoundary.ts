@@ -10,6 +10,21 @@ import type { Citation } from "../types/citation"
 import type { ScopeStrategy } from "./types"
 
 /**
+ * Binary search returning the insertion point for `value` in sorted `arr`.
+ * Returns the smallest index i such that arr[i] > value (or arr.length if none).
+ */
+function bisectRight(arr: number[], value: number): number {
+  let lo = 0
+  let hi = arr.length
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1
+    if (arr[mid] <= value) lo = mid + 1
+    else hi = mid
+  }
+  return lo
+}
+
+/**
  * Detects paragraph boundaries from text and assigns each citation to a paragraph.
  *
  * @param text - Original document text
@@ -40,16 +55,7 @@ export function detectParagraphBoundaries(
     const citation = citations[i]
     const citationStart = citation.span.originalStart
 
-    // Find which paragraph this citation belongs to
-    let paragraphNum = 0
-    for (let j = 0; j < boundaries.length - 1; j++) {
-      if (citationStart >= boundaries[j] && citationStart < boundaries[j + 1]) {
-        paragraphNum = j
-        break
-      }
-    }
-
-    paragraphMap.set(i, paragraphNum)
+    paragraphMap.set(i, bisectRight(boundaries, citationStart) - 1)
   }
 
   return paragraphMap
