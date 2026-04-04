@@ -1144,6 +1144,19 @@ describe("backward compatibility (Phase 6)", () => {
     }
   })
 
+  it("per curiam extracted after pincite and court/year (#123)", () => {
+    const citations = extractCitations(
+      "United States v. Cosey, 602 F.3d 943, 948 (8th Cir. 2010) (per curiam).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    expect(c).toBeDefined()
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("per curiam")
+      expect(c.court).toBe("8th Cir.")
+      expect(c.year).toBe(2010)
+    }
+  })
+
   it("subsequent history does not break fullSpan", () => {
     const text = "Smith v. Jones, 500 F.2d 123 (2d Cir. 1990), aff'd, 501 U.S. 1 (1991)"
     const citations = extractCitations(text)
