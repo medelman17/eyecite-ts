@@ -217,15 +217,17 @@ export function detectStringCitations(citations: Citation[], cleanedText: string
     }
   }
 
-  // Detect leading signal for first member of each group (non-case citations only,
-  // since case citations get their signal from extractCase party name stripping)
+  // Detect leading signal for first member of each group.
+  // (The broader detectLeadingSignals pass below also covers these, but
+  // running here first ensures group-first citations get their signal before
+  // the general pass skips them as "already set".)
   for (const group of groups) {
     if (group.length < 2) continue
     const first = citations[group[0]]
     if (first.signal) continue // Already set (e.g., by extractCase)
 
     // Look backward from citation start for a signal word
-    const searchStart = Math.max(0, getCitationStart(first) - 30)
+    const searchStart = Math.max(0, getCitationStart(first) - 60)
     const precedingText = cleanedText.substring(searchStart, getCitationStart(first)).trim()
 
     // Check if preceding text ends with a signal word (uses pre-built endRegex)
@@ -235,5 +237,84 @@ export function detectStringCitations(citations: Citation[], cleanedText: string
         break
       }
     }
+  }
+}
+
+/**
+ * Detect leading introductory signals for ALL citations that don't already
+ * have one. Scans backward from each citation's start position to find
+ * Bluebook signal words (See, But see, Cf., Accord, See also, etc.).
+ *
+ * Should run AFTER detectStringCitations (which sets signals for string cite
+ * group members) so we skip citations that already have signals.
+ *
+ * @param citations - Extracted citations sorted by span.cleanStart
+ * @param cleanedText - Cleaned text used for lookback
+ */
+export function detectLeadingSignals(citations: Citation[], cleanedText: string): void {
+  for (let i = 0; i < citations.length; i++) {
+    const c = citations[i]
+    // Skip if already has a signal from STRING CITE detection (those are scoped
+    // and reliable). Do NOT skip signals set by case name extraction — those
+    // come from greedy backward search and may be wrong (e.g., cite3 picks up
+    // "See" from cite1's case name because fullSpan extends too far back).
+    if (c.signal && c.stringCitationGroupId) continue
+
+    // Determine the search window: from the end of the previous citation (or
+    // start of text) to this citation's span.cleanStart. This scopes the
+    // search to just the gap between citations.
+    const prevEnd = i > 0 ? getCitationEnd(citations[i - 1]) : 0
+    const citStart = c.span.cleanStart
+    if (citStart <= prevEnd) continue
+
+    const gapText = cleanedText.substring(prevEnd, citStart)
+
+    // Find the LAST signal word in the gap text (closest to the citation).
+    // Use the endRegex patterns which match at the END of a string.
+    // We trim the gap text to remove trailing whitespace/punctuation after
+    // the signal word (e.g., "See Smith v. Jones, " → check if "See" is
+    // near the start, but we need to find it even with case name after it).
+    //
+    // Strategy: progressively trim from the end and check for endRegex match.
+    // More efficient: use the start-anchored regex on each "sentence" in the gap.
+    // Simplest correct approach: search for signal words as standalone tokens.
+
+    // Find ALL signal matches in the gap, then pick the best one:
+    // closest to the citation (highest end position), with ties broken
+    // by longest match (so "but see" beats "see" when they overlap).
+    const matches: Array<{ signal: CitationSignal; start: number; end: number }> = []
+
+    for (const { signal } of SIGNAL_PATTERNS) {
+      const escaped = signal.replace(/\./g, "\\.").replace(/\s+/g, "\\s+")
+      const pattern = new RegExp(`(?<![a-zA-Z])(${escaped})(?![a-zA-Z])`, "gi")
+      let match: RegExpExecArray | null
+      while ((match = pattern.exec(gapText)) !== null) {
+        matches.push({ signal, start: match.index, end: match.index + match[0].length })
+      }
+    }
+
+    if (matches.length === 0) continue
+
+    // Sort by: (1) end position descending (closest to citation), then
+    // (2) length descending (prefer longer/more-specific signals).
+    matches.sort((a, b) => {
+      const endDiff = b.end - a.end
+      if (endDiff !== 0) return endDiff
+      return (b.end - b.start) - (a.end - a.start)
+    })
+
+    // The best match is the one closest to the citation. But if a shorter
+    // signal (e.g., "see") is a substring of a longer signal ("but see")
+    // that starts just before it, prefer the longer one.
+    let best = matches[0]
+    for (const m of matches) {
+      // If this match fully contains the current best (or starts within
+      // a few chars), it's the more specific signal.
+      if (m.start <= best.start && m.end >= best.end) {
+        best = m
+      }
+    }
+
+    setSignal(c, best.signal)
   }
 }
