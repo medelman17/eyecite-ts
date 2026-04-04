@@ -1,5 +1,11 @@
 # eyecite-ts
 
+## 0.7.1
+
+### Patch Changes
+
+- [#115](https://github.com/medelman17/eyecite-ts/pull/115) [`0c108cc`](https://github.com/medelman17/eyecite-ts/commit/0c108ccb5373b020c90172fd31609d887b8452d6) Thanks [@medelman17](https://github.com/medelman17)! - Fix case name backward search extending too far — fullSpan now correctly stops at sentence boundaries and previous citation parentheticals instead of reaching back to position 0. Fixes #114.
+
 ## 0.7.0
 
 ### Minor Changes
