@@ -1,5 +1,11 @@
 # eyecite-ts
 
+## 0.7.0
+
+### Minor Changes
+
+- [#112](https://github.com/medelman17/eyecite-ts/pull/112) [`bb26fb4`](https://github.com/medelman17/eyecite-ts/commit/bb26fb44117ecb6215607bf336abe9a5b044cff1) Thanks [@medelman17](https://github.com/medelman17)! - Add signal detection for isolated citations. eyecite-ts now detects Bluebook introductory signals (See, But see, Cf., Accord, See also, See generally, Compare, Contra, But cf.) preceding any citation type, not just within string citation groups. Closes #111.
+
 ## 0.6.1
 
 ### Patch Changes
