@@ -958,6 +958,13 @@ export function extractCase(
     defendantNormalized = partyResult.defendantNormalized
     proceduralPrefix = partyResult.proceduralPrefix
     signal = partyResult.signal
+
+    // Rebuild caseName from cleaned party names so signal words are excluded
+    if (signal && plaintiff && defendant) {
+      caseName = `${plaintiff} v. ${defendant}`
+    } else if (signal && proceduralPrefix && plaintiff) {
+      caseName = `${proceduralPrefix} ${plaintiff}`
+    }
   }
 
   // Translate positions from clean → original (citation core only - span unchanged)

@@ -1787,6 +1787,23 @@ describe("signal word extraction", () => {
     expect(caseCite?.plaintiff).toBe("Smith")
     expect(caseCite?.signal).toBe("see")
   })
+
+  it("excludes signal word from caseName (#124)", () => {
+    const text = "See United States v. Anderson, 618 F.3d 873, 880 (8th Cir. 2010)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("see")
+    expect(c?.caseName).toBe("United States v. Anderson")
+    expect(c?.plaintiff).toBe("United States")
+  })
+
+  it("excludes multi-word signal from caseName", () => {
+    const text = "See also Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)"
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("see also")
+    expect(c?.caseName).toBe("Smith v. Jones")
+  })
 })
 
 describe("nominative reporter support (#49, #16)", () => {
