@@ -45,8 +45,8 @@ export function extractId(token: Token, transformationMap: TransformationMap): I
   const { text, span } = token
 
   // Parse Id. with optional pincite
-  // Pattern: Id. or Ibid. with optional "at [page]"
-  const idRegex = /[Ii](?:d|bid)\.(?:\s+at\s+(\d+))?/
+  // Pattern: Id. or Ibid. with optional comma + "at [page]" (handles "Id., at 5")
+  const idRegex = /[Ii](?:d|bid)\.(?:,?\s+at\s+(\d+(?:\s*[-–]\s*\d+)?))?/
   const match = idRegex.exec(text)
 
   if (!match) {
@@ -114,11 +114,11 @@ export function extractId(token: Token, transformationMap: TransformationMap): I
 export function extractSupra(token: Token, transformationMap: TransformationMap): SupraCitation {
   const { text, span } = token
 
-  // Parse party name and optional pincite
-  // Pattern: word(s), supra [, at page]
-  // Note: Matches party names including "v." (e.g., "Smith v. Jones")
+  // Parse party name, optional note number, and optional pincite
+  // Pattern: word(s), supra [note N] [, at page]
+  // Note: Matches party names including hyphens, apostrophes, periods, and "v."
   const supraRegex =
-    /\b([A-Z][a-zA-Z]+(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z]+)*)\s*,?\s+supra(?:,?\s+at\s+(\d+))?/
+    /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+at\s+(\d+))?/
   const match = supraRegex.exec(text)
 
   if (!match) {
@@ -126,7 +126,7 @@ export function extractSupra(token: Token, transformationMap: TransformationMap)
   }
 
   const partyName = match[1]
-  const pincite = match[2] ? Number.parseInt(match[2], 10) : undefined
+  const pincite = match[3] ? Number.parseInt(match[3], 10) : undefined
 
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
@@ -194,7 +194,8 @@ export function extractShortFormCase(
 
   // Parse volume-reporter-at-page
   // Pattern: number space abbreviation space "at" space number
-  const shortFormRegex = /(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.\s]+?(?:\d[a-z])?)\s+at\s+(\d+)/
+  // Supports reporters with 1-2 letter ordinal suffixes (e.g., F.4th, Cal.4th)
+  const shortFormRegex = /(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s+at\s+(\d+)/
   const match = shortFormRegex.exec(text)
 
   if (!match) {
