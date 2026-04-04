@@ -1,5 +1,6 @@
 import type { Warning } from "../types/citation"
 import type { TransformationMap } from "../types/span"
+import { SegmentMap } from "./segmentMap"
 import {
   decodeHtmlEntities,
   fixSmartQuotes,
@@ -88,6 +89,7 @@ export function cleanText(
   const transformationMap: TransformationMap = {
     cleanToOriginal,
     originalToClean,
+    cleanToOriginalSegments: SegmentMap.fromMap(cleanToOriginal),
   }
 
   return {

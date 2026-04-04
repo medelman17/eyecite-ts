@@ -1,6 +1,6 @@
 # ALG-04: Segment-Based Position Mapping
 
-**Status:** Ready
+**Status:** Complete
 **Priority:** 5 (implement last)
 **Textbook References:** CLRS Ch.14 (augmented data structures), Sedgewick Ch.3.2 (ordered symbol tables / interval search)
 **Target Files:** `src/clean/cleanText.ts` (208 lines), `src/types/span.ts`, new `src/clean/segmentMap.ts`
