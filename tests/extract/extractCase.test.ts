@@ -449,6 +449,22 @@ describe("parenthetical year and court extraction (integration)", () => {
     }
   })
 
+  it("extracts pincite range from comma-separated page (#122)", () => {
+    const citations = extractCitations(
+      "See United States v. Ashburn, 865 F.3d 997, 999-1000 (8th Cir. 2017).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    expect(c).toBeDefined()
+    if (c?.type === "case") {
+      expect(c.page).toBe(997)
+      expect(c.pincite).toBe(999)
+      expect(c.pinciteInfo?.endPage).toBe(1000)
+      expect(c.pinciteInfo?.isRange).toBe(true)
+      expect(c.court).toBe("8th Cir.")
+      expect(c.year).toBe(2017)
+    }
+  })
+
   it("should infer scotus court from U.S. reporter", () => {
     const citations = extractCitations("491 U.S. 397 (1989)")
     expect(citations).toHaveLength(1)
