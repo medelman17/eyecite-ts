@@ -465,6 +465,128 @@ describe("parenthetical year and court extraction (integration)", () => {
     }
   })
 
+  // Real case law pincite examples
+  it("SCOTUS pincite: Brown v. Board of Education", () => {
+    const citations = extractCitations("Brown v. Board of Education, 347 U.S. 483, 495 (1954).")
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.page).toBe(483)
+      expect(c.pincite).toBe(495)
+      expect(c.pinciteInfo?.isRange).toBe(false)
+    }
+  })
+
+  it("SCOTUS pincite: Miranda v. Arizona", () => {
+    const citations = extractCitations("Miranda v. Arizona, 384 U.S. 436, 444 (1966).")
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.page).toBe(436)
+      expect(c.pincite).toBe(444)
+    }
+  })
+
+  it("SCOTUS pincite: Marbury v. Madison", () => {
+    const citations = extractCitations("Marbury v. Madison, 5 U.S. 137, 177 (1803).")
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.page).toBe(137)
+      expect(c.pincite).toBe(177)
+    }
+  })
+
+  it("pincite with full page range: Ashcroft v. Iqbal", () => {
+    const citations = extractCitations("Ashcroft v. Iqbal, 556 U.S. 662, 678-679 (2009).")
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.pincite).toBe(678)
+      expect(c.pinciteInfo?.endPage).toBe(679)
+      expect(c.pinciteInfo?.isRange).toBe(true)
+    }
+  })
+
+  it("pincite abbreviated range: Roe v. Wade", () => {
+    const citations = extractCitations("Roe v. Wade, 410 U.S. 113, 152-53 (1973).")
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.pincite).toBe(152)
+      expect(c.pinciteInfo?.endPage).toBe(153)
+      expect(c.pinciteInfo?.isRange).toBe(true)
+    }
+  })
+
+  it("pincite abbreviated range: Chevron", () => {
+    const citations = extractCitations(
+      "Chevron U.S.A., Inc. v. NRDC, 467 U.S. 837, 842-43 (1984).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.pincite).toBe(842)
+      expect(c.pinciteInfo?.endPage).toBe(843)
+    }
+  })
+
+  it("pincite abbreviated range: Twombly", () => {
+    const citations = extractCitations(
+      "Bell Atlantic Corp. v. Twombly, 550 U.S. 544, 555-57 (2007).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.pincite).toBe(555)
+      expect(c.pinciteInfo?.endPage).toBe(557)
+    }
+  })
+
+  it("pincite wide range: Obergefell", () => {
+    const citations = extractCitations("Obergefell v. Hodges, 576 U.S. 644, 663-681 (2015).")
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.pincite).toBe(663)
+      expect(c.pinciteInfo?.endPage).toBe(681)
+    }
+  })
+
+  it("pincite: Daubert full range", () => {
+    const citations = extractCitations(
+      "Daubert v. Merrell Dow Pharmaceuticals, Inc., 509 U.S. 579, 589-595 (1993).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.pincite).toBe(589)
+      expect(c.pinciteInfo?.endPage).toBe(595)
+    }
+  })
+
+  it("state court pincite: State v. Loomis", () => {
+    const citations = extractCitations("State v. Loomis, 881 N.W.2d 749, 757 (Wis. 2016).")
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.pincite).toBe(757)
+      expect(c.court).toBe("Wis.")
+    }
+  })
+
+  it("state court pincite with range: S.E.2d reporter", () => {
+    const citations = extractCitations(
+      "Commonwealth v. Harris, 817 S.E.2d 645, 650-51 (Va. 2018).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.pincite).toBe(650)
+      expect(c.pinciteInfo?.endPage).toBe(651)
+    }
+  })
+
+  it("F.4th pincite: recent federal circuit", () => {
+    const citations = extractCitations(
+      "Smith v. City of Portland, 55 F.4th 890, 897 (9th Cir. 2022).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.pincite).toBe(897)
+      expect(c.reporter).toBe("F.4th")
+    }
+  })
+
   it("should infer scotus court from U.S. reporter", () => {
     const citations = extractCitations("491 U.S. 397 (1989)")
     expect(citations).toHaveLength(1)
@@ -817,6 +939,148 @@ describe("fullSpan calculation (Phase 6)", () => {
     }
   })
 
+  // Real case law: SCOTUS citations with pincite + parenthetical
+  it("SCOTUS: Brown v. Board of Education with pincite", () => {
+    const text = "Brown v. Board of Education, 347 U.S. 483, 495 (1954)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case")
+    expect(c).toBeDefined()
+    if (c?.type === "case") {
+      expect(c.fullSpan).toBeDefined()
+      const fullText = text.slice(c.fullSpan!.originalStart, c.fullSpan!.originalEnd)
+      expect(fullText).toContain("Brown v. Board")
+      expect(fullText).toContain("(1954)")
+    }
+  })
+
+  it("SCOTUS: Miranda v. Arizona with pincite", () => {
+    const text = "Miranda v. Arizona, 384 U.S. 436, 444 (1966)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.fullSpan).toBeDefined()
+      const fullText = text.slice(c.fullSpan!.originalStart, c.fullSpan!.originalEnd)
+      expect(fullText).toContain("Miranda v. Arizona")
+      expect(fullText).toContain("(1966)")
+    }
+  })
+
+  it("Federal circuit: pincite + abbreviated range + court/year", () => {
+    const text = "Bell Atlantic Corp. v. Twombly, 550 U.S. 544, 555-57 (2007)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.fullSpan).toBeDefined()
+      const fullText = text.slice(c.fullSpan!.originalStart, c.fullSpan!.originalEnd)
+      expect(fullText).toContain("(2007)")
+    }
+  })
+
+  it("State court: N.W.2d reporter with pincite + court/year", () => {
+    const text = "Lagasse v. Horton, 982 N.W.2d 189, 199 (Minn. 2022)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.fullSpan).toBeDefined()
+      const fullText = text.slice(c.fullSpan!.originalStart, c.fullSpan!.originalEnd)
+      expect(fullText).toContain("Lagasse v. Horton")
+      expect(fullText).toContain("(Minn. 2022)")
+    }
+  })
+
+  it("fullSpan with pincite + en banc + explanatory paren", () => {
+    const text =
+      "Smith v. Jones, 500 F.3d 123, 130 (9th Cir. 2018) (en banc) (overruling prior precedent)"
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.fullSpan).toBeDefined()
+      const fullText = text.slice(c.fullSpan!.originalStart, c.fullSpan!.originalEnd)
+      expect(fullText).toContain("(overruling prior precedent)")
+    }
+  })
+
+  it("fullSpan with simple pincite and year-only parenthetical", () => {
+    const text = "Roe v. Wade, 410 U.S. 113, 152 (1973)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.fullSpan).toBeDefined()
+      const fullText = text.slice(c.fullSpan!.originalStart, c.fullSpan!.originalEnd)
+      expect(fullText).toContain("Roe v. Wade")
+      expect(fullText).toContain("(1973)")
+    }
+  })
+
+  it("F.3d with pincite range + circuit court", () => {
+    const text = "Ashcroft v. Iqbal, 556 U.S. 662, 678-679 (2009)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.fullSpan).toBeDefined()
+      const fullText = text.slice(c.fullSpan!.originalStart, c.fullSpan!.originalEnd)
+      expect(fullText).toContain("(2009)")
+    }
+  })
+
+  it("Pacific reporter with pincite + state court", () => {
+    const text = "State v. Loomis, 881 N.W.2d 749, 757 (Wis. 2016)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.fullSpan).toBeDefined()
+      const fullText = text.slice(c.fullSpan!.originalStart, c.fullSpan!.originalEnd)
+      expect(fullText).toContain("(Wis. 2016)")
+    }
+  })
+
+  it("fullSpan with pincite + per curiam disposition", () => {
+    const text =
+      "United States v. Cosey, 602 F.3d 943, 948 (8th Cir. 2010) (per curiam)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.fullSpan).toBeDefined()
+      const fullText = text.slice(c.fullSpan!.originalStart, c.fullSpan!.originalEnd)
+      expect(fullText).toContain("(per curiam)")
+    }
+  })
+
+  it("fullSpan: Chevron with abbreviated pincite range", () => {
+    const text =
+      "Chevron U.S.A., Inc. v. NRDC, 467 U.S. 837, 842-43 (1984)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.fullSpan).toBeDefined()
+      const fullText = text.slice(c.fullSpan!.originalStart, c.fullSpan!.originalEnd)
+      expect(fullText).toContain("(1984)")
+    }
+  })
+
+  it("fullSpan: Obergefell with wide page range", () => {
+    const text = "Obergefell v. Hodges, 576 U.S. 644, 663-681 (2015)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.fullSpan).toBeDefined()
+      const fullText = text.slice(c.fullSpan!.originalStart, c.fullSpan!.originalEnd)
+      expect(fullText).toContain("(2015)")
+    }
+  })
+
+  it("fullSpan: Daubert with full range + parenthetical", () => {
+    const text =
+      "Daubert v. Merrell Dow Pharmaceuticals, Inc., 509 U.S. 579, 589-595 (1993)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.fullSpan).toBeDefined()
+      const fullText = text.slice(c.fullSpan!.originalStart, c.fullSpan!.originalEnd)
+      expect(fullText).toContain("(1993)")
+    }
+  })
+
   it("fullSpan includes subsequent history", () => {
     const text = "Smith v. Jones, 500 F.2d 123 (2d Cir. 1990), aff'd, 501 U.S. 1 (1991)"
     const citations = extractCitations(text)
@@ -1154,6 +1418,101 @@ describe("backward compatibility (Phase 6)", () => {
       expect(c.disposition).toBe("per curiam")
       expect(c.court).toBe("8th Cir.")
       expect(c.year).toBe(2010)
+    }
+  })
+
+  // Real case law dispositions
+  it("per curiam: SCOTUS year-only parenthetical", () => {
+    const citations = extractCitations("500 U.S. 123 (1990) (per curiam)")
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("per curiam")
+      expect(c.year).toBe(1990)
+    }
+  })
+
+  it("per curiam: Bush v. Gore", () => {
+    const citations = extractCitations("Bush v. Gore, 531 U.S. 98 (2000) (per curiam).")
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("per curiam")
+      expect(c.year).toBe(2000)
+    }
+  })
+
+  it("en banc: Ninth Circuit", () => {
+    const citations = extractCitations(
+      "United States v. Comprehensive Drug Testing, Inc., 621 F.3d 1162 (9th Cir. 2010) (en banc).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("en banc")
+      expect(c.court).toBe("9th Cir.")
+    }
+  })
+
+  it("en banc with pincite", () => {
+    const citations = extractCitations(
+      "Janus v. AFSCME, 585 U.S. 878, 892 (2018) (en banc).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("en banc")
+      expect(c.pincite).toBe(892)
+    }
+  })
+
+  it("en banc: state supreme court with P.3d reporter", () => {
+    const citations = extractCitations(
+      "People v. Shreck, 22 P.3d 68 (Colo. 2001) (en banc).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("en banc")
+      expect(c.court).toBe("Colo.")
+    }
+  })
+
+  it("per curiam: Sixth Circuit with pincite range", () => {
+    const citations = extractCitations(
+      "Jones v. Bock, 549 U.S. 199, 211-12 (2007) (per curiam).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("per curiam")
+      expect(c.pincite).toBe(211)
+    }
+  })
+
+  it("en banc: en banc before court/year paren", () => {
+    const citations = extractCitations("500 F.2d 123 (en banc) (9th Cir. 2021)")
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("en banc")
+      expect(c.court).toBe("9th Cir.")
+      expect(c.year).toBe(2021)
+    }
+  })
+
+  it("en banc with explanatory parenthetical", () => {
+    const citations = extractCitations(
+      "Smith v. Jones, 500 F.3d 123 (9th Cir. 2018) (en banc) (overruling Circuit precedent)",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("en banc")
+      expect(c.parentheticals).toBeDefined()
+      expect(c.parentheticals?.some((p) => p.text.includes("overruling"))).toBe(true)
+    }
+  })
+
+  it("per curiam: Nevada Supreme Court", () => {
+    const citations = extractCitations(
+      "Nev. Dep't of Corr. v. York, 75 P.3d 200 (Nev. 2016) (per curiam).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("per curiam")
     }
   })
 
@@ -1803,6 +2162,105 @@ describe("signal word extraction", () => {
     const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
     expect(c?.signal).toBe("see also")
     expect(c?.caseName).toBe("Smith v. Jones")
+  })
+
+  // Real case law signal word examples
+  it("See: SCOTUS citation with pincite", () => {
+    const text = "See Miranda v. Arizona, 384 U.S. 436, 444 (1966)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("see")
+    expect(c?.caseName).toBe("Miranda v. Arizona")
+    expect(c?.plaintiff).toBe("Miranda")
+    expect(c?.defendant).toBe("Arizona")
+  })
+
+  it("See: federal circuit with pincite range", () => {
+    const text = "See Ashcroft v. Iqbal, 556 U.S. 662, 678-679 (2009)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("see")
+    expect(c?.caseName).toBe("Ashcroft v. Iqbal")
+  })
+
+  it("See also: additional support signal", () => {
+    const text = "See also Daubert v. Merrell Dow Pharmaceuticals, Inc., 509 U.S. 579, 589 (1993)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("see also")
+    expect(c?.caseName).not.toContain("See")
+  })
+
+  it("But see: contradiction signal", () => {
+    const text = "But see Citizens United v. FEC, 558 U.S. 310 (2010)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("but see")
+    expect(c?.caseName).not.toContain("But")
+  })
+
+  it("Cf.: comparison signal with period", () => {
+    const text = "Cf. Youngstown Sheet & Tube Co. v. Sawyer, 343 U.S. 579, 634 (1952)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("cf")
+    expect(c?.caseName).not.toContain("Cf")
+  })
+
+  it("Compare: comparison signal", () => {
+    const text = "Compare Plessy v. Ferguson, 163 U.S. 537 (1896)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("compare")
+    expect(c?.caseName).not.toContain("Compare")
+  })
+
+  it("See: state court with So. 2d reporter", () => {
+    const text = "See Williams v. State, 200 So. 2d 123, 130 (Fla. 2019)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("see")
+    expect(c?.caseName).toBe("Williams v. State")
+  })
+
+  it("See: N.E.2d reporter", () => {
+    const text = "See People v. Robinson, 150 N.E.2d 456 (Ill. 2020)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("see")
+    expect(c?.caseName).toBe("People v. Robinson")
+  })
+
+  it("See also: A.3d reporter with pincite", () => {
+    const text = "See also State v. Brown, 100 A.3d 789, 795 (N.J. 2014)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("see also")
+    expect(c?.caseName).toBe("State v. Brown")
+  })
+
+  it("no signal: caseName unchanged when no signal present", () => {
+    const text = "Brown v. Board of Education, 347 U.S. 483, 495 (1954)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBeUndefined()
+    expect(c?.caseName).toBe("Brown v. Board of Education")
+  })
+
+  it("See: corporate parties with Inc.", () => {
+    const text = "See AT&T Corp. v. Iowa Utilities Board, 525 U.S. 366 (1999)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("see")
+    expect(c?.caseName).not.toContain("See")
+  })
+
+  it("But see: with pincite and court", () => {
+    const text = "But see Terry v. Ohio, 392 U.S. 1, 16 (1968)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("but see")
+    expect(c?.caseName).toBe("Terry v. Ohio")
   })
 })
 

@@ -75,6 +75,104 @@ describe("false positive filtering (integration)", () => {
       }
     })
 
+    // Realistic prose from court opinions with numbers near blocked words
+    it("rejects 'this Court' preceded by a number", () => {
+      const text = "As the 5 Court of Appeals judges previously noted, the ruling was improper."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects footnote number before 'Court'", () => {
+      const text = "The Bankruptcy 2 Court entered the discharge order on March 15."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Title' in statutory reference", () => {
+      const text = "Under Title 42 of the United States Code, Section 1983 provides a cause of action."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Article' in constitutional reference", () => {
+      const text = "Article 3 of the Constitution establishes the judicial branch."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Part' in regulatory reference", () => {
+      const text = "Part 50 of Title 10 of the Code of Federal Regulations governs nuclear safety."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Count' in indictment references", () => {
+      const text = "The defendant was convicted on Count 1 of the indictment charging wire fraud under 18 U.S.C."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Division' in court structure", () => {
+      const text = "Division 3 of the appellate court affirmed the judgment."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Class' in classification references", () => {
+      const text = "A Class 2 felony carries a maximum sentence of 28 years."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Phase' in litigation references", () => {
+      const text = "Phase 2 of the litigation addressed damages totaling over 100 million dollars."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Level' in sentencing context", () => {
+      const text = "Level 3 of the sentencing guidelines calls for 10 to 16 months."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Group' in sentencing guidelines", () => {
+      const text = "Offense Group 4 applies to fraud offenses involving more than 100 victims."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Step' in guideline calculations", () => {
+      const text = "Step 1 of the analysis requires the court to calculate the base offense level from 10 categories."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Paragraph' in document references", () => {
+      const text = "Paragraph 4 of the plea agreement contains a waiver of appellate rights under 100 conditions."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Number' in docket references", () => {
+      const text = "Case Number 3 was consolidated with the other 15 pending actions."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("preserves valid citations in mixed text with false positives", () => {
+      const text =
+        "The District 2 Court relied on Miranda v. Arizona, 384 U.S. 436 (1966), in reaching its decision."
+      const citations = extractCitations(text)
+      const caseCites = citations.filter((c) => c.type === "case")
+      // Should find Miranda but not "2 Court..."
+      expect(caseCites.length).toBe(1)
+      const c = caseCites[0]
+      if (c.type === "case") {
+        expect(c.reporter).toBe("U.S.")
+      }
+    })
+
     it("keeps valid US citations when filtering", () => {
       const text = "See Smith v. Jones, 500 F.2d 123 (9th Cir. 2020); 1986 I.C.J. 14 (June 27)."
       const citations = extractCitations(text, { filterFalsePositives: true })
