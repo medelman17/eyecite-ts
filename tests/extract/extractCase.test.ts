@@ -2363,6 +2363,77 @@ describe("signal word extraction", () => {
     expect(c?.signal).toBe("but see")
     expect(c?.caseName).toBe("Terry v. Ohio")
   })
+
+  // Edge case: "See v. See" — real California case where "See" is a surname
+  it("See v. See: party named 'See' preserves caseName", () => {
+    const text = "See v. See, 64 Cal. 2d 778 (1966)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    // caseName should be intact even though signal detection fires
+    expect(c?.caseName).toBe("See v. See")
+    expect(c?.plaintiff).toBe("See")
+    expect(c?.defendant).toBe("See")
+  })
+
+  // Edge case: lowercase signal
+  it("lowercase 'see' is detected as signal", () => {
+    const text = "see Miranda v. Arizona, 384 U.S. 436 (1966)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("see")
+    expect(c?.caseName).toBe("Miranda v. Arizona")
+  })
+
+  // Edge case: "In re" is NOT a signal (procedural prefix)
+  it("In re is a procedural prefix, not a signal", () => {
+    const text = "In re Winship, 397 U.S. 358 (1970)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBeUndefined()
+  })
+
+  // Edge case: "See" before "In re"
+  it("See before In re: signal stripped, In re preserved", () => {
+    const text = "See In re Winship, 397 U.S. 358 (1970)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("see")
+  })
+
+  // Edge case: "Ex parte" is NOT a signal
+  it("Ex parte is a procedural prefix, not a signal", () => {
+    const text = "Ex parte Young, 209 U.S. 123 (1908)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBeUndefined()
+  })
+
+  // Real case: Accord signal
+  it("Accord signal: Quinn v. United States", () => {
+    const text = "Accord Quinn v. United States, 349 U.S. 155, 163 (1955)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("accord")
+    expect(c?.caseName).not.toContain("Accord")
+  })
+
+  // Real case: Contra signal
+  it("Contra signal: Blakely v. Washington", () => {
+    const text = "Contra Blakely v. Washington, 542 U.S. 296 (2004)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("contra")
+    expect(c?.caseName).not.toContain("Contra")
+  })
+
+  // Real case: But cf. signal
+  it("But cf. signal: Griswold v. Connecticut", () => {
+    const text = "But cf. Griswold v. Connecticut, 381 U.S. 479 (1965)."
+    const citations = extractCitations(text)
+    const c = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+    expect(c?.signal).toBe("but cf")
+    expect(c?.caseName).not.toContain("But")
+  })
 })
 
 describe("nominative reporter support (#49, #16)", () => {
