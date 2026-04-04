@@ -227,13 +227,32 @@ function extractCaseName(
   let precedingText = cleanedText.substring(searchStart, coreStart)
   let adjustedSearchStart = searchStart
 
-  // Split at last sentence boundary to avoid crossing citation boundaries
-  // Find last occurrence of digit-period-space pattern (end of reporter page like "10. Jones")
-  // This is more specific than generic ". [A-Z]" which would match "v." or "United States v."
+  // Split at last boundary to avoid crossing citation/sentence boundaries.
+  // We check two boundary types:
+  //   1. Citation boundary: digit-period-space (e.g., "10. " from a previous cite's page number)
+  //   2. Sentence boundary: closing paren + period + space + uppercase letter (e.g., "(2020). See")
+  //      Also handles plain sentence ends: period + space + uppercase, but ONLY when the
+  //      word before the period is NOT a known legal abbreviation (v, vs, Inc, Corp, etc.)
   let lastBoundaryIndex = -1
   let match: RegExpExecArray | null
+
+  // Check citation boundaries (digit-period-space)
   while ((match = CITATION_BOUNDARY_REGEX.exec(precedingText)) !== null) {
     lastBoundaryIndex = match.index + match[0].length
+  }
+
+  // Check sentence boundaries: "). " or ". " followed by uppercase letter.
+  // Skip legal abbreviations that end with period.
+  const LEGAL_ABBREVS = /\b(?:v|vs|Inc|Corp|Ltd|Co|Cir|App|Ct|Supp|Dist|Rev|Stat|Gen|No|ed|Jr|Sr|Dr|Mr|Mrs|Ms|Prof|St|Dep|Auth|Ass|Comm)\.\s+$/i
+  const SENTENCE_BOUNDARY = /[.)]\s+(?=[A-Z])/g
+  while ((match = SENTENCE_BOUNDARY.exec(precedingText)) !== null) {
+    // Check if this looks like a legal abbreviation before the period
+    const textBefore = precedingText.substring(Math.max(0, match.index - 15), match.index + 2)
+    if (LEGAL_ABBREVS.test(textBefore)) continue
+    const boundaryEnd = match.index + match[0].length
+    if (boundaryEnd > lastBoundaryIndex) {
+      lastBoundaryIndex = boundaryEnd
+    }
   }
 
   if (lastBoundaryIndex !== -1) {
