@@ -106,6 +106,15 @@ const BLOCKED_REPORTER_WORDS: ReadonlySet<string> = new Set([
   "type",
   "group",
   "unit",
+  "factor",
+  "category",
+  "exhibit",
+  "order",
+  "footnote",
+  "table",
+  "circuit",
+  "claim",
+  "issue",
 ])
 
 /** Whitespace/comma skip pattern for parenthetical scanning */

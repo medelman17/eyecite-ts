@@ -160,6 +160,48 @@ describe("false positive filtering (integration)", () => {
       expect(caseCites).toHaveLength(0)
     })
 
+    it("rejects 'Factor' in balancing test", () => {
+      const text = "Factor 4 of the balancing test weighed against granting 12 additional days."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Category' in sentencing guidelines", () => {
+      const text = "Category 6 criminal history subjects the defendant to 15 months imprisonment."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Exhibit' in evidence references", () => {
+      const text = "Exhibit 14 showed that the defendant made 7 unauthorized transfers."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Footnote' in opinion references", () => {
+      const text = "Footnote 7 explains that the defendant filed 4 prior motions."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Circuit' in court structure references", () => {
+      const text = "The 5 Circuit judges convened to hear the 3 consolidated appeals."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Table' in guideline references", () => {
+      const text = "Table 2 of the sentencing guidelines prescribes 10 offense levels."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects 'Order' in procedural references", () => {
+      const text = "Pursuant to Order 7 the parties submitted 3 supplemental briefs."
+      const caseCites = extractCitations(text).filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
     it("preserves valid citations in mixed text with false positives", () => {
       const text =
         "The District 2 Court relied on Miranda v. Arizona, 384 U.S. 436 (1966), in reaching its decision."
