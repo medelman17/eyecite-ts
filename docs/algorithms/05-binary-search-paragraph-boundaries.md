@@ -1,6 +1,6 @@
 # ALG-05: Binary Search for Paragraph Boundaries
 
-**Status:** Ready
+**Status:** Complete
 **Priority:** 2 (implement second)
 **Textbook References:** CLRS Ch.2.3 (binary search), Sedgewick Ch.1.1 (binary search)
 **Target Files:** `src/resolve/scopeBoundary.ts` lines 38-52
