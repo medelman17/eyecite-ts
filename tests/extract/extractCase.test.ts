@@ -1516,6 +1516,107 @@ describe("backward compatibility (Phase 6)", () => {
     }
   })
 
+  // Real case law: Brandenburg v. Ohio
+  it("per curiam: Brandenburg v. Ohio", () => {
+    const citations = extractCitations(
+      "Brandenburg v. Ohio, 395 U.S. 444, 447 (1969) (per curiam).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("per curiam")
+      expect(c.pincite).toBe(447)
+    }
+  })
+
+  // Real case law: New York Times v. United States (Pentagon Papers)
+  it("per curiam: New York Times v. United States", () => {
+    const citations = extractCitations(
+      "New York Times Co. v. United States, 403 U.S. 713 (1971) (per curiam).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("per curiam")
+      expect(c.year).toBe(1971)
+    }
+  })
+
+  // Real case law: en banc D.C. Circuit + per curiam combination
+  it("en banc takes precedence when both en banc and per curiam present", () => {
+    const citations = extractCitations(
+      "United States v. Microsoft Corp., 253 F.3d 34 (D.C. Cir. 2001) (en banc) (per curiam).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      // en banc appears first, should be captured as disposition
+      expect(c.disposition).toBe("en banc")
+    }
+  })
+
+  // Real case law: Ricci v. DeStefano (en banc Second Circuit)
+  it("en banc: Ricci v. DeStefano", () => {
+    const citations = extractCitations(
+      "Ricci v. DeStefano, 530 F.3d 88 (2d Cir. 2008) (en banc).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("en banc")
+      expect(c.court).toBe("2d Cir.")
+    }
+  })
+
+  // Real case law: Wilson-Bey (en banc with pincite)
+  it("en banc: D.C. Court of Appeals with A.2d reporter", () => {
+    const citations = extractCitations(
+      "Wilson-Bey v. United States, 903 A.2d 818, 836 (D.C. 2006) (en banc).",
+    )
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("en banc")
+      expect(c.pincite).toBe(836)
+    }
+  })
+
+  // New disposition types (Bluebook Rule 10.6.1)
+  it("mem.: memorandum disposition", () => {
+    const citations = extractCitations("500 U.S. 123 (2019) (mem.)")
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("mem.")
+    }
+  })
+
+  it("table: table decision", () => {
+    const citations = extractCitations("516 U.S. 1001 (1995) (table)")
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("table")
+    }
+  })
+
+  it("unpublished: unpublished opinion", () => {
+    const citations = extractCitations("500 F.3d 123 (9th Cir. 2020) (unpublished)")
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("unpublished")
+    }
+  })
+
+  it("plurality opinion disposition", () => {
+    const citations = extractCitations("430 U.S. 188 (1977) (plurality opinion)")
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("plurality opinion")
+    }
+  })
+
+  it("mem. op.: Texas-style memorandum opinion", () => {
+    const citations = extractCitations("500 S.W.3d 100 (Tex. 2020) (mem. op.)")
+    const c = citations.find((c) => c.type === "case")
+    if (c?.type === "case") {
+      expect(c.disposition).toBe("mem. op.")
+    }
+  })
+
   it("subsequent history does not break fullSpan", () => {
     const text = "Smith v. Jones, 500 F.2d 123 (2d Cir. 1990), aff'd, 501 U.S. 1 (1991)"
     const citations = extractCitations(text)

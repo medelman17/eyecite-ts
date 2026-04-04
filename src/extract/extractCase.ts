@@ -496,11 +496,21 @@ function parseParenthetical(content: string): {
     result.court = courtResult
   }
 
-  // Check for disposition
-  if (/\ben banc\b/i.test(content)) {
+  // Check for disposition (Bluebook Rule 10.6.1 weight-of-authority parentheticals)
+  if (/\ben\s+banc\b/i.test(content) || /\bin\s+banc\b/i.test(content)) {
     result.disposition = "en banc"
-  } else if (/\bper curiam\b/i.test(content)) {
+  } else if (/\bper\s+curiam\b/i.test(content)) {
     result.disposition = "per curiam"
+  } else if (/\bmem\.\s*op\b/i.test(content)) {
+    result.disposition = "mem. op."
+  } else if (/\bmem\b\.?/i.test(content) && content.trim().length < 10) {
+    result.disposition = "mem."
+  } else if (/^\s*table\s*$/i.test(content)) {
+    result.disposition = "table"
+  } else if (/\bunpublished\b/i.test(content)) {
+    result.disposition = "unpublished"
+  } else if (/\bplurality\s+opinion\b/i.test(content)) {
+    result.disposition = "plurality opinion"
   }
 
   return result
