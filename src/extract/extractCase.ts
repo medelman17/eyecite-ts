@@ -78,6 +78,36 @@ const LOOKAHEAD_PINCITE_REGEX = /^,\s*(\d+(?:-\d+)?)/
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
 
+/** Common English words that should never be matched as reporter names.
+ *  These frequently appear after numbers in court opinions, triggering false positives. */
+const BLOCKED_REPORTER_WORDS: ReadonlySet<string> = new Set([
+  "court",
+  "district",
+  "division",
+  "section",
+  "rule",
+  "chapter",
+  "article",
+  "part",
+  "title",
+  "no",
+  "nos",
+  "number",
+  "count",
+  "paragraph",
+  "page",
+  "item",
+  "clause",
+  "class",
+  "grade",
+  "step",
+  "phase",
+  "level",
+  "type",
+  "group",
+  "unit",
+])
+
 /** Whitespace/comma skip pattern for parenthetical scanning */
 const PAREN_SKIP_REGEX = /[\s,]/
 
@@ -726,7 +756,7 @@ export function extractCase(
   token: Token,
   transformationMap: TransformationMap,
   cleanedText?: string,
-): FullCaseCitation {
+): FullCaseCitation | null {
   const { text, span } = token
 
   // Parse volume-reporter-page using regex
@@ -741,6 +771,14 @@ export function extractCase(
 
   const volume = parseVolume(match[1])
   const reporter = match[2].trim()
+
+  // Reject false positives: common English words that aren't reporters.
+  // The state-reporter regex is greedy and may capture multi-word strings like
+  // "Court dismissed the complaint...", so check the first word.
+  const firstWord = reporter.split(/[\s.]+/)[0]
+  if (firstWord && BLOCKED_REPORTER_WORDS.has(firstWord.toLowerCase())) {
+    return null
+  }
 
   // Extract nominative reporter if present (e.g., "1 Cranch" from "5 U.S. (1 Cranch) 137")
   const nominativeVolume = match[3] ? Number.parseInt(match[3], 10) : undefined

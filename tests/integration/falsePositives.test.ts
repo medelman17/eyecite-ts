@@ -54,6 +54,27 @@ describe("false positive filtering (integration)", () => {
       expect(citations).toHaveLength(0)
     })
 
+    it("rejects 'Court' as a reporter in prose text", () => {
+      const text =
+        "The District 2 Court dismissed the complaint for failure to state a claim under Rule 12(b)(6) of the Federal Rules of Civil Procedure."
+      const citations = extractCitations(text)
+      const caseCites = citations.filter((c) => c.type === "case")
+      expect(caseCites).toHaveLength(0)
+    })
+
+    it("rejects other common English words as reporters", () => {
+      const texts = [
+        "The 3 Section review panel agreed.",
+        "Under Rule 12 the motion was denied.",
+        "Chapter 7 proceedings commenced.",
+      ]
+      for (const text of texts) {
+        const citations = extractCitations(text)
+        const caseCites = citations.filter((c) => c.type === "case")
+        expect(caseCites).toHaveLength(0)
+      }
+    })
+
     it("keeps valid US citations when filtering", () => {
       const text = "See Smith v. Jones, 500 F.2d 123 (9th Cir. 2020); 1986 I.C.J. 14 (June 27)."
       const citations = extractCitations(text, { filterFalsePositives: true })

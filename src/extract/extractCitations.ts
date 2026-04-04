@@ -279,7 +279,9 @@ export function extractCitations(
         } else if (token.patternId === "shortFormCase") {
           citation = extractShortFormCase(token, transformationMap)
         } else {
-          citation = extractCase(token, transformationMap, cleaned)
+          const caseCite = extractCase(token, transformationMap, cleaned)
+          if (!caseCite) continue
+          citation = caseCite
         }
         break
       case "statute":
