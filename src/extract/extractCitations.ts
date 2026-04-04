@@ -41,7 +41,7 @@ import type { Citation, HistorySignal } from "@/types/citation"
 import { resolveCitations } from "../resolve"
 import type { ResolutionOptions, ResolvedCitation } from "../resolve/types"
 import { detectParallelCitations } from "./detectParallel"
-import { detectStringCitations } from "./detectStringCites"
+import { detectStringCitations, detectLeadingSignals } from "./detectStringCites"
 import { extractId, extractShortFormCase, extractSupra } from "./extractShortForms"
 import { applyFalsePositiveFilters } from "./filterFalsePositives"
 
@@ -359,6 +359,11 @@ export function extractCitations(
 
   // Step 4.75: Detect string citation groups (semicolon-separated)
   detectStringCitations(citations, cleaned)
+
+  // Step 4.8: Detect leading introductory signals for all citations.
+  // Runs after string cite detection (which sets mid-group signals) so we
+  // only scan backward for citations that still lack a signal.
+  detectLeadingSignals(citations, cleaned)
 
   // Step 4.9: Apply false positive filters (blocklist + year heuristic)
   const filtered = applyFalsePositiveFilters(citations, options?.filterFalsePositives ?? false)
