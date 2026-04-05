@@ -273,7 +273,7 @@ export function extractCitations(
       case "case":
         // Check pattern ID to distinguish short-form from full citations
         if (token.patternId === "id" || token.patternId === "ibid") {
-          citation = extractId(token, transformationMap)
+          citation = extractId(token, transformationMap, cleaned)
         } else if (token.patternId === "supra") {
           citation = extractSupra(token, transformationMap)
         } else if (token.patternId === "shortFormCase") {

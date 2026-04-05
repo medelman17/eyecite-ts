@@ -41,26 +41,52 @@ import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
  * // }
  * ```
  */
-export function extractId(token: Token, transformationMap: TransformationMap): IdCitation {
+export function extractId(
+  token: Token,
+  transformationMap: TransformationMap,
+  cleanedText?: string,
+): IdCitation {
   const { text, span } = token
 
   // Parse Id. with optional pincite
   // Pattern: Id. or Ibid. with optional comma + "at [page]" (handles "Id., at 5")
-  const idRegex = /[Ii](?:d|bid)\.(?:,?\s+at\s+(\d+(?:\s*[-–]\s*\d+)?))?/
+  const idRegex = /([Ii])(?:d|bid)(\.)(,?)\s*(?:at\s+(\d+(?:\s*[-–]\s*\d+)?))?/
   const match = idRegex.exec(text)
 
   if (!match) {
     throw new Error(`Failed to parse Id. citation: ${text}`)
   }
 
-  // Extract pincite if present
-  const pincite = match[1] ? Number.parseInt(match[1], 10) : undefined
+  const firstChar = match[1]
+  const hasComma = match[3] === ","
+  const pincite = match[4] ? Number.parseInt(match[4], 10) : undefined
+
+  // Confidence scoring based on variant
+  let confidence = 1.0
+  const isLowercase = firstChar === "i"
+  if (isLowercase) confidence = 0.85 // Lowercase id. is non-standard
+  if (hasComma) confidence = Math.min(confidence, 0.9) // Comma variant (Id., at N)
+
+  // Context validation: check whether Id. appears in a citation context.
+  // Real Id. citations follow sentence-ending punctuation, semicolons,
+  // or paragraph breaks — not mid-sentence prose like "The Id. card".
+  if (cleanedText && span.cleanStart > 0) {
+    const preceding = cleanedText.slice(Math.max(0, span.cleanStart - 20), span.cleanStart)
+    // Look for the last non-whitespace character before Id.
+    const trimmed = preceding.trimEnd()
+    if (trimmed.length > 0) {
+      const lastChar = trimmed[trimmed.length - 1]
+      // Citation contexts end with: . ; ) ] — or follow certain patterns
+      const isCitationContext = /[.;)\]—:]$/.test(trimmed)
+      if (!isCitationContext) {
+        // Mid-sentence Id. (e.g., "The Id. card") — likely not a citation
+        confidence = Math.min(confidence, 0.4)
+      }
+    }
+  }
 
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
-
-  // Confidence: 1.0 (Id. format is unambiguous)
-  const confidence = 1.0
 
   return {
     type: "id",
