@@ -271,7 +271,8 @@ describe("extractCase", () => {
 
         const citation = extractCase(token, transformationMap)
 
-        expect(citation.confidence).toBeGreaterThanOrEqual(0.8)
+        // Base 0.2 + common reporter 0.3 = 0.5 (may be higher with court inference)
+        expect(citation.confidence).toBeGreaterThanOrEqual(0.5)
       }
     })
 
@@ -286,8 +287,8 @@ describe("extractCase", () => {
 
       const citation = extractCase(token, transformationMap)
 
-      // Common reporter (0.5 + 0.3) + valid year (+0.2) = 1.0
-      expect(citation.confidence).toBe(1.0)
+      // Base (0.2) + common reporter (+0.3) + valid year (+0.2) = 0.7
+      expect(citation.confidence).toBe(0.7)
     })
 
     it("should not boost confidence for future year", () => {
@@ -302,8 +303,8 @@ describe("extractCase", () => {
 
       const citation = extractCase(token, transformationMap)
 
-      // Common reporter (0.5 + 0.3) but no year boost = 0.8
-      expect(citation.confidence).toBe(0.8)
+      // Base (0.2) + common reporter (+0.3) but no year boost = 0.5
+      expect(citation.confidence).toBe(0.5)
     })
 
     it("should have lower confidence for unknown reporter", () => {
@@ -317,8 +318,8 @@ describe("extractCase", () => {
 
       const citation = extractCase(token, transformationMap)
 
-      // Base confidence only
-      expect(citation.confidence).toBe(0.5)
+      // Base confidence only (unknown reporter, no year, no case name)
+      expect(citation.confidence).toBe(0.2)
     })
   })
 
@@ -1147,7 +1148,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].reporter).toBe("F.2d")
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
-        expect(citations[0].confidence).toBe(0.8)
+        expect(citations[0].confidence).toBe(0.5)
       }
     })
 
@@ -1159,7 +1160,8 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].reporter).toBe("U.S.")
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
-        expect(citations[0].confidence).toBe(0.8)
+        // 0.2 base + 0.3 reporter + 0.1 court (U.S. → scotus inference) = 0.6
+        expect(citations[0].confidence).toBe(0.6)
       }
     })
 
@@ -1171,7 +1173,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].reporter).toBe("Cal.App.4th")
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
-        expect(citations[0].confidence).toBe(0.8)
+        expect(citations[0].confidence).toBe(0.5)
       }
     })
 
@@ -1183,7 +1185,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].reporter).toBe("U.S.")
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
-        expect(citations[0].confidence).toBe(0.8)
+        expect(citations[0].confidence).toBe(0.6)
       }
     })
   })
@@ -1197,7 +1199,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].reporter).toBe("F.2d")
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
-        expect(citations[0].confidence).toBe(0.8)
+        expect(citations[0].confidence).toBe(0.5)
       }
     })
 
@@ -1209,7 +1211,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].reporter).toBe("U.S.")
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
-        expect(citations[0].confidence).toBe(0.8)
+        expect(citations[0].confidence).toBe(0.6)
       }
     })
   })
@@ -1224,7 +1226,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
         expect(citations[0].year).toBe(2020)
-        expect(citations[0].confidence).toBe(0.8)
+        expect(citations[0].confidence).toBe(0.7)
       }
     })
 
@@ -1268,7 +1270,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
       if (citations[0].type === "case") {
         expect(citations[0].page).toBe(123)
         expect(citations[0].hasBlankPage).toBeUndefined()
-        expect(citations[0].confidence).toBeGreaterThanOrEqual(0.8)
+        expect(citations[0].confidence).toBeGreaterThanOrEqual(0.5)
       }
     })
   })
@@ -1294,7 +1296,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
         expect(citations[0].year).toBe(2024)
-        expect(citations[0].confidence).toBe(0.8)
+        expect(citations[0].confidence).toBe(0.7)
       }
     })
 

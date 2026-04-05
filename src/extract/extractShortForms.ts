@@ -256,8 +256,12 @@ export function extractShortFormCase(
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-  // Confidence: 0.7 (short-form citations are more ambiguous)
-  const confidence = 0.7
+  // Confidence: base 0.4, boosted for recognized reporters
+  let confidence = 0.4
+  const COMMON_SHORT_FORM_REPORTERS = ["F.", "F.2d", "F.3d", "F.4th", "U.S.", "S. Ct.", "L. Ed.", "L. Ed. 2d", "P.", "P.2d", "P.3d", "A.", "A.2d", "A.3d", "N.E.", "N.E.2d", "N.E.3d", "N.W.", "N.W.2d", "S.E.", "S.E.2d", "S.W.", "S.W.2d", "S.W.3d", "So.", "So. 2d", "So. 3d", "F. Supp.", "F. Supp. 2d", "F. Supp. 3d", "F. Supp. 4th", "F. App'x"]
+  if (COMMON_SHORT_FORM_REPORTERS.includes(reporter)) {
+    confidence += 0.3
+  }
 
   return {
     type: "shortFormCase",
