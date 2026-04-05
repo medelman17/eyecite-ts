@@ -1,5 +1,11 @@
 # eyecite-ts
 
+## 0.7.3
+
+### Patch Changes
+
+- [#125](https://github.com/medelman17/eyecite-ts/pull/125) [`d63a379`](https://github.com/medelman17/eyecite-ts/commit/d63a37923015044218248bb80c29327f0bf2ab45) Thanks [@medelman17](https://github.com/medelman17)! - Fix four extraction bugs: fullSpan now extends through pincites and closing parentheticals (#120); prose false positives like "2 Court dismissed..." are detected and penalized (#121); dispositions like (per curiam) and (en banc) are captured from second parentheticals (#123); signal words no longer absorbed into caseName (#124). Issue #122 (pincite capture) was already working — regression test added.
+
 ## 0.7.2
 
 ### Patch Changes
