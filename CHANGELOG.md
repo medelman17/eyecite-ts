@@ -1,5 +1,17 @@
 # eyecite-ts
 
+## 0.8.1
+
+### Patch Changes
+
+- [#152](https://github.com/medelman17/eyecite-ts/pull/152) [`9dc0024`](https://github.com/medelman17/eyecite-ts/commit/9dc0024bb8fff64da12241aad5c5c8330a6631a9) Thanks [@medelman17](https://github.com/medelman17)! - Recalibrate confidence scoring for case and short-form case citations (#147). Case citations now use multi-factor scoring: base 0.2 + reporter recognition (+0.3) + year (+0.2) + case name (+0.15) + court (+0.1). This creates clear separation between real citations (0.7-1.0) and garbage extractions (0.2-0.3). Short-form case citations also factor in reporter recognition instead of using a hardcoded 0.7. Blank page citations use a floor of 0.5 instead of overriding to 0.8.
+
+- [#148](https://github.com/medelman17/eyecite-ts/pull/148) [`307525a`](https://github.com/medelman17/eyecite-ts/commit/307525ab750dc32c94243024c7d566ab385b756e) Thanks [@medelman17](https://github.com/medelman17)! - Reduce false positive case citations from zip codes, docket numbers, and footnote markers (#145). Four fixes: (1) confidence scoring now uses exact reporter matching instead of substring (prevents "TCPA." from matching "A."); (2) new volume plausibility check flags volumes > 2000 (catches zip codes like 20006); (3) new docket-number pattern detection flags hyphenated volumes like "24-30706"; (4) expanded small-volume heuristic (1–20, was 1–9) now validates period-containing reporters against reporters-db instead of skipping them.
+
+- [#153](https://github.com/medelman17/eyecite-ts/pull/153) [`8ae6849`](https://github.com/medelman17/eyecite-ts/commit/8ae6849181333b66f248d27bff50c2afe1fd43b3) Thanks [@medelman17](https://github.com/medelman17)! - Extend false positive filters to cover short-form case citations (#146). The `getReporter()` function only checked `type === "case"`, so `shortFormCase` citations with implausible reporters (prose text captured by the "at" keyword) bypassed all validation. Now all reporter/volume heuristics apply to short-form citations too.
+
+- [#151](https://github.com/medelman17/eyecite-ts/pull/151) [`59df210`](https://github.com/medelman17/eyecite-ts/commit/59df2106b9ab05cd1d75217e5cb4ee1b18ae867a) Thanks [@medelman17](https://github.com/medelman17)! - Fix missing type declarations (#149). The package.json exports map pointed to `.d.ts` files that don't exist — the build emits `.d.mts` (ESM) and `.d.cts` (CJS). Updated exports to use conditional types per format so TypeScript consumers get proper type information for all entry points.
+
 ## 0.8.0
 
 ### Minor Changes
