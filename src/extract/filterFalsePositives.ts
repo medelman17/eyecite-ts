@@ -94,8 +94,9 @@ function getYear(citation: Citation): number | undefined {
 
 /**
  * Words that should never appear as standalone tokens in a reporter string.
- * These appear in prose (e.g., "the District 2 Court dismissed") and get
+ * These appear in English prose (e.g., "the District 2 Court dismissed") and get
  * falsely matched by the broad state-reporter regex.
+ * Note: English-only — extend if the library is used on non-English legal text.
  */
 const REPORTER_BLOCKLIST_WORDS: ReadonlySet<string> = new Set([
   "court",
@@ -117,7 +118,9 @@ const REPORTER_BLOCKLIST_WORDS: ReadonlySet<string> = new Set([
 
 /** Maximum length for a reporter string without periods.
  *  Real period-less reporters (e.g., "Cal", "Wis", "Mass") are short.
- *  Prose false positives ("Court dismissed the complaint...") are long. */
+ *  Prose false positives ("Court dismissed the complaint...") are long.
+ *  Threshold of 12 accommodates the longest known period-less reporters
+ *  (e.g., "Mass App Ct" at 11 chars). Raise if new reporters exceed this. */
 const MAX_PERIODLESS_REPORTER_LENGTH = 12
 
 /**

@@ -94,7 +94,9 @@ const PAREN_SKIP_REGEX = /[\s,]/
 
 /** Pincite text that appears between core citation and parentheticals.
  *  Matches: comma-separated page numbers/ranges and optional note refs.
- *  E.g., ", 199 n.2", ", 999-1000", ", 130 n.5" */
+ *  E.g., ", 199 n.2", ", 999-1000", ", 130 n.5"
+ *  The outer `+` is intentionally greedy to handle multi-pincite citations
+ *  (e.g., ", 199, 205, 210"). Safe because the scan window is bounded by maxLookahead. */
 const PINCITE_SKIP_REGEX = /^(?:,\s*\d+(?:[-–—]\d+)?(?:\s+(?:n|note)\s*\.?\s*\d+)?)+/
 
 /**
@@ -935,24 +937,21 @@ export function extractCase(
     proceduralPrefix = partyResult.proceduralPrefix
     signal = partyResult.signal
 
-    // Rebuild caseName from cleaned party names (signal stripped)
-    if (signal && plaintiff) {
-      if (defendant) {
-        caseName = `${plaintiff} v. ${defendant}`
-      } else if (proceduralPrefix) {
-        const subject = plaintiff.toLowerCase().startsWith(proceduralPrefix.toLowerCase())
-          ? plaintiff.substring(proceduralPrefix.length).trimStart()
-          : plaintiff
-        caseName = `${proceduralPrefix} ${subject}`
-      } else {
-        caseName = plaintiff
-      }
+    // Rebuild caseName from cleaned party names (signal stripped).
+    // Signal stripping only occurs in the adversarial ("v.") branch of extractPartyNames,
+    // which always sets defendant, so we normalize to "v." (standard legal citation form).
+    if (signal && plaintiff && defendant) {
+      caseName = `${plaintiff} v. ${defendant}`
+
       // Advance fullSpan.cleanStart past the signal word
       if (fullSpan) {
         const original = cleanedText?.substring(fullSpan.cleanStart, span.cleanStart) ?? ""
-        const signalInSpan = SIGNAL_STRIP_REGEX.exec(original)
+        // Trim leading whitespace to handle edge cases where fullSpan starts at a boundary
+        const trimmed = original.trimStart()
+        const leadingWs = original.length - trimmed.length
+        const signalInSpan = SIGNAL_STRIP_REGEX.exec(trimmed)
         if (signalInSpan) {
-          const newCleanStart = fullSpan.cleanStart + signalInSpan[0].length
+          const newCleanStart = fullSpan.cleanStart + leadingWs + signalInSpan[0].length
           const newOriginalStart =
             transformationMap.cleanToOriginal.get(newCleanStart) ?? newCleanStart
           fullSpan = { ...fullSpan, cleanStart: newCleanStart, originalStart: newOriginalStart }

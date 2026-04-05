@@ -1861,5 +1861,28 @@ describe("nominative reporter support (#49, #16)", () => {
       expect(cite.page).toBe(123)
       expect(cite.year).toBeUndefined()
     })
+
+    it("#124: signal stripped from procedural case with v. (Estate of X v. Y)", () => {
+      const text = "See Estate of Smith v. Jones, 500 F.3d 100 (9th Cir. 2007)."
+      const cite = extractCitations(text).find((c) => c.type === "case") as FullCaseCitation
+      expect(cite.caseName).toBe("Estate of Smith v. Jones")
+      expect(cite.signal).toBe("see")
+    })
+
+    it("#124: fullSpan excludes signal word after rebuild", () => {
+      const text = "See Smith v. Jones, 500 F.3d 100 (9th Cir. 2007)."
+      const cite = extractCitations(text).find((c) => c.type === "case") as FullCaseCitation
+      expect(cite.fullSpan).toBeDefined()
+      const fullText = text.slice(cite.fullSpan!.originalStart, cite.fullSpan!.originalEnd)
+      expect(fullText).toContain("Smith v. Jones")
+      expect(fullText).not.toMatch(/^See\s/)
+    })
+
+    it("#120: multi-pincite skip handles comma-separated pages", () => {
+      const text = "Smith v. Jones, 500 F.2d 100, 105, 110 (2d Cir. 1990)."
+      const cite = extractCitations(text).find((c) => c.type === "case") as FullCaseCitation
+      expect(cite.court).toBe("2d Cir.")
+      expect(cite.year).toBe(1990)
+    })
   })
 })
