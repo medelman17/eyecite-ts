@@ -256,8 +256,8 @@ describe("extractShortForms.ts — throw branches and position fallbacks", () =>
 
   it("extractSupra should throw on text that does not match supra regex", () => {
     const token: Token = {
-      text: "not a supra citation",
-      span: { cleanStart: 0, cleanEnd: 20 },
+      text: "not a citation at all",
+      span: { cleanStart: 0, cleanEnd: 21 },
       type: "case",
       patternId: "supra",
     }
