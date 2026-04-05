@@ -39,7 +39,33 @@ export function rejoinHyphenatedWords(text: string): string {
 }
 
 /**
+ * Replace each whitespace character (tab, newline, etc.) with a regular space.
+ * Does NOT collapse consecutive spaces — that's a separate step so the position
+ * mapper can handle each transformation type correctly (same-length replacement
+ * vs. length-reducing collapse).
+ *
+ * @example
+ * replaceWhitespace("Smith\tv.\nDoe")
+ * // => "Smith v. Doe"
+ */
+export function replaceWhitespace(text: string): string {
+  return text.replace(/[\t\n\r\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, " ")
+}
+
+/**
+ * Collapse runs of multiple spaces into a single space.
+ *
+ * @example
+ * collapseSpaces("Smith  v.  Doe,   500 F.2d 123")
+ * // => "Smith v. Doe, 500 F.2d 123"
+ */
+export function collapseSpaces(text: string): string {
+  return text.replace(/ {2,}/g, " ")
+}
+
+/**
  * Normalize whitespace: convert tabs/newlines to spaces, collapse multiple spaces.
+ * Kept for backwards compatibility — new pipeline uses replaceWhitespace + collapseSpaces.
  *
  * @example
  * normalizeWhitespace("Smith  v.  Doe,   500 F.2d 123")
