@@ -163,6 +163,20 @@ function rebuildPositionMaps(
       afterIdx++
     } else {
       // Characters differ - need to determine if this is insertion/deletion/replacement
+
+      // If remaining lengths are equal, every mismatch is a pure character
+      // replacement (no insertions or deletions from this point on).
+      // This prevents the lookahead from misinterpreting replacements like \n→' '
+      // as multi-char deletions when the replacement char appears later in the text.
+      if (beforeText.length - beforeIdx === afterText.length - afterIdx) {
+        const originalPos = oldCleanToOriginal.get(beforeIdx) ?? beforeIdx
+        newCleanToOriginal.set(afterIdx, originalPos)
+        newOriginalToClean.set(originalPos, afterIdx)
+        beforeIdx++
+        afterIdx++
+        continue
+      }
+
       // Look ahead to find next match
       let foundMatch = false
       const maxLookAhead = 20 // Limit lookahead to avoid performance issues
