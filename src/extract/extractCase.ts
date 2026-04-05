@@ -982,7 +982,7 @@ export function extractCase(
   let confidence = 0.5 // Base confidence
 
   // Common reporter patterns (F., U.S., S. Ct., etc.)
-  // Uses exact match (case-insensitive) to avoid false boosts from substring
+  // Uses exact match to avoid false boosts from substring
   // matches like "TCPA." containing "A." or "R. Civ. P." containing "P."
   if (COMMON_REPORTERS.has(reporter)) {
     confidence += 0.3
