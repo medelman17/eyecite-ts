@@ -9,6 +9,7 @@ import {
   normalizeTypography,
   normalizeUnicode,
   normalizeWhitespace,
+  rejoinHyphenatedWords,
   stripHtmlTags,
 } from "./cleaners"
 
@@ -47,6 +48,7 @@ export function cleanText(
   cleaners: Array<(text: string) => string> = [
     stripHtmlTags,
     decodeHtmlEntities,
+    rejoinHyphenatedWords,
     normalizeWhitespace,
     normalizeUnicode,
     normalizeDashes,
