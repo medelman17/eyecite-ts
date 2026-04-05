@@ -17,6 +17,7 @@ import type {
   FederalRegisterCitation,
   FullCaseCitation,
   JournalCitation,
+  ShortFormCaseCitation,
   StatutesAtLargeCitation,
   Warning,
 } from "@/types/citation"
@@ -71,6 +72,7 @@ const BLOCKED_REPORTERS: ReadonlySet<string> = new Set([
  */
 function getReporter(citation: Citation): string | undefined {
   if (citation.type === "case") return (citation as FullCaseCitation).reporter
+  if (citation.type === "shortFormCase") return (citation as ShortFormCaseCitation).reporter
   if (citation.type === "journal") return (citation as JournalCitation).abbreviation
   return undefined
 }
@@ -174,8 +176,8 @@ const DOCKET_VOLUME_REGEX = /^\d{1,2}-\d{4,}$/
  * zip codes (e.g., "DC 20006 Counsel for Appellants 20004").
  */
 function isImplausibleVolume(citation: Citation): boolean {
-  if (citation.type !== "case") return false
-  const caseCit = citation as FullCaseCitation
+  if (citation.type !== "case" && citation.type !== "shortFormCase") return false
+  const caseCit = citation as FullCaseCitation | ShortFormCaseCitation
   // Only check purely numeric volumes; hyphenated volumes (strings) are
   // handled by isDocketNumberVolume
   if (typeof caseCit.volume !== "number") return false
@@ -188,8 +190,8 @@ function isImplausibleVolume(citation: Citation): boolean {
  * Real hyphenated citation volumes have the opposite shape (e.g., "1984-1").
  */
 function isDocketNumberVolume(citation: Citation): boolean {
-  if (citation.type !== "case") return false
-  const caseCit = citation as FullCaseCitation
+  if (citation.type !== "case" && citation.type !== "shortFormCase") return false
+  const caseCit = citation as FullCaseCitation | ShortFormCaseCitation
   const vol = String(caseCit.volume)
   return DOCKET_VOLUME_REGEX.test(vol)
 }
@@ -209,8 +211,8 @@ function isDocketNumberVolume(citation: Citation): boolean {
  * periods but are not real reporters.
  */
 function isSuspiciousSmallVolume(citation: Citation): boolean {
-  if (citation.type !== "case") return false
-  const caseCit = citation as FullCaseCitation
+  if (citation.type !== "case" && citation.type !== "shortFormCase") return false
+  const caseCit = citation as FullCaseCitation | ShortFormCaseCitation
   const vol =
     typeof caseCit.volume === "number"
       ? caseCit.volume
@@ -243,7 +245,7 @@ function isSuspiciousSmallVolume(citation: Citation): boolean {
 function isFalsePositive(citation: Citation): boolean {
   const reporter = getReporter(citation)
   if (reporter && BLOCKED_REPORTERS.has(reporter.toLowerCase().trim())) return true
-  if (reporter && citation.type === "case" && isImplausibleReporter(reporter)) return true
+  if (reporter && (citation.type === "case" || citation.type === "shortFormCase") && isImplausibleReporter(reporter)) return true
   if (isImplausibleVolume(citation)) return true
   if (isDocketNumberVolume(citation)) return true
   if (isSuspiciousSmallVolume(citation)) return true
@@ -268,27 +270,27 @@ function collectFalsePositiveReasons(citation: Citation): string[] {
     if (BLOCKED_REPORTERS.has(normalized)) {
       reasons.push(`Reporter "${reporter}" is a known non-US source`)
     }
-    if (citation.type === "case" && isImplausibleReporter(reporter)) {
+    if ((citation.type === "case" || citation.type === "shortFormCase") && isImplausibleReporter(reporter)) {
       reasons.push(`Reporter "${reporter}" contains prose words or is implausibly long`)
     }
   }
 
   if (isImplausibleVolume(citation)) {
-    const caseCit = citation as FullCaseCitation
+    const caseCit = citation as FullCaseCitation | ShortFormCaseCitation
     reasons.push(
       `Volume ${caseCit.volume} exceeds maximum plausible volume (${MAX_PLAUSIBLE_VOLUME}) — likely a zip code or other number`,
     )
   }
 
   if (isDocketNumberVolume(citation)) {
-    const caseCit = citation as FullCaseCitation
+    const caseCit = citation as FullCaseCitation | ShortFormCaseCitation
     reasons.push(
       `Hyphenated volume "${caseCit.volume}" matches docket number pattern — likely a case number, not a citation volume`,
     )
   }
 
   if (isSuspiciousSmallVolume(citation)) {
-    const caseCit = citation as FullCaseCitation
+    const caseCit = citation as FullCaseCitation | ShortFormCaseCitation
     reasons.push(
       `Small volume (${caseCit.volume}) with unrecognized reporter "${caseCit.reporter}" — likely a paragraph or footnote marker`,
     )

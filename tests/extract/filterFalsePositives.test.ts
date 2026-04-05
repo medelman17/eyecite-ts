@@ -191,7 +191,7 @@ describe("applyFalsePositiveFilters", () => {
   })
 
   describe("short-form citations", () => {
-    it("does not filter shortFormCase citations (they reference an antecedent)", () => {
+    it("flags shortFormCase with blocklisted reporter (#146)", () => {
       const shortForm = {
         type: "shortFormCase" as const,
         text: "",
@@ -204,6 +204,40 @@ describe("applyFalsePositiveFilters", () => {
         volume: 1986,
         page: 14,
         antecedent: undefined,
+      }
+      const result = applyFalsePositiveFilters([shortForm], false)
+      expect(result[0].confidence).toBe(0.1) // flagged as non-US reporter
+    })
+
+    it("flags shortFormCase with implausible prose reporter (#146)", () => {
+      const shortForm = {
+        type: "shortFormCase" as const,
+        text: "",
+        span: { cleanStart: 0, cleanEnd: 10, originalStart: 0, originalEnd: 10 },
+        confidence: 0.7,
+        matchedText: "",
+        processTimeMs: 0,
+        patternsChecked: 1,
+        reporter: "The Court concluded that the regulation",
+        volume: 15,
+        pincite: 3,
+      }
+      const result = applyFalsePositiveFilters([shortForm], false)
+      expect(result[0].confidence).toBe(0.1) // flagged as implausible reporter
+    })
+
+    it("does not filter shortFormCase with valid reporter", () => {
+      const shortForm = {
+        type: "shortFormCase" as const,
+        text: "",
+        span: { cleanStart: 0, cleanEnd: 10, originalStart: 0, originalEnd: 10 },
+        confidence: 0.7,
+        matchedText: "",
+        processTimeMs: 0,
+        patternsChecked: 1,
+        reporter: "F.2d",
+        volume: 500,
+        pincite: 130,
       }
       const result = applyFalsePositiveFilters([shortForm], false)
       expect(result[0].confidence).toBe(0.7) // unchanged
