@@ -248,8 +248,8 @@ describe("SHORT_FORM_CASE_PATTERN", () => {
 })
 
 describe("SHORT_FORM_PATTERNS array", () => {
-  it("should export all four patterns", () => {
-    expect(SHORT_FORM_PATTERNS).toHaveLength(4)
+  it("should export all five patterns", () => {
+    expect(SHORT_FORM_PATTERNS).toHaveLength(5)
     expect(SHORT_FORM_PATTERNS).toContain(ID_PATTERN)
     expect(SHORT_FORM_PATTERNS).toContain(IBID_PATTERN)
     expect(SHORT_FORM_PATTERNS).toContain(SUPRA_PATTERN)

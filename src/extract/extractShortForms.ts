@@ -140,25 +140,44 @@ export function extractId(
 export function extractSupra(token: Token, transformationMap: TransformationMap): SupraCitation {
   const { text, span } = token
 
-  // Parse party name, optional note number, and optional pincite
-  // Pattern: word(s), supra [note N] [, at page]
-  // Note: Matches party names including hyphens, apostrophes, periods, and "v."
-  const supraRegex =
+  // Try party-name pattern first: "Smith, supra [note N] [, at page]"
+  const partySupraRegex =
     /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+at\s+(\d+))?/
-  const match = supraRegex.exec(text)
+  const partyMatch = partySupraRegex.exec(text)
+
+  // Fallback: standalone supra — "supra note N", "supra at N", "supra § N"
+  const standaloneRegex =
+    /supra(?:\s+note\s+(\d+)(?:,?\s+at\s+(\d+))?|\s+at\s+(\d+))?/
+  const match = partyMatch || standaloneRegex.exec(text)
 
   if (!match) {
     throw new Error(`Failed to parse supra citation: ${text}`)
   }
 
-  const partyName = match[1]
-  const pincite = match[3] ? Number.parseInt(match[3], 10) : undefined
+  let partyName: string | undefined
+  let pincite: number | undefined
+  let confidence: number
+
+  if (partyMatch) {
+    partyName = partyMatch[1]
+    pincite = partyMatch[3] ? Number.parseInt(partyMatch[3], 10) : undefined
+    confidence = 0.9
+  } else {
+    // Standalone supra — no party name
+    partyName = undefined
+    const noteNum = match[1]
+    const noteAtPage = match[2]
+    const atPage = match[3]
+    pincite = noteAtPage
+      ? Number.parseInt(noteAtPage, 10)
+      : atPage
+        ? Number.parseInt(atPage, 10)
+        : undefined
+    confidence = 0.8 // Slightly lower — standalone supra is less specific
+  }
 
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
-
-  // Confidence: 0.9 (supra format is fairly standard)
-  const confidence = 0.9
 
   return {
     type: "supra",

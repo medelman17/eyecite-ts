@@ -28,6 +28,16 @@ export const SUPRA_PATTERN: RegExp =
   /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+at\s+(\d+))?/g
 
 /**
+ * Standalone supra without party name (common in footnotes).
+ * Matches: "supra note 12", "supra at 15", "supra § 3", "supra Part II"
+ * Requires "note", "at", "§", "Part", or "p." after supra to avoid matching
+ * the word "supra" in prose. Preceded by whitespace, start, or signal words.
+ * Captures: (1) note number (if any), (2) pincite
+ */
+export const STANDALONE_SUPRA_PATTERN: RegExp =
+  /(?:^|(?<=\s)|(?<=[;.]))supra(?:\s+note\s+(\d+)(?:,?\s+at\s+(\d+))?|\s+at\s+(\d+)|\s+(?:§+|Part|p\.)\s*\S+)/g
+
+/**
  * Short-form case: volume reporter at page
  * Pattern: number space abbreviation space "at" space number
  * Simplified detection; full parsing in extraction layer.
@@ -41,6 +51,7 @@ export const SHORT_FORM_PATTERNS: readonly RegExp[] = [
   ID_PATTERN,
   IBID_PATTERN,
   SUPRA_PATTERN,
+  STANDALONE_SUPRA_PATTERN,
   SHORT_FORM_CASE_PATTERN,
 ] as const
 
@@ -62,6 +73,12 @@ export const shortFormPatterns: Pattern[] = [
     id: "supra",
     regex: SUPRA_PATTERN,
     description: 'Supra citations (e.g., "Smith, supra" or "Smith, supra, at 460")',
+    type: "case", // Will be typed as 'supra' in extraction layer
+  },
+  {
+    id: "supra",
+    regex: STANDALONE_SUPRA_PATTERN,
+    description: 'Standalone supra (e.g., "supra note 12" or "supra at 15")',
     type: "case", // Will be typed as 'supra' in extraction layer
   },
   {

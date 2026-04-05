@@ -171,6 +171,7 @@ export class DocumentResolver {
    * Resolves supra citation by matching party name.
    */
   private resolveSupra(citation: SupraCitation): ResolutionResult | undefined {
+    if (!citation.partyName) return undefined // Standalone supra — cannot resolve by party name
     const currentIndex = this.context.citationIndex
     const targetPartyName = this.normalizePartyName(citation.partyName)
 

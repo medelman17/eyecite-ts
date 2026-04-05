@@ -515,8 +515,8 @@ export interface IdCitation extends CitationBase {
  */
 export interface SupraCitation extends CitationBase {
   type: "supra"
-  /** Party name extracted from citation text */
-  partyName: string
+  /** Party name extracted from citation text (undefined for standalone supra references) */
+  partyName?: string
   /** Specific page reference */
   pincite?: number
 }
