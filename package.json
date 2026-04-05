@@ -5,29 +5,49 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./data": {
-      "types": "./dist/data/index.d.ts",
-      "import": "./dist/data/index.mjs",
-      "require": "./dist/data/index.cjs"
+      "import": {
+        "types": "./dist/data/index.d.mts",
+        "default": "./dist/data/index.mjs"
+      },
+      "require": {
+        "types": "./dist/data/index.d.cts",
+        "default": "./dist/data/index.cjs"
+      }
     },
     "./annotate": {
-      "types": "./dist/annotate/index.d.ts",
-      "import": "./dist/annotate/index.mjs",
-      "require": "./dist/annotate/index.cjs"
+      "import": {
+        "types": "./dist/annotate/index.d.mts",
+        "default": "./dist/annotate/index.mjs"
+      },
+      "require": {
+        "types": "./dist/annotate/index.d.cts",
+        "default": "./dist/annotate/index.cjs"
+      }
     },
     "./utils": {
-      "types": "./dist/utils/index.d.ts",
-      "import": "./dist/utils/index.mjs",
-      "require": "./dist/utils/index.cjs"
+      "import": {
+        "types": "./dist/utils/index.d.mts",
+        "default": "./dist/utils/index.mjs"
+      },
+      "require": {
+        "types": "./dist/utils/index.d.cts",
+        "default": "./dist/utils/index.cjs"
+      }
     }
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/index.d.mts",
   "files": [
     "dist"
   ],
