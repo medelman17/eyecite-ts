@@ -19,11 +19,11 @@ export type ScopeStrategy = "paragraph" | "section" | "footnote" | "none"
  */
 export interface ResolutionOptions {
   /**
-   * Scope boundary strategy (default: 'paragraph')
-   * - paragraph: Only resolve within same paragraph
+   * Scope boundary strategy (default: 'none')
+   * - none: Resolve across entire document (recommended for HTML-stripped text)
+   * - paragraph: Only resolve within same paragraph (too restrictive for most inputs)
    * - section: Only resolve within same section
    * - footnote: Only resolve within same footnote
-   * - none: Resolve across entire document
    */
   scopeStrategy?: ScopeStrategy
 

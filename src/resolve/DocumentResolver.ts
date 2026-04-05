@@ -54,7 +54,7 @@ export class DocumentResolver {
 
     // Apply defaults to options
     this.options = {
-      scopeStrategy: options.scopeStrategy ?? "paragraph",
+      scopeStrategy: options.scopeStrategy ?? "none",
       autoDetectParagraphs: options.autoDetectParagraphs ?? true,
       paragraphBoundaryPattern: options.paragraphBoundaryPattern ?? /\n\n+/g,
       fuzzyPartyMatching: options.fuzzyPartyMatching ?? true,
