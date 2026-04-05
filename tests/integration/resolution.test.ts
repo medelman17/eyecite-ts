@@ -59,7 +59,7 @@ describe("Resolution Integration Tests", () => {
   })
 
   describe("Paragraph Scope Boundaries", () => {
-    it("Id. does not resolve across paragraph boundaries (default)", () => {
+    it("Id. resolves across paragraph boundaries with default scope (none)", () => {
       const text = `First paragraph: Smith v. Jones, 500 F.2d 123 (2020).
 
 Second paragraph: Id. at 125.`
@@ -68,7 +68,22 @@ Second paragraph: Id. at 125.`
 
       expect(citations).toHaveLength(2)
 
-      // Id. in second paragraph fails to resolve
+      // Default scope is "none" — Id. resolves across paragraphs
+      expect(citations[1].type).toBe("id")
+      expect(citations[1].resolution?.resolvedTo).toBe(0)
+    })
+
+    it("Id. does not resolve across paragraph boundaries with paragraph scope", () => {
+      const text = `First paragraph: Smith v. Jones, 500 F.2d 123 (2020).
+
+Second paragraph: Id. at 125.`
+
+      const citations = extractCitations(text, {
+        resolve: true,
+        resolutionOptions: { scopeStrategy: "paragraph" },
+      }) as ResolvedCitation[]
+
+      expect(citations).toHaveLength(2)
       expect(citations[1].type).toBe("id")
       expect(citations[1].resolution?.resolvedTo).toBeUndefined()
       expect(citations[1].resolution?.failureReason).toContain("scope boundary")
