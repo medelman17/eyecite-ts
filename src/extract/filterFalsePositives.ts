@@ -6,7 +6,8 @@
  * - Citations with years predating US legal reporting (before 1750)
  *
  * Runs as a post-extraction phase (Step 4.9) after string citation grouping.
- * Does not depend on the reporters database — uses a lightweight static blocklist.
+ * Uses a lightweight static blocklist, enhanced with reporters-db validation
+ * when loaded (for single-digit-volume paragraph/footnote marker detection).
  *
  * @module extract/filterFalsePositives
  */
@@ -19,6 +20,7 @@ import type {
   StatutesAtLargeCitation,
   Warning,
 } from "@/types/citation"
+import { getReportersSync } from "@/data/reportersCache"
 
 /** Year threshold: US legal reporting starts ~1790 (Dallas Reports). 1750 gives headroom. */
 const MIN_PLAUSIBLE_YEAR = 1750
@@ -135,12 +137,71 @@ function isImplausibleReporter(reporter: string): boolean {
 }
 
 /**
+ * Words that appear in prose false positives for single-digit-volume citations
+ * but never in legitimate reporter abbreviations (verified against reporters-db).
+ * Used as fallback when reporters-db is not loaded.
+ */
+const SINGLE_DIGIT_PROSE_WORDS: ReadonlySet<string> = new Set([
+  // Prepositions / conjunctions / articles
+  "the", "a", "an", "in", "on", "at", "but", "and", "for", "by", "to",
+  "with", "from", "as", "if", "so", "nor", "yet", "not", "no", "then",
+  "when", "where", "who", "what", "how", "that", "this", "these", "those",
+  // Pronouns
+  "he", "she", "it", "they", "we", "his", "her", "its", "their", "our",
+  // Common verbs
+  "was", "were", "is", "are", "has", "had", "been", "being",
+  "did", "does", "do", "may", "shall", "will", "would", "could", "should",
+  "held", "said", "found", "made", "took", "gave", "see", "also",
+  // Month names (after HTML stripping, "¶2 In July 2016" → "2 In July 2016")
+  "january", "february", "march", "april", "june",
+  "july", "august", "september", "october", "november", "december",
+])
+
+/**
+ * Check if a case citation with single-digit volume (1–9) is likely a
+ * paragraph/footnote marker misidentified as a citation.
+ *
+ * After HTML stripping, paragraph markers like "¶2" become bare "2", which the
+ * broad state-reporter regex matches as volume + prose-as-reporter + next-number-as-page.
+ *
+ * Primary: validates against reporters-db when loaded (precise, zero false negatives).
+ * Fallback: expanded prose-word blocklist when db not available.
+ */
+function isSuspiciousSingleDigitVolume(citation: Citation): boolean {
+  if (citation.type !== "case") return false
+  const caseCit = citation as FullCaseCitation
+  const vol =
+    typeof caseCit.volume === "number"
+      ? caseCit.volume
+      : parseInt(String(caseCit.volume), 10)
+  if (isNaN(vol) || vol < 1 || vol > 9) return false
+
+  const reporter = caseCit.reporter
+  if (!reporter) return false
+
+  // Reporters with periods are far more likely legitimate (F.2d, Cal., Ohio St.)
+  if (reporter.includes(".")) return false
+
+  // Primary: check reporters-db if loaded
+  const db = getReportersSync()
+  if (db) {
+    const matches = db.byAbbreviation.get(reporter.toLowerCase()) ?? []
+    return matches.length === 0
+  }
+
+  // Fallback: expanded prose-word heuristic
+  const words = reporter.toLowerCase().split(/\s+/)
+  return words.some((w) => SINGLE_DIGIT_PROSE_WORDS.has(w))
+}
+
+/**
  * Check if a citation is a likely false positive (short-circuit, no allocations).
  */
 function isFalsePositive(citation: Citation): boolean {
   const reporter = getReporter(citation)
   if (reporter && BLOCKED_REPORTERS.has(reporter.toLowerCase().trim())) return true
   if (reporter && citation.type === "case" && isImplausibleReporter(reporter)) return true
+  if (isSuspiciousSingleDigitVolume(citation)) return true
 
   const year = getYear(citation)
   if (year !== undefined && year < MIN_PLAUSIBLE_YEAR) return true
@@ -165,6 +226,13 @@ function collectFalsePositiveReasons(citation: Citation): string[] {
     if (citation.type === "case" && isImplausibleReporter(reporter)) {
       reasons.push(`Reporter "${reporter}" contains prose words or is implausibly long`)
     }
+  }
+
+  if (isSuspiciousSingleDigitVolume(citation)) {
+    const caseCit = citation as FullCaseCitation
+    reasons.push(
+      `Single-digit volume (${caseCit.volume}) with unrecognized reporter "${caseCit.reporter}" — likely a paragraph or footnote marker`,
+    )
   }
 
   const year = getYear(citation)
