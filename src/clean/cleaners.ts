@@ -17,6 +17,28 @@ export function stripHtmlTags(text: string): string {
 }
 
 /**
+ * Rejoin words split across line breaks by a hyphen.
+ *
+ * Court opinions often wrap long words (party names, reporter abbreviations)
+ * with a hyphen at the line break: "Dil-\nlinger" or "F. Sup-\np. 3d".
+ * This cleaner removes the hyphen + line break to restore the original word.
+ *
+ * Must run before normalizeWhitespace (which converts \n to spaces, leaving
+ * "Dil- linger" instead of "Dillinger").
+ *
+ * @example
+ * rejoinHyphenatedWords("Dil-\nlinger V, 672 F. Supp. 3d")
+ * // => "Dillinger V, 672 F. Supp. 3d"
+ *
+ * @example
+ * rejoinHyphenatedWords("F. Sup-\np. 3d 100")
+ * // => "F. Supp. 3d 100"
+ */
+export function rejoinHyphenatedWords(text: string): string {
+  return text.replace(/(\w)-\s*[\n\r]+\s*(\w)/g, "$1$2")
+}
+
+/**
  * Normalize whitespace: convert tabs/newlines to spaces, collapse multiple spaces.
  *
  * @example
