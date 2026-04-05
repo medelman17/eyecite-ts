@@ -67,6 +67,21 @@ const MONTH_PATTERN =
 // Compiled regex patterns for performance (hoisted to module level)
 // ============================================================================
 
+/** Common US reporters for confidence boost. Exact match to avoid substring false positives. */
+const COMMON_REPORTERS: ReadonlySet<string> = new Set([
+  "F.", "F.2d", "F.3d", "F.4th",
+  "U.S.", "S. Ct.", "L. Ed.", "L. Ed. 2d",
+  "P.", "P.2d", "P.3d",
+  "A.", "A.2d", "A.3d",
+  "N.E.", "N.E.2d", "N.E.3d",
+  "N.W.", "N.W.2d",
+  "S.E.", "S.E.2d",
+  "S.W.", "S.W.2d", "S.W.3d",
+  "So.", "So. 2d", "So. 3d",
+  "F. Supp.", "F. Supp. 2d", "F. Supp. 3d", "F. Supp. 4th",
+  "F. App'x",
+])
+
 /** Matches volume-reporter-page format in citation core, with optional nominative reporter parenthetical */
 const VOLUME_REPORTER_PAGE_REGEX =
   /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s']+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})/
@@ -967,36 +982,9 @@ export function extractCase(
   let confidence = 0.5 // Base confidence
 
   // Common reporter patterns (F., U.S., S. Ct., etc.)
-  const commonReporters = [
-    "F.",
-    "F.2d",
-    "F.3d",
-    "F.4th",
-    "U.S.",
-    "S. Ct.",
-    "L. Ed.",
-    "P.",
-    "P.2d",
-    "P.3d",
-    "A.",
-    "A.2d",
-    "A.3d",
-    "N.E.",
-    "N.E.2d",
-    "N.E.3d",
-    "N.W.",
-    "N.W.2d",
-    "S.E.",
-    "S.E.2d",
-    "S.W.",
-    "S.W.2d",
-    "S.W.3d",
-    "So.",
-    "So. 2d",
-    "So. 3d",
-  ]
-
-  if (commonReporters.some((r) => reporter.includes(r))) {
+  // Uses exact match (case-insensitive) to avoid false boosts from substring
+  // matches like "TCPA." containing "A." or "R. Civ. P." containing "P."
+  if (COMMON_REPORTERS.has(reporter)) {
     confidence += 0.3
   }
 

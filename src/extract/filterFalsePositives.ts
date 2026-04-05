@@ -157,39 +157,82 @@ const SINGLE_DIGIT_PROSE_WORDS: ReadonlySet<string> = new Set([
   "july", "august", "september", "october", "november", "december",
 ])
 
+/** Maximum plausible volume number for US reporters.
+ *  The most prolific reporters (F. Supp. 3d, F.3d) have volumes in the
+ *  low-to-mid hundreds. 2000 gives generous headroom while still catching
+ *  zip codes (5-digit numbers like 20006) and other non-citation numbers. */
+const MAX_PLAUSIBLE_VOLUME = 2000
+
+/** Docket number pattern: 1-2 digit prefix + hyphen + 4+ digit suffix.
+ *  E.g., "24-30706", "23-12345". Real hyphenated citation volumes look
+ *  like "1984-1" (4-digit year + short index). */
+const DOCKET_VOLUME_REGEX = /^\d{1,2}-\d{4,}$/
+
 /**
- * Check if a case citation with single-digit volume (1–9) is likely a
+ * Check if a case citation has an implausibly large volume number.
+ * US reporter volumes rarely exceed ~1000. 5-digit volumes are typically
+ * zip codes (e.g., "DC 20006 Counsel for Appellants 20004").
+ */
+function isImplausibleVolume(citation: Citation): boolean {
+  if (citation.type !== "case") return false
+  const caseCit = citation as FullCaseCitation
+  // Only check purely numeric volumes; hyphenated volumes (strings) are
+  // handled by isDocketNumberVolume
+  if (typeof caseCit.volume !== "number") return false
+  return caseCit.volume > MAX_PLAUSIBLE_VOLUME
+}
+
+/**
+ * Check if a hyphenated volume matches a docket-number pattern.
+ * Docket numbers have a short prefix and long suffix (e.g., "24-30706").
+ * Real hyphenated citation volumes have the opposite shape (e.g., "1984-1").
+ */
+function isDocketNumberVolume(citation: Citation): boolean {
+  if (citation.type !== "case") return false
+  const caseCit = citation as FullCaseCitation
+  const vol = String(caseCit.volume)
+  return DOCKET_VOLUME_REGEX.test(vol)
+}
+
+/**
+ * Check if a case citation with small volume (1–20) is likely a
  * paragraph/footnote marker misidentified as a citation.
  *
  * After HTML stripping, paragraph markers like "¶2" become bare "2", which the
  * broad state-reporter regex matches as volume + prose-as-reporter + next-number-as-page.
  *
- * Primary: validates against reporters-db when loaded (precise, zero false negatives).
- * Fallback: expanded prose-word blocklist when db not available.
+ * For reporters WITHOUT periods: validates against reporters-db when loaded
+ * (precise, zero false negatives), falls back to prose-word blocklist.
+ *
+ * For reporters WITH periods: also validates against reporters-db, since
+ * non-reporter abbreviations like "R. Civ. P." and "Fed. R. Civ. P." contain
+ * periods but are not real reporters.
  */
-function isSuspiciousSingleDigitVolume(citation: Citation): boolean {
+function isSuspiciousSmallVolume(citation: Citation): boolean {
   if (citation.type !== "case") return false
   const caseCit = citation as FullCaseCitation
   const vol =
     typeof caseCit.volume === "number"
       ? caseCit.volume
-      : parseInt(String(caseCit.volume), 10)
-  if (isNaN(vol) || vol < 1 || vol > 9) return false
+      : Number.parseInt(String(caseCit.volume), 10)
+  if (Number.isNaN(vol) || vol < 1 || vol > 20) return false
 
   const reporter = caseCit.reporter
   if (!reporter) return false
 
-  // Reporters with periods are far more likely legitimate (F.2d, Cal., Ohio St.)
-  if (reporter.includes(".")) return false
-
-  // Primary: check reporters-db if loaded
+  // Primary: check reporters-db if loaded (works for all reporters)
   const db = getReportersSync()
   if (db) {
     const matches = db.byAbbreviation.get(reporter.toLowerCase()) ?? []
     return matches.length === 0
   }
 
-  // Fallback: expanded prose-word heuristic
+  // Fallback when reporters-db not loaded:
+  // Period-containing reporters are more likely real (F.2d, Cal., Ohio St.)
+  // but we can't validate without the db, so let them through
+  if (reporter.includes(".")) return false
+
+  // For period-less reporters, use expanded prose-word heuristic
   const words = reporter.toLowerCase().split(/\s+/)
   return words.some((w) => SINGLE_DIGIT_PROSE_WORDS.has(w))
 }
@@ -201,7 +244,9 @@ function isFalsePositive(citation: Citation): boolean {
   const reporter = getReporter(citation)
   if (reporter && BLOCKED_REPORTERS.has(reporter.toLowerCase().trim())) return true
   if (reporter && citation.type === "case" && isImplausibleReporter(reporter)) return true
-  if (isSuspiciousSingleDigitVolume(citation)) return true
+  if (isImplausibleVolume(citation)) return true
+  if (isDocketNumberVolume(citation)) return true
+  if (isSuspiciousSmallVolume(citation)) return true
 
   const year = getYear(citation)
   if (year !== undefined && year < MIN_PLAUSIBLE_YEAR) return true
@@ -228,10 +273,24 @@ function collectFalsePositiveReasons(citation: Citation): string[] {
     }
   }
 
-  if (isSuspiciousSingleDigitVolume(citation)) {
+  if (isImplausibleVolume(citation)) {
     const caseCit = citation as FullCaseCitation
     reasons.push(
-      `Single-digit volume (${caseCit.volume}) with unrecognized reporter "${caseCit.reporter}" — likely a paragraph or footnote marker`,
+      `Volume ${caseCit.volume} exceeds maximum plausible volume (${MAX_PLAUSIBLE_VOLUME}) — likely a zip code or other number`,
+    )
+  }
+
+  if (isDocketNumberVolume(citation)) {
+    const caseCit = citation as FullCaseCitation
+    reasons.push(
+      `Hyphenated volume "${caseCit.volume}" matches docket number pattern — likely a case number, not a citation volume`,
+    )
+  }
+
+  if (isSuspiciousSmallVolume(citation)) {
+    const caseCit = citation as FullCaseCitation
+    reasons.push(
+      `Small volume (${caseCit.volume}) with unrecognized reporter "${caseCit.reporter}" — likely a paragraph or footnote marker`,
     )
   }
 
