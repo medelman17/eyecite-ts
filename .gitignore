@@ -23,3 +23,6 @@ Thumbs.db
 *.log
 npm-debug.log*
 mise.local.toml
+
+# Worktrees
+.worktrees/

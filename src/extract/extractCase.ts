@@ -42,6 +42,17 @@ const VALID_SIGNALS = new Set([
   "contra",
 ])
 
+/**
+ * Regex matching any VALID_SIGNALS entry at the start of a string, followed by whitespace.
+ * Derived from VALID_SIGNALS to ensure a single source of truth.
+ * Multi-word signals are listed first so "See also" matches before "See".
+ */
+const SIGNAL_STRIP_REGEX = (() => {
+  const sorted = [...VALID_SIGNALS].sort((a, b) => b.length - a.length)
+  const alternatives = sorted.map((s) => s.replace(/\s+/g, "\\s+").replace(/\./g, "\\."))
+  return new RegExp(`^(${alternatives.join("|")})\\s+`, "i")
+})()
+
 /** Parse a volume string as number when purely numeric, string when hyphenated */
 function parseVolume(raw: string): number | string {
   const num = Number.parseInt(raw, 10)
@@ -80,6 +91,13 @@ const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
 
 /** Whitespace/comma skip pattern for parenthetical scanning */
 const PAREN_SKIP_REGEX = /[\s,]/
+
+/** Pincite text that appears between core citation and parentheticals.
+ *  Matches: comma-separated page numbers/ranges and optional note refs.
+ *  E.g., ", 199 n.2", ", 999-1000", ", 130 n.5"
+ *  The outer `+` is intentionally greedy to handle multi-pincite citations
+ *  (e.g., ", 199, 205, 210"). Safe because the scan window is bounded by maxLookahead. */
+const PINCITE_SKIP_REGEX = /^(?:,\s*\d+(?:[-–—]\d+)?(?:\s+(?:n|note)\s*\.?\s*\d+)?)+/
 
 /**
  * Signal normalization table. Longer patterns first so "aff'd on other grounds"
@@ -336,6 +354,16 @@ function collectParentheticals(
   let pos = startPos
   const endLimit = Math.min(text.length, startPos + maxLookahead)
   let pendingSignal: RawSignal | undefined
+
+  // Skip past any pincite text between core citation and parentheticals.
+  // E.g., ", 199 n.2" in "982 N.W.2d 189, 199 n.2 (Minn. 2022)".
+  // This must happen before the main loop because pincite text includes
+  // commas and digits that would otherwise block the scanner.
+  const pinciteText = text.substring(pos, endLimit)
+  const pinciteSkip = PINCITE_SKIP_REGEX.exec(pinciteText)
+  if (pinciteSkip) {
+    pos += pinciteSkip[0].length
+  }
 
   while (pos < endLimit) {
     // Skip whitespace and commas between parentheticals
@@ -633,16 +661,15 @@ function extractPartyNames(caseName: string): {
     let plaintiff = vMatch[1].trim()
     const defendant = vMatch[2].trim()
 
-    // Strip signal words from plaintiff (e.g., "In Smith" → "Smith", "See Jones" → "Jones")
-    // Preserve "In re" which is a procedural prefix, not a signal word
-    // Capture the signal for the citation's signal field
-    const signalMatch = plaintiff.match(
-      /^(See\s+[Aa]lso|See\s+[Gg]enerally|But\s+[Ss]ee|But\s+[Cc]f\.?|Compare|Accord|Contra|See|Cf\.?|Also|In(?!\s+re\b))\s+/i,
-    )
+    // Strip signal words from plaintiff (e.g., "See Jones" → "Jones")
+    // Uses SIGNAL_STRIP_REGEX derived from VALID_SIGNALS for single source of truth.
+    // Also strips "Also" and "In" (not valid signals) that can precede party names.
+    const signalMatch = plaintiff.match(SIGNAL_STRIP_REGEX)
+      ?? plaintiff.match(/^(Also|In(?!\s+re\b))\s+/i)
     if (signalMatch) {
       const raw = signalMatch[1].toLowerCase().replace(/\.$/, "")
-      if (raw !== "in" && raw !== "also") {
-        signal = VALID_SIGNALS.has(raw) ? (raw as CitationSignal) : undefined
+      if (VALID_SIGNALS.has(raw)) {
+        signal = raw as CitationSignal
       }
       plaintiff = plaintiff.substring(signalMatch[0].length).trim()
     }
@@ -909,6 +936,28 @@ export function extractCase(
     defendantNormalized = partyResult.defendantNormalized
     proceduralPrefix = partyResult.proceduralPrefix
     signal = partyResult.signal
+
+    // Rebuild caseName from cleaned party names (signal stripped).
+    // Signal stripping only occurs in the adversarial ("v.") branch of extractPartyNames,
+    // which always sets defendant, so we normalize to "v." (standard legal citation form).
+    if (signal && plaintiff && defendant) {
+      caseName = `${plaintiff} v. ${defendant}`
+
+      // Advance fullSpan.cleanStart past the signal word
+      if (fullSpan) {
+        const original = cleanedText?.substring(fullSpan.cleanStart, span.cleanStart) ?? ""
+        // Trim leading whitespace to handle edge cases where fullSpan starts at a boundary
+        const trimmed = original.trimStart()
+        const leadingWs = original.length - trimmed.length
+        const signalInSpan = SIGNAL_STRIP_REGEX.exec(trimmed)
+        if (signalInSpan) {
+          const newCleanStart = fullSpan.cleanStart + leadingWs + signalInSpan[0].length
+          const newOriginalStart =
+            transformationMap.cleanToOriginal.get(newCleanStart) ?? newCleanStart
+          fullSpan = { ...fullSpan, cleanStart: newCleanStart, originalStart: newOriginalStart }
+        }
+      }
+    }
   }
 
   // Translate positions from clean → original (citation core only - span unchanged)

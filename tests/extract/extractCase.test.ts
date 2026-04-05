@@ -1803,4 +1803,86 @@ describe("nominative reporter support (#49, #16)", () => {
       expect(cite.nominativeReporter).toBeUndefined()
     })
   })
+
+  describe("issue regressions (#120-#124)", () => {
+    it("#120: fullSpan extends through pincite and closing parenthetical", () => {
+      const text =
+        "see also Lagasse v. Horton, 982 N.W.2d 189, 199 n.2 (Minn. 2022) (explaining that...)"
+      const cite = extractCitations(text).find((c) => c.type === "case") as FullCaseCitation
+      expect(cite.fullSpan).toBeDefined()
+      const fullText = text.slice(cite.fullSpan!.originalStart, cite.fullSpan!.originalEnd)
+      expect(fullText).toContain("(Minn. 2022)")
+      expect(fullText).toContain("Lagasse v. Horton")
+    })
+
+    it("#122: pincite captured from comma-separated page after core", () => {
+      const text = "See United States v. Ashburn, 865 F.3d 997, 999-1000 (8th Cir. 2017)."
+      const cite = extractCitations(text).find((c) => c.type === "case") as FullCaseCitation
+      expect(cite.pincite).toBe(999)
+      expect(cite.pinciteInfo).toMatchObject({ page: 999, endPage: 1000, isRange: true })
+    })
+
+    it("#123: (per curiam) captured as disposition", () => {
+      const text = "United States v. Cosey, 602 F.3d 943, 948 (8th Cir. 2010) (per curiam)."
+      const cite = extractCitations(text).find((c) => c.type === "case") as FullCaseCitation
+      expect(cite.disposition).toBe("per curiam")
+      expect(cite.court).toBe("8th Cir.")
+      expect(cite.year).toBe(2010)
+    })
+
+    it("#123: (en banc) captured as disposition", () => {
+      const text = "Smith v. Jones, 500 F.3d 100, 110 (9th Cir. 2007) (en banc)."
+      const cite = extractCitations(text).find((c) => c.type === "case") as FullCaseCitation
+      expect(cite.disposition).toBe("en banc")
+    })
+
+    it("#124: signal word not absorbed into caseName", () => {
+      const text = "See United States v. Anderson, 618 F.3d 873, 880 (8th Cir. 2010)."
+      const cite = extractCitations(text).find((c) => c.type === "case") as FullCaseCitation
+      expect(cite.caseName).toBe("United States v. Anderson")
+      expect(cite.signal).toBe("see")
+      expect(cite.plaintiff).toBe("United States")
+    })
+
+    it("#124: see also signal stripped from caseName", () => {
+      const text = "See also Smith v. Jones, 500 F.3d 100 (9th Cir. 2007)."
+      const cite = extractCitations(text).find((c) => c.type === "case") as FullCaseCitation
+      expect(cite.caseName).toBe("Smith v. Jones")
+      expect(cite.signal).toBe("see also")
+    })
+
+    it("pincite skip does not break when no parenthetical follows", () => {
+      const text = "Smith v. Jones, 500 F.2d 123, 125."
+      const cite = extractCitations(text).find((c) => c.type === "case") as FullCaseCitation
+      // Core citation still extracted correctly even though pincite text
+      // precedes end-of-sentence rather than a parenthetical
+      expect(cite.volume).toBe(500)
+      expect(cite.reporter).toBe("F.2d")
+      expect(cite.page).toBe(123)
+      expect(cite.year).toBeUndefined()
+    })
+
+    it("#124: signal stripped from procedural case with v. (Estate of X v. Y)", () => {
+      const text = "See Estate of Smith v. Jones, 500 F.3d 100 (9th Cir. 2007)."
+      const cite = extractCitations(text).find((c) => c.type === "case") as FullCaseCitation
+      expect(cite.caseName).toBe("Estate of Smith v. Jones")
+      expect(cite.signal).toBe("see")
+    })
+
+    it("#124: fullSpan excludes signal word after rebuild", () => {
+      const text = "See Smith v. Jones, 500 F.3d 100 (9th Cir. 2007)."
+      const cite = extractCitations(text).find((c) => c.type === "case") as FullCaseCitation
+      expect(cite.fullSpan).toBeDefined()
+      const fullText = text.slice(cite.fullSpan!.originalStart, cite.fullSpan!.originalEnd)
+      expect(fullText).toContain("Smith v. Jones")
+      expect(fullText).not.toMatch(/^See\s/)
+    })
+
+    it("#120: multi-pincite skip handles comma-separated pages", () => {
+      const text = "Smith v. Jones, 500 F.2d 100, 105, 110 (2d Cir. 1990)."
+      const cite = extractCitations(text).find((c) => c.type === "case") as FullCaseCitation
+      expect(cite.court).toBe("2d Cir.")
+      expect(cite.year).toBe(1990)
+    })
+  })
 })
