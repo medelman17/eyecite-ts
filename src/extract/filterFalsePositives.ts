@@ -20,7 +20,7 @@ import type {
   StatutesAtLargeCitation,
   Warning,
 } from "@/types/citation"
-import { getReportersSync } from "@/data/reporters"
+import { getReportersSync } from "@/data/reportersCache"
 
 /** Year threshold: US legal reporting starts ~1790 (Dallas Reports). 1750 gives headroom. */
 const MIN_PLAUSIBLE_YEAR = 1750

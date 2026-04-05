@@ -66,10 +66,10 @@ export interface ReportersDatabase {
   all: ReporterEntry[]
 }
 
-/**
- * Cached database instance (null until loadReporters() called)
- */
-let cached: ReportersDatabase | null = null
+import {
+  getReportersSync as _getReportersSync,
+  setReportersCache,
+} from "./reportersCache"
 
 /**
  * Load reporter database asynchronously with lazy loading
@@ -84,7 +84,8 @@ let cached: ReportersDatabase | null = null
  * const reporters = db.byAbbreviation.get('f.2d')  // Fast O(1) lookup
  */
 export async function loadReporters(): Promise<ReportersDatabase> {
-  if (cached) return cached
+  const existing = _getReportersSync()
+  if (existing) return existing
 
   // Dynamic import prevents loading until requested (keeps core bundle small)
   const data = await import("../../data/reporters.json", {
@@ -122,11 +123,9 @@ export async function loadReporters(): Promise<ReportersDatabase> {
     }
   }
 
-  cached = {
-    byAbbreviation,
-    all,
-  }
-  return cached
+  const db: ReportersDatabase = { byAbbreviation, all }
+  setReportersCache(db)
+  return db
 }
 
 /**
@@ -146,7 +145,7 @@ export async function loadReporters(): Promise<ReportersDatabase> {
  * }
  */
 export function getReportersSync(): ReportersDatabase | null {
-  return cached
+  return _getReportersSync()
 }
 
 /**
