@@ -209,4 +209,34 @@ describe("applyFalsePositiveFilters", () => {
       expect(result[0].confidence).toBe(0.7) // unchanged
     })
   })
+
+  describe("implausible reporter detection (#121)", () => {
+    it("flags reporter containing blocklisted word 'Court'", () => {
+      const cite = makeCase(
+        "Court dismissed the complaint for failure to state a claim under Rule",
+      )
+      const result = applyFalsePositiveFilters([cite], false)
+      expect(result[0].confidence).toBe(0.1)
+    })
+
+    it("removes implausible reporter in remove mode", () => {
+      const cite = makeCase(
+        "Court dismissed the complaint for failure to state a claim under Rule",
+      )
+      const result = applyFalsePositiveFilters([cite], true)
+      expect(result).toHaveLength(0)
+    })
+
+    it("does not flag real reporters with periods", () => {
+      const cite = makeCase("Cal. App. 4th")
+      const result = applyFalsePositiveFilters([cite], false)
+      expect(result[0].confidence).toBe(0.8)
+    })
+
+    it("does not flag short period-less reporters", () => {
+      const cite = makeCase("Cal")
+      const result = applyFalsePositiveFilters([cite], false)
+      expect(result[0].confidence).toBe(0.8)
+    })
+  })
 })

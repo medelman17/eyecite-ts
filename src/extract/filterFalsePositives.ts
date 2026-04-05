@@ -93,11 +93,51 @@ function getYear(citation: Citation): number | undefined {
 }
 
 /**
+ * Words that should never appear as standalone tokens in a reporter string.
+ * These appear in prose (e.g., "the District 2 Court dismissed") and get
+ * falsely matched by the broad state-reporter regex.
+ */
+const REPORTER_BLOCKLIST_WORDS: ReadonlySet<string> = new Set([
+  "court",
+  "rule",
+  "section",
+  "chapter",
+  "article",
+  "part",
+  "title",
+  "paragraph",
+  "clause",
+  "amendment",
+  "dismissed",
+  "granted",
+  "denied",
+  "filed",
+  "argued",
+])
+
+/** Maximum length for a reporter string without periods.
+ *  Real period-less reporters (e.g., "Cal", "Wis", "Mass") are short.
+ *  Prose false positives ("Court dismissed the complaint...") are long. */
+const MAX_PERIODLESS_REPORTER_LENGTH = 12
+
+/**
+ * Check if a reporter string looks implausible (prose text matched as reporter).
+ * Real reporters contain periods (F.2d, N.W.2d, So. 2d) or are very short (Cal, Wis).
+ */
+function isImplausibleReporter(reporter: string): boolean {
+  const words = reporter.toLowerCase().split(/\s+/)
+  if (words.some((w) => REPORTER_BLOCKLIST_WORDS.has(w))) return true
+  if (!reporter.includes(".") && reporter.length > MAX_PERIODLESS_REPORTER_LENGTH) return true
+  return false
+}
+
+/**
  * Check if a citation is a likely false positive (short-circuit, no allocations).
  */
 function isFalsePositive(citation: Citation): boolean {
   const reporter = getReporter(citation)
   if (reporter && BLOCKED_REPORTERS.has(reporter.toLowerCase().trim())) return true
+  if (reporter && citation.type === "case" && isImplausibleReporter(reporter)) return true
 
   const year = getYear(citation)
   if (year !== undefined && year < MIN_PLAUSIBLE_YEAR) return true
@@ -118,6 +158,9 @@ function collectFalsePositiveReasons(citation: Citation): string[] {
     const normalized = reporter.toLowerCase().trim()
     if (BLOCKED_REPORTERS.has(normalized)) {
       reasons.push(`Reporter "${reporter}" is a known non-US source`)
+    }
+    if (citation.type === "case" && isImplausibleReporter(reporter)) {
+      reasons.push(`Reporter "${reporter}" contains prose words or is implausibly long`)
     }
   }
 
