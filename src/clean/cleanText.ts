@@ -2,14 +2,15 @@ import type { Warning } from "../types/citation"
 import type { TransformationMap } from "../types/span"
 import { SegmentMap } from "./segmentMap"
 import {
+  collapseSpaces,
   decodeHtmlEntities,
   fixSmartQuotes,
   normalizeDashes,
   normalizeReporterSpacing,
   normalizeTypography,
   normalizeUnicode,
-  normalizeWhitespace,
   rejoinHyphenatedWords,
+  replaceWhitespace,
   stripHtmlTags,
 } from "./cleaners"
 
@@ -49,7 +50,8 @@ export function cleanText(
     stripHtmlTags,
     decodeHtmlEntities,
     rejoinHyphenatedWords,
-    normalizeWhitespace,
+    replaceWhitespace,
+    collapseSpaces,
     normalizeUnicode,
     normalizeDashes,
     fixSmartQuotes,
