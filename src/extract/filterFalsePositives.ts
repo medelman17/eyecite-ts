@@ -17,6 +17,7 @@ import type {
   FederalRegisterCitation,
   FullCaseCitation,
   JournalCitation,
+  ShortFormCaseCitation,
   StatutesAtLargeCitation,
   Warning,
 } from "@/types/citation"
@@ -71,6 +72,7 @@ const BLOCKED_REPORTERS: ReadonlySet<string> = new Set([
  */
 function getReporter(citation: Citation): string | undefined {
   if (citation.type === "case") return (citation as FullCaseCitation).reporter
+  if (citation.type === "shortFormCase") return (citation as ShortFormCaseCitation).reporter
   if (citation.type === "journal") return (citation as JournalCitation).abbreviation
   return undefined
 }
@@ -174,8 +176,8 @@ const DOCKET_VOLUME_REGEX = /^\d{1,2}-\d{4,}$/
  * zip codes (e.g., "DC 20006 Counsel for Appellants 20004").
  */
 function isImplausibleVolume(citation: Citation): boolean {
-  if (citation.type !== "case") return false
-  const caseCit = citation as FullCaseCitation
+  if (citation.type !== "case" && citation.type !== "shortFormCase") return false
+  const caseCit = citation as FullCaseCitation | ShortFormCaseCitation
   // Only check purely numeric volumes; hyphenated volumes (strings) are
   // handled by isDocketNumberVolume
   if (typeof caseCit.volume !== "number") return false
@@ -188,8 +190,8 @@ function isImplausibleVolume(citation: Citation): boolean {
  * Real hyphenated citation volumes have the opposite shape (e.g., "1984-1").
  */
 function isDocketNumberVolume(citation: Citation): boolean {
-  if (citation.type !== "case") return false
-  const caseCit = citation as FullCaseCitation
+  if (citation.type !== "case" && citation.type !== "shortFormCase") return false
+  const caseCit = citation as FullCaseCitation | ShortFormCaseCitation
   const vol = String(caseCit.volume)
   return DOCKET_VOLUME_REGEX.test(vol)
 }
@@ -209,8 +211,8 @@ function isDocketNumberVolume(citation: Citation): boolean {
  * periods but are not real reporters.
  */
 function isSuspiciousSmallVolume(citation: Citation): boolean {
-  if (citation.type !== "case") return false
-  const caseCit = citation as FullCaseCitation
+  if (citation.type !== "case" && citation.type !== "shortFormCase") return false
+  const caseCit = citation as FullCaseCitation | ShortFormCaseCitation
   const vol =
     typeof caseCit.volume === "number"
       ? caseCit.volume
