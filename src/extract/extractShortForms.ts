@@ -10,6 +10,7 @@
 import type { Token } from "@/tokenize"
 import type { IdCitation, ShortFormCaseCitation, SupraCitation } from "@/types/citation"
 import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import { COMMON_REPORTERS } from "./extractCase"
 
 /**
  * Extracts Id. citation metadata from a tokenized citation.
@@ -258,8 +259,7 @@ export function extractShortFormCase(
 
   // Confidence: base 0.4, boosted for recognized reporters
   let confidence = 0.4
-  const COMMON_SHORT_FORM_REPORTERS = ["F.", "F.2d", "F.3d", "F.4th", "U.S.", "S. Ct.", "L. Ed.", "L. Ed. 2d", "P.", "P.2d", "P.3d", "A.", "A.2d", "A.3d", "N.E.", "N.E.2d", "N.E.3d", "N.W.", "N.W.2d", "S.E.", "S.E.2d", "S.W.", "S.W.2d", "S.W.3d", "So.", "So. 2d", "So. 3d", "F. Supp.", "F. Supp. 2d", "F. Supp. 3d", "F. Supp. 4th", "F. App'x"]
-  if (COMMON_SHORT_FORM_REPORTERS.includes(reporter)) {
+  if (COMMON_REPORTERS.has(reporter)) {
     confidence += 0.3
   }
 

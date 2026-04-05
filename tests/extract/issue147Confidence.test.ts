@@ -38,9 +38,8 @@ describe("issue #147: confidence calibration", () => {
       // This is garbage — a number, random text, then another number
       const cits = extractCitations("500 Xyz Abc 123")
       const c = cits.find((c) => c.type === "case")
-      if (c) {
-        expect(c.confidence).toBeLessThan(0.5)
-      }
+      expect(c).toBeDefined()
+      expect(c!.confidence).toBeLessThan(0.5)
     })
 
     it("garbage text parsed as citation → confidence much lower than real", () => {
@@ -78,9 +77,8 @@ describe("issue #147: confidence calibration", () => {
     it("short-form with unrecognized reporter gets lower confidence", () => {
       const cits = extractCitations("500 Xyz Abc at 130")
       const sf = cits.find((c) => c.type === "shortFormCase")
-      if (sf) {
-        expect(sf.confidence).toBeLessThan(0.6)
-      }
+      expect(sf).toBeDefined()
+      expect(sf!.confidence).toBeLessThan(0.6)
     })
   })
 })

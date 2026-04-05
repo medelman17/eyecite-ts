@@ -68,8 +68,12 @@ const MONTH_PATTERN =
 // Compiled regex patterns for performance (hoisted to module level)
 // ============================================================================
 
-/** Common US reporters for confidence boost. Exact match to avoid substring false positives. */
-const COMMON_REPORTERS: ReadonlySet<string> = new Set([
+/** Cached current year to avoid Date allocation per extraction call. */
+const CURRENT_YEAR = new Date().getFullYear()
+
+/** Common US reporters for confidence boost. Exact match to avoid substring false positives.
+ *  Shared across extractCase and extractShortForms. */
+export const COMMON_REPORTERS: ReadonlySet<string> = new Set([
   "F.", "F.2d", "F.3d", "F.4th",
   "U.S.", "S. Ct.", "L. Ed.", "L. Ed. 2d",
   "P.", "P.2d", "P.3d",
@@ -995,8 +999,7 @@ export function extractCase(
 
   // Year present and plausible: moderate signal
   if (year !== undefined) {
-    const currentYear = new Date().getFullYear()
-    if (year <= currentYear) {
+    if (year <= CURRENT_YEAR) {
       confidence += 0.2
     }
   }
