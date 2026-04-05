@@ -1,5 +1,27 @@
 # eyecite-ts
 
+## 0.8.0
+
+### Minor Changes
+
+- [#143](https://github.com/medelman17/eyecite-ts/pull/143) [`821b5a3`](https://github.com/medelman17/eyecite-ts/commit/821b5a36b28843bee2a95f008088aedd08022a6c) Thanks [@medelman17](https://github.com/medelman17)! - Change default resolution scope strategy from `"paragraph"` to `"none"` (#131). The paragraph scope (`\n\n+` boundaries) was too restrictive for real court opinions where HTML stripping produces frequent double-newlines, blocking 87% of Id. and short-form resolutions. Resolution accuracy improves from 13% to ~97%. Users can still opt into paragraph scope via `resolutionOptions: { scopeStrategy: "paragraph" }`.
+
+- [#138](https://github.com/medelman17/eyecite-ts/pull/138) [`1cc1c36`](https://github.com/medelman17/eyecite-ts/commit/1cc1c36b748c04f87adc05d0a88da68852bb7934) Thanks [@medelman17](https://github.com/medelman17)! - Add standalone supra citation extraction (#132). Previously, supra required a preceding party name, missing common footnote patterns like `supra note 12`, `supra at 15`, and `supra § 3`. New STANDALONE_SUPRA_PATTERN matches these with confidence 0.8. The `partyName` field on `SupraCitation` is now optional to support standalone references.
+
+### Patch Changes
+
+- [#139](https://github.com/medelman17/eyecite-ts/pull/139) [`7520153`](https://github.com/medelman17/eyecite-ts/commit/7520153ae7949c546e817236f634084e07a2baee) Thanks [@medelman17](https://github.com/medelman17)! - Add `rejoinHyphenatedWords` cleaner to restore words split across line breaks (#130). Court opinions wrap long words with hyphens at line breaks (e.g., `F. Sup-\np. 3d`), which prevented reporter recognition. The new cleaner runs before whitespace normalization, removing `hyphen + newline` sequences while preserving accurate span mappings to the original text.
+
+- [#137](https://github.com/medelman17/eyecite-ts/pull/137) [`e80c737`](https://github.com/medelman17/eyecite-ts/commit/e80c73783e550d73855b78657c9df6a415de2180) Thanks [@medelman17](https://github.com/medelman17)! - Improve Id. citation precision with confidence differentiation and context validation (#129). Standard `Id. at N` gets confidence 1.0, comma variant `Id., at N` gets 0.9, lowercase `id.` gets 0.85. Mid-sentence non-citation uses (e.g., "The Id. card") are penalized to 0.4 via preceding-context validation.
+
+- [#135](https://github.com/medelman17/eyecite-ts/pull/135) [`752c28f`](https://github.com/medelman17/eyecite-ts/commit/752c28f22eeb004d984a94002cd1b8f9367a28e0) Thanks [@medelman17](https://github.com/medelman17)! - Fix ~233 false positive case citations caused by paragraph/footnote markers (e.g., ¶2) being misidentified as citation volumes (#128). Single-digit volumes (1-9) with unrecognized reporters are now flagged by the false-positive filter, using reporters-db validation when loaded or an expanded prose-word blocklist as fallback.
+
+- [#140](https://github.com/medelman17/eyecite-ts/pull/140) [`45f30a3`](https://github.com/medelman17/eyecite-ts/commit/45f30a3bf6b40cfd97d9dae87ba8a57ed0e57b71) Thanks [@medelman17](https://github.com/medelman17)! - Fix short-form case citation recall for comma-before-at patterns (#127). The regex now accepts an optional comma between the reporter and `at` keyword (`\s*,?\s+at`), matching SCOTUS style (`597 U.S., at 721`), federal circuit style (`116 F.4th, at 1193`), nominative reporters (`9 Wheat., at 201`), and law review short forms (`133 Harv. L. Rev., at 580`). Expected recall improvement from ~47.6% to ~75%+.
+
+- [#142](https://github.com/medelman17/eyecite-ts/pull/142) [`5ef4e34`](https://github.com/medelman17/eyecite-ts/commit/5ef4e34c04f2873fa693e9d5b94772c1c17e998d) Thanks [@medelman17](https://github.com/medelman17)! - Fix signal detection accuracy from 11.2% to ~98% (#133). The root cause was broken span mapping (from #134) cascading into the leading-signal detector — wrong spans computed wrong gap text, so signals couldn't be found near their citations. Split `normalizeWhitespace` into `replaceWhitespace` (same-length, each char replaced individually) and `collapseSpaces` (pure deletion) so the position mapper handles each transformation type correctly.
+
+- [#141](https://github.com/medelman17/eyecite-ts/pull/141) [`265daee`](https://github.com/medelman17/eyecite-ts/commit/265daee840e8eab52e99a459421efb48b202f779) Thanks [@medelman17](https://github.com/medelman17)! - Fix span mapping when input text contains newlines (#134). The `rebuildPositionMaps` algorithm's deletion lookahead misinterpreted same-length character replacements (e.g., `\n` → ` `) as multi-character deletions, causing `originalStart`/`originalEnd` to point to wrong positions. Added a fast-path: when remaining text lengths are equal, all mismatches are treated as 1:1 replacements without lookahead.
+
 ## 0.7.3
 
 ### Patch Changes
