@@ -38,13 +38,14 @@ export const STANDALONE_SUPRA_PATTERN: RegExp =
   /(?:^|(?<=\s)|(?<=[;.]))supra(?:\s+note\s+(\d+)(?:,?\s+at\s+(\d+))?|\s+at\s+(\d+)|\s+(?:§+|Part|p\.)\s*\S+)/g
 
 /**
- * Short-form case: volume reporter at page
- * Pattern: number space abbreviation space "at" space number
+ * Short-form case: volume reporter [,] at page
+ * Pattern: number space abbreviation [, ] at space number
  * Simplified detection; full parsing in extraction layer.
  * Supports reporters with 1-2 letter ordinal suffixes (e.g., F.4th, Cal.4th).
+ * Handles SCOTUS/federal comma-before-at: "597 U.S., at 721", "116 F.4th, at 1193".
  */
 export const SHORT_FORM_CASE_PATTERN: RegExp =
-  /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s+at\s+(\d+)\b/g
+  /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(\d+)\b/g
 
 /** All short-form patterns for tokenization */
 export const SHORT_FORM_PATTERNS: readonly RegExp[] = [

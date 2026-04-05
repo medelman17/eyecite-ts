@@ -237,10 +237,11 @@ export function extractShortFormCase(
 ): ShortFormCaseCitation {
   const { text, span } = token
 
-  // Parse volume-reporter-at-page
-  // Pattern: number space abbreviation space "at" space number
+  // Parse volume-reporter-[,]-at-page
+  // Pattern: number space abbreviation [, ] at space number
   // Supports reporters with 1-2 letter ordinal suffixes (e.g., F.4th, Cal.4th)
-  const shortFormRegex = /(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s+at\s+(\d+)/
+  // Handles comma-before-at: "597 U.S., at 721", "116 F.4th, at 1193"
+  const shortFormRegex = /(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(\d+)/
   const match = shortFormRegex.exec(text)
 
   if (!match) {
