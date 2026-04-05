@@ -65,14 +65,16 @@ describe("issue #145: false positive case citations", () => {
       const cits = extractCitations("500 F.2d 123")
       const cite = cits[0]
       expect(cite).toBeDefined()
-      expect(cite.confidence).toBeGreaterThanOrEqual(0.8)
+      // Base 0.2 + common reporter 0.3 = 0.5
+      expect(cite.confidence).toBeGreaterThanOrEqual(0.5)
     })
 
     it("still boosts confidence for actual P. reporter", () => {
       const cits = extractCitations("123 P. 456")
       const cite = cits[0]
       expect(cite).toBeDefined()
-      expect(cite.confidence).toBeGreaterThanOrEqual(0.8)
+      // Base 0.2 + common reporter 0.3 = 0.5
+      expect(cite.confidence).toBeGreaterThanOrEqual(0.5)
     })
   })
 

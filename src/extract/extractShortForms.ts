@@ -10,6 +10,7 @@
 import type { Token } from "@/tokenize"
 import type { IdCitation, ShortFormCaseCitation, SupraCitation } from "@/types/citation"
 import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import { COMMON_REPORTERS } from "./extractCase"
 
 /**
  * Extracts Id. citation metadata from a tokenized citation.
@@ -256,8 +257,11 @@ export function extractShortFormCase(
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-  // Confidence: 0.7 (short-form citations are more ambiguous)
-  const confidence = 0.7
+  // Confidence: base 0.4, boosted for recognized reporters
+  let confidence = 0.4
+  if (COMMON_REPORTERS.has(reporter)) {
+    confidence += 0.3
+  }
 
   return {
     type: "shortFormCase",

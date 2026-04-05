@@ -25,6 +25,7 @@ import type {
 } from "@/types/citation"
 import { resolveOriginalSpan, type Span, type TransformationMap } from "@/types/span"
 import { parseDate, type StructuredDate } from "./dates"
+import { getReportersSync } from "@/data/reportersCache"
 import { inferCourtFromReporter } from "./courtInference"
 import { parsePincite, type PinciteInfo } from "./pincite"
 import { normalizeCourt } from "./courtNormalization"
@@ -67,8 +68,12 @@ const MONTH_PATTERN =
 // Compiled regex patterns for performance (hoisted to module level)
 // ============================================================================
 
-/** Common US reporters for confidence boost. Exact match to avoid substring false positives. */
-const COMMON_REPORTERS: ReadonlySet<string> = new Set([
+/** Cached current year to avoid Date allocation per extraction call. */
+const CURRENT_YEAR = new Date().getFullYear()
+
+/** Common US reporters for confidence boost. Exact match to avoid substring false positives.
+ *  Shared across extractCase and extractShortForms. */
+export const COMMON_REPORTERS: ReadonlySet<string> = new Set([
   "F.", "F.2d", "F.3d", "F.4th",
   "U.S.", "S. Ct.", "L. Ed.", "L. Ed. 2d",
   "P.", "P.2d", "P.3d",
@@ -978,30 +983,45 @@ export function extractCase(
   // Translate positions from clean → original (citation core only - span unchanged)
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-  // Calculate confidence score
-  let confidence = 0.5 // Base confidence
+  // Calculate confidence score using multi-factor model.
+  // Base is low — unvalidated matches are uncertain. Real signals earn confidence.
+  let confidence = 0.2
 
-  // Common reporter patterns (F., U.S., S. Ct., etc.)
-  // Uses exact match to avoid false boosts from substring
-  // matches like "TCPA." containing "A." or "R. Civ. P." containing "P."
-  if (COMMON_REPORTERS.has(reporter)) {
+  // Known reporter: strong signal.
+  // Check reporters-db first (precise), fall back to common reporter set.
+  const reportersDb = getReportersSync()
+  const dbMatch = reportersDb?.byAbbreviation.get(reporter.toLowerCase())
+  if (dbMatch && dbMatch.length > 0) {
+    confidence += 0.3
+  } else if (COMMON_REPORTERS.has(reporter)) {
     confidence += 0.3
   }
 
-  // Valid year check (not in future)
+  // Year present and plausible: moderate signal
   if (year !== undefined) {
-    const currentYear = new Date().getFullYear()
-    if (year <= currentYear) {
+    if (year <= CURRENT_YEAR) {
       confidence += 0.2
     }
   }
 
-  // Cap at 1.0
-  confidence = Math.min(confidence, 1.0)
+  // Case name found: moderate signal
+  if (caseName) {
+    confidence += 0.15
+  }
 
-  // Override confidence for blank page citations
+  // Court identified: confirmatory signal
+  if (court) {
+    confidence += 0.1
+  }
+
+  // Cap at 1.0 and round to avoid floating point artifacts (e.g., 0.7999...9)
+  confidence = Math.round(Math.min(confidence, 1.0) * 100) / 100
+
+  // Blank page citations: intentional placeholders (3+ underscores/dashes in legal
+  // briefs). The pattern is very specific so they deserve at least moderate confidence,
+  // but don't let them exceed the signals they actually have.
   if (hasBlankPage) {
-    confidence = 0.8
+    confidence = Math.max(confidence, 0.5)
   }
 
   return {
