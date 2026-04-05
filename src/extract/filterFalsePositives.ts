@@ -245,7 +245,7 @@ function isSuspiciousSmallVolume(citation: Citation): boolean {
 function isFalsePositive(citation: Citation): boolean {
   const reporter = getReporter(citation)
   if (reporter && BLOCKED_REPORTERS.has(reporter.toLowerCase().trim())) return true
-  if (reporter && citation.type === "case" && isImplausibleReporter(reporter)) return true
+  if (reporter && (citation.type === "case" || citation.type === "shortFormCase") && isImplausibleReporter(reporter)) return true
   if (isImplausibleVolume(citation)) return true
   if (isDocketNumberVolume(citation)) return true
   if (isSuspiciousSmallVolume(citation)) return true
@@ -270,27 +270,27 @@ function collectFalsePositiveReasons(citation: Citation): string[] {
     if (BLOCKED_REPORTERS.has(normalized)) {
       reasons.push(`Reporter "${reporter}" is a known non-US source`)
     }
-    if (citation.type === "case" && isImplausibleReporter(reporter)) {
+    if ((citation.type === "case" || citation.type === "shortFormCase") && isImplausibleReporter(reporter)) {
       reasons.push(`Reporter "${reporter}" contains prose words or is implausibly long`)
     }
   }
 
   if (isImplausibleVolume(citation)) {
-    const caseCit = citation as FullCaseCitation
+    const caseCit = citation as FullCaseCitation | ShortFormCaseCitation
     reasons.push(
       `Volume ${caseCit.volume} exceeds maximum plausible volume (${MAX_PLAUSIBLE_VOLUME}) — likely a zip code or other number`,
     )
   }
 
   if (isDocketNumberVolume(citation)) {
-    const caseCit = citation as FullCaseCitation
+    const caseCit = citation as FullCaseCitation | ShortFormCaseCitation
     reasons.push(
       `Hyphenated volume "${caseCit.volume}" matches docket number pattern — likely a case number, not a citation volume`,
     )
   }
 
   if (isSuspiciousSmallVolume(citation)) {
-    const caseCit = citation as FullCaseCitation
+    const caseCit = citation as FullCaseCitation | ShortFormCaseCitation
     reasons.push(
       `Small volume (${caseCit.volume}) with unrecognized reporter "${caseCit.reporter}" — likely a paragraph or footnote marker`,
     )

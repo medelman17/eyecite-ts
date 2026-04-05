@@ -16,9 +16,8 @@ describe("issue #146: short-form false positives", () => {
         "15 The Court concluded that the regulation at 3 was applicable.",
       )
       const sf = cits.find((c) => c.type === "shortFormCase")
-      if (sf) {
-        expect(sf.confidence).toBeLessThanOrEqual(0.1)
-      }
+      expect(sf).toBeDefined()
+      expect(sf!.confidence).toBeLessThanOrEqual(0.1)
     })
 
     it("flags numbered list item with 'at' in prose", () => {
@@ -26,9 +25,8 @@ describe("issue #146: short-form false positives", () => {
         "10 Members of the Committee objected at 2 of the hearings.",
       )
       const sf = cits.find((c) => c.type === "shortFormCase")
-      if (sf) {
-        expect(sf.confidence).toBeLessThanOrEqual(0.1)
-      }
+      expect(sf).toBeDefined()
+      expect(sf!.confidence).toBeLessThanOrEqual(0.1)
     })
 
     it("removes prose short-form FPs with filterFalsePositives: true", () => {
