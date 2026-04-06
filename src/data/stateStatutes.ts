@@ -42,5 +42,39 @@ export function escapeForRegex(abbreviation: string): string {
   );
 }
 
+/**
+ * Build the abbreviated-code tokenizer regex from stateStatuteEntries.
+ *
+ * Produces the same capture group structure as the original hardcoded regex:
+ *   (1) optional leading title number
+ *   (2) abbreviation text
+ *   (3) section + subsections + et seq.
+ *
+ * Fragments are sorted longest-first for PEG-style ordered choice.
+ */
+export function buildAbbreviatedCodeRegex(): RegExp {
+  const allFragments: string[] = [];
+
+  for (const entry of stateStatuteEntries) {
+    if (entry.regexFragment) {
+      allFragments.push(entry.regexFragment);
+    } else {
+      for (const abbrev of entry.abbreviations) {
+        allFragments.push(escapeForRegex(abbrev));
+      }
+    }
+  }
+
+  // Sort longest-first so more specific patterns match before shorter ones
+  allFragments.sort((a, b) => b.length - a.length);
+
+  const alternation = allFragments.join("|");
+
+  return new RegExp(
+    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*§?\\s*(\\d+[A-Za-z0-9.:/-]*(?:\\([^)]*\\))*(?:\\s*et\\s+seq\\.?)?)`,
+    "g",
+  );
+}
+
 /** Placeholder — entries added in subsequent tasks */
 export const stateStatuteEntries: StateStatuteEntry[] = [];
