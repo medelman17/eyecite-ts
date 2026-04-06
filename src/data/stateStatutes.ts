@@ -268,4 +268,52 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     abbreviations: ["Mont. Code Ann.", "MCA"],
     regexFragment: "Mont\\.?\\s+Code(?:\\s+Ann\\.?)?|MCA",
   },
+  // ── North Dakota ──────────────────────────────────────────────────────────
+  {
+    jurisdiction: "ND",
+    abbreviations: ["N.D. Cent. Code", "N.D.C.C."],
+    regexFragment: "N\\.?D\\.?\\s+Cent\\.?\\s+Code|N\\.?D\\.?C\\.?C\\.?",
+  },
+  // ── Nebraska ──────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "NE",
+    abbreviations: ["Neb. Rev. Stat.", "R.R.S. Neb.", "R.R.S."],
+    regexFragment: "Neb\\.?\\s+Rev\\.?\\s+Stat\\.?|R\\.?R\\.?S\\.?(?:\\s+Neb\\.?)?",
+  },
+  // ── New Hampshire ─────────────────────────────────────────────────────────
+  {
+    jurisdiction: "NH",
+    abbreviations: ["N.H. Rev. Stat. Ann.", "N.H. RSA", "RSA"],
+    regexFragment: "N\\.?H\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|N\\.?H\\.?\\s+RSA|RSA",
+  },
+  // ── New Mexico ────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "NM",
+    abbreviations: ["N.M. Stat. Ann.", "NMSA 1978", "NMSA"],
+    regexFragment: "N\\.?M\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|NMSA(?:\\s+1978)?",
+  },
+  // ── Nevada ────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "NV",
+    abbreviations: ["Nev. Rev. Stat. Ann.", "Nev. Rev. Stat.", "NRS"],
+    regexFragment: "Nev\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|NRS",
+  },
+  // ── Oklahoma ──────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "OK",
+    abbreviations: ["Okla. Stat. Ann.", "Okla. Stat.", "O.S."],
+    regexFragment: "Okla\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|O\\.?S\\.?",
+  },
+  // ── Oregon ────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "OR",
+    abbreviations: ["Or. Rev. Stat. Ann.", "Or. Rev. Stat.", "ORS"],
+    regexFragment: "Or\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|ORS",
+  },
+  // ── Rhode Island ──────────────────────────────────────────────────────────
+  {
+    jurisdiction: "RI",
+    abbreviations: ["R.I. Gen. Laws", "R.I.G.L."],
+    regexFragment: "R\\.?I\\.?\\s+Gen\\.?\\s+Laws|R\\.?I\\.?G\\.?L\\.?",
+  },
 ];
