@@ -316,4 +316,46 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     abbreviations: ["R.I. Gen. Laws", "R.I.G.L."],
     regexFragment: "R\\.?I\\.?\\s+Gen\\.?\\s+Laws|R\\.?I\\.?G\\.?L\\.?",
   },
+  // ── South Carolina ────────────────────────────────────────────────────────
+  {
+    jurisdiction: "SC",
+    abbreviations: ["S.C. Code Ann.", "S.C. Code"],
+    regexFragment: "S\\.?C\\.?\\s+Code(?:\\s+Ann\\.?)?",
+  },
+  // ── South Dakota ──────────────────────────────────────────────────────────
+  {
+    jurisdiction: "SD",
+    abbreviations: ["S.D. Codified Laws", "S.D.C.L.", "SDCL"],
+    regexFragment: "S\\.?D\\.?\\s+Codified\\s+Laws|S\\.?D\\.?C\\.?L\\.?|SDCL",
+  },
+  // ── Tennessee ─────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "TN",
+    abbreviations: ["Tenn. Code Ann.", "Tennessee Code", "T.C.A.", "TN Code"],
+    regexFragment: "Tenn(?:essee)?\\.?\\s+Code(?:\\s+Ann\\.?)?|T\\.?C\\.?A\\.?|TN\\s+Code",
+  },
+  // ── Vermont ───────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "VT",
+    abbreviations: ["Vt. Stat. Ann.", "V.S.A."],
+    regexFragment: "Vt\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|V\\.?S\\.?A\\.?",
+  },
+  // ── Wisconsin ─────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "WI",
+    abbreviations: ["Wis. Stat. Ann.", "Wis. Stat.", "W.S.A."],
+    regexFragment: "Wis\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|W\\.?S\\.?A\\.?",
+  },
+  // ── West Virginia ─────────────────────────────────────────────────────────
+  {
+    jurisdiction: "WV",
+    abbreviations: ["W. Va. Code Ann.", "W. Va. Code", "WV Code"],
+    regexFragment: "W\\.?\\s*Va\\.?\\s+Code(?:\\s+Ann\\.?)?|WV\\s+Code",
+  },
+  // ── Wyoming ───────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "WY",
+    abbreviations: ["Wyo. Stat. Ann.", "Wyo. Stat.", "W.S."],
+    regexFragment: "Wyo\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|W\\.?S\\.?",
+  },
 ];
