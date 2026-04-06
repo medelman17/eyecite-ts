@@ -7,3 +7,4 @@
 
 export * from "./knownCodes"
 export * from "./reporters"
+export { stateStatuteEntries, type StateStatuteEntry } from "./stateStatutes"
