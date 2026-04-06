@@ -172,4 +172,52 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     abbreviations: ["Del. Code Ann.", "Del. Code", "Del. C.", "Del C"],
     regexFragment: "Del\\.?\\s*(?:Code(?:\\s+Ann\\.?)?|C\\.?)",
   },
+  // ── Alaska ────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "AK",
+    abbreviations: ["Alaska Stat. Ann.", "Alaska Stat.", "AS"],
+    regexFragment: "Alaska\\s+Stat\\.?(?:\\s+Ann\\.?)?|A\\.?S\\.?",
+  },
+  // ── Arizona ───────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "AZ",
+    abbreviations: ["Ariz. Rev. Stat. Ann.", "Ariz. Rev. Stat.", "A.R.S."],
+    regexFragment: "Ariz\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|A\\.?R\\.?S\\.?",
+  },
+  // ── Arkansas ──────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "AR",
+    abbreviations: ["Ark. Code Ann.", "Arkansas Code", "A.C.A."],
+    regexFragment: "Ark(?:ansas)?\\.?\\s+Code(?:\\s+Ann\\.?)?|A\\.?C\\.?A\\.?",
+  },
+  // ── Connecticut ───────────────────────────────────────────────────────────
+  {
+    jurisdiction: "CT",
+    abbreviations: ["Conn. Gen. Stat. Ann.", "Conn. Gen. Stat.", "C.G.S."],
+    regexFragment: "Conn\\.?\\s+Gen\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|C\\.?G\\.?S\\.?",
+  },
+  // ── District of Columbia ──────────────────────────────────────────────────
+  {
+    jurisdiction: "DC",
+    abbreviations: ["D.C. Official Code", "D.C. Code Ann.", "D.C. Code"],
+    regexFragment: "D\\.?C\\.?\\s+(?:Official\\s+)?Code(?:\\s+Ann\\.?)?",
+  },
+  // ── Hawaii ────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "HI",
+    abbreviations: ["Haw. Rev. Stat. Ann.", "Haw. Rev. Stat.", "HRS"],
+    regexFragment: "Haw\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|HRS",
+  },
+  // ── Iowa ──────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "IA",
+    abbreviations: ["Iowa Code Ann.", "Iowa Code", "I.C.A."],
+    regexFragment: "Iowa\\s+Code(?:\\s+Ann\\.?)?|I\\.?C\\.?A\\.?",
+  },
+  // ── Idaho ─────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "ID",
+    abbreviations: ["Idaho Code Ann.", "Idaho Code"],
+    regexFragment: "Idaho\\s+Code(?:\\s+Ann\\.?)?",
+  },
 ];
