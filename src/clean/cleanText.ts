@@ -186,40 +186,67 @@ function rebuildPositionMaps(
       // caused Issue #154: tags longer than the window produced corrupted
       // position mappings, collapsing many clean positions to a single
       // original position.  Scale to the length delta with a reasonable floor.
-      const maxLookAhead = Math.max(40, (beforeText.length - afterText.length) + 10)
+      const maxLookAhead = Math.max(40, Math.abs(beforeText.length - afterText.length) + 10)
 
-      // Check if something was deleted from before text
-      for (let lookAhead = 1; lookAhead <= maxLookAhead; lookAhead++) {
-        if (beforeIdx + lookAhead >= beforeText.length) break
+      // Find the closest CONFIRMED match in both directions simultaneously.
+      // A "confirmed" match requires that at least CONFIRM_LEN characters
+      // after the match point also align.  This prevents greedy false matches
+      // (Issue #161) where, e.g., normalizeDashes expands "—" → "---" and the
+      // deletion lookahead grabs a "-" from a nearby page range instead.
+      const CONFIRM_LEN = 3
+      let bestDelLA = -1
+      let bestInsLA = -1
 
-        if (beforeText[beforeIdx + lookAhead] === afterText[afterIdx]) {
-          // Found a match - characters were deleted from before text
-          for (let i = 0; i < lookAhead; i++) {
-            const originalPos = oldCleanToOriginal.get(beforeIdx + i) ?? beforeIdx + i
-            newOriginalToClean.set(originalPos, afterIdx)
+      for (let la = 1; la <= maxLookAhead; la++) {
+        // Check deletion direction (skipping chars in before)
+        if (bestDelLA < 0 && beforeIdx + la < beforeText.length) {
+          if (beforeText[beforeIdx + la] === afterText[afterIdx]) {
+            let ok = true
+            for (let c = 1; c < CONFIRM_LEN; c++) {
+              const bi = beforeIdx + la + c
+              const ai = afterIdx + c
+              if (bi >= beforeText.length || ai >= afterText.length) break
+              if (beforeText[bi] !== afterText[ai]) { ok = false; break }
+            }
+            if (ok) bestDelLA = la
           }
-          beforeIdx += lookAhead
-          foundMatch = true
-          break
         }
+
+        // Check insertion direction (skipping chars in after)
+        if (bestInsLA < 0 && afterIdx + la < afterText.length) {
+          if (beforeText[beforeIdx] === afterText[afterIdx + la]) {
+            let ok = true
+            for (let c = 1; c < CONFIRM_LEN; c++) {
+              const bi = beforeIdx + c
+              const ai = afterIdx + la + c
+              if (bi >= beforeText.length || ai >= afterText.length) break
+              if (beforeText[bi] !== afterText[ai]) { ok = false; break }
+            }
+            if (ok) bestInsLA = la
+          }
+        }
+
+        // Stop early if we found matches in both directions
+        if (bestDelLA >= 0 && bestInsLA >= 0) break
       }
 
-      if (foundMatch) continue
-
-      // Check if something was inserted into after text
-      for (let lookAhead = 1; lookAhead <= maxLookAhead; lookAhead++) {
-        if (afterIdx + lookAhead >= afterText.length) break
-
-        if (beforeText[beforeIdx] === afterText[afterIdx + lookAhead]) {
-          // Found a match - characters were inserted into after text
-          const originalPos = oldCleanToOriginal.get(beforeIdx) ?? beforeIdx
-          for (let i = 0; i < lookAhead; i++) {
-            newCleanToOriginal.set(afterIdx + i, originalPos)
-          }
-          afterIdx += lookAhead
-          foundMatch = true
-          break
+      // Pick the shorter confirmed match (prefer smaller displacement)
+      if (bestDelLA >= 0 && (bestInsLA < 0 || bestDelLA <= bestInsLA)) {
+        // Deletion: chars before[beforeIdx .. beforeIdx+bestDelLA-1] were removed
+        for (let i = 0; i < bestDelLA; i++) {
+          const originalPos = oldCleanToOriginal.get(beforeIdx + i) ?? beforeIdx + i
+          newOriginalToClean.set(originalPos, afterIdx)
         }
+        beforeIdx += bestDelLA
+        foundMatch = true
+      } else if (bestInsLA >= 0) {
+        // Insertion: chars after[afterIdx .. afterIdx+bestInsLA-1] are new
+        const originalPos = oldCleanToOriginal.get(beforeIdx) ?? beforeIdx
+        for (let i = 0; i < bestInsLA; i++) {
+          newCleanToOriginal.set(afterIdx + i, originalPos)
+        }
+        afterIdx += bestInsLA
+        foundMatch = true
       }
 
       if (foundMatch) continue
