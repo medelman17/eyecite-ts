@@ -181,7 +181,12 @@ function rebuildPositionMaps(
 
       // Look ahead to find next match
       let foundMatch = false
-      const maxLookAhead = 20 // Limit lookahead to avoid performance issues
+      // Lookahead must span the largest single deletion (e.g., a long HTML tag
+      // like <span class="citation" data-id="1"> is 35+ chars).  A fixed 20
+      // caused Issue #154: tags longer than the window produced corrupted
+      // position mappings, collapsing many clean positions to a single
+      // original position.  Scale to the length delta with a reasonable floor.
+      const maxLookAhead = Math.max(40, (beforeText.length - afterText.length) + 10)
 
       // Check if something was deleted from before text
       for (let lookAhead = 1; lookAhead <= maxLookAhead; lookAhead++) {

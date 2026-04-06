@@ -159,6 +159,68 @@ describe("cleanText position tracking", () => {
     expect(result.transformationMap.originalToClean.get(0)).toBe(0)
   })
 
+  it("should track positions across long HTML tags (issue #154)", () => {
+    // Tags longer than 20 characters caused corrupted position maps — many clean
+    // positions collapsed to the same original position (zero-length spans).
+    const input = '<span class="citation" data-id="1">500 F.2d 123</span> (2020)'
+    const result = cleanText(input, [stripHtmlTags])
+
+    expect(result.cleaned).toBe("500 F.2d 123 (2020)")
+
+    // "500" must map to its actual position in the original (after the 35-char tag)
+    const cleanStart = result.cleaned.indexOf("500")
+    const expectedOrigStart = input.indexOf("500")
+    expect(result.transformationMap.cleanToOriginal.get(cleanStart)).toBe(expectedOrigStart)
+
+    // End of "123" must map FORWARD from start — not collapse to the same point
+    const cleanEnd = result.cleaned.indexOf("123") + 3
+    const origStart = result.transformationMap.cleanToOriginal.get(cleanStart)
+    const origEnd = result.transformationMap.cleanToOriginal.get(cleanEnd)
+    expect(origStart).toBeDefined()
+    expect(origEnd).toBeDefined()
+    expect(origEnd).toBeGreaterThan(origStart as number)
+
+    // No clean position within the citation should map to a position inside the tag
+    const tagEnd = input.indexOf(">") + 1 // end of opening tag
+    for (let i = cleanStart; i < cleanEnd; i++) {
+      const orig = result.transformationMap.cleanToOriginal.get(i)
+      expect(orig).toBeDefined()
+      expect(orig).toBeGreaterThanOrEqual(tagEnd)
+    }
+  })
+
+  it("should produce non-zero original spans for citations in heavy HTML (issue #154)", () => {
+    // Full pipeline regression: repeated citations inside long HTML tags must
+    // produce originalStart < originalEnd, never zero-length.
+    const html =
+      '<p>' +
+      Array(10)
+        .fill('<span class="citation" data-id="x">500 F.2d 123</span> (2020); ')
+        .join("") +
+      "</p>"
+
+    const result = cleanText(html, [stripHtmlTags])
+
+    // Every "5" of "500" must map to a unique, increasing original position
+    const offsets: number[] = []
+    let searchFrom = 0
+    for (let i = 0; i < 10; i++) {
+      const idx = result.cleaned.indexOf("500", searchFrom)
+      const orig = result.transformationMap.cleanToOriginal.get(idx)
+      const origEnd = result.transformationMap.cleanToOriginal.get(idx + 12) // past "500 F.2d 123"
+      expect(orig).toBeDefined()
+      expect(origEnd).toBeDefined()
+      expect(origEnd).toBeGreaterThan(orig as number)
+      offsets.push(orig)
+      searchFrom = idx + 1
+    }
+
+    // Each citation's original position must be strictly increasing
+    for (let i = 1; i < offsets.length; i++) {
+      expect(offsets[i]).toBeGreaterThan(offsets[i - 1])
+    }
+  })
+
   it("should handle text with only HTML tag removals", () => {
     const input = "<div><span>text</span></div>"
     const result = cleanText(input, [stripHtmlTags])

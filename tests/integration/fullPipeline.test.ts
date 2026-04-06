@@ -660,4 +660,38 @@ describe("Full Pipeline Integration Tests", () => {
       }
     })
   })
+
+  describe("Issue #154: no zero-length spans from HTML with long tags", () => {
+    it("produces non-zero original spans for citations inside long HTML attributes", () => {
+      const html =
+        '<p>See <span class="citation" data-id="42">347 U.S. 483</span> (1954). ' +
+        '<span class="citation" data-id="99">500 F.2d 123</span> (9th Cir. 2020).</p>'
+
+      const citations = extractCitations(html)
+
+      expect(citations.length).toBeGreaterThanOrEqual(2)
+      for (const c of citations) {
+        expect(c.span.originalEnd).toBeGreaterThan(c.span.originalStart)
+        expect(c.matchedText.trim().length).toBeGreaterThan(0)
+      }
+    })
+
+    it("handles 50 repeated citations in HTML without zero-length spans", () => {
+      const html =
+        "<p>" +
+        Array(50)
+          .fill(
+            '<em>See</em> <span class="citation">500 F.2d 123</span> (9th Cir. 2020); ',
+          )
+          .join("") +
+        "</p>"
+
+      const citations = extractCitations(html)
+
+      const zeroLength = citations.filter(
+        (c) => c.span.originalStart === c.span.originalEnd,
+      )
+      expect(zeroLength).toHaveLength(0)
+    })
+  })
 })
