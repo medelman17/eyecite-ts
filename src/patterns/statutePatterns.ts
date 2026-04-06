@@ -43,7 +43,7 @@ export const statutePatterns: Pattern[] = [
     // Matches: [State abbrev]. [Code/Law Name] § [section]
     // Captures: (1) jurisdiction prefix, (2) code name text, (3) section+subsections+et seq
     regex:
-      /\b(N\.?\s*Y\.?|Cal(?:ifornia)?\.?|Tex(?:as)?\.?|Md\.?|(?<!W\.?\s)Va\.?|Ala(?:bama)?\.?)\s+((?:[A-Za-z.&',\s]+?))\s*§§?\s*(\d+[A-Za-z0-9.:/-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(N\.?\s*Y\.?|Cal(?:ifornia)?\.?|Tex(?:as)?\.?|Md\.?|(?<!W\.?\s?)Va\.?|Ala(?:bama)?\.?)\s+((?:[A-Za-z.&',\s]+?))\s*§§?\s*(\d+[A-Za-z0-9.:/-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
     description:
       "Named-code state citations (NY, CA, TX, MD, VA, AL) with jurisdiction prefix + code name + §",
     type: "statute",

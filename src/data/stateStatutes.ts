@@ -76,6 +76,10 @@ export function buildAbbreviatedCodeRegex(): RegExp {
   );
 }
 
+/**
+ * Abbreviations are ordered longest-first within each entry. The last element
+ * is used as the canonical short abbreviation in knownCodes.ts.
+ */
 export const stateStatuteEntries: StateStatuteEntry[] = [
   // ── Florida ────────────────────────────────────────────────────────────────
   {

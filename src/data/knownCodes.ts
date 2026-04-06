@@ -28,6 +28,11 @@ export interface CodeEntry {
 /**
  * Registry of state statutory codes that use abbreviated citation forms.
  * Derived from stateStatuteEntries — the single source of truth.
+ *
+ * Note: Short 2-letter patterns (AS, GS, IC, OS, PS, RC, FS, WS) may produce
+ * false positives in non-legal text. The extraction layer mitigates this via
+ * confidence scoring — citations without a § symbol receive lower confidence
+ * (0.85 vs 0.95). Consumers should filter by confidence threshold.
  */
 export const abbreviatedCodes: CodeEntry[] = stateStatuteEntries.map((entry) => ({
   jurisdiction: entry.jurisdiction,
