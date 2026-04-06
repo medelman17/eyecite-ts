@@ -299,6 +299,114 @@ describe("extractStatute", () => {
     })
   })
 
+  describe("new state jurisdictions — batch 5", () => {
+    const cases = [
+      { text: "Alaska Stat. § 11.41.100", jurisdiction: "AK", section: "11.41.100" },
+      { text: "AS § 11.41.100", jurisdiction: "AK", section: "11.41.100" },
+      { text: "Ariz. Rev. Stat. § 13-1105", jurisdiction: "AZ", section: "13-1105" },
+      { text: "A.R.S. § 13-1105", jurisdiction: "AZ", section: "13-1105" },
+      { text: "Ark. Code Ann. § 5-10-101", jurisdiction: "AR", section: "5-10-101" },
+      { text: "A.C.A. § 5-10-101", jurisdiction: "AR", section: "5-10-101" },
+      { text: "Conn. Gen. Stat. § 52-555", jurisdiction: "CT", section: "52-555" },
+      { text: "C.G.S. § 14-227a", jurisdiction: "CT", section: "14-227a" },
+      { text: "D.C. Code § 22-3211", jurisdiction: "DC", section: "22-3211" },
+      { text: "Haw. Rev. Stat. § 707-711", jurisdiction: "HI", section: "707-711" },
+      { text: "HRS § 707-711", jurisdiction: "HI", section: "707-711" },
+      { text: "Iowa Code § 714.1", jurisdiction: "IA", section: "714.1" },
+      { text: "Idaho Code § 18-4001", jurisdiction: "ID", section: "18-4001" },
+    ]
+    for (const { text, jurisdiction, section } of cases) {
+      it(`should extract "${text}"`, () => {
+        const citations = extractCitations(text)
+        const statutes = citations.filter((c) => c.type === "statute")
+        expect(statutes).toHaveLength(1)
+        expect(statutes[0].jurisdiction).toBe(jurisdiction)
+        expect(statutes[0].section).toBe(section)
+      })
+    }
+  })
+
+  describe("new state jurisdictions — batch 6", () => {
+    const cases = [
+      { text: "Kan. Stat. Ann. § 21-5401", jurisdiction: "KS", section: "21-5401" },
+      { text: "K.S.A. § 21-5401", jurisdiction: "KS", section: "21-5401" },
+      { text: "Ky. Rev. Stat. Ann. § 507.020", jurisdiction: "KY", section: "507.020" },
+      { text: "KRS § 507.020", jurisdiction: "KY", section: "507.020" },
+      { text: "La. Rev. Stat. Ann. § 14:30", jurisdiction: "LA", section: "14:30" },
+      { text: "La. R.S. 14:30", jurisdiction: "LA", section: "14:30" },
+      { text: "Me. Rev. Stat. Ann. § 208", jurisdiction: "ME", section: "208" },
+      { text: "M.R.S.A. § 208", jurisdiction: "ME", section: "208" },
+      { text: "Minn. Stat. § 609.02", jurisdiction: "MN", section: "609.02" },
+      { text: "Miss. Code Ann. § 97-3-19", jurisdiction: "MS", section: "97-3-19" },
+      { text: "Mo. Rev. Stat. § 565.021", jurisdiction: "MO", section: "565.021" },
+      { text: "RSMo § 565.021", jurisdiction: "MO", section: "565.021" },
+      { text: "Mont. Code Ann. § 45-5-502", jurisdiction: "MT", section: "45-5-502" },
+      { text: "MCA § 45-5-502", jurisdiction: "MT", section: "45-5-502" },
+    ]
+    for (const { text, jurisdiction, section } of cases) {
+      it(`should extract "${text}"`, () => {
+        const citations = extractCitations(text)
+        const statutes = citations.filter((c) => c.type === "statute")
+        expect(statutes).toHaveLength(1)
+        expect(statutes[0].jurisdiction).toBe(jurisdiction)
+        expect(statutes[0].section).toBe(section)
+      })
+    }
+  })
+
+  describe("new state jurisdictions — batch 7", () => {
+    const cases = [
+      { text: "N.D. Cent. Code § 12.1-02-01", jurisdiction: "ND", section: "12.1-02-01" },
+      { text: "N.D.C.C. § 12.1-02-01", jurisdiction: "ND", section: "12.1-02-01" },
+      { text: "Neb. Rev. Stat. § 28-303", jurisdiction: "NE", section: "28-303" },
+      { text: "N.H. Rev. Stat. Ann. § 625:9", jurisdiction: "NH", section: "625:9" },
+      { text: "RSA § 625:9", jurisdiction: "NH", section: "625:9" },
+      { text: "N.M. Stat. Ann. § 30-16-1", jurisdiction: "NM", section: "30-16-1" },
+      { text: "NMSA § 30-16-1", jurisdiction: "NM", section: "30-16-1" },
+      { text: "Nev. Rev. Stat. § 200.030", jurisdiction: "NV", section: "200.030" },
+      { text: "NRS § 200.030", jurisdiction: "NV", section: "200.030" },
+      { text: "Okla. Stat. § 496", jurisdiction: "OK", section: "496" },
+      { text: "Or. Rev. Stat. § 161.085", jurisdiction: "OR", section: "161.085" },
+      { text: "ORS § 161.085", jurisdiction: "OR", section: "161.085" },
+      { text: "R.I. Gen. Laws § 11-1-2", jurisdiction: "RI", section: "11-1-2" },
+      { text: "R.I.G.L. § 11-1-2", jurisdiction: "RI", section: "11-1-2" },
+    ]
+    for (const { text, jurisdiction, section } of cases) {
+      it(`should extract "${text}"`, () => {
+        const citations = extractCitations(text)
+        const statutes = citations.filter((c) => c.type === "statute")
+        expect(statutes).toHaveLength(1)
+        expect(statutes[0].jurisdiction).toBe(jurisdiction)
+        expect(statutes[0].section).toBe(section)
+      })
+    }
+  })
+
+  describe("new state jurisdictions — batch 8", () => {
+    const cases = [
+      { text: "S.C. Code Ann. § 16-3-10", jurisdiction: "SC", section: "16-3-10" },
+      { text: "S.D. Codified Laws § 22-1-2", jurisdiction: "SD", section: "22-1-2" },
+      { text: "SDCL § 22-1-2", jurisdiction: "SD", section: "22-1-2" },
+      { text: "Tenn. Code Ann. § 39-13-101", jurisdiction: "TN", section: "39-13-101" },
+      { text: "T.C.A. § 39-13-101", jurisdiction: "TN", section: "39-13-101" },
+      { text: "Vt. Stat. Ann. § 2301", jurisdiction: "VT", section: "2301" },
+      { text: "V.S.A. § 2301", jurisdiction: "VT", section: "2301" },
+      { text: "Wis. Stat. § 940.01", jurisdiction: "WI", section: "940.01" },
+      { text: "W. Va. Code § 61-2-9", jurisdiction: "WV", section: "61-2-9" },
+      { text: "Wyo. Stat. Ann. § 6-2-101", jurisdiction: "WY", section: "6-2-101" },
+      { text: "W.S. § 6-2-101", jurisdiction: "WY", section: "6-2-101" },
+    ]
+    for (const { text, jurisdiction, section } of cases) {
+      it(`should extract "${text}"`, () => {
+        const citations = extractCitations(text)
+        const statutes = citations.filter((c) => c.type === "statute")
+        expect(statutes).toHaveLength(1)
+        expect(statutes[0].jurisdiction).toBe(jurisdiction)
+        expect(statutes[0].section).toBe(section)
+      })
+    }
+  })
+
   describe("new fields via full pipeline", () => {
     it("should extract subsection through full pipeline", () => {
       const citations = extractCitations("42 U.S.C. § 1983(a)(1)")

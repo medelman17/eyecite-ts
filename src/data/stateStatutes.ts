@@ -1,0 +1,365 @@
+/**
+ * State statute abbreviation table — single source of truth for the
+ * abbreviated-code tokenizer pattern and the knownCodes lookup registry.
+ */
+
+export interface StateStatuteEntry {
+  /** Two-letter jurisdiction code (e.g., "AK", "AZ") */
+  jurisdiction: string;
+  /** All recognized abbreviation forms — used for lookup by findAbbreviatedCode */
+  abbreviations: string[];
+  /**
+   * Regex fragment for tokenizer alternation. If omitted, auto-generated
+   * from abbreviations via escapeForRegex. Provide explicitly when the
+   * pattern needs optional components (e.g., "Stat(?:utes)?").
+   */
+  regexFragment?: string;
+}
+
+/**
+ * Convert a plain abbreviation string into a regex fragment.
+ *
+ * Rules:
+ * - Periods followed by a letter (e.g., "T.C.") → optional period + optional space
+ * - Periods followed by a space (e.g., "Stat. Ann.") → optional period + flexible space
+ * - Trailing periods → optional period
+ * - Spaces → flexible whitespace (\s+)
+ * - Regex-special characters are escaped
+ */
+export function escapeForRegex(abbreviation: string): string {
+  return (
+    abbreviation
+      // Escape regex-special chars (except period and space, handled below)
+      .replace(/[\\^$*+?{}[\]|()]/g, "\\$&")
+      // Period followed by letter: "T.C" → "T\.?\s*C"
+      .replace(/\.(?=[A-Za-z])/g, "\\.?\\s*")
+      // Period followed by space: "Stat. Ann" → "Stat\.?\s+Ann"
+      .replace(/\.\s+/g, "\\.?\\s+")
+      // Trailing period: "Ann." → "Ann\.?"
+      .replace(/\.$/g, "\\.?")
+      // Remaining spaces → flexible whitespace
+      .replace(/ +/g, "\\s+")
+  );
+}
+
+/**
+ * Build the abbreviated-code tokenizer regex from stateStatuteEntries.
+ *
+ * Produces the same capture group structure as the original hardcoded regex:
+ *   (1) optional leading title number
+ *   (2) abbreviation text
+ *   (3) section + subsections + et seq.
+ *
+ * Fragments are sorted longest-first for PEG-style ordered choice.
+ */
+export function buildAbbreviatedCodeRegex(): RegExp {
+  const allFragments: string[] = [];
+
+  for (const entry of stateStatuteEntries) {
+    if (entry.regexFragment) {
+      allFragments.push(entry.regexFragment);
+    } else {
+      for (const abbrev of entry.abbreviations) {
+        allFragments.push(escapeForRegex(abbrev));
+      }
+    }
+  }
+
+  // Sort longest-first so more specific patterns match before shorter ones
+  allFragments.sort((a, b) => b.length - a.length);
+
+  const alternation = allFragments.join("|");
+
+  return new RegExp(
+    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*§?\\s*(\\d+[A-Za-z0-9.:/-]*(?:\\([^)]*\\))*(?:\\s*et\\s+seq\\.?)?)`,
+    "g",
+  );
+}
+
+/**
+ * Abbreviations are ordered longest-first within each entry. The last element
+ * is used as the canonical short abbreviation in knownCodes.ts.
+ */
+export const stateStatuteEntries: StateStatuteEntry[] = [
+  // ── Florida ────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "FL",
+    abbreviations: ["Fla. Stat. Ann.", "Fla. Stat.", "Fla Stat", "F.S.", "FS"],
+    regexFragment: "Fla\\.?\\s*Stat(?:utes)?\\.?(?:\\s*Ann\\.?)?|F\\.?S\\.?",
+  },
+  // ── Ohio ───────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "OH",
+    abbreviations: ["Ohio Rev. Code Ann.", "Ohio Rev. Code", "O.R.C.", "ORC", "R.C.", "RC"],
+    regexFragment: "Ohio\\s+Rev\\.?\\s+Code(?:\\s+Ann\\.?)?|O\\.?R\\.?C\\.?|R\\.?C\\.?",
+  },
+  // ── Michigan ───────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "MI",
+    abbreviations: [
+      "Mich. Comp. Laws Ann.",
+      "Mich. Comp. Laws Serv.",
+      "Mich. Comp. Laws",
+      "M.C.L.",
+      "MCLA",
+      "MCLS",
+      "MCL",
+    ],
+    regexFragment: "Mich\\.?\\s+Comp\\.?\\s+Laws(?:\\s+(?:Ann|Serv)\\.?)?|M\\.?C\\.?L\\.?|MCL[AS]?",
+  },
+  // ── Utah ───────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "UT",
+    abbreviations: ["Utah Code Ann.", "Utah Code", "U.C.A.", "UCA"],
+    regexFragment: "Utah\\s+Code(?:\\s+Ann\\.?)?|U\\.?C\\.?A\\.?",
+  },
+  // ── Colorado ───────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "CO",
+    abbreviations: ["Colo. Rev. Stat. Ann.", "Colo. Rev. Stat.", "C.R.S.", "CRS"],
+    regexFragment: "Colo\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|C\\.?R\\.?S\\.?",
+  },
+  // ── Washington ─────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "WA",
+    abbreviations: ["Wash. Rev. Code Ann.", "Wash. Rev. Code", "RCW"],
+    regexFragment: "Wash\\.?\\s+Rev\\.?\\s+Code(?:\\s+Ann\\.?)?|RCW",
+  },
+  // ── North Carolina ─────────────────────────────────────────────────────────
+  {
+    jurisdiction: "NC",
+    abbreviations: ["N.C. Gen. Stat. Ann.", "N.C. Gen. Stat.", "N.C.G.S.", "NCGS", "G.S.", "GS"],
+    regexFragment: "N\\.?C\\.?\\s*Gen\\.?\\s*Stat\\.?(?:\\s+Ann\\.?)?|N\\.?C\\.?G\\.?S\\.?|G\\.?S\\.?",
+  },
+  // ── Georgia ────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "GA",
+    abbreviations: ["Ga. Code Ann.", "Ga. Code", "O.C.G.A.", "OCGA"],
+    regexFragment: "Ga\\.?\\s+Code(?:\\s+Ann\\.?)?|O\\.?C\\.?G\\.?A\\.?",
+  },
+  // ── Pennsylvania (consolidated) ────────────────────────────────────────────
+  {
+    jurisdiction: "PA",
+    abbreviations: ["Pa. Cons. Stat.", "Pa.C.S.A.", "Pa.C.S.", "Pa. C.S.A.", "Pa. C.S."],
+    regexFragment: "Pa\\.?\\s*C\\.?S\\.?A?\\.?|Pa\\.?\\s+Cons\\.?\\s+Stat\\.?",
+  },
+  // ── Pennsylvania (unconsolidated) ──────────────────────────────────────────
+  {
+    jurisdiction: "PA",
+    abbreviations: ["P.S.", "PS"],
+    regexFragment: "P\\.?S\\.?",
+  },
+  // ── Indiana ────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "IN",
+    abbreviations: [
+      "Burns Ind. Code Ann.",
+      "Burns Ind. Code",
+      "Indiana Code Ann.",
+      "Indiana Code",
+      "Ind. Code Ann.",
+      "Ind. Code",
+      "I.C.",
+      "IC",
+    ],
+    regexFragment: "Burns\\s+Ind\\.?\\s+Code(?:\\s+Ann\\.?)?|Ind(?:iana)?\\.?\\s+Code(?:\\s+Ann\\.?)?|I\\.?C\\.?",
+  },
+  // ── New Jersey ─────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "NJ",
+    abbreviations: ["N.J.S.A.", "NJSA", "N.J.S.", "NJS"],
+    regexFragment: "N\\.?J\\.?\\s*S(?:tat)?\\.?\\s*A?\\.?",
+  },
+  // ── Delaware ───────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "DE",
+    abbreviations: ["Del. Code Ann.", "Del. Code", "Del. C.", "Del C"],
+    regexFragment: "Del\\.?\\s*(?:Code(?:\\s+Ann\\.?)?|C\\.?)",
+  },
+  // ── Alaska ────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "AK",
+    abbreviations: ["Alaska Stat. Ann.", "Alaska Stat.", "AS"],
+    regexFragment: "Alaska\\s+Stat\\.?(?:\\s+Ann\\.?)?|A\\.?S\\.?",
+  },
+  // ── Arizona ───────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "AZ",
+    abbreviations: ["Ariz. Rev. Stat. Ann.", "Ariz. Rev. Stat.", "A.R.S."],
+    regexFragment: "Ariz\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|A\\.?R\\.?S\\.?",
+  },
+  // ── Arkansas ──────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "AR",
+    abbreviations: ["Ark. Code Ann.", "Arkansas Code", "A.C.A."],
+    regexFragment: "Ark(?:ansas)?\\.?\\s+Code(?:\\s+Ann\\.?)?|A\\.?C\\.?A\\.?",
+  },
+  // ── Connecticut ───────────────────────────────────────────────────────────
+  {
+    jurisdiction: "CT",
+    abbreviations: ["Conn. Gen. Stat. Ann.", "Conn. Gen. Stat.", "C.G.S."],
+    regexFragment: "Conn\\.?\\s+Gen\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|C\\.?G\\.?S\\.?",
+  },
+  // ── District of Columbia ──────────────────────────────────────────────────
+  {
+    jurisdiction: "DC",
+    abbreviations: ["D.C. Official Code", "D.C. Code Ann.", "D.C. Code"],
+    regexFragment: "D\\.?C\\.?\\s+(?:Official\\s+)?Code(?:\\s+Ann\\.?)?",
+  },
+  // ── Hawaii ────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "HI",
+    abbreviations: ["Haw. Rev. Stat. Ann.", "Haw. Rev. Stat.", "HRS"],
+    regexFragment: "Haw\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|HRS",
+  },
+  // ── Iowa ──────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "IA",
+    abbreviations: ["Iowa Code Ann.", "Iowa Code", "I.C.A."],
+    regexFragment: "Iowa\\s+Code(?:\\s+Ann\\.?)?|I\\.?C\\.?A\\.?",
+  },
+  // ── Idaho ─────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "ID",
+    abbreviations: ["Idaho Code Ann.", "Idaho Code"],
+    regexFragment: "Idaho\\s+Code(?:\\s+Ann\\.?)?",
+  },
+  // ── Kansas ────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "KS",
+    abbreviations: ["Kan. Stat. Ann.", "K.S.A."],
+    regexFragment: "Kan\\.?\\s+Stat\\.?\\s+Ann\\.?|K\\.?S\\.?A\\.?",
+  },
+  // ── Kentucky ──────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "KY",
+    abbreviations: ["Ky. Rev. Stat. Ann.", "Ky. Rev. Stat.", "KRS"],
+    regexFragment: "Ky\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|KRS",
+  },
+  // ── Louisiana ─────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "LA",
+    abbreviations: ["La. Rev. Stat. Ann.", "La. R.S.", "LSA-R.S."],
+    regexFragment: "La\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|La\\.?\\s+R\\.?S\\.?|LSA-R\\.?S\\.?",
+  },
+  // ── Maine ─────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "ME",
+    abbreviations: ["Me. Rev. Stat. Ann.", "Me. Rev. Stat.", "M.R.S.A.", "M.R.S."],
+    regexFragment: "Me\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|M\\.?R\\.?S\\.?A?\\.?",
+  },
+  // ── Minnesota ─────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "MN",
+    abbreviations: ["Minn. Stat. Ann.", "Minn. Stat.", "M.S.A."],
+    regexFragment: "Minn\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|M\\.?S\\.?A\\.?",
+  },
+  // ── Mississippi ───────────────────────────────────────────────────────────
+  {
+    jurisdiction: "MS",
+    abbreviations: ["Miss. Code Ann.", "Mississippi Code", "MS Code"],
+    regexFragment: "Miss(?:issippi)?\\.?\\s+Code(?:\\s+Ann\\.?)?|MS\\s+Code",
+  },
+  // ── Missouri ──────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "MO",
+    abbreviations: ["Mo. Ann. Stat.", "Mo. Rev. Stat.", "V.A.M.S.", "RSMo"],
+    regexFragment: "Mo\\.?\\s+(?:Ann\\.?\\s+|Rev\\.?\\s+)Stat\\.?|V\\.?A\\.?M\\.?S\\.?|RSMo",
+  },
+  // ── Montana ───────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "MT",
+    abbreviations: ["Mont. Code Ann.", "MCA"],
+    regexFragment: "Mont\\.?\\s+Code(?:\\s+Ann\\.?)?|MCA",
+  },
+  // ── North Dakota ──────────────────────────────────────────────────────────
+  {
+    jurisdiction: "ND",
+    abbreviations: ["N.D. Cent. Code", "N.D.C.C."],
+    regexFragment: "N\\.?D\\.?\\s+Cent\\.?\\s+Code|N\\.?D\\.?C\\.?C\\.?",
+  },
+  // ── Nebraska ──────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "NE",
+    abbreviations: ["Neb. Rev. Stat.", "R.R.S. Neb.", "R.R.S."],
+    regexFragment: "Neb\\.?\\s+Rev\\.?\\s+Stat\\.?|R\\.?R\\.?S\\.?(?:\\s+Neb\\.?)?",
+  },
+  // ── New Hampshire ─────────────────────────────────────────────────────────
+  {
+    jurisdiction: "NH",
+    abbreviations: ["N.H. Rev. Stat. Ann.", "N.H. RSA", "RSA"],
+    regexFragment: "N\\.?H\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|N\\.?H\\.?\\s+RSA|RSA",
+  },
+  // ── New Mexico ────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "NM",
+    abbreviations: ["N.M. Stat. Ann.", "NMSA 1978", "NMSA"],
+    regexFragment: "N\\.?M\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|NMSA(?:\\s+1978)?",
+  },
+  // ── Nevada ────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "NV",
+    abbreviations: ["Nev. Rev. Stat. Ann.", "Nev. Rev. Stat.", "NRS"],
+    regexFragment: "Nev\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|NRS",
+  },
+  // ── Oklahoma ──────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "OK",
+    abbreviations: ["Okla. Stat. Ann.", "Okla. Stat.", "O.S."],
+    regexFragment: "Okla\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|O\\.?S\\.?",
+  },
+  // ── Oregon ────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "OR",
+    abbreviations: ["Or. Rev. Stat. Ann.", "Or. Rev. Stat.", "ORS"],
+    regexFragment: "Or\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|ORS",
+  },
+  // ── Rhode Island ──────────────────────────────────────────────────────────
+  {
+    jurisdiction: "RI",
+    abbreviations: ["R.I. Gen. Laws", "R.I.G.L."],
+    regexFragment: "R\\.?I\\.?\\s+Gen\\.?\\s+Laws|R\\.?I\\.?G\\.?L\\.?",
+  },
+  // ── South Carolina ────────────────────────────────────────────────────────
+  {
+    jurisdiction: "SC",
+    abbreviations: ["S.C. Code Ann.", "S.C. Code"],
+    regexFragment: "S\\.?C\\.?\\s+Code(?:\\s+Ann\\.?)?",
+  },
+  // ── South Dakota ──────────────────────────────────────────────────────────
+  {
+    jurisdiction: "SD",
+    abbreviations: ["S.D. Codified Laws", "S.D.C.L.", "SDCL"],
+    regexFragment: "S\\.?D\\.?\\s+Codified\\s+Laws|S\\.?D\\.?C\\.?L\\.?|SDCL",
+  },
+  // ── Tennessee ─────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "TN",
+    abbreviations: ["Tenn. Code Ann.", "Tennessee Code", "T.C.A.", "TN Code"],
+    regexFragment: "Tenn(?:essee)?\\.?\\s+Code(?:\\s+Ann\\.?)?|T\\.?C\\.?A\\.?|TN\\s+Code",
+  },
+  // ── Vermont ───────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "VT",
+    abbreviations: ["Vt. Stat. Ann.", "V.S.A."],
+    regexFragment: "Vt\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|V\\.?S\\.?A\\.?",
+  },
+  // ── Wisconsin ─────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "WI",
+    abbreviations: ["Wis. Stat. Ann.", "Wis. Stat.", "W.S.A."],
+    regexFragment: "Wis\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|W\\.?S\\.?A\\.?",
+  },
+  // ── West Virginia ─────────────────────────────────────────────────────────
+  {
+    jurisdiction: "WV",
+    abbreviations: ["W. Va. Code Ann.", "W. Va. Code", "WV Code"],
+    regexFragment: "W\\.?\\s*Va\\.?\\s+Code(?:\\s+Ann\\.?)?|WV\\s+Code",
+  },
+  // ── Wyoming ───────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "WY",
+    abbreviations: ["Wyo. Stat. Ann.", "Wyo. Stat.", "W.S."],
+    regexFragment: "Wyo\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|W\\.?S\\.?",
+  },
+];

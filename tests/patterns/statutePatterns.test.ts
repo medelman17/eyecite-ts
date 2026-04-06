@@ -272,6 +272,12 @@ describe("statutePatterns", () => {
     it("should not match text without §", () => {
       expect(getMatches("The N.Y. Penal Law was enacted in 1965")).toHaveLength(0)
     })
+    it("should not match W. Va. Code (handled by abbreviated-code)", () => {
+      expect(getMatches("W. Va. Code § 61-2-9")).toHaveLength(0)
+    })
+    it("should not match W.Va. Code (handled by abbreviated-code)", () => {
+      expect(getMatches("W.Va. Code § 61-2-9")).toHaveLength(0)
+    })
   })
 
   describe("mass-chapter pattern", () => {
