@@ -1,5 +1,18 @@
 # eyecite-ts
 
+## 0.9.0
+
+### Minor Changes
+
+- [#166](https://github.com/medelman17/eyecite-ts/pull/166) [`42fc27d`](https://github.com/medelman17/eyecite-ts/commit/42fc27d8753892cd37ce19f71a4cc5913d55f52d) Thanks [@medelman17](https://github.com/medelman17)! - Add statute citation patterns for 31 additional US state jurisdictions
+
+  Expands the `abbreviated-code` pattern family from 12 to 43 states using a data-driven
+  regex generation approach. Each new state was verified against real citation formats from
+  court opinions and legislative text.
+
+  New jurisdictions: AK, AZ, AR, CT, DC, HI, IA, ID, KS, KY, LA, ME, MN, MO, MS, MT,
+  ND, NE, NH, NM, NV, OK, OR, RI, SC, SD, TN, VT, WI, WV, WY.
+
 ## 0.8.4
 
 ### Patch Changes
