@@ -1,5 +1,22 @@
 # eyecite-ts
 
+## 0.8.3
+
+### Patch Changes
+
+- [#162](https://github.com/medelman17/eyecite-ts/pull/162) [`919c8c9`](https://github.com/medelman17/eyecite-ts/commit/919c8c9ed7ce6ef0ee93b76344fefe47c34dd7d8) Thanks [@medelman17](https://github.com/medelman17)! - fix: prevent greedy false matches in position mapping lookahead (#161)
+
+  The `rebuildPositionMaps` lookahead found the _first_ matching character,
+  not the _correct_ one. When `normalizeDashes` expanded em-dashes (— → ---)
+  near text containing hyphens (e.g., page ranges like "110-115"), the
+  deletion lookahead grabbed the wrong "-", collapsing subsequent position
+  mappings and producing zero-length original spans on extracted citations.
+
+  The fix adds a confirmation check: a lookahead match is only accepted when
+  at least 3 characters after the match point also align. Both deletion and
+  insertion directions are searched simultaneously and the shorter confirmed
+  match wins, preventing greedy false matches.
+
 ## 0.8.2
 
 ### Patch Changes
