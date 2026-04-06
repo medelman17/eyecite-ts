@@ -6,6 +6,8 @@
  * citation extractor to identify and normalize state statute citations.
  */
 
+import { stateStatuteEntries } from "./stateStatutes"
+
 /**
  * A single entry in the known codes registry.
  *
@@ -25,112 +27,14 @@ export interface CodeEntry {
 
 /**
  * Registry of state statutory codes that use abbreviated citation forms.
- *
- * Covers 12 jurisdictions. Pennsylvania has two entries because it
- * maintains two distinct code families (Pa.C.S. and P.S.).
- *
- * Note: Short 2-letter patterns (GS, IC, PS, RC, FS) may produce false positives
- * in non-legal text (e.g., "GS 5" for government service grade). The extraction
- * layer mitigates this via confidence scoring — citations without a § symbol receive
- * lower confidence (0.85 vs 0.95). Consumers should filter by confidence threshold.
+ * Derived from stateStatuteEntries — the single source of truth.
  */
-export const abbreviatedCodes: CodeEntry[] = [
-  {
-    jurisdiction: "FL",
-    abbreviation: "STAT",
-    family: "abbreviated",
-    patterns: ["Fla. Stat.", "Fla Stat", "Fla. Stat. Ann.", "F.S.", "FS"],
-  },
-  {
-    jurisdiction: "OH",
-    abbreviation: "RC",
-    family: "abbreviated",
-    patterns: ["R.C.", "RC", "O.R.C.", "ORC", "Ohio Rev. Code", "Ohio Rev. Code Ann."],
-  },
-  {
-    jurisdiction: "MI",
-    abbreviation: "MCL",
-    family: "abbreviated",
-    patterns: [
-      "MCL",
-      "M.C.L.",
-      "Mich. Comp. Laws",
-      "Mich. Comp. Laws Ann.",
-      "Mich. Comp. Laws Serv.",
-      "MCLA",
-      "MCLS",
-    ],
-  },
-  {
-    jurisdiction: "UT",
-    abbreviation: "UC",
-    family: "abbreviated",
-    patterns: ["Utah Code", "Utah Code Ann.", "U.C.A.", "UCA"],
-  },
-  {
-    jurisdiction: "CO",
-    abbreviation: "CRS",
-    family: "abbreviated",
-    patterns: ["C.R.S.", "CRS", "Colo. Rev. Stat.", "Colo. Rev. Stat. Ann."],
-  },
-  {
-    jurisdiction: "WA",
-    abbreviation: "RCW",
-    family: "abbreviated",
-    patterns: ["RCW", "Wash. Rev. Code", "Wash. Rev. Code Ann."],
-  },
-  {
-    jurisdiction: "NC",
-    abbreviation: "GS",
-    family: "abbreviated",
-    patterns: ["G.S.", "GS", "N.C. Gen. Stat.", "N.C. Gen. Stat. Ann.", "N.C.G.S.", "NCGS"],
-  },
-  {
-    jurisdiction: "GA",
-    abbreviation: "OCGA",
-    family: "abbreviated",
-    patterns: ["O.C.G.A.", "OCGA", "Ga. Code", "Ga. Code Ann."],
-  },
-  {
-    jurisdiction: "PA",
-    abbreviation: "PaCS",
-    family: "abbreviated",
-    patterns: ["Pa.C.S.", "Pa.C.S.A.", "Pa. C.S.", "Pa. C.S.A.", "Pa. Cons. Stat."],
-  },
-  {
-    jurisdiction: "PA",
-    abbreviation: "PS",
-    family: "abbreviated",
-    patterns: ["P.S.", "PS"],
-  },
-  {
-    jurisdiction: "IN",
-    abbreviation: "IC",
-    family: "abbreviated",
-    patterns: [
-      "Ind. Code",
-      "Ind. Code Ann.",
-      "Indiana Code",
-      "Indiana Code Ann.",
-      "I.C.",
-      "IC",
-      "Burns Ind. Code",
-      "Burns Ind. Code Ann.",
-    ],
-  },
-  {
-    jurisdiction: "NJ",
-    abbreviation: "NJSA",
-    family: "abbreviated",
-    patterns: ["N.J.S.A.", "NJSA", "N.J.S.", "NJS"],
-  },
-  {
-    jurisdiction: "DE",
-    abbreviation: "DelC",
-    family: "abbreviated",
-    patterns: ["Del. C.", "Del C", "Del. Code", "Del. Code Ann."],
-  },
-]
+export const abbreviatedCodes: CodeEntry[] = stateStatuteEntries.map((entry) => ({
+  jurisdiction: entry.jurisdiction,
+  abbreviation: entry.abbreviations[entry.abbreviations.length - 1],
+  family: "abbreviated" as const,
+  patterns: entry.abbreviations,
+}))
 
 /**
  * Registry of state statutory codes that use named-code citation forms.

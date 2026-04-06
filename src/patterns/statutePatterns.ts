@@ -11,6 +11,7 @@
  * - Illinois: chapter-act (ILCS chapter/act/section format)
  */
 
+import { buildAbbreviatedCodeRegex } from "@/data/stateStatutes"
 import type { Pattern } from "./casePatterns"
 
 export const statutePatterns: Pattern[] = [
@@ -66,12 +67,8 @@ export const statutePatterns: Pattern[] = [
   },
   {
     id: "abbreviated-code",
-    // Alternation order: longer/more-specific patterns first within each state to avoid partial matches.
-    // The \b anchor prevents cross-boundary matches (e.g., "N.C.G.S." won't match "G.S." at position 4).
-    regex:
-      /\b(?:(\d+)\s+)?(Fla\.?\s*Stat(?:utes)?\.?(?:\s*Ann\.?)?|F\.?S\.?|R\.?C\.?|O\.?R\.?C\.?|Ohio\s+Rev\.?\s+Code(?:\s+Ann\.?)?|MCL[AS]?|M\.?C\.?L\.?|Mich\.?\s+Comp\.?\s+Laws(?:\s+(?:Ann|Serv)\.?)?|Utah\s+Code(?:\s+Ann\.?)?|U\.?C\.?A\.?|C\.?R\.?S\.?|Colo\.?\s+Rev\.?\s+Stat\.?(?:\s+Ann\.?)?|RCW|Wash\.?\s+Rev\.?\s+Code(?:\s+Ann\.?)?|G\.?S\.?|N\.?C\.?\s*Gen\.?\s*Stat\.?(?:\s+Ann\.?)?|N\.?C\.?G\.?S\.?|O\.?C\.?G\.?A\.?|Ga\.?\s+Code(?:\s+Ann\.?)?|Pa\.?\s*C\.?S\.?A?\.?|Pa\.?\s+Cons\.?\s+Stat\.?|P\.?S\.?|Ind(?:iana)?\.?\s+Code(?:\s+Ann\.?)?|Burns\s+Ind\.?\s+Code(?:\s+Ann\.?)?|I\.?C\.?|N\.?J\.?\s*S(?:tat)?\.?\s*A?\.?|Del\.?\s*(?:Code(?:\s+Ann\.?)?|C\.?))\s*§?\s*(\d+[A-Za-z0-9.:/-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
-    description:
-      "Abbreviated state code citations for 12 jurisdictions (FL, OH, MI, UT, CO, WA, NC, GA, PA, IN, NJ, DE)",
+    regex: buildAbbreviatedCodeRegex(),
+    description: "Abbreviated state code citations for all US jurisdictions",
     type: "statute",
   },
 ]
