@@ -132,6 +132,20 @@ describe("extractConstitutional", () => {
 
       expect(citation.article).toBe(3)
     })
+
+    it("handles Amdt. abbreviation as amendment", () => {
+      const token: Token = {
+        text: "U. S. Const., Amdt. 14, §1",
+        span: { cleanStart: 0, cleanEnd: 27 },
+        type: "constitutional",
+        patternId: "us-constitution",
+      }
+      const citation = extractConstitutional(token, createIdentityMap())
+
+      expect(citation.amendment).toBe(14)
+      expect(citation.article).toBeUndefined()
+      expect(citation.section).toBe("1")
+    })
   })
 
   describe("state constitutions", () => {
@@ -219,6 +233,24 @@ describe("extractConstitutional", () => {
       expect(citation.section).toBe("8")
       expect(citation.clause).toBe(3)
       expect(citation.confidence).toBe(0.7)
+    })
+  })
+
+  describe("bare article", () => {
+    it("extracts bare Art. with lowest confidence", () => {
+      const token: Token = {
+        text: "Art. I, §8, cl. 3",
+        span: { cleanStart: 0, cleanEnd: 18 },
+        type: "constitutional",
+        patternId: "bare-article",
+      }
+      const citation = extractConstitutional(token, createIdentityMap())
+
+      expect(citation.jurisdiction).toBeUndefined()
+      expect(citation.article).toBe(1)
+      expect(citation.section).toBe("8")
+      expect(citation.clause).toBe(3)
+      expect(citation.confidence).toBe(0.5)
     })
   })
 

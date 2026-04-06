@@ -60,6 +60,19 @@ describe("constitutionalPatterns", () => {
       const matches = findMatches("U.S. Const. art. 3, § 2")
       expect(matches).toHaveLength(1)
     })
+
+    it("matches comma after Const.", () => {
+      const matches = findMatches("U. S. Const., Art. I, §7, cl. 1")
+      expect(matches).toHaveLength(1)
+      expect(matches[0].patternId).toBe("us-constitution")
+      expect(matches[0].text).toBe("U. S. Const., Art. I, §7, cl. 1")
+    })
+
+    it("matches Amdt. abbreviation", () => {
+      const matches = findMatches("U. S. Const., Amdt. 14, §1")
+      expect(matches).toHaveLength(1)
+      expect(matches[0].patternId).toBe("us-constitution")
+    })
   })
 
   describe("state-constitution", () => {
@@ -103,6 +116,31 @@ describe("constitutionalPatterns", () => {
       const matches = findMatches("violates Const. amend. XIV, § 1")
       expect(matches).toHaveLength(1)
       expect(matches[0].patternId).toBe("bare-constitution")
+    })
+  })
+
+  describe("bare-article", () => {
+    it("matches Art. with Roman numeral and section", () => {
+      const matches = findMatches("under Art. I, §8, cl. 3 which grants")
+      expect(matches.some((m) => m.patternId === "bare-article")).toBe(true)
+      expect(matches.find((m) => m.patternId === "bare-article")!.text).toBe(
+        "Art. I, §8, cl. 3",
+      )
+    })
+
+    it("matches Art. with section only", () => {
+      const matches = findMatches("see Art. IV, §3 and")
+      expect(matches.some((m) => m.patternId === "bare-article")).toBe(true)
+    })
+
+    it("does not match Art. without section symbol", () => {
+      const matches = findMatches("see Art. III and")
+      expect(matches.some((m) => m.patternId === "bare-article")).toBe(false)
+    })
+
+    it("does not match Art. with Arabic numeral", () => {
+      const matches = findMatches("see Art. 42, §3 of the treaty")
+      expect(matches.some((m) => m.patternId === "bare-article")).toBe(false)
     })
   })
 })

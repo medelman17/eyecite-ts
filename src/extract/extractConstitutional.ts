@@ -118,7 +118,7 @@ const STATE_ABBREV_TO_CODE: Record<string, string> = {
   wyo: "WY",
 }
 
-const IS_AMENDMENT_RE = /amend/i
+const IS_AMENDMENT_RE = /amend|amdt/i
 
 /** Regex to extract the state abbreviation prefix from state-constitution tokens */
 const STATE_PREFIX_RE = /^([A-Za-z]+(?:\.\s*[A-Za-z]+)?(?:\.\s*[A-Za-z]+)?)\.?\s+Const/i
@@ -187,7 +187,9 @@ export function extractConstitutional(
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
   let confidence: number
-  if (token.patternId === "bare-constitution") {
+  if (token.patternId === "bare-article") {
+    confidence = 0.5
+  } else if (token.patternId === "bare-constitution") {
     confidence = 0.7
   } else if (section) {
     confidence = 0.95
