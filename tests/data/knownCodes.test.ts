@@ -9,7 +9,7 @@ import {
 
 describe("knownCodes registry", () => {
   describe("abbreviatedCodes", () => {
-    it("should have entries for all 12 jurisdictions", () => {
+    it("should have entries for all 43 jurisdictions", () => {
       const jurisdictions = new Set(abbreviatedCodes.map((c) => c.jurisdiction))
       expect(jurisdictions).toContain("FL")
       expect(jurisdictions).toContain("OH")
@@ -23,7 +23,7 @@ describe("knownCodes registry", () => {
       expect(jurisdictions).toContain("IN")
       expect(jurisdictions).toContain("NJ")
       expect(jurisdictions).toContain("DE")
-      expect(jurisdictions.size).toBe(12)
+      expect(jurisdictions.size).toBe(43)
     })
 
     it("should have no duplicate abbreviation strings across jurisdictions", () => {
