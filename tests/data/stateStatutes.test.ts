@@ -92,3 +92,40 @@ describe("buildAbbreviatedCodeRegex", () => {
     stateStatuteEntries.push(...original)
   })
 })
+
+describe("stateStatuteEntries — existing 12 states", () => {
+  const existingCitations = [
+    { text: "Fla. Stat. § 768.81", jurisdiction: "FL" },
+    { text: "F.S. 768.81", jurisdiction: "FL" },
+    { text: "R.C. 2305.01", jurisdiction: "OH" },
+    { text: "Ohio Rev. Code § 2305.01", jurisdiction: "OH" },
+    { text: "MCL 750.81", jurisdiction: "MI" },
+    { text: "M.C.L. § 750.81", jurisdiction: "MI" },
+    { text: "Utah Code § 76-5-302", jurisdiction: "UT" },
+    { text: "U.C.A. § 63G-2-103", jurisdiction: "UT" },
+    { text: "C.R.S. § 13-1-101", jurisdiction: "CO" },
+    { text: "Colo. Rev. Stat. § 6-1-1301", jurisdiction: "CO" },
+    { text: "RCW 26.09.191", jurisdiction: "WA" },
+    { text: "Wash. Rev. Code § 26.09.191", jurisdiction: "WA" },
+    { text: "G.S. 20-138.1", jurisdiction: "NC" },
+    { text: "N.C. Gen. Stat. § 15A-302", jurisdiction: "NC" },
+    { text: "O.C.G.A. § 16-5-1", jurisdiction: "GA" },
+    { text: "Ga. Code Ann. § 16-5-1", jurisdiction: "GA" },
+    { text: "42 Pa.C.S. § 5524", jurisdiction: "PA" },
+    { text: "43 P.S. § 951", jurisdiction: "PA" },
+    { text: "Ind. Code § 35-42-1-1", jurisdiction: "IN" },
+    { text: "IC 35-42-1-1", jurisdiction: "IN" },
+    { text: "N.J.S.A. 2A:10-1", jurisdiction: "NJ" },
+    { text: "8 Del. C. § 141", jurisdiction: "DE" },
+    { text: "Del. Code Ann. § 141", jurisdiction: "DE" },
+  ]
+
+  const regex = buildAbbreviatedCodeRegex()
+
+  for (const { text } of existingCitations) {
+    it(`should match: "${text}"`, () => {
+      regex.lastIndex = 0
+      expect(text.match(regex)).not.toBeNull()
+    })
+  }
+})
