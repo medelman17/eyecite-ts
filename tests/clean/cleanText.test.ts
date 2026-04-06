@@ -189,6 +189,28 @@ describe("cleanText position tracking", () => {
     }
   })
 
+  it("should not produce false matches when em-dashes expand near hyphens (issue #161)", () => {
+    // normalizeDashes converts — (1 char) to --- (3 chars). The old lookahead
+    // would greedily match the "-" against a "-" in a nearby page range,
+    // corrupting all subsequent position mappings.
+    const input = "the power\u2014as used in 110-115\u2014means oversight, 500 U.S. 200"
+    const result = cleanText(input, [normalizeDashes])
+
+    expect(result.cleaned).toContain("500 U.S. 200")
+
+    const cleanIdx = result.cleaned.indexOf("500")
+    const expectedOrigIdx = input.indexOf("500")
+    expect(result.transformationMap.cleanToOriginal.get(cleanIdx)).toBe(expectedOrigIdx)
+
+    // Citation span must have non-zero length in original
+    const cleanEnd = result.cleaned.indexOf("200") + 3
+    const origStart = result.transformationMap.cleanToOriginal.get(cleanIdx)
+    const origEnd = result.transformationMap.cleanToOriginal.get(cleanEnd)
+    expect(origStart).toBeDefined()
+    expect(origEnd).toBeDefined()
+    expect(origEnd).toBeGreaterThan(origStart as number)
+  })
+
   it("should produce non-zero original spans for citations in heavy HTML (issue #154)", () => {
     // Full pipeline regression: repeated citations inside long HTML tags must
     // produce originalStart < originalEnd, never zero-length.

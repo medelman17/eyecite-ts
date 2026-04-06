@@ -694,4 +694,47 @@ describe("Full Pipeline Integration Tests", () => {
       expect(zeroLength).toHaveLength(0)
     })
   })
+
+  describe("Issue #161: no zero-length spans from em-dash expansion near hyphens", () => {
+    it("produces correct spans for citations in text with em-dashes and page ranges", () => {
+      const text =
+        "In Free Enterprise Fund v. Public Company Accounting Oversight Bd., " +
+        "561 U.\u00A0S. 477, 497\u2013498 (2010), the Court explained that the " +
+        "\u201Cpower to regulate\u201D encompasses \u201Cthe power to oversee, " +
+        "control, and direct,\u201D but does not extend to \u201Cthe power to " +
+        ". . . create\u201D or destroy. Cf. MCI Telecommunications Corp. v. " +
+        "American Telephone & Telegraph Co., 512 U.\u00A0S. 218, 228 (1994)."
+
+      const citations = extractCitations(text, { resolve: true })
+
+      expect(citations.length).toBeGreaterThanOrEqual(2)
+      for (const c of citations) {
+        expect(c.span.originalEnd).toBeGreaterThan(c.span.originalStart)
+        expect(c.matchedText.trim().length).toBeGreaterThan(0)
+      }
+    })
+
+    it("handles dense SCOTUS text with many em-dashes", () => {
+      // Simulates a long SCOTUS paragraph with em-dashes, smart quotes,
+      // en-dashes, and NBSP — the exact combination from issue #161
+      const segments = Array.from({ length: 30 }, (_, i) => {
+        const vol = 400 + i * 5
+        return (
+          `The \u201Cpower to regulate\u201D\u2014as this Court has ` +
+          `explained\u2014does not encompass the power to create. See ` +
+          `${vol} U.\u00A0S. ${100 + i}, ${110 + i}\u2013${115 + i} ` +
+          `(${1960 + i}).`
+        )
+      })
+      const text = segments.join(" ")
+
+      const citations = extractCitations(text, { resolve: true })
+
+      const zeroLength = citations.filter(
+        (c) => c.span.originalStart === c.span.originalEnd,
+      )
+      expect(zeroLength).toHaveLength(0)
+      expect(citations.length).toBeGreaterThanOrEqual(25)
+    })
+  })
 })
