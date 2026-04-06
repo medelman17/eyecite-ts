@@ -1,5 +1,11 @@
 # eyecite-ts
 
+## 0.8.4
+
+### Patch Changes
+
+- [#164](https://github.com/medelman17/eyecite-ts/pull/164) [`449e1ea`](https://github.com/medelman17/eyecite-ts/commit/449e1eaf2ce856b08898bbf7be30e7ec308faf11) Thanks [@medelman17](https://github.com/medelman17)! - Fix constitutional citation extraction gaps: support comma after "Const." separator, recognize "Amdt." abbreviation, and add low-confidence bare article pattern for standalone "Art. I, §8" references
+
 ## 0.8.3
 
 ### Patch Changes
