@@ -220,4 +220,52 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     abbreviations: ["Idaho Code Ann.", "Idaho Code"],
     regexFragment: "Idaho\\s+Code(?:\\s+Ann\\.?)?",
   },
+  // ── Kansas ────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "KS",
+    abbreviations: ["Kan. Stat. Ann.", "K.S.A."],
+    regexFragment: "Kan\\.?\\s+Stat\\.?\\s+Ann\\.?|K\\.?S\\.?A\\.?",
+  },
+  // ── Kentucky ──────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "KY",
+    abbreviations: ["Ky. Rev. Stat. Ann.", "Ky. Rev. Stat.", "KRS"],
+    regexFragment: "Ky\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|KRS",
+  },
+  // ── Louisiana ─────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "LA",
+    abbreviations: ["La. Rev. Stat. Ann.", "La. R.S.", "LSA-R.S."],
+    regexFragment: "La\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|La\\.?\\s+R\\.?S\\.?|LSA-R\\.?S\\.?",
+  },
+  // ── Maine ─────────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "ME",
+    abbreviations: ["Me. Rev. Stat. Ann.", "Me. Rev. Stat.", "M.R.S.A.", "M.R.S."],
+    regexFragment: "Me\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|M\\.?R\\.?S\\.?A?\\.?",
+  },
+  // ── Minnesota ─────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "MN",
+    abbreviations: ["Minn. Stat. Ann.", "Minn. Stat.", "M.S.A."],
+    regexFragment: "Minn\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|M\\.?S\\.?A\\.?",
+  },
+  // ── Mississippi ───────────────────────────────────────────────────────────
+  {
+    jurisdiction: "MS",
+    abbreviations: ["Miss. Code Ann.", "Mississippi Code", "MS Code"],
+    regexFragment: "Miss(?:issippi)?\\.?\\s+Code(?:\\s+Ann\\.?)?|MS\\s+Code",
+  },
+  // ── Missouri ──────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "MO",
+    abbreviations: ["Mo. Ann. Stat.", "Mo. Rev. Stat.", "V.A.M.S.", "RSMo"],
+    regexFragment: "Mo\\.?\\s+(?:Ann\\.?\\s+|Rev\\.?\\s+)Stat\\.?|V\\.?A\\.?M\\.?S\\.?|RSMo",
+  },
+  // ── Montana ───────────────────────────────────────────────────────────────
+  {
+    jurisdiction: "MT",
+    abbreviations: ["Mont. Code Ann.", "MCA"],
+    regexFragment: "Mont\\.?\\s+Code(?:\\s+Ann\\.?)?|MCA",
+  },
 ];
