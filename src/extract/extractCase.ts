@@ -570,12 +570,20 @@ function parseParenthetical(content: string): {
   year?: number
   date?: StructuredDate
   disposition?: string
+  courtStart?: number
+  courtEnd?: number
+  yearStart?: number
+  yearEnd?: number
 } {
   const result: {
     court?: string
     year?: number
     date?: StructuredDate
     disposition?: string
+    courtStart?: number
+    courtEnd?: number
+    yearStart?: number
+    yearEnd?: number
   } = {}
 
   // Parse structured date using dates.ts
@@ -589,6 +597,21 @@ function parseParenthetical(content: string): {
   const courtResult = stripDateFromCourt(content)
   if (courtResult) {
     result.court = courtResult
+    const courtIdx = content.indexOf(courtResult)
+    if (courtIdx !== -1) {
+      result.courtStart = courtIdx
+      result.courtEnd = courtIdx + courtResult.length
+    }
+  }
+
+  // Year offset within parenthetical content
+  if (result.year) {
+    const yearStr = String(result.year)
+    const yearIdx = content.lastIndexOf(yearStr)
+    if (yearIdx !== -1) {
+      result.yearStart = yearIdx
+      result.yearEnd = yearIdx + yearStr.length
+    }
   }
 
   // Check for disposition
@@ -934,6 +957,10 @@ export function extractCase(
 
   // Extract parenthetical from token text
   let parentheticalContent: string | undefined
+  // Shared parenResult for court/year span computation (used by both code paths)
+  let metaParenResult: ReturnType<typeof parseParenthetical> | undefined
+  // Whether the metadata paren was found in token text (vs lookahead)
+  let metaParenFromToken = false
   // Match any parenthetical (with or without letters)
   // When a nominative reporter is present, the first paren in token text is the
   // nominative (e.g., "(2 Black)") — skip it so the year/court look-ahead runs.
@@ -941,11 +968,12 @@ export function extractCase(
   if (parenMatch && !nominativeVolume) {
     parentheticalContent = parenMatch[1]
     // Parse parenthetical using unified parser
-    const parenResult = parseParenthetical(parentheticalContent)
-    year = parenResult.year
-    court = parenResult.court
-    date = parenResult.date
-    disposition = parenResult.disposition
+    metaParenResult = parseParenthetical(parentheticalContent)
+    metaParenFromToken = true
+    year = metaParenResult.year
+    court = metaParenResult.court
+    date = metaParenResult.date
+    disposition = metaParenResult.disposition
   }
 
   // Look ahead in cleaned text for parenthetical after the token
@@ -957,11 +985,12 @@ export function extractCase(
     if (lookAheadMatch) {
       parentheticalContent = lookAheadMatch[1]
       // Parse parenthetical using unified parser
-      const parenResult = parseParenthetical(parentheticalContent)
-      year = parenResult.year
-      court = parenResult.court
-      date = parenResult.date
-      disposition = parenResult.disposition
+      metaParenResult = parseParenthetical(parentheticalContent)
+      metaParenFromToken = false
+      year = metaParenResult.year
+      court = metaParenResult.court
+      date = metaParenResult.date
+      disposition = metaParenResult.disposition
 
       // Extract pincite from look-ahead if not already found in token text
       if (pincite === undefined) {
@@ -1007,7 +1036,71 @@ export function extractCase(
         }
       } else {
         parentheticals ??= []
-        parentheticals.push({ text: classified.text, type: classified.type })
+        const parenOrig = resolveOriginalSpan(
+          { cleanStart: raw.start, cleanEnd: raw.end },
+          transformationMap,
+        )
+        parentheticals.push({
+          text: classified.text,
+          type: classified.type,
+          span: {
+            cleanStart: raw.start,
+            cleanEnd: raw.end,
+            originalStart: parenOrig.originalStart,
+            originalEnd: parenOrig.originalEnd,
+          },
+        })
+      }
+    }
+  }
+
+  // Metadata parenthetical span (the first paren that yielded court/year)
+  if (allParens && allParens.length > 0 && (court || year)) {
+    const metaParen = parentheticalContent ? allParens[0] : undefined
+    if (metaParen) {
+      const metaOrig = resolveOriginalSpan(
+        { cleanStart: metaParen.start, cleanEnd: metaParen.end },
+        transformationMap,
+      )
+      spans.metadataParenthetical = {
+        cleanStart: metaParen.start,
+        cleanEnd: metaParen.end,
+        originalStart: metaOrig.originalStart,
+        originalEnd: metaOrig.originalEnd,
+      }
+
+      // Court and year spans from parseParenthetical content offsets.
+      // The content starts at metaParen.start + 1 (past the opening "(").
+      if (metaParenResult) {
+        const contentStart = metaParen.start + 1
+        if (metaParenResult.courtStart !== undefined) {
+          const courtCS = contentStart + metaParenResult.courtStart
+          const courtCE = contentStart + metaParenResult.courtEnd!
+          const courtOrig = resolveOriginalSpan(
+            { cleanStart: courtCS, cleanEnd: courtCE },
+            transformationMap,
+          )
+          spans.court = {
+            cleanStart: courtCS,
+            cleanEnd: courtCE,
+            originalStart: courtOrig.originalStart,
+            originalEnd: courtOrig.originalEnd,
+          }
+        }
+        if (metaParenResult.yearStart !== undefined) {
+          const yearCS = contentStart + metaParenResult.yearStart
+          const yearCE = contentStart + metaParenResult.yearEnd!
+          const yearOrig = resolveOriginalSpan(
+            { cleanStart: yearCS, cleanEnd: yearCE },
+            transformationMap,
+          )
+          spans.year = {
+            cleanStart: yearCS,
+            cleanEnd: yearCE,
+            originalStart: yearOrig.originalStart,
+            originalEnd: yearOrig.originalEnd,
+          }
+        }
       }
     }
   }
@@ -1046,8 +1139,9 @@ export function extractCase(
   }
 
   // Phase 6: Extract case name via backward search
+  let caseNameResult: ReturnType<typeof extractCaseName> | undefined
   if (cleanedText) {
-    const caseNameResult = extractCaseName(cleanedText, span.cleanStart)
+    caseNameResult = extractCaseName(cleanedText, span.cleanStart)
     if (caseNameResult) {
       caseName = caseNameResult.caseName
 
@@ -1068,6 +1162,20 @@ export function extractCase(
         cleanEnd: fullCleanEnd,
         originalStart: fullOriginalStart,
         originalEnd: fullOriginalEnd,
+      }
+
+      // Case name span — computed BEFORE signal stripping rebuilds caseName
+      const caseNameCleanStart = caseNameResult.nameStart
+      const caseNameCleanEnd = caseNameCleanStart + caseName!.length
+      const caseNameOrig = resolveOriginalSpan(
+        { cleanStart: caseNameCleanStart, cleanEnd: caseNameCleanEnd },
+        transformationMap,
+      )
+      spans.caseName = {
+        cleanStart: caseNameCleanStart,
+        cleanEnd: caseNameCleanEnd,
+        originalStart: caseNameOrig.originalStart,
+        originalEnd: caseNameOrig.originalEnd,
       }
     }
   }
@@ -1107,6 +1215,92 @@ export function extractCase(
           const newOriginalStart =
             transformationMap.cleanToOriginal.get(newCleanStart) ?? newCleanStart
           fullSpan = { ...fullSpan, cleanStart: newCleanStart, originalStart: newOriginalStart }
+        }
+      }
+
+      // Update caseName span to reflect the signal-stripped name
+      if (caseNameResult) {
+        // After signal stripping, fullSpan.cleanStart is the start of the plaintiff
+        const strippedCleanStart = fullSpan?.cleanStart ?? caseNameResult.nameStart
+        const strippedCleanEnd = strippedCleanStart + caseName.length
+        const strippedOrig = resolveOriginalSpan(
+          { cleanStart: strippedCleanStart, cleanEnd: strippedCleanEnd },
+          transformationMap,
+        )
+        spans.caseName = {
+          cleanStart: strippedCleanStart,
+          cleanEnd: strippedCleanEnd,
+          originalStart: strippedOrig.originalStart,
+          originalEnd: strippedOrig.originalEnd,
+        }
+      }
+    }
+
+    // Plaintiff and defendant spans — use positions from the ORIGINAL caseName
+    // in cleaned text (before signal stripping rebuilt it)
+    if (plaintiff && caseNameResult) {
+      // For signal-stripped names, caseName was rebuilt as "plaintiff v. defendant"
+      // but the clean text still has the original layout. Use fullSpan.cleanStart
+      // (post-signal) as the anchor for plaintiff position.
+      const nameAnchor = signal && fullSpan ? fullSpan.cleanStart : caseNameResult.nameStart
+      // Search for plaintiff in the original cleaned text starting at the name anchor
+      if (cleanedText) {
+        const searchRegion = cleanedText.substring(nameAnchor, span.cleanStart)
+        const pIdx = searchRegion.indexOf(plaintiff)
+        if (pIdx !== -1) {
+          const pCleanStart = nameAnchor + pIdx
+          const pCleanEnd = pCleanStart + plaintiff.length
+          const pOrig = resolveOriginalSpan(
+            { cleanStart: pCleanStart, cleanEnd: pCleanEnd },
+            transformationMap,
+          )
+          spans.plaintiff = {
+            cleanStart: pCleanStart,
+            cleanEnd: pCleanEnd,
+            originalStart: pOrig.originalStart,
+            originalEnd: pOrig.originalEnd,
+          }
+        }
+      }
+    }
+    if (defendant && caseNameResult && cleanedText) {
+      const nameAnchor = signal && fullSpan ? fullSpan.cleanStart : caseNameResult.nameStart
+      const searchRegion = cleanedText.substring(nameAnchor, span.cleanStart)
+      const dIdx = searchRegion.lastIndexOf(defendant)
+      if (dIdx !== -1) {
+        const dCleanStart = nameAnchor + dIdx
+        const dCleanEnd = dCleanStart + defendant.length
+        const dOrig = resolveOriginalSpan(
+          { cleanStart: dCleanStart, cleanEnd: dCleanEnd },
+          transformationMap,
+        )
+        spans.defendant = {
+          cleanStart: dCleanStart,
+          cleanEnd: dCleanEnd,
+          originalStart: dOrig.originalStart,
+          originalEnd: dOrig.originalEnd,
+        }
+      }
+    }
+
+    // Signal span — the signal word was part of the original case name, found
+    // at caseNameResult.nameStart. After signal stripping, fullSpan.cleanStart
+    // was advanced past it, so the signal occupies [nameStart, fullSpan.cleanStart).
+    if (signal && fullSpan && cleanedText && caseNameResult) {
+      const sigRegion = cleanedText.substring(caseNameResult.nameStart, span.cleanStart)
+      const sigMatch = SIGNAL_STRIP_REGEX.exec(sigRegion)
+      if (sigMatch) {
+        const sigCleanStart = caseNameResult.nameStart
+        const sigCleanEnd = sigCleanStart + sigMatch[1].length
+        const sigOrig = resolveOriginalSpan(
+          { cleanStart: sigCleanStart, cleanEnd: sigCleanEnd },
+          transformationMap,
+        )
+        spans.signal = {
+          cleanStart: sigCleanStart,
+          cleanEnd: sigCleanEnd,
+          originalStart: sigOrig.originalStart,
+          originalEnd: sigOrig.originalEnd,
         }
       }
     }
