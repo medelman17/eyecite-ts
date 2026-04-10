@@ -23,7 +23,8 @@ import type {
   ParentheticalType,
   SubsequentHistoryEntry,
 } from "@/types/citation"
-import { resolveOriginalSpan, type Span, type TransformationMap } from "@/types/span"
+import { resolveOriginalSpan, spanFromGroupIndex, type Span, type TransformationMap } from "@/types/span"
+import type { CaseComponentSpans } from "@/types/componentSpans"
 import { parseDate, type StructuredDate } from "./dates"
 import { getReportersSync } from "@/data/reportersCache"
 import { inferCourtFromReporter } from "./courtInference"
@@ -89,13 +90,13 @@ export const COMMON_REPORTERS: ReadonlySet<string> = new Set([
 
 /** Matches volume-reporter-page format in citation core, with optional nominative reporter parenthetical */
 const VOLUME_REPORTER_PAGE_REGEX =
-  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s']+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})/
+  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s']+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})/d
 
 /** Detects blank page placeholders (3+ underscores or dashes) */
 const BLANK_PAGE_REGEX = /^[_-]{3,}$/
 
 /** Extracts pincite (page reference after comma) */
-const PINCITE_REGEX = /,\s*(\d+)/
+const PINCITE_REGEX = /,\s*(\d+)/d
 
 /** Matches parenthetical content */
 const PAREN_REGEX = /\(([^)]+)\)/
@@ -104,7 +105,7 @@ const PAREN_REGEX = /\(([^)]+)\)/
 const LOOKAHEAD_PAREN_REGEX = /^(?:,\s*\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d+)?\s*\(([^)]+)\)/
 
 /** Extracts pincite from look-ahead text */
-const LOOKAHEAD_PINCITE_REGEX = /^,\s*(\d+(?:-\d+)?)/
+const LOOKAHEAD_PINCITE_REGEX = /^,\s*(\d+(?:-\d+)?)/d
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
@@ -892,6 +893,37 @@ export function extractCase(
     ? (parsePincite(pinciteMatch[1]) ?? undefined)
     : undefined
 
+  // Initialize component spans for core regex-extracted fields
+  const spans: CaseComponentSpans = {}
+
+  if (match.indices) {
+    // Group 1 = volume, Group 2 = reporter, Group 5 = page
+    // Groups 3, 4 are optional nominative reporter (not tracked here)
+    if (match.indices[1]) {
+      spans.volume = spanFromGroupIndex(span.cleanStart, match.indices[1], transformationMap)
+    }
+    if (match.indices[2]) {
+      // Trim whitespace from reporter span to match the trimmed reporter value
+      const [rStart, rEnd] = match.indices[2]
+      const rawReporter = text.substring(rStart, rEnd)
+      const leadTrim = rawReporter.length - rawReporter.trimStart().length
+      const trailTrim = rawReporter.length - rawReporter.trimEnd().length
+      spans.reporter = spanFromGroupIndex(
+        span.cleanStart,
+        [rStart + leadTrim, rEnd - trailTrim],
+        transformationMap,
+      )
+    }
+    if (match.indices[5]) {
+      spans.page = spanFromGroupIndex(span.cleanStart, match.indices[5], transformationMap)
+    }
+  }
+
+  // Pincite span (from the token-level pincite match)
+  if (pinciteMatch?.indices?.[1]) {
+    spans.pincite = spanFromGroupIndex(span.cleanStart, pinciteMatch.indices[1], transformationMap)
+  }
+
   // Initialize Phase 6 fields
   let year: number | undefined
   let court: string | undefined
@@ -938,6 +970,10 @@ export function extractCase(
           pincite = Number.parseInt(laPinciteMatch[1], 10)
           if (!pinciteInfo) {
             pinciteInfo = parsePincite(laPinciteMatch[1]) ?? undefined
+          }
+          // Pincite span: indices are relative to afterToken (which starts at span.cleanEnd)
+          if (laPinciteMatch.indices?.[1]) {
+            spans.pincite = spanFromGroupIndex(span.cleanEnd, laPinciteMatch.indices[1], transformationMap)
           }
         }
       }
@@ -1157,5 +1193,6 @@ export function extractCase(
     proceduralPrefix,
     inferredCourt,
     signal,
+    spans,
   }
 }
