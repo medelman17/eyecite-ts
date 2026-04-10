@@ -347,7 +347,7 @@ const citations = extractCitations(text, { resolve: true })
 ```typescript
 const text = 'Id. at 100.' // Orphan Id. with no preceding citation
 const citations = extractCitations(text, { resolve: true })
-// citations[0].resolution.failureReason === 'No preceding full case citation found'
+// citations[0].resolution.failureReason === 'No preceding citation found'
 ```
 
 ## Citation Annotation

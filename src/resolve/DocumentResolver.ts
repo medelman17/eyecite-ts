@@ -5,7 +5,7 @@
  * by maintaining resolution context and enforcing scope boundaries.
  *
  * Resolution rules:
- * - Id. resolves to immediately preceding full citation (within scope)
+ * - Id. resolves to the most recently cited authority (within scope)
  * - Supra resolves to full citation with matching party name (within scope)
  * - Short-form case resolves to full case with matching volume/reporter (within scope)
  */

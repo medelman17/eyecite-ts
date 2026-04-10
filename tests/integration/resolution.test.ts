@@ -54,7 +54,7 @@ describe("Resolution Integration Tests", () => {
       expect(citations[0].type).toBe("id")
       expect(citations[0].resolution?.resolvedTo).toBeUndefined()
       expect(citations[0].resolution?.failureReason).toBeDefined()
-      expect(citations[0].resolution?.failureReason).toContain("No preceding full case citation")
+      expect(citations[0].resolution?.failureReason).toContain("No preceding citation found")
     })
   })
 
@@ -579,9 +579,9 @@ Second paragraph: Id. at 125.`
       expect(citations[1].type).toBe("statute")
       expect(citations[1].resolution).toBeUndefined()
 
-      // Id. resolves to case (index 0)
+      // Id. resolves to statute (the most recently cited authority, index 1)
       expect(citations[2].type).toBe("id")
-      expect(citations[2].resolution?.resolvedTo).toBe(0)
+      expect(citations[2].resolution?.resolvedTo).toBe(1)
 
       // Supra resolves to case (index 0)
       expect(citations[3].type).toBe("supra")
