@@ -727,6 +727,114 @@ describe("case name extraction (Phase 6)", () => {
       expect(citations[0].caseName).toContain("Inc.")
     }
   })
+
+  describe("sentence context trimming (#168, #169)", () => {
+    it("trims short sentence context from plaintiff", () => {
+      const citations = extractCitations(
+        "The court cited Smith v. Jones, 500 F.2d 123 (2020).",
+      )
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "case") {
+        expect(citations[0].caseName).toBe("Smith v. Jones")
+        expect(citations[0].plaintiff).toBe("Smith")
+      }
+    })
+
+    it("trims long sentence context from plaintiff", () => {
+      const citations = extractCitations(
+        "The Ninth Circuit addressed this issue in Smith v. Jones, 500 F.2d 123 (2020).",
+      )
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "case") {
+        expect(citations[0].caseName).toBe("Smith v. Jones")
+        expect(citations[0].plaintiff).toBe("Smith")
+      }
+    })
+
+    it("trims very long sentence context", () => {
+      const citations = extractCitations(
+        "As the court explained in its thorough opinion discussing the standard of review in Smith v. Jones, 500 F.2d 123 (2020).",
+      )
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "case") {
+        expect(citations[0].caseName).toBe("Smith v. Jones")
+      }
+    })
+
+    it("preserves multi-word party names", () => {
+      const citations = extractCitations(
+        "United States v. Jones, 500 F.2d 123 (2020).",
+      )
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "case") {
+        expect(citations[0].caseName).toBe("United States v. Jones")
+        expect(citations[0].plaintiff).toBe("United States")
+      }
+    })
+
+    it("preserves long party names with connectors", () => {
+      const citations = extractCitations(
+        "People of the State of New York v. Jones, 500 F.2d 123 (2020).",
+      )
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "case") {
+        expect(citations[0].caseName).toBe("People of the State of New York v. Jones")
+        expect(citations[0].plaintiff).toBe("People of the State of New York")
+      }
+    })
+
+    it("preserves corporate party names with abbreviations", () => {
+      const citations = extractCitations(
+        "Heart of Atlanta Motel, Inc. v. United States, 500 F.2d 123 (2020).",
+      )
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "case") {
+        expect(citations[0].caseName).toBe(
+          "Heart of Atlanta Motel, Inc. v. United States",
+        )
+      }
+    })
+
+    it("preserves signal words for downstream extraction", () => {
+      const citations = extractCitations(
+        "See also Smith v. Jones, 500 F.3d 100 (9th Cir. 2007).",
+      )
+      const cite = citations.find((c) => c.type === "case")
+      expect(cite).toBeDefined()
+      if (cite?.type === "case") {
+        expect(cite.caseName).toBe("Smith v. Jones")
+        expect(cite.signal).toBe("see also")
+      }
+    })
+
+    it("trims context but preserves signal when both present", () => {
+      const citations = extractCitations(
+        "See Smith v. Jones, 500 F.2d 123 (2020).",
+      )
+      const cite = citations.find((c) => c.type === "case")
+      expect(cite).toBeDefined()
+      if (cite?.type === "case") {
+        expect(cite.caseName).toBe("Smith v. Jones")
+        expect(cite.signal).toBe("see")
+      }
+    })
+
+    it("adjusts fullSpan.originalStart after trimming", () => {
+      const text =
+        "The court cited Smith v. Jones, 500 F.2d 123 (2020)."
+      const citations = extractCitations(text)
+      const cite = citations.find((c) => c.type === "case")
+      expect(cite).toBeDefined()
+      if (cite?.type === "case" && cite.fullSpan) {
+        const highlighted = text.slice(
+          cite.fullSpan.originalStart,
+          cite.fullSpan.originalEnd,
+        )
+        expect(highlighted).toMatch(/^Smith v\. Jones/)
+        expect(highlighted).not.toMatch(/^The court/)
+      }
+    })
+  })
 })
 
 describe("fullSpan calculation (Phase 6)", () => {
