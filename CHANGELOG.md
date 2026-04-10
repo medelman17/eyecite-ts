@@ -1,5 +1,11 @@
 # eyecite-ts
 
+## 0.10.1
+
+### Patch Changes
+
+- [#178](https://github.com/medelman17/eyecite-ts/pull/178) [`d72ba1e`](https://github.com/medelman17/eyecite-ts/commit/d72ba1ea17a6b28dea1eaf35ffedea66717af095) Thanks [@medelman17](https://github.com/medelman17)! - Fix case name extraction still capturing sentence context in two scenarios: sentence-initial pronouns like "This" bypassing the trimming guard, and "In" prefix not being stripped from caseName after extractPartyNames removes it from plaintiff.
+
 ## 0.10.0
 
 ### Minor Changes
