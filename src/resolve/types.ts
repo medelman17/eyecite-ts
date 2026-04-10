@@ -53,13 +53,6 @@ export interface ResolutionOptions {
   partyMatchThreshold?: number
 
   /**
-   * Allow Id. citations to resolve to other short-form citations (default: false)
-   * If true: "Smith v. Jones, 500 F.2d 100" -> "Id." -> "Id. at 105"
-   * If false: Second Id. fails to resolve (no full citation between them)
-   */
-  allowNestedResolution?: boolean
-
-  /**
    * Report unresolved citations with failure reasons (default: true)
    * If false: resolution field will be undefined for unresolved citations
    */
@@ -123,10 +116,15 @@ export interface ResolutionContext {
   allCitations: Citation[]
 
   /**
-   * Index of immediately preceding full citation.
-   * Updated as citations are processed.
+   * Index of the full citation most recently cited (directly or via resolution).
+   * Updated after every successfully resolved citation.
+   * Used by Id. resolution -- Id. inherits this value.
+   *
+   * For full citations: set to the citation's own index.
+   * For resolved short-form/supra/Id.: set to resolvedTo (the full antecedent index).
+   * For failed resolutions: NOT updated (Id. after a failed citation also fails).
    */
-  lastFullCitation?: number
+  lastResolvedIndex?: number
 
   /**
    * History of all full citations by party name.

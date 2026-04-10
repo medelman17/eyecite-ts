@@ -313,7 +313,6 @@ const resolved = resolveCitations(citations, text, {
 | `paragraphBoundaryPattern` | `RegExp` | `/\n\n+/` | Pattern to detect paragraphs |
 | `fuzzyPartyMatching` | `boolean` | `true` | Enable fuzzy party name matching for supra |
 | `partyMatchThreshold` | `number` | `0.8` | Similarity threshold (0-1) for fuzzy matching |
-| `allowNestedResolution` | `boolean` | `false` | Allow Id. to resolve to other short-form citations |
 | `reportUnresolved` | `boolean` | `true` | Report failure reasons for unresolved citations |
 
 ### Resolution Examples
@@ -347,7 +346,7 @@ const citations = extractCitations(text, { resolve: true })
 ```typescript
 const text = 'Id. at 100.' // Orphan Id. with no preceding citation
 const citations = extractCitations(text, { resolve: true })
-// citations[0].resolution.failureReason === 'No preceding full case citation found'
+// citations[0].resolution.failureReason === 'No preceding citation found'
 ```
 
 ## Citation Annotation
