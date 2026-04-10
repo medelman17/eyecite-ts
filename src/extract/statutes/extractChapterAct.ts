@@ -40,7 +40,9 @@ export function extractChapterAct(
 
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-  // Use section without trailing sentence punctuation for span boundary
+  // Use section without trailing sentence punctuation for span boundary.
+  // Note: section comes from parseBody() which strips et seq. and splits
+  // subsections — the leading text still matches the raw match position.
   const sectionSpanLen = section.replace(/[.,;:]\s*$/, "").length
 
   let spans: StatuteComponentSpans | undefined

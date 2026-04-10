@@ -21,7 +21,12 @@ export interface CaseComponentSpans {
   metadataParenthetical?: Span
 }
 
-/** Component spans for statute citations (type: "statute"). */
+/**
+ * Component spans for statute citations (type: "statute").
+ *
+ * Note: `signal` is included for future extensibility but is currently only
+ * populated for case citations.
+ */
 export interface StatuteComponentSpans {
   title?: Span
   code?: Span
@@ -30,7 +35,12 @@ export interface StatuteComponentSpans {
   signal?: Span
 }
 
-/** Component spans for constitutional citations (type: "constitutional"). */
+/**
+ * Component spans for constitutional citations (type: "constitutional").
+ *
+ * Note: `signal` is included for future extensibility but is currently only
+ * populated for case citations.
+ */
 export interface ConstitutionalComponentSpans {
   jurisdiction?: Span
   article?: Span
@@ -40,7 +50,12 @@ export interface ConstitutionalComponentSpans {
   signal?: Span
 }
 
-/** Component spans for journal citations (type: "journal"). */
+/**
+ * Component spans for journal citations (type: "journal").
+ *
+ * Note: `signal` is included for future extensibility but is currently only
+ * populated for case citations.
+ */
 export interface JournalComponentSpans {
   volume?: Span
   journal?: Span
@@ -50,7 +65,12 @@ export interface JournalComponentSpans {
   signal?: Span
 }
 
-/** Component spans for neutral citations (type: "neutral"). */
+/**
+ * Component spans for neutral citations (type: "neutral").
+ *
+ * Note: `signal` is included for future extensibility but is currently only
+ * populated for case citations.
+ */
 export interface NeutralComponentSpans {
   year?: Span
   court?: Span
@@ -58,14 +78,24 @@ export interface NeutralComponentSpans {
   signal?: Span
 }
 
-/** Component spans for public law citations (type: "publicLaw"). */
+/**
+ * Component spans for public law citations (type: "publicLaw").
+ *
+ * Note: `signal` is included for future extensibility but is currently only
+ * populated for case citations.
+ */
 export interface PublicLawComponentSpans {
   congress?: Span
   lawNumber?: Span
   signal?: Span
 }
 
-/** Component spans for federal register citations (type: "federalRegister"). */
+/**
+ * Component spans for federal register citations (type: "federalRegister").
+ *
+ * Note: `signal` is included for future extensibility but is currently only
+ * populated for case citations.
+ */
 export interface FederalRegisterComponentSpans {
   volume?: Span
   page?: Span
@@ -73,7 +103,12 @@ export interface FederalRegisterComponentSpans {
   signal?: Span
 }
 
-/** Component spans for statutes at large citations (type: "statutesAtLarge"). */
+/**
+ * Component spans for statutes at large citations (type: "statutesAtLarge").
+ *
+ * Note: `signal` is included for future extensibility but is currently only
+ * populated for case citations.
+ */
 export interface StatutesAtLargeComponentSpans {
   volume?: Span
   page?: Span

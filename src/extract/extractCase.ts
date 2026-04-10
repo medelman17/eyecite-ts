@@ -1236,17 +1236,20 @@ export function extractCase(
       }
     }
 
-    // Plaintiff and defendant spans — use positions from the ORIGINAL caseName
-    // in cleaned text (before signal stripping rebuilt it)
-    if (plaintiff && caseNameResult) {
+    // Plaintiff and defendant spans — split the search region at the "v." separator
+    // so each name is only matched on the correct side, avoiding indexOf collisions
+    // when a name substring appears in both halves (e.g., "Smith v. Smith").
+    if (plaintiff && caseNameResult && cleanedText) {
       // For signal-stripped names, caseName was rebuilt as "plaintiff v. defendant"
       // but the clean text still has the original layout. Use fullSpan.cleanStart
       // (post-signal) as the anchor for plaintiff position.
       const nameAnchor = signal && fullSpan ? fullSpan.cleanStart : caseNameResult.nameStart
-      // Search for plaintiff in the original cleaned text starting at the name anchor
-      if (cleanedText) {
-        const searchRegion = cleanedText.substring(nameAnchor, span.cleanStart)
-        const pIdx = searchRegion.indexOf(plaintiff)
+      const searchRegion = cleanedText.substring(nameAnchor, span.cleanStart)
+      const vSepMatch = /\s+v\.?\s+/i.exec(searchRegion)
+      if (vSepMatch) {
+        // Plaintiff: search only in the region before "v."
+        const plaintiffRegion = searchRegion.substring(0, vSepMatch.index)
+        const pIdx = plaintiffRegion.lastIndexOf(plaintiff)
         if (pIdx !== -1) {
           const pCleanStart = nameAnchor + pIdx
           const pCleanEnd = pCleanStart + plaintiff.length
@@ -1261,24 +1264,43 @@ export function extractCase(
             originalEnd: pOrig.originalEnd,
           }
         }
-      }
-    }
-    if (defendant && caseNameResult && cleanedText) {
-      const nameAnchor = signal && fullSpan ? fullSpan.cleanStart : caseNameResult.nameStart
-      const searchRegion = cleanedText.substring(nameAnchor, span.cleanStart)
-      const dIdx = searchRegion.lastIndexOf(defendant)
-      if (dIdx !== -1) {
-        const dCleanStart = nameAnchor + dIdx
-        const dCleanEnd = dCleanStart + defendant.length
-        const dOrig = resolveOriginalSpan(
-          { cleanStart: dCleanStart, cleanEnd: dCleanEnd },
-          transformationMap,
-        )
-        spans.defendant = {
-          cleanStart: dCleanStart,
-          cleanEnd: dCleanEnd,
-          originalStart: dOrig.originalStart,
-          originalEnd: dOrig.originalEnd,
+        // Defendant: search only in the region after "v."
+        if (defendant) {
+          const defRegionStart = vSepMatch.index + vSepMatch[0].length
+          const defendantRegion = searchRegion.substring(defRegionStart)
+          const dIdx = defendantRegion.indexOf(defendant)
+          if (dIdx !== -1) {
+            const dCleanStart = nameAnchor + defRegionStart + dIdx
+            const dCleanEnd = dCleanStart + defendant.length
+            const dOrig = resolveOriginalSpan(
+              { cleanStart: dCleanStart, cleanEnd: dCleanEnd },
+              transformationMap,
+            )
+            spans.defendant = {
+              cleanStart: dCleanStart,
+              cleanEnd: dCleanEnd,
+              originalStart: dOrig.originalStart,
+              originalEnd: dOrig.originalEnd,
+            }
+          }
+        }
+      } else {
+        // No "v." separator — procedural prefix case (e.g., "In re X").
+        // Plaintiff is the full case name; no defendant to locate.
+        const pIdx = searchRegion.indexOf(plaintiff)
+        if (pIdx !== -1) {
+          const pCleanStart = nameAnchor + pIdx
+          const pCleanEnd = pCleanStart + plaintiff.length
+          const pOrig = resolveOriginalSpan(
+            { cleanStart: pCleanStart, cleanEnd: pCleanEnd },
+            transformationMap,
+          )
+          spans.plaintiff = {
+            cleanStart: pCleanStart,
+            cleanEnd: pCleanEnd,
+            originalStart: pOrig.originalStart,
+            originalEnd: pOrig.originalEnd,
+          }
         }
       }
     }

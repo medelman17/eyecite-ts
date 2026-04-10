@@ -57,7 +57,9 @@ export function extractFederal(
     if (bodyMatch.indices[2]) spans.code = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[2], transformationMap)
     if (bodyMatch.indices[3] && section) {
       const bodyStart = bodyMatch.indices[3][0]
-      // Use section without trailing sentence punctuation for span boundary
+      // Use section without trailing sentence punctuation for span boundary.
+      // Note: section comes from parseBody() which strips et seq. and splits
+      // subsections — the leading text still matches the raw match position.
       const sectionSpanLen = section.replace(/[.,;:]\s*$/, "").length
       spans.section = spanFromGroupIndex(
         span.cleanStart,

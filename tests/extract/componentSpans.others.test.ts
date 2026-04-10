@@ -102,8 +102,8 @@ describe("Component Spans — Constitutional", () => {
     expect(c).toBeDefined()
     if (c?.type !== "constitutional") return
 
-    expect(c.spans?.amendment).toBeDefined()
-    expect(c.spans?.section).toBeDefined()
+    expectSpan(text, c.spans?.amendment, "XIV")
+    expectSpan(text, c.spans?.section, "1")
     expectSpan(text, c.spans?.jurisdiction, "U.S.")
   })
 
@@ -114,8 +114,8 @@ describe("Component Spans — Constitutional", () => {
     expect(c).toBeDefined()
     if (c?.type !== "constitutional") return
 
-    expect(c.spans?.article).toBeDefined()
-    expect(c.spans?.section).toBeDefined()
+    expectSpan(text, c.spans?.article, "III")
+    expectSpan(text, c.spans?.section, "2")
   })
 
   it("tracks jurisdiction span for state constitutions", () => {
