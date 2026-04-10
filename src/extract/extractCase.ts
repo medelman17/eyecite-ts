@@ -249,6 +249,7 @@ const PARTY_NAME_CONNECTORS = new Set([
   "et",
   "al",
   "d",
+  "or",
 ])
 
 /**
@@ -268,6 +269,8 @@ function isLikelyPartyName(name: string): boolean {
     const clean = word.toLowerCase().replace(/[.,']+$/, "")
     if (PARTY_NAME_CONNECTORS.has(clean)) continue
     if (/^[A-Z]/.test(word)) continue
+    // Numeric words are valid in party names (e.g., "Doe No. 2", "Route 66")
+    if (/^\d/.test(word)) continue
     // Lowercase non-connector word → not a party name
     return false
   }
@@ -372,7 +375,8 @@ function extractCaseName(
       //      is correctly anchored — internal qualifiers like "d/b/a" or "aka" belong to the name
       //      and should be left for downstream normalization, not trimmed away.
       if (!isLikelyPartyName(plaintiff)) {
-        const firstWord = plaintiff.split(/\s+/)[0] ?? ""
+        const words = plaintiff.split(/\s+/)
+        const firstWord = words[0] ?? ""
         const firstWordClean = firstWord.toLowerCase().replace(/[.,']+$/, "")
         const firstWordIsProperName =
           /^[A-Z]/.test(firstWord) && !PARTY_NAME_CONNECTORS.has(firstWordClean)
@@ -381,11 +385,13 @@ function extractCaseName(
           // If so, keep it — extractPartyNames handles signal stripping downstream.
           const signalMatch = SIGNAL_STRIP_REGEX.exec(plaintiff)
           if (!signalMatch) {
-            const words = plaintiff.split(/\s+/)
             for (let i = 1; i < words.length; i++) {
               const candidate = words.slice(i).join(" ")
               if (/^[A-Z]/.test(candidate) && isLikelyPartyName(candidate)) {
-                trimOffset = plaintiff.indexOf(candidate)
+                // Compute offset from word positions rather than indexOf,
+                // which could match the wrong position if a word repeats.
+                const prefix = words.slice(0, i).join(" ")
+                trimOffset = prefix.length + 1
                 plaintiff = candidate
                 break
               }

@@ -819,6 +819,16 @@ describe("case name extraction (Phase 6)", () => {
       }
     })
 
+    it("preserves party names with numbers", () => {
+      const citations = extractCitations(
+        "Doe No. 2 v. Smith, 500 F.2d 123 (2020).",
+      )
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "case") {
+        expect(citations[0].caseName).toBe("Doe No. 2 v. Smith")
+      }
+    })
+
     it("adjusts fullSpan.originalStart after trimming", () => {
       const text =
         "The court cited Smith v. Jones, 500 F.2d 123 (2020)."
