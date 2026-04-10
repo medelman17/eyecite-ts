@@ -59,7 +59,6 @@ export class DocumentResolver {
       paragraphBoundaryPattern: options.paragraphBoundaryPattern ?? /\n\n+/g,
       fuzzyPartyMatching: options.fuzzyPartyMatching ?? true,
       partyMatchThreshold: options.partyMatchThreshold ?? 0.8,
-      allowNestedResolution: options.allowNestedResolution ?? false,
       reportUnresolved: options.reportUnresolved ?? true,
       footnoteMap: options.footnoteMap,
     }

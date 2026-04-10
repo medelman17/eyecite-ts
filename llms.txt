@@ -1,0 +1,314 @@
+# eyecite-ts
+
+> TypeScript legal citation extraction library with zero runtime dependencies. Extract, resolve, and annotate legal citations from court opinions and legal documents.
+
+Port of Python [eyecite](https://github.com/freelawproject/eyecite) by Free Law Project. This TypeScript implementation adds parallel citation linking, party name extraction, full span tracking, structured date parsing, constitutional citations, and court inference.
+
+- Version: 0.6.0
+- License: MIT
+- Node.js: >=18.0.0
+- Runtime dependencies: 0
+- Core bundle: ~10KB gzipped (core), ~50KB limit
+- Repository: https://github.com/medelman17/eyecite-ts
+
+## Installation
+
+```bash
+npm install eyecite-ts
+```
+
+## Quick Start
+
+```typescript
+import { extractCitations } from "eyecite-ts"
+
+const text = "See Smith v. Jones, 500 F.2d 123 (9th Cir. Jan. 15, 2020)"
+const citations = extractCitations(text)
+// Returns: [{ type: "case", volume: 500, reporter: "F.2d", page: 123, court: "9th Cir.", year: 2020, caseName: "Smith v. Jones", ... }]
+```
+
+## Architecture
+
+Citations flow through a 4-stage pipeline: clean → tokenize → extract → resolve.
+
+1. **Clean** (`src/clean/`): Strip HTML, normalize whitespace/Unicode, fix smart quotes. Builds a `TransformationMap` tracking position shifts between original and cleaned text.
+2. **Tokenize** (`src/tokenize/`): Apply regex patterns from `src/patterns/` to find citation candidates. Intentionally broad to capture potential matches without validation. Patterns applied in specificity order: neutral → shortForm → case → constitutional → statute → journal.
+3. **Extract** (`src/extract/`): Parse metadata from tokens (volume, reporter, page, court, year). Each citation type has its own extractor. The main orchestrator is `extractCitations.ts`. Handles case name backward search, full span calculation, parenthetical parsing, disposition extraction, and structured date parsing.
+4. **Resolve** (`src/resolve/`): Link short-form citations (Id., supra, short-form case) to full antecedents. Uses scope boundaries, BKTree-based Levenshtein fuzzy matching, and paragraph/section/footnote awareness.
+
+Footnote detection is opt-in (`detectFootnotes: true`), runs before cleaning on raw text to preserve newline structure, and supports both HTML and plain-text footnote formats.
+
+Position tracking uses dual coordinates: `cleanStart/cleanEnd` (internal parsing) and `originalStart/originalEnd` (user-facing results), connected by `TransformationMap`.
+
+## Package Entry Points
+
+Four entry points for optimal tree-shaking:
+
+| Entry Point | Import Path | Contents |
+|---|---|---|
+| Core | `eyecite-ts` | Extraction, resolution, types, type guards, footnote detection |
+| Data | `eyecite-ts/data` | Reporter database (1,200+ reporters), jurisdiction code registry |
+| Annotate | `eyecite-ts/annotate` | HTML annotation with template and callback modes |
+| Utils | `eyecite-ts/utils` | Post-extraction utilities: Bluebook formatting, case grouping, context extraction |
+
+## Citation Types
+
+Discriminated union on the `type` field. Switch on `citation.type` for type-safe field access.
+
+### Full Citation Types (8)
+
+- `case` — `FullCaseCitation`: volume, reporter, page, court, year, caseName, plaintiff, defendant, proceduralPrefix, disposition, date (ISO + parsed), parallelCitations, groupId, fullSpan, inferredCourt, hasBlankPage, parentheticals, subsequentHistoryEntries, nominativeVolume/Reporter, possibleInterpretations
+- `statute` — `StatuteCitation`: title, code, section, subsection, pincite, jurisdiction, hasEtSeq
+- `constitutional` — `ConstitutionalCitation`: jurisdiction (US + 50 states), article, amendment, section, clause
+- `journal` — `JournalCitation`: author, title, volume, journal, abbreviation, page, pincite, year
+- `neutral` — `NeutralCitation`: year, court (WL, LEXIS), documentNumber
+- `publicLaw` — `PublicLawCitation`: congress, lawNumber, title
+- `federalRegister` — `FederalRegisterCitation`: volume, page, year
+- `statutesAtLarge` — `StatutesAtLargeCitation`: volume, page, year
+
+### Short-Form Citation Types (3)
+
+- `id` — `IdCitation`: pincite (resolves to preceding full case citation)
+- `supra` — `SupraCitation`: partyName, pincite (resolves by party name match)
+- `shortFormCase` — `ShortFormCaseCitation`: volume, reporter, page, pincite (resolves by volume/reporter match)
+
+### Common Fields (CitationBase)
+
+All citations share: text, span, confidence (0–1), matchedText, processTimeMs, patternsChecked, warnings[], signal (see, see also, accord, cf, etc.), inFootnote, footnoteNumber, stringCitationGroupId/Index/GroupSize.
+
+## Main API
+
+### Convenience Functions
+
+```typescript
+import { extractCitations, extractCitationsAsync } from "eyecite-ts"
+
+// Synchronous extraction
+const citations = extractCitations(text, options?)
+
+// Async wrapper
+const citations = await extractCitationsAsync(text, options?)
+```
+
+### ExtractOptions
+
+```typescript
+interface ExtractOptions {
+  cleaners?: Array<(text: string) => string>  // Custom text cleaners (default: HTML strip, whitespace normalize, Unicode normalize, smart quote fix)
+  patterns?: Pattern[]                         // Custom regex patterns (default: all built-in patterns)
+  resolve?: boolean                            // Enable short-form resolution (default: false)
+  resolutionOptions?: ResolutionOptions        // Resolution configuration
+  filterFalsePositives?: boolean               // Remove non-US citations (default: false)
+  detectFootnotes?: boolean                    // Enable footnote zone detection (default: false)
+}
+```
+
+### Resolution
+
+```typescript
+import { resolveCitations, DocumentResolver } from "eyecite-ts"
+
+// Convenience function
+const resolved = resolveCitations(citations, text, options?)
+
+// Or use resolve: true in extractCitations
+const citations = extractCitations(text, { resolve: true })
+```
+
+#### ResolutionOptions
+
+```typescript
+interface ResolutionOptions {
+  scopeStrategy?: "paragraph" | "section" | "footnote" | "none"  // Default: "paragraph"
+  autoDetectParagraphs?: boolean       // Default: true
+  paragraphBoundaryPattern?: RegExp    // Default: /\n\n+/
+  fuzzyPartyMatching?: boolean         // Default: true
+  partyMatchThreshold?: number         // Default: 0.8 (0–1 range, Levenshtein similarity)
+  reportUnresolved?: boolean           // Default: true
+}
+```
+
+### Annotation
+
+```typescript
+import { annotate } from "eyecite-ts/annotate"
+
+// Template mode
+const result = annotate(text, citations, {
+  template: { before: "<cite>", after: "</cite>" }
+})
+
+// Callback mode
+const result = annotate(text, citations, {
+  callback: (citation, surrounding) => `<a href="...">${citation.matchedText}</a>`
+})
+```
+
+#### AnnotationOptions
+
+```typescript
+interface AnnotationOptions {
+  useCleanText?: boolean     // Use cleaned text positions (default: false)
+  autoEscape?: boolean       // HTML entity escaping / XSS protection (default: true)
+  useFullSpan?: boolean      // Annotate from case name through closing parenthetical (default: false)
+  callback?: (citation, surrounding: string) => string
+  template?: { before: string; after: string }
+}
+```
+
+### Utilities
+
+```typescript
+import { toReporterKey, toReporterKeys, toBluebook, groupByCase, getSurroundingContext } from "eyecite-ts/utils"
+
+toReporterKey(citation)           // "550 U.S. 544"
+toReporterKeys(citation)          // ["550 U.S. 544", "127 S. Ct. 1955"] (includes parallel citations)
+toBluebook(citation)              // Canonical Bluebook-formatted citation string
+groupByCase(citations)            // CaseGroup[] grouped by volume-reporter-page
+getSurroundingContext(text, span, { type: "sentence" | "paragraph", maxLength: 500 })
+```
+
+### Type Guards
+
+```typescript
+import { isFullCitation, isShortFormCitation, isCaseCitation, isCitationType, assertUnreachable } from "eyecite-ts"
+
+isFullCitation(citation)            // Narrows to FullCitation union (8 types)
+isShortFormCitation(citation)       // Narrows to ShortFormCitation union (3 types)
+isCaseCitation(citation)            // Narrows to FullCaseCitation
+isCitationType(citation, "statute") // Generic guard, narrows to StatuteCitation
+assertUnreachable(x)                // Exhaustiveness check for switch statements
+```
+
+### Granular / Power-User API
+
+```typescript
+import { cleanText, tokenize, extractCase, extractStatute, extractJournal, extractNeutral, extractPublicLaw, extractFederalRegister, extractStatutesAtLarge, extractConstitutional, parsePincite, normalizeCourt } from "eyecite-ts"
+
+const { cleaned, transformationMap, warnings } = cleanText(text, cleaners?)
+const tokens = tokenize(cleaned, patterns?)
+// Individual extractors for custom pipelines
+```
+
+### Footnote Detection
+
+```typescript
+import { detectFootnotes } from "eyecite-ts"
+
+const footnoteMap = detectFootnotes(text) // Auto-detects HTML or plain-text footnotes
+// Returns FootnoteZone[] with { start, end, footnoteNumber }
+// Use with extractCitations(text, { detectFootnotes: true }) for automatic integration
+```
+
+### Reporter Database
+
+```typescript
+import { loadReporters } from "eyecite-ts/data"
+
+const reporters = await loadReporters()  // 1,200+ reporters, lazy-loaded (~86.5KB gzipped)
+// Library works in degraded mode (pattern-only) without loading reporters
+```
+
+## Supported Jurisdictions (Statutes)
+
+| Family | Jurisdictions |
+|---|---|
+| Federal | USC, CFR, prose ("section X of title Y") |
+| Named-code | NY (21 laws), CA (29 codes), TX (29 codes), MD (36 articles), VA, AL, MA |
+| Abbreviated-code | FL, OH, MI, UT, CO, WA, NC, GA, PA, IN, NJ, DE |
+| Chapter-act | IL (ILCS) |
+
+Constitutional citations support U.S. Constitution + all 50 state constitutions. Roman numerals (I–XXVII) are automatically parsed to integers.
+
+## Key Features
+
+- **Parallel citation linking**: Automatic grouping of comma-separated citations sharing a parenthetical (e.g., "410 U.S. 113, 93 S. Ct. 705 (1973)") via shared `groupId`
+- **Case name extraction**: Backward search for party names including procedural prefixes (In re, Ex parte, etc.)
+- **Full span tracking**: `fullSpan` covers case name through final closing parenthetical; `span` covers citation core only
+- **Structured dates**: Parenthetical dates parsed to `{ iso, parsed: { year, month?, day? } }`. Supports "Jan. 15, 2020", "January 15, 2020", and "1/15/2020".
+- **Subsequent history**: Tracks procedural history signals (affirmed, reversed, cert. denied, etc.) with `subsequentHistoryEntries[]`
+- **Court inference**: `inferredCourt` provides court level (supreme/appellate/trial), jurisdiction (federal/state), and confidence
+- **Confidence scoring**: 0–1 scale. 1.0 for exact reporter match; penalties for unknown reporters, ambiguous matches
+- **String citation groups**: Semicolon-separated citations sharing same proposition tracked via `stringCitationGroupId`
+- **Blank page citations**: Handles "___" and "---" placeholders in slip opinions
+- **Nominative reporter support**: Early SCOTUS citations (e.g., "67 U.S. (2 Black) 635")
+- **Possible interpretations**: `possibleInterpretations[]` for ambiguous citations
+
+## Patterns
+
+26 regex patterns across 6 files in `src/patterns/`:
+
+- `casePatterns.ts` — Federal reporters (F., F.2d, F.3d, F.4th, F.Supp., F.App'x), Supreme Court (U.S., S.Ct., L.Ed.), state reporters
+- `statutePatterns.ts` — Federal codes (U.S.C., C.F.R.), named codes (NY, CA, TX, etc.), abbreviated codes (FL, OH, etc.), chapter-act (ILCS), prose format
+- `neutralPatterns.ts` — Westlaw, Lexis, Google Scholar, court-specific neutral formats
+- `constitutionalPatterns.ts` — U.S. and state constitutional citations with article/amendment/section/clause parsing
+- `shortForm.ts` — Id./Ibid., supra, short-form case
+- `journalPatterns.ts` — Law review/journal citations
+
+## Development
+
+```bash
+pnpm install                      # Install dependencies (corepack, pnpm 10)
+pnpm test                         # Run all tests (vitest, watch mode)
+pnpm exec vitest run              # Run all tests once
+pnpm build                        # Build with tsdown (ESM + CJS + DTS)
+pnpm typecheck                    # Type-check with tsc --noEmit
+pnpm lint                         # Lint with Biome 2.x
+pnpm format                       # Format with Biome (auto-fix)
+pnpm size                         # Check bundle size limits
+```
+
+1,000+ tests across 57 test files. Tests mirror source structure in `tests/`. CI: GitHub Actions with Node 18/20/22 matrix. Releases via Changesets.
+
+## Source Structure
+
+```
+src/
+  index.ts                   # Main entry point exports
+  types.ts                   # All citation type definitions (discriminated union)
+  clean/                     # Text cleaning + TransformationMap
+    cleanText.ts             # HTML strip, whitespace/Unicode normalize, smart quotes
+  tokenize/                  # Regex pattern matching
+    tokenizer.ts             # Apply patterns, deduplicate by position
+  patterns/                  # 26 regex patterns across 6 files
+    casePatterns.ts
+    statutePatterns.ts
+    neutralPatterns.ts
+    constitutionalPatterns.ts
+    shortForm.ts
+    journalPatterns.ts
+  extract/                   # Metadata extraction from tokens
+    extractCitations.ts      # Main orchestrator + ExtractOptions
+    extractCase.ts           # Case name, parenthetical, full span, dates, disposition
+    extractStatute.ts
+    extractConstitutional.ts
+    extractJournal.ts
+    extractNeutral.ts
+    extractPublicLaw.ts
+    extractFederalRegister.ts
+    extractStatutesAtLarge.ts
+    pincite.ts               # Pincite parsing
+    courtNormalization.ts    # Court name normalization
+    dates.ts                 # Date parsing (parseMonth, parseDate, toIsoDate)
+    filterFalsePositives.ts
+  resolve/                   # Short-form citation resolution
+    resolver.ts              # DocumentResolver class
+    types.ts                 # ResolutionOptions, ResolvedCitation
+    bkTree.ts                # BKTree for fuzzy party name matching
+    levenshtein.ts           # Levenshtein distance
+  footnotes/                 # Footnote zone detection
+    htmlDetector.ts          # HTML tag-based detection
+    textDetector.ts          # Plain-text separator/marker detection
+  annotate/                  # Citation annotation
+    annotate.ts              # Template + callback annotation modes
+    types.ts                 # AnnotationOptions, AnnotationResult
+  data/                      # Reporter database (lazy-loaded)
+    reporters.ts             # 1,200+ reporters
+    knownCodes.ts            # Jurisdiction code registry
+  utils/                     # Post-extraction utilities
+    reporterKey.ts           # toReporterKey, toReporterKeys
+    bluebook.ts              # toBluebook formatting
+    groupByCase.ts           # Group citations by case
+    context.ts               # getSurroundingContext (legal-aware sentence detection)
+    types.ts                 # CaseGroup, ContextOptions, SurroundingContext
+```

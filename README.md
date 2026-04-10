@@ -313,7 +313,6 @@ const resolved = resolveCitations(citations, text, {
 | `paragraphBoundaryPattern` | `RegExp` | `/\n\n+/` | Pattern to detect paragraphs |
 | `fuzzyPartyMatching` | `boolean` | `true` | Enable fuzzy party name matching for supra |
 | `partyMatchThreshold` | `number` | `0.8` | Similarity threshold (0-1) for fuzzy matching |
-| `allowNestedResolution` | `boolean` | `false` | Allow Id. to resolve to other short-form citations |
 | `reportUnresolved` | `boolean` | `true` | Report failure reasons for unresolved citations |
 
 ### Resolution Examples

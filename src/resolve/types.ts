@@ -53,13 +53,6 @@ export interface ResolutionOptions {
   partyMatchThreshold?: number
 
   /**
-   * Allow Id. citations to resolve to other short-form citations (default: false)
-   * If true: "Smith v. Jones, 500 F.2d 100" -> "Id." -> "Id. at 105"
-   * If false: Second Id. fails to resolve (no full citation between them)
-   */
-  allowNestedResolution?: boolean
-
-  /**
    * Report unresolved citations with failure reasons (default: true)
    * If false: resolution field will be undefined for unresolved citations
    */
