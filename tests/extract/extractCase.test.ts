@@ -1024,7 +1024,7 @@ describe("explanatory parentheticals (#76)", () => {
     expect(citations).toHaveLength(1)
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
-      expect(citations[0].parentheticals).toEqual([
+      expect(citations[0].parentheticals).toMatchObject([
         { text: "holding that X requires Y", type: "holding" },
       ])
     }
@@ -1037,7 +1037,7 @@ describe("explanatory parentheticals (#76)", () => {
     expect(citations).toHaveLength(1)
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
-      expect(citations[0].parentheticals).toEqual([
+      expect(citations[0].parentheticals).toMatchObject([
         { text: "holding that X", type: "holding" },
         { text: "citing Doe v. City", type: "citing" },
       ])
@@ -1085,7 +1085,7 @@ describe("explanatory parentheticals (#76)", () => {
     expect(citations).toHaveLength(1)
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
-      expect(citations[0].parentheticals).toEqual([{ text: "the court found X", type: "other" }])
+      expect(citations[0].parentheticals).toMatchObject([{ text: "the court found X", type: "other" }])
     }
   })
 
@@ -1107,7 +1107,7 @@ describe("explanatory parentheticals (#76)", () => {
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].disposition).toBe("en banc")
-      expect(citations[0].parentheticals).toEqual([{ text: "holding that X", type: "holding" }])
+      expect(citations[0].parentheticals).toMatchObject([{ text: "holding that X", type: "holding" }])
     }
   })
 
@@ -1238,7 +1238,7 @@ describe("backward compatibility (Phase 6)", () => {
     )
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
-      expect(citations[0].parentheticals).toEqual([{ text: "holding that X", type: "holding" }])
+      expect(citations[0].parentheticals).toMatchObject([{ text: "holding that X", type: "holding" }])
       expect(citations[0].subsequentHistoryEntries).toHaveLength(1)
       expect(citations[0].subsequentHistoryEntries?.[0].signal).toBe("affirmed")
     }

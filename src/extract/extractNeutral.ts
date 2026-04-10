@@ -9,7 +9,8 @@
 
 import type { Token } from "@/tokenize"
 import type { NeutralCitation } from "@/types/citation"
-import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import type { NeutralComponentSpans } from "@/types/componentSpans"
+import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 
 /**
  * Extracts neutral citation metadata from a tokenized citation.
@@ -53,7 +54,7 @@ export function extractNeutral(
 
   // Parse year-court-documentNumber using regex
   // Pattern: 4-digit year + court identifier (WL, LEXIS, state codes, etc.) + document number
-  const neutralRegex = /^(\d{4})\s+(.+?)\s+(\d+)$/
+  const neutralRegex = /^(\d{4})\s+(.+?)\s+(\d+)$/d
   const match = neutralRegex.exec(text)
 
   if (!match) {
@@ -63,6 +64,15 @@ export function extractNeutral(
   const year = Number.parseInt(match[1], 10)
   const court = match[2]
   const documentNumber = match[3]
+
+  let spans: NeutralComponentSpans | undefined
+  if (match.indices) {
+    spans = {
+      year: spanFromGroupIndex(span.cleanStart, match.indices[1]!, transformationMap),
+      court: spanFromGroupIndex(span.cleanStart, match.indices[2]!, transformationMap),
+      documentNumber: spanFromGroupIndex(span.cleanStart, match.indices[3]!, transformationMap),
+    }
+  }
 
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
@@ -86,5 +96,6 @@ export function extractNeutral(
     year,
     court,
     documentNumber,
+    spans,
   }
 }

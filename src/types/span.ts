@@ -46,6 +46,33 @@ export interface TransformationMap {
   cleanToOriginalSegments?: import("../clean/segmentMap").SegmentMap
 }
 
+/**
+ * Build a Span for a regex capture group using match.indices (ES2022 `d` flag).
+ *
+ * Requires the regex to have the `d` flag so match.indices is populated.
+ * The indices are relative to the token text — tokenCleanStart translates
+ * them to document-level clean-text positions, then resolveOriginalSpan
+ * maps to original positions via TransformationMap.
+ *
+ * @param tokenCleanStart - The token's cleanStart position in the document
+ * @param indices - match.indices[n] for the capture group: [start, end]
+ * @param map - TransformationMap for clean→original resolution
+ * @returns Span with both clean and original coordinates
+ */
+export function spanFromGroupIndex(
+  tokenCleanStart: number,
+  indices: [number, number],
+  map: TransformationMap,
+): Span {
+  const cleanStart = tokenCleanStart + indices[0]
+  const cleanEnd = tokenCleanStart + indices[1]
+  const { originalStart, originalEnd } = resolveOriginalSpan(
+    { cleanStart, cleanEnd },
+    map,
+  )
+  return { cleanStart, cleanEnd, originalStart, originalEnd }
+}
+
 /** Translate clean-text span positions back to original-text positions. */
 export function resolveOriginalSpan(
   span: { cleanStart: number; cleanEnd: number },

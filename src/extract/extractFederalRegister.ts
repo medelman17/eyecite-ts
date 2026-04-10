@@ -9,7 +9,8 @@
 
 import type { Token } from "@/tokenize"
 import type { FederalRegisterCitation } from "@/types/citation"
-import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import type { FederalRegisterComponentSpans } from "@/types/componentSpans"
+import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 
 /**
  * Extracts Federal Register citation metadata from a tokenized citation.
@@ -52,7 +53,7 @@ export function extractFederalRegister(
 
   // Parse volume-page using regex
   // Pattern: volume (digits) + "Fed. Reg." + page (digits)
-  const federalRegisterRegex = /^(\d+(?:-\d+)?)\s+Fed\.\s?Reg\.\s+(\d+)/
+  const federalRegisterRegex = /^(\d+(?:-\d+)?)\s+Fed\.\s?Reg\.\s+(\d+)/d
   const match = federalRegisterRegex.exec(text)
 
   if (!match) {
@@ -62,6 +63,14 @@ export function extractFederalRegister(
   const rawVolume = match[1]
   const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
   const page = Number.parseInt(match[2], 10)
+
+  let spans: FederalRegisterComponentSpans | undefined
+  if (match.indices) {
+    spans = {
+      volume: spanFromGroupIndex(span.cleanStart, match.indices[1]!, transformationMap),
+      page: spanFromGroupIndex(span.cleanStart, match.indices[2]!, transformationMap),
+    }
+  }
 
   // Extract optional year in parentheses
   // Pattern: "(year)" or "(month day, year)"
@@ -91,5 +100,6 @@ export function extractFederalRegister(
     volume,
     page,
     year,
+    spans,
   }
 }

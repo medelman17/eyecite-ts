@@ -12,7 +12,8 @@
 
 import type { Token } from "@/tokenize/tokenizer"
 import type { StatutesAtLargeCitation } from "@/types/citation"
-import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import type { StatutesAtLargeComponentSpans } from "@/types/componentSpans"
+import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 
 export function extractStatutesAtLarge(
   token: Token,
@@ -21,7 +22,7 @@ export function extractStatutesAtLarge(
   const { text, span } = token
 
   // Parse volume-Stat.-page
-  const statRegex = /^(\d+(?:-\d+)?)\s+Stat\.\s+(\d+)/
+  const statRegex = /^(\d+(?:-\d+)?)\s+Stat\.\s+(\d+)/d
   const match = statRegex.exec(text)
 
   if (!match) {
@@ -31,6 +32,14 @@ export function extractStatutesAtLarge(
   const rawVolume = match[1]
   const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
   const page = Number.parseInt(match[2], 10)
+
+  let spans: StatutesAtLargeComponentSpans | undefined
+  if (match.indices) {
+    spans = {
+      volume: spanFromGroupIndex(span.cleanStart, match.indices[1]!, transformationMap),
+      page: spanFromGroupIndex(span.cleanStart, match.indices[2]!, transformationMap),
+    }
+  }
 
   // Extract optional year in parentheses
   const yearRegex = /\((?:.*?\s)?(\d{4})\)/
@@ -59,5 +68,6 @@ export function extractStatutesAtLarge(
     volume,
     page,
     year,
+    spans,
   }
 }
