@@ -9,10 +9,11 @@
 
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
-import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import type { StatuteComponentSpans } from "@/types/componentSpans"
+import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 
 /** Parse "section X(subsections) of title Y" */
-const PROSE_RE = /[Ss]ection\s+(\d+[A-Za-z0-9-]*)((?:\([^)]*\))*)\s+of\s+title\s+(\d+)/
+const PROSE_RE = /[Ss]ection\s+(\d+[A-Za-z0-9-]*)((?:\([^)]*\))*)\s+of\s+title\s+(\d+)/d
 
 /**
  * Extract a prose-form statute citation.
@@ -36,6 +37,16 @@ export function extractProse(token: Token, transformationMap: TransformationMap)
   }
 
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
+
+  let spans: StatuteComponentSpans | undefined
+  if (match?.indices) {
+    spans = {}
+    if (match.indices[1]) spans.section = spanFromGroupIndex(span.cleanStart, match.indices[1], transformationMap)
+    if (match.indices[3]) spans.title = spanFromGroupIndex(span.cleanStart, match.indices[3], transformationMap)
+    if (match.indices[2] && subsection) {
+      spans.subsection = spanFromGroupIndex(span.cleanStart, match.indices[2], transformationMap)
+    }
+  }
 
   let confidence = 0.85
   if (title !== undefined) confidence += 0.05
@@ -61,5 +72,6 @@ export function extractProse(token: Token, transformationMap: TransformationMap)
     subsection,
     pincite: subsection,
     jurisdiction: "US",
+    spans,
   }
 }

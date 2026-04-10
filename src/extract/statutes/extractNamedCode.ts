@@ -16,15 +16,16 @@
 import { findNamedCode } from "@/data/knownCodes"
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
-import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import type { StatuteComponentSpans } from "@/types/componentSpans"
+import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 import { parseBody } from "./parseBody"
 
 /** Match named-code token: jurisdiction prefix + code name + § + body */
 const NAMED_CODE_RE =
-  /^(N\.?\s*Y\.?|Cal(?:ifornia)?\.?|Tex(?:as)?\.?|Md\.?|Va\.?|Ala(?:bama)?\.?)\s+(.*?)\s*§§?\s*(.+)$/s
+  /^(N\.?\s*Y\.?|Cal(?:ifornia)?\.?|Tex(?:as)?\.?|Md\.?|Va\.?|Ala(?:bama)?\.?)\s+(.*?)\s*§§?\s*(.+)$/sd
 
 /** Match mass-chapter token: corpus abbreviation + ch./c. + chapter + § + section */
-const MASS_CHAPTER_RE = /^(.*?)\s+(?:ch\.?|c\.?)\s*(\w+),?\s*§\s*(.+)$/
+const MASS_CHAPTER_RE = /^(.*?)\s+(?:ch\.?|c\.?)\s*(\w+),?\s*§\s*(.+)$/d
 
 /** Map normalized jurisdiction prefixes to 2-letter state codes */
 const PREFIX_MAP: Record<string, string> = {
@@ -102,23 +103,25 @@ export function extractNamedCode(
   let jurisdiction: string | undefined
   let code: string
   let rawBody: string
+  let massMatch: RegExpExecArray | null = null
+  let namedMatch: RegExpExecArray | null = null
 
   if (token.patternId === "mass-chapter") {
-    const match = MASS_CHAPTER_RE.exec(text)
-    if (match) {
+    massMatch = MASS_CHAPTER_RE.exec(text)
+    if (massMatch) {
       jurisdiction = "MA"
-      code = match[2] // chapter number (e.g., "93A")
-      rawBody = match[3]
+      code = massMatch[2] // chapter number (e.g., "93A")
+      rawBody = massMatch[3]
     } else {
       code = text
       rawBody = ""
     }
   } else {
     // named-code: "[State prefix] [Code Name] § [body]"
-    const match = NAMED_CODE_RE.exec(text)
-    if (match) {
-      jurisdiction = resolveJurisdiction(match[1])
-      const rawCodeName = match[2]
+    namedMatch = NAMED_CODE_RE.exec(text)
+    if (namedMatch) {
+      jurisdiction = resolveJurisdiction(namedMatch[1])
+      const rawCodeName = namedMatch[2]
       const cleaned = cleanCodeName(rawCodeName)
 
       if (jurisdiction) {
@@ -130,7 +133,7 @@ export function extractNamedCode(
         code = rawCodeName.trim()
       }
 
-      rawBody = match[3]
+      rawBody = namedMatch[3]
     } else {
       // Unparseable token — graceful fallback
       code = text
@@ -141,6 +144,50 @@ export function extractNamedCode(
   const { section, subsection, hasEtSeq } = parseBody(rawBody)
 
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
+
+  // Use section without trailing sentence punctuation for span boundary
+  const sectionSpanLen = section.replace(/[.,;:]\s*$/, "").length
+
+  let spans: StatuteComponentSpans | undefined
+  if (massMatch?.indices) {
+    spans = {}
+    if (massMatch.indices[2]) spans.code = spanFromGroupIndex(span.cleanStart, massMatch.indices[2], transformationMap)
+    if (massMatch.indices[3] && section) {
+      const bodyStart = massMatch.indices[3][0]
+      spans.section = spanFromGroupIndex(
+        span.cleanStart,
+        [bodyStart, bodyStart + sectionSpanLen],
+        transformationMap,
+      )
+      if (subsection) {
+        const subStart = bodyStart + section.length
+        spans.subsection = spanFromGroupIndex(
+          span.cleanStart,
+          [subStart, subStart + subsection.length],
+          transformationMap,
+        )
+      }
+    }
+  } else if (namedMatch?.indices) {
+    spans = {}
+    if (namedMatch.indices[2]) spans.code = spanFromGroupIndex(span.cleanStart, namedMatch.indices[2], transformationMap)
+    if (namedMatch.indices[3] && section) {
+      const bodyStart = namedMatch.indices[3][0]
+      spans.section = spanFromGroupIndex(
+        span.cleanStart,
+        [bodyStart, bodyStart + sectionSpanLen],
+        transformationMap,
+      )
+      if (subsection) {
+        const subStart = bodyStart + section.length
+        spans.subsection = spanFromGroupIndex(
+          span.cleanStart,
+          [subStart, subStart + subsection.length],
+          transformationMap,
+        )
+      }
+    }
+  }
 
   // Confidence: named-code patterns always require §, so known jurisdiction → 0.95 base
   let confidence = jurisdiction ? 0.95 : 0.5
@@ -161,5 +208,6 @@ export function extractNamedCode(
     pincite: subsection,
     jurisdiction,
     hasEtSeq: hasEtSeq || undefined,
+    spans,
   }
 }

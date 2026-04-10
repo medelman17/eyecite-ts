@@ -9,11 +9,12 @@
 
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
-import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import type { StatuteComponentSpans } from "@/types/componentSpans"
+import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 import { parseBody } from "./parseBody"
 
 /** Parse chapter-act token: chapter + ILCS + act/section */
-const CHAPTER_ACT_RE = /^(\d+)\s+(?:ILCS|Ill\.?\s*Comp\.?\s*Stat\.?)\s*(?:Ann\.?\s+)?(\d+)\/(.+)$/
+const CHAPTER_ACT_RE = /^(\d+)\s+(?:ILCS|Ill\.?\s*Comp\.?\s*Stat\.?)\s*(?:Ann\.?\s+)?(\d+)\/(.+)$/d
 
 export function extractChapterAct(
   token: Token,
@@ -39,6 +40,32 @@ export function extractChapterAct(
 
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
+  // Use section without trailing sentence punctuation for span boundary
+  const sectionSpanLen = section.replace(/[.,;:]\s*$/, "").length
+
+  let spans: StatuteComponentSpans | undefined
+  if (match?.indices) {
+    spans = {}
+    if (match.indices[1]) spans.title = spanFromGroupIndex(span.cleanStart, match.indices[1], transformationMap)
+    if (match.indices[2]) spans.code = spanFromGroupIndex(span.cleanStart, match.indices[2], transformationMap)
+    if (match.indices[3] && section) {
+      const bodyStart = match.indices[3][0]
+      spans.section = spanFromGroupIndex(
+        span.cleanStart,
+        [bodyStart, bodyStart + sectionSpanLen],
+        transformationMap,
+      )
+      if (subsection) {
+        const subStart = bodyStart + section.length
+        spans.subsection = spanFromGroupIndex(
+          span.cleanStart,
+          [subStart, subStart + subsection.length],
+          transformationMap,
+        )
+      }
+    }
+  }
+
   // Title (chapter) is always present on a successful ILCS match — no bonus needed.
   // Only subsection presence provides a confidence boost.
   let confidence = match ? 0.95 : 0.3
@@ -60,5 +87,6 @@ export function extractChapterAct(
     pincite: subsection,
     jurisdiction: match ? "IL" : undefined,
     hasEtSeq: hasEtSeq || undefined,
+    spans,
   }
 }

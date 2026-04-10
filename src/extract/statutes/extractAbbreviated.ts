@@ -13,11 +13,12 @@
 import { findAbbreviatedCode } from "@/data/knownCodes"
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
-import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import type { StatuteComponentSpans } from "@/types/componentSpans"
+import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 import { parseBody } from "./parseBody"
 
 const ABBREVIATED_RE =
-  /^(?:(\d+)\s+)?(.+?)\s*§?\s*(\d+[A-Za-z0-9.:/-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/
+  /^(?:(\d+)\s+)?(.+?)\s*§?\s*(\d+[A-Za-z0-9.:/-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/d
 
 export function extractAbbreviated(
   token: Token,
@@ -46,6 +47,31 @@ export function extractAbbreviated(
   const { section, subsection, hasEtSeq } = parseBody(rawBody)
 
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
+
+  let spans: StatuteComponentSpans | undefined
+  if (match?.indices) {
+    spans = {}
+    if (match.indices[1]) spans.title = spanFromGroupIndex(span.cleanStart, match.indices[1], transformationMap)
+    if (match.indices[2]) spans.code = spanFromGroupIndex(span.cleanStart, match.indices[2], transformationMap)
+    if (match.indices[3] && section) {
+      const bodyStart = match.indices[3][0]
+      // Use section without trailing sentence punctuation for span boundary
+      const sectionSpanLen = section.replace(/[.,;:]\s*$/, "").length
+      spans.section = spanFromGroupIndex(
+        span.cleanStart,
+        [bodyStart, bodyStart + sectionSpanLen],
+        transformationMap,
+      )
+      if (subsection) {
+        const subStart = bodyStart + section.length
+        spans.subsection = spanFromGroupIndex(
+          span.cleanStart,
+          [subStart, subStart + subsection.length],
+          transformationMap,
+        )
+      }
+    }
+  }
 
   const hasSection = text.includes("§")
   let confidence: number
@@ -77,5 +103,6 @@ export function extractAbbreviated(
     pincite: subsection,
     jurisdiction,
     hasEtSeq: hasEtSeq || undefined,
+    spans,
   }
 }

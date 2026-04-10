@@ -9,13 +9,14 @@
 
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
-import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import type { StatuteComponentSpans } from "@/types/componentSpans"
+import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 import { parseBody } from "./parseBody"
 
 /** Regex to parse federal token: title + code + § + body */
-const FEDERAL_SECTION_RE = /^(\d+)\s+(\S+(?:\.\S+)*)\s*§§?\s*(.+)$/
+const FEDERAL_SECTION_RE = /^(\d+)\s+(\S+(?:\.\S+)*)\s*§§?\s*(.+)$/d
 /** Regex to parse federal token: title + code + Part + body */
-const FEDERAL_PART_RE = /^(\d+)\s+(\S+(?:\.\S+)*)\s+(?:Part|pt\.)\s+(.+)$/
+const FEDERAL_PART_RE = /^(\d+)\s+(\S+(?:\.\S+)*)\s+(?:Part|pt\.)\s+(.+)$/d
 
 /**
  * Extract a federal statute citation (USC or CFR) from a tokenized match.
@@ -49,6 +50,31 @@ export function extractFederal(
   // Translate positions
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
+  let spans: StatuteComponentSpans | undefined
+  if (bodyMatch?.indices) {
+    spans = {}
+    if (bodyMatch.indices[1]) spans.title = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[1], transformationMap)
+    if (bodyMatch.indices[2]) spans.code = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[2], transformationMap)
+    if (bodyMatch.indices[3] && section) {
+      const bodyStart = bodyMatch.indices[3][0]
+      // Use section without trailing sentence punctuation for span boundary
+      const sectionSpanLen = section.replace(/[.,;:]\s*$/, "").length
+      spans.section = spanFromGroupIndex(
+        span.cleanStart,
+        [bodyStart, bodyStart + sectionSpanLen],
+        transformationMap,
+      )
+      if (subsection) {
+        const subStart = bodyStart + section.length
+        spans.subsection = spanFromGroupIndex(
+          span.cleanStart,
+          [subStart, subStart + subsection.length],
+          transformationMap,
+        )
+      }
+    }
+  }
+
   // Confidence: known federal code + § = 0.95 base
   let confidence = 0.95
   if (title !== undefined) confidence += 0.05
@@ -75,5 +101,6 @@ export function extractFederal(
     pincite: subsection,
     jurisdiction: "US",
     hasEtSeq: hasEtSeq || undefined,
+    spans,
   }
 }
