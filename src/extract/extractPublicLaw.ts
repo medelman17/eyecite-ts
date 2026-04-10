@@ -9,7 +9,8 @@
 
 import type { Token } from "@/tokenize"
 import type { PublicLawCitation } from "@/types/citation"
-import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import type { PublicLawComponentSpans } from "@/types/componentSpans"
+import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 
 /**
  * Extracts public law citation metadata from a tokenized citation.
@@ -54,7 +55,7 @@ export function extractPublicLaw(
 
   // Parse congress-lawNumber using regex
   // Pattern: "Pub. L." (with optional "No.") + congress number + "-" + law number
-  const publicLawRegex = /Pub\.\s?L\.(?:\s?No\.)?\s?(\d+)-(\d+)/
+  const publicLawRegex = /Pub\.\s?L\.(?:\s?No\.)?\s?(\d+)-(\d+)/d
   const match = publicLawRegex.exec(text)
 
   if (!match) {
@@ -63,6 +64,14 @@ export function extractPublicLaw(
 
   const congress = Number.parseInt(match[1], 10)
   const lawNumber = Number.parseInt(match[2], 10)
+
+  let spans: PublicLawComponentSpans | undefined
+  if (match.indices) {
+    spans = {
+      congress: spanFromGroupIndex(span.cleanStart, match.indices[1]!, transformationMap),
+      lawNumber: spanFromGroupIndex(span.cleanStart, match.indices[2]!, transformationMap),
+    }
+  }
 
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
@@ -85,5 +94,6 @@ export function extractPublicLaw(
     patternsChecked: 1,
     congress,
     lawNumber,
+    spans,
   }
 }
