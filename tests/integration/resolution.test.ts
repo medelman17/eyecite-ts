@@ -58,6 +58,108 @@ describe("Resolution Integration Tests", () => {
     })
   })
 
+  describe("Id. Resolution Through Short-Form Citations (#170)", () => {
+    it("resolves Id. through preceding short-form case citation", () => {
+      const text =
+        "Smith v. Jones, 500 F.2d 123 (2020). " +
+        "Celotex Corp. v. Catrett, 477 U.S. 317 (1986). " +
+        "500 F.2d at 128. " +
+        "Id. at 129."
+
+      const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+      const smith = citations.find(c => c.type === "case" && c.reporter === "F.2d")
+      const celotex = citations.find(c => c.type === "case" && c.reporter === "U.S.")
+      const shortForm = citations.find(c => c.type === "shortFormCase")
+      const id = citations.find(c => c.type === "id")
+
+      expect(smith).toBeDefined()
+      expect(celotex).toBeDefined()
+      expect(shortForm).toBeDefined()
+      expect(id).toBeDefined()
+
+      const smithIndex = citations.indexOf(smith!)
+
+      expect(shortForm!.resolution?.resolvedTo).toBe(smithIndex)
+      expect(id!.resolution?.resolvedTo).toBe(smithIndex)
+      expect(id!.resolution?.confidence).toBe(1.0)
+    })
+
+    it("resolves Id. through preceding supra citation", () => {
+      const text =
+        "Smith v. Jones, 500 F.2d 123 (2020). " +
+        "Brown v. Board, 347 U.S. 483 (1954). " +
+        "Smith, supra, at 130. " +
+        "Id. at 131."
+
+      const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+      const smith = citations.find(c => c.type === "case" && c.reporter === "F.2d")
+      const id = citations.find(c => c.type === "id")
+
+      expect(smith).toBeDefined()
+      expect(id).toBeDefined()
+
+      const smithIndex = citations.indexOf(smith!)
+      expect(id!.resolution?.resolvedTo).toBe(smithIndex)
+    })
+
+    it("fails Id. when preceding short-form fails to resolve", () => {
+      const text = "400 F.3d at 200. Id. at 201."
+
+      const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+      const shortForm = citations.find(c => c.type === "shortFormCase")
+      const id = citations.find(c => c.type === "id")
+
+      expect(shortForm).toBeDefined()
+      expect(id).toBeDefined()
+
+      expect(shortForm!.resolution?.resolvedTo).toBeUndefined()
+      expect(id!.resolution?.resolvedTo).toBeUndefined()
+      expect(id!.resolution?.failureReason).toBeDefined()
+    })
+
+    it("resolves Id. after statute citation", () => {
+      const text =
+        "Smith v. Jones, 500 F.2d 123 (2020). " +
+        "42 U.S.C. § 1983. " +
+        "Id."
+
+      const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+      const statute = citations.find(c => c.type === "statute")
+      const id = citations.find(c => c.type === "id")
+
+      expect(statute).toBeDefined()
+      expect(id).toBeDefined()
+
+      const statuteIndex = citations.indexOf(statute!)
+      expect(id!.resolution?.resolvedTo).toBe(statuteIndex)
+    })
+
+    it("resolves chain of Id. through short-form", () => {
+      const text =
+        "Smith v. Jones, 500 F.2d 123 (2020). " +
+        "Celotex Corp. v. Catrett, 477 U.S. 317 (1986). " +
+        "500 F.2d at 128. " +
+        "Id. at 129. " +
+        "Id. at 130."
+
+      const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+
+      const smith = citations.find(c => c.type === "case" && c.reporter === "F.2d")
+      const ids = citations.filter(c => c.type === "id")
+
+      expect(smith).toBeDefined()
+      expect(ids).toHaveLength(2)
+
+      const smithIndex = citations.indexOf(smith!)
+      expect(ids[0].resolution?.resolvedTo).toBe(smithIndex)
+      expect(ids[1].resolution?.resolvedTo).toBe(smithIndex)
+    })
+  })
+
   describe("Paragraph Scope Boundaries", () => {
     it("Id. resolves across paragraph boundaries with default scope (none)", () => {
       const text = `First paragraph: Smith v. Jones, 500 F.2d 123 (2020).
