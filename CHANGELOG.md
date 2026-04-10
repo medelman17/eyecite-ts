@@ -1,5 +1,17 @@
 # eyecite-ts
 
+## 0.10.0
+
+### Minor Changes
+
+- [#177](https://github.com/medelman17/eyecite-ts/pull/177) [`fc83dff`](https://github.com/medelman17/eyecite-ts/commit/fc83dff3aae6d8a9e5e3ae3c84827d3e37bb0645) Thanks [@medelman17](https://github.com/medelman17)! - Add granular component spans for all citation types. Each citation now carries a `spans` record with per-component position data (volume, reporter, page, court, year, caseName, plaintiff, defendant, signal, etc.). Explanatory parentheticals gain a `span` field. New `spanFromGroupIndex` utility exported for power users. Closes #172, closes #171.
+
+### Patch Changes
+
+- [#175](https://github.com/medelman17/eyecite-ts/pull/175) [`76bd36d`](https://github.com/medelman17/eyecite-ts/commit/76bd36d3a1e43b60f4ee4e9deee47aaf512c24da) Thanks [@medelman17](https://github.com/medelman17)! - Fix case name extraction capturing preceding sentence context as plaintiff. Add `isLikelyPartyName` validation with trimming when lowercase non-connector words are detected.
+
+- [#173](https://github.com/medelman17/eyecite-ts/pull/173) [`d96719a`](https://github.com/medelman17/eyecite-ts/commit/d96719a56956e2c095a43b2c122a5bafa8ade773) Thanks [@medelman17](https://github.com/medelman17)! - Fix Id. resolution to correctly resolve through short-form, supra, and non-case citations. Remove dead `allowNestedResolution` option.
+
 ## 0.9.0
 
 ### Minor Changes
