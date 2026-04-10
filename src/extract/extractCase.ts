@@ -279,6 +279,26 @@ function isLikelyPartyName(name: string): boolean {
 }
 
 /**
+ * Capitalized words that are never proper names — only uppercase because they're
+ * sentence-initial. Prevents the firstWordIsProperName guard from treating
+ * "This landmark decision..." or "Those cases..." as party-name-anchored text.
+ */
+const SENTENCE_INITIAL_WORDS = new Set([
+  "this",
+  "that",
+  "these",
+  "those",
+  "here",
+  "there",
+  "such",
+  "its",
+  "his",
+  "her",
+  "their",
+  "our",
+])
+
+/**
  * Strips date components (month, day, year) from parenthetical content
  * to isolate the court abbreviation.
  * E.g., "2d Cir. Jan. 15, 2020" → "2d Cir."
@@ -380,7 +400,9 @@ function extractCaseName(
         const firstWord = words[0] ?? ""
         const firstWordClean = firstWord.toLowerCase().replace(/[.,']+$/, "")
         const firstWordIsProperName =
-          /^[A-Z]/.test(firstWord) && !PARTY_NAME_CONNECTORS.has(firstWordClean)
+          /^[A-Z]/.test(firstWord)
+          && !PARTY_NAME_CONNECTORS.has(firstWordClean)
+          && !SENTENCE_INITIAL_WORDS.has(firstWordClean)
         if (!firstWordIsProperName) {
           // Check if the prefix starts with a signal word (See, See also, But see, etc.).
           // If so, keep it — extractPartyNames handles signal stripping downstream.
@@ -1197,41 +1219,42 @@ export function extractCase(
     proceduralPrefix = partyResult.proceduralPrefix
     signal = partyResult.signal
 
-    // Rebuild caseName from cleaned party names (signal stripped).
-    // Signal stripping only occurs in the adversarial ("v.") branch of extractPartyNames,
-    // which always sets defendant, so we normalize to "v." (standard legal citation form).
-    if (signal && plaintiff && defendant) {
-      caseName = `${plaintiff} v. ${defendant}`
+    // Rebuild caseName when extractPartyNames modified the plaintiff (signal stripped,
+    // "In"/"Also" prefix removed, etc.). Find the plaintiff's actual position in the
+    // cleaned text to update fullSpan and caseName span.
+    if (plaintiff && defendant) {
+      const rebuiltName = `${plaintiff} v. ${defendant}`
+      if (rebuiltName !== caseName && fullSpan && cleanedText) {
+        caseName = rebuiltName
 
-      // Advance fullSpan.cleanStart past the signal word
-      if (fullSpan) {
-        const original = cleanedText?.substring(fullSpan.cleanStart, span.cleanStart) ?? ""
-        // Trim leading whitespace to handle edge cases where fullSpan starts at a boundary
-        const trimmed = original.trimStart()
-        const leadingWs = original.length - trimmed.length
-        const signalInSpan = SIGNAL_STRIP_REGEX.exec(trimmed)
-        if (signalInSpan) {
-          const newCleanStart = fullSpan.cleanStart + leadingWs + signalInSpan[0].length
-          const newOriginalStart =
-            transformationMap.cleanToOriginal.get(newCleanStart) ?? newCleanStart
-          fullSpan = { ...fullSpan, cleanStart: newCleanStart, originalStart: newOriginalStart }
+        // Advance fullSpan.cleanStart to where the plaintiff actually starts
+        const prefixRegion = cleanedText.substring(fullSpan.cleanStart, span.cleanStart)
+        const vSep = /\s+v\.?\s+/i.exec(prefixRegion)
+        if (vSep) {
+          const beforeV = prefixRegion.substring(0, vSep.index)
+          const pIdx = beforeV.lastIndexOf(plaintiff)
+          if (pIdx !== -1) {
+            const newCleanStart = fullSpan.cleanStart + pIdx
+            const newOriginalStart =
+              transformationMap.cleanToOriginal.get(newCleanStart) ?? newCleanStart
+            fullSpan = { ...fullSpan, cleanStart: newCleanStart, originalStart: newOriginalStart }
+          }
         }
-      }
 
-      // Update caseName span to reflect the signal-stripped name
-      if (caseNameResult) {
-        // After signal stripping, fullSpan.cleanStart is the start of the plaintiff
-        const strippedCleanStart = fullSpan?.cleanStart ?? caseNameResult.nameStart
-        const strippedCleanEnd = strippedCleanStart + caseName.length
-        const strippedOrig = resolveOriginalSpan(
-          { cleanStart: strippedCleanStart, cleanEnd: strippedCleanEnd },
-          transformationMap,
-        )
-        spans.caseName = {
-          cleanStart: strippedCleanStart,
-          cleanEnd: strippedCleanEnd,
-          originalStart: strippedOrig.originalStart,
-          originalEnd: strippedOrig.originalEnd,
+        // Update caseName span to reflect the cleaned name
+        if (caseNameResult) {
+          const strippedCleanStart = fullSpan.cleanStart
+          const strippedCleanEnd = strippedCleanStart + caseName.length
+          const strippedOrig = resolveOriginalSpan(
+            { cleanStart: strippedCleanStart, cleanEnd: strippedCleanEnd },
+            transformationMap,
+          )
+          spans.caseName = {
+            cleanStart: strippedCleanStart,
+            cleanEnd: strippedCleanEnd,
+            originalStart: strippedOrig.originalStart,
+            originalEnd: strippedOrig.originalEnd,
+          }
         }
       }
     }
@@ -1240,10 +1263,7 @@ export function extractCase(
     // so each name is only matched on the correct side, avoiding indexOf collisions
     // when a name substring appears in both halves (e.g., "Smith v. Smith").
     if (plaintiff && caseNameResult && cleanedText) {
-      // For signal-stripped names, caseName was rebuilt as "plaintiff v. defendant"
-      // but the clean text still has the original layout. Use fullSpan.cleanStart
-      // (post-signal) as the anchor for plaintiff position.
-      const nameAnchor = signal && fullSpan ? fullSpan.cleanStart : caseNameResult.nameStart
+      const nameAnchor = fullSpan?.cleanStart ?? caseNameResult.nameStart
       const searchRegion = cleanedText.substring(nameAnchor, span.cleanStart)
       const vSepMatch = /\s+v\.?\s+/i.exec(searchRegion)
       if (vSepMatch) {

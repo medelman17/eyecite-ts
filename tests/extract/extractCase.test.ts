@@ -829,6 +829,31 @@ describe("case name extraction (Phase 6)", () => {
       }
     })
 
+    it("trims sentence-initial pronouns like 'This'", () => {
+      const citations = extractCitations(
+        "This landmark decision effectively overruled Plessy v. Ferguson, 163 U.S. 537 (1896).",
+      )
+      const cite = citations.find((c) => c.type === "case")
+      expect(cite).toBeDefined()
+      if (cite?.type === "case") {
+        expect(cite.caseName).toBe("Plessy v. Ferguson")
+        expect(cite.plaintiff).toBe("Plessy")
+      }
+    })
+
+    it("strips 'In' prefix and rebuilds caseName", () => {
+      const citations = extractCitations(
+        "In Brown v. Board of Education, 347 U.S. 483, 495 (1954), the Court held that segregation was unconstitutional.",
+      )
+      const cite = citations.find((c) => c.type === "case")
+      expect(cite).toBeDefined()
+      if (cite?.type === "case") {
+        expect(cite.caseName).toBe("Brown v. Board of Education")
+        expect(cite.plaintiff).toBe("Brown")
+        expect(cite.defendant).toBe("Board of Education")
+      }
+    })
+
     it("adjusts fullSpan.originalStart after trimming", () => {
       const text =
         "The court cited Smith v. Jones, 500 F.2d 123 (2020)."
