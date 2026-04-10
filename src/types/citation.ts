@@ -1,4 +1,14 @@
 import type { Span } from "./span"
+import type {
+  CaseComponentSpans,
+  ConstitutionalComponentSpans,
+  FederalRegisterComponentSpans,
+  JournalComponentSpans,
+  NeutralComponentSpans,
+  PublicLawComponentSpans,
+  StatuteComponentSpans,
+  StatutesAtLargeComponentSpans,
+} from "./componentSpans"
 
 /**
  * Citation type discriminator for type-safe pattern matching.
@@ -145,6 +155,8 @@ export interface Parenthetical {
   text: string
   /** Signal-word classification based on leading gerund */
   type: ParentheticalType
+  /** Position of full parenthetical block including delimiters */
+  span?: Span
 }
 
 /**
@@ -355,6 +367,9 @@ export interface FullCaseCitation extends CitationBase {
    * to preserve tree-shaking of the `eyecite-ts/data` entry point.
    */
   inferredCourt?: CourtInference
+
+  /** Precise text positions for each parsed component of this citation. */
+  spans?: CaseComponentSpans
 }
 
 /**
@@ -380,6 +395,9 @@ export interface StatuteCitation extends CitationBase {
   pincite?: string
   /** True when "et seq." follows the citation */
   hasEtSeq?: boolean
+
+  /** Precise text positions for each parsed component of this citation. */
+  spans?: StatuteComponentSpans
 }
 
 /**
@@ -408,6 +426,9 @@ export interface JournalCitation extends CitationBase {
   pincite?: number
   /** Publication year */
   year?: number
+
+  /** Precise text positions for each parsed component of this citation. */
+  spans?: JournalComponentSpans
 }
 
 /**
@@ -426,6 +447,9 @@ export interface NeutralCitation extends CitationBase {
   court: string
   /** Document number */
   documentNumber: string
+
+  /** Precise text positions for each parsed component of this citation. */
+  spans?: NeutralComponentSpans
 }
 
 /**
@@ -444,6 +468,9 @@ export interface PublicLawCitation extends CitationBase {
   lawNumber: number
   /** Optional bill title extracted from nearby text */
   title?: string
+
+  /** Precise text positions for each parsed component of this citation. */
+  spans?: PublicLawComponentSpans
 }
 
 /**
@@ -462,6 +489,9 @@ export interface FederalRegisterCitation extends CitationBase {
   page: number
   /** Publication year (if extracted) */
   year?: number
+
+  /** Precise text positions for each parsed component of this citation. */
+  spans?: FederalRegisterComponentSpans
 }
 
 /** Citation to the Statutes at Large (session law compilation) */
@@ -473,6 +503,9 @@ export interface StatutesAtLargeCitation extends CitationBase {
   page: number
   /** Publication year (if extracted) */
   year?: number
+
+  /** Precise text positions for each parsed component of this citation. */
+  spans?: StatutesAtLargeComponentSpans
 }
 
 /**
@@ -494,6 +527,9 @@ export interface ConstitutionalCitation extends CitationBase {
   section?: string
   /** Clause number (always numeric) */
   clause?: number
+
+  /** Precise text positions for each parsed component of this citation. */
+  spans?: ConstitutionalComponentSpans
 }
 
 /**

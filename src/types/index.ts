@@ -35,3 +35,15 @@ export {
   isShortFormCitation,
 } from "./guards"
 export type { Span, TransformationMap } from "./span"
+export type {
+  CaseComponentSpans,
+  ConstitutionalComponentSpans,
+  FederalRegisterComponentSpans,
+  JournalComponentSpans,
+  NeutralComponentSpans,
+  PublicLawComponentSpans,
+  StatuteComponentSpans,
+  StatutesAtLargeComponentSpans,
+} from "./componentSpans"
+
+export { spanFromGroupIndex } from "./span"
