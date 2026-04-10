@@ -123,10 +123,15 @@ export interface ResolutionContext {
   allCitations: Citation[]
 
   /**
-   * Index of immediately preceding full citation.
-   * Updated as citations are processed.
+   * Index of the full citation most recently cited (directly or via resolution).
+   * Updated after every successfully resolved citation.
+   * Used by Id. resolution -- Id. inherits this value.
+   *
+   * For full citations: set to the citation's own index.
+   * For resolved short-form/supra/Id.: set to resolvedTo (the full antecedent index).
+   * For failed resolutions: NOT updated (Id. after a failed citation also fails).
    */
-  lastFullCitation?: number
+  lastResolvedIndex?: number
 
   /**
    * History of all full citations by party name.

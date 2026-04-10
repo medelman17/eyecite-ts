@@ -70,7 +70,7 @@ export class DocumentResolver {
     this.context = {
       citationIndex: 0,
       allCitations: citations,
-      lastFullCitation: undefined,
+      lastResolvedIndex: undefined,
       fullCitationHistory: new Map(),
       paragraphMap: new Map(),
     }
@@ -118,10 +118,18 @@ export class DocumentResolver {
         default:
           // Full citation - update context for future resolutions
           if (isFullCitation(citation)) {
-            this.context.lastFullCitation = i
+            this.context.lastResolvedIndex = i
             this.trackFullCitation(citation, i)
           }
           break
+      }
+
+      // After resolving a short-form citation, update lastResolvedIndex
+      // to the full citation it resolved to (transitive resolution).
+      // If resolution failed, lastResolvedIndex is NOT updated --
+      // a subsequent Id. will also fail (matching Python eyecite behavior).
+      if (resolution?.resolvedTo !== undefined) {
+        this.context.lastResolvedIndex = resolution.resolvedTo
       }
 
       // Add citation with resolution metadata
@@ -136,24 +144,17 @@ export class DocumentResolver {
   }
 
   /**
-   * Resolves Id. citation to immediately preceding full case citation.
+   * Resolves Id. citation to the most recently cited authority.
+   * Uses lastResolvedIndex which tracks the most recent successfully
+   * resolved citation (full, short-form, supra, or Id.).
    */
   private resolveId(_citation: IdCitation): ResolutionResult | undefined {
     const currentIndex = this.context.citationIndex
+    const antecedentIndex = this.context.lastResolvedIndex
 
-    // Find most recent full case citation (Id. only resolves to case citations, not statutes/journals)
-    let antecedentIndex: number | undefined
-    for (let i = currentIndex - 1; i >= 0; i--) {
-      const candidate = this.citations[i]
-      if (candidate.type === "case") {
-        antecedentIndex = i
-        break
-      }
-    }
-
-    // Check if we have a previous case citation
+    // No preceding citation has been resolved yet
     if (antecedentIndex === undefined) {
-      return this.createFailureResult("No preceding full case citation found")
+      return this.createFailureResult("No preceding citation found")
     }
 
     // Check scope boundary
