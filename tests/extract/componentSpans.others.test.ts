@@ -59,3 +59,72 @@ describe("Component Spans — Public Law", () => {
     expectSpan(text, c.spans?.lawNumber, "283")
   })
 })
+
+describe("Component Spans — Journal", () => {
+  it("tracks volume, journal, page spans", () => {
+    const text = "See 100 Harv. L. Rev. 1234."
+    const cites = extractCitations(text)
+    const c = cites.find((c) => c.type === "journal")
+    expect(c).toBeDefined()
+    if (c?.type !== "journal") return
+
+    expectSpan(text, c.spans?.volume, "100")
+    expectSpan(text, c.spans?.journal, "Harv. L. Rev.")
+    expectSpan(text, c.spans?.page, "1234")
+  })
+
+  it("tracks pincite span when present", () => {
+    const text = "See 75 Yale L.J. 456, 460."
+    const cites = extractCitations(text)
+    const c = cites.find((c) => c.type === "journal")
+    expect(c).toBeDefined()
+    if (c?.type !== "journal") return
+
+    expectSpan(text, c.spans?.pincite, "460")
+  })
+
+  it("tracks year span when present in parenthetical", () => {
+    const text = "See 75 Yale L.J. 456 (2020)."
+    const cites = extractCitations(text)
+    const c = cites.find((c) => c.type === "journal")
+    expect(c).toBeDefined()
+    if (c?.type !== "journal") return
+
+    expectSpan(text, c.spans?.year, "2020")
+  })
+})
+
+describe("Component Spans — Constitutional", () => {
+  it("tracks amendment and section spans for US Constitution", () => {
+    const text = "See U.S. Const. amend. XIV, § 1."
+    const cites = extractCitations(text)
+    const c = cites.find((c) => c.type === "constitutional")
+    expect(c).toBeDefined()
+    if (c?.type !== "constitutional") return
+
+    expect(c.spans?.amendment).toBeDefined()
+    expect(c.spans?.section).toBeDefined()
+    expectSpan(text, c.spans?.jurisdiction, "U.S.")
+  })
+
+  it("tracks article and section spans", () => {
+    const text = "See U.S. Const. art. III, § 2."
+    const cites = extractCitations(text)
+    const c = cites.find((c) => c.type === "constitutional")
+    expect(c).toBeDefined()
+    if (c?.type !== "constitutional") return
+
+    expect(c.spans?.article).toBeDefined()
+    expect(c.spans?.section).toBeDefined()
+  })
+
+  it("tracks jurisdiction span for state constitutions", () => {
+    const text = "See Cal. Const. art. I, § 7."
+    const cites = extractCitations(text)
+    const c = cites.find((c) => c.type === "constitutional")
+    expect(c).toBeDefined()
+    if (c?.type !== "constitutional") return
+
+    expectSpan(text, c.spans?.jurisdiction, "Cal.")
+  })
+})

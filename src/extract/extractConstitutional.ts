@@ -15,7 +15,8 @@
 import { CONSTITUTIONAL_BODY_RE } from "@/patterns/constitutionalPatterns"
 import type { Token } from "@/tokenize"
 import type { ConstitutionalCitation } from "@/types/citation"
-import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import type { ConstitutionalComponentSpans } from "@/types/componentSpans"
+import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 
 /**
  * Roman numeral lookup table (I–XXVII).
@@ -200,6 +201,45 @@ export function extractConstitutional(
   // The section regex may greedily consume a sentence-terminating period ("§ 1.")
   const matchedText = text.endsWith(".") ? text.slice(0, -1) : text
 
+  // Build component spans
+  const spans: ConstitutionalComponentSpans = {}
+
+  // Jurisdiction span: find the jurisdiction text in the token
+  if (jurisdiction === "US") {
+    const usIdx = text.indexOf("U.S.")
+    if (usIdx !== -1) {
+      spans.jurisdiction = spanFromGroupIndex(span.cleanStart, [usIdx, usIdx + 4], transformationMap)
+    }
+  } else if (jurisdiction && token.patternId === "state-constitution") {
+    // State prefix is at the start of the token text
+    const prefixMatch = STATE_PREFIX_RE.exec(text)
+    if (prefixMatch) {
+      // The prefix is the abbreviation stem; add 1 for the trailing period
+      const prefixEnd = prefixMatch[1].length + 1
+      spans.jurisdiction = spanFromGroupIndex(span.cleanStart, [0, prefixEnd], transformationMap)
+    }
+  }
+
+  // Body match groups for article/amendment, section, clause
+  // bodyMatch.indices[n] gives positions relative to the full token text
+  if (bodyMatch?.indices) {
+    if (IS_AMENDMENT_RE.test(bodyMatch[0])) {
+      if (bodyMatch.indices[1]) {
+        spans.amendment = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[1], transformationMap)
+      }
+    } else {
+      if (bodyMatch.indices[1]) {
+        spans.article = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[1], transformationMap)
+      }
+    }
+    if (bodyMatch.indices[2]) {
+      spans.section = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[2], transformationMap)
+    }
+    if (bodyMatch.indices[3]) {
+      spans.clause = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[3], transformationMap)
+    }
+  }
+
   return {
     type: "constitutional",
     text,
@@ -218,5 +258,6 @@ export function extractConstitutional(
     amendment,
     section,
     clause,
+    spans,
   }
 }
