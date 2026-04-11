@@ -26,3 +26,9 @@ mise.local.toml
 
 # Worktrees
 .worktrees/
+
+# Tool/agent local files
+.claude/
+.planning/
+.serena/
+playground.html
