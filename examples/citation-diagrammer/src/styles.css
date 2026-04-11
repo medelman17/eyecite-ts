@@ -1,0 +1,246 @@
+/* ── Reset & Base ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #fefcf3;
+  --fg: #1b2838;
+  --muted: #6b7280;
+  --border: #e5e2d9;
+  --accent: #283593;
+  --accent-light: #e8eaf6;
+  --radius: 8px;
+  --shadow: 0 2px 12px rgba(27, 40, 56, 0.08);
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-serif);
+  line-height: 1.6;
+  min-height: 100vh;
+  padding: 0 24px 48px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* ── Header ── */
+.app-header {
+  padding: 32px 0 16px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.app-header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--fg);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.subtitle a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.subtitle a:hover {
+  border-bottom-color: var(--accent);
+}
+
+/* ── Input Section ── */
+.input-section {
+  margin-bottom: 24px;
+}
+
+.input-section label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 8px;
+}
+
+textarea {
+  width: 100%;
+  padding: 12px 16px;
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--fg);
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  resize: vertical;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+/* ── Controls ── */
+.controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  align-items: center;
+}
+
+button {
+  padding: 10px 24px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: white;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+button:hover {
+  background: #1a237e;
+  box-shadow: 0 4px 12px rgba(40, 53, 147, 0.25);
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+select {
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--fg);
+  background: white;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+select:hover {
+  border-color: var(--accent);
+}
+
+/* ── Output Section ── */
+.output-section {
+  min-height: 200px;
+}
+
+.output-placeholder {
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
+  padding: 48px 0;
+}
+
+.stats-bar {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 8px 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-header {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fg);
+  margin: 24px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Diagram Container ── */
+.diagram-container {
+  margin-bottom: 20px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  background: white;
+  transition: box-shadow 0.2s ease;
+}
+
+.diagram-container:hover {
+  box-shadow: 0 4px 20px rgba(27, 40, 56, 0.12);
+}
+
+.diagram-container svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.batch-container {
+  border: 2px solid var(--accent-light);
+}
+
+/* ── Citation Metadata ── */
+.citation-meta {
+  display: flex;
+  gap: 16px;
+  padding: 8px 16px;
+  background: #f8f7f4;
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.meta-type {
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  body {
+    padding: 0 16px 32px;
+  }
+
+  .app-header h1 {
+    font-size: 1.35rem;
+  }
+
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .citation-meta {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

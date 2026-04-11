@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Legal Citation Diagrammer</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Legal Citation Diagrammer</h1>
+      <p class="subtitle">
+        Powered by
+        <a href="https://github.com/medelman17/eyecite-ts" target="_blank">eyecite-ts</a>
+        +
+        <a href="https://github.com/chenglou/pretext" target="_blank">Pretext</a>
+      </p>
+    </header>
+
+    <main class="app-main">
+      <section class="input-section">
+        <label for="citation-input">Paste legal text containing citations:</label>
+        <textarea
+          id="citation-input"
+          rows="6"
+          spellcheck="false"
+          placeholder="See Smith v. Doe, 550 U.S. 544, 570 (2007) (holding that due process requires notice), aff'd, 600 F.3d 200 (2d Cir. 2010). The Court in Brown v. Board of Education, 347 U.S. 483 (1954), held that separate educational facilities are inherently unequal. Id. at 495. See also 42 U.S.C. &sect; 1983; U.S. Const. amend. XIV, &sect; 1."
+        ></textarea>
+
+        <div class="controls">
+          <button id="diagram-btn" type="button">Diagram Citations</button>
+
+          <select id="sample-select">
+            <option value="">Load sample text...</option>
+            <option value="scotus">Classic SCOTUS</option>
+            <option value="complex">Complex Citation</option>
+            <option value="multi">Multi-cite with Id.</option>
+            <option value="statute">Statute + Constitutional</option>
+          </select>
+        </div>
+      </section>
+
+      <section id="output-section" class="output-section">
+        <p class="output-placeholder">Diagrams will appear here</p>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
