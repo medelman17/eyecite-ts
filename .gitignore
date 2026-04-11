@@ -26,3 +26,9 @@ mise.local.toml
 
 # Worktrees
 .worktrees/
+
+# Claude Code local files
+.claude/skills/
+
+# Dev artifacts
+playground.html
