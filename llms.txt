@@ -2,13 +2,13 @@
 
 > TypeScript legal citation extraction library with zero runtime dependencies. Extract, resolve, and annotate legal citations from court opinions and legal documents.
 
-Port of Python [eyecite](https://github.com/freelawproject/eyecite) by Free Law Project. This TypeScript implementation adds parallel citation linking, party name extraction, full span tracking, structured date parsing, constitutional citations, and court inference.
+Port of Python [eyecite](https://github.com/freelawproject/eyecite) by Free Law Project. This TypeScript implementation adds parallel citation linking, party name extraction, full span tracking, component spans, structured date parsing, constitutional citations, and court inference.
 
-- Version: 0.6.0
+- Version: 0.10.1
 - License: MIT
 - Node.js: >=18.0.0
 - Runtime dependencies: 0
-- Core bundle: ~10KB gzipped (core), ~50KB limit
+- Core bundle: ~20 KB brotli (core), ~1.8 KB brotli (utils)
 - Repository: https://github.com/medelman17/eyecite-ts
 
 ## Installation
@@ -33,12 +33,14 @@ Citations flow through a 4-stage pipeline: clean → tokenize → extract → re
 
 1. **Clean** (`src/clean/`): Strip HTML, normalize whitespace/Unicode, fix smart quotes. Builds a `TransformationMap` tracking position shifts between original and cleaned text.
 2. **Tokenize** (`src/tokenize/`): Apply regex patterns from `src/patterns/` to find citation candidates. Intentionally broad to capture potential matches without validation. Patterns applied in specificity order: neutral → shortForm → case → constitutional → statute → journal.
-3. **Extract** (`src/extract/`): Parse metadata from tokens (volume, reporter, page, court, year). Each citation type has its own extractor. The main orchestrator is `extractCitations.ts`. Handles case name backward search, full span calculation, parenthetical parsing, disposition extraction, and structured date parsing.
+3. **Extract** (`src/extract/`): Parse metadata from tokens (volume, reporter, page, court, year). Each citation type has its own extractor. The main orchestrator is `extractCitations.ts`. Handles case name backward search, full span calculation, component span recording, parenthetical parsing, disposition extraction, and structured date parsing.
 4. **Resolve** (`src/resolve/`): Link short-form citations (Id., supra, short-form case) to full antecedents. Uses scope boundaries, BKTree-based Levenshtein fuzzy matching, and paragraph/section/footnote awareness.
 
-Footnote detection is opt-in (`detectFootnotes: true`), runs before cleaning on raw text to preserve newline structure, and supports both HTML and plain-text footnote formats.
+Footnote detection is opt-in (`detectFootnotes: true`), runs before cleaning on raw text to preserve newline structure, and supports both HTML and plain-text footnote formats. Two strategies: HTML tag scanning (no DOM dependency) and plain-text separator/marker detection.
 
 Position tracking uses dual coordinates: `cleanStart/cleanEnd` (internal parsing) and `originalStart/originalEnd` (user-facing results), connected by `TransformationMap`.
+
+Component spans (added v0.10.0) record per-field positions within the citation text. The `spans` record on each citation maps field names (e.g., `volume`, `reporter`, `page`, `court`, `year`) to `{ start, end }` positions in the original text, enabling precise field-level highlighting.
 
 ## Package Entry Points
 
@@ -53,11 +55,11 @@ Four entry points for optimal tree-shaking:
 
 ## Citation Types
 
-Discriminated union on the `type` field. Switch on `citation.type` for type-safe field access.
+Discriminated union on the `type` field. Switch on `citation.type` for type-safe field access. 11 citation types total: 8 full + 3 short-form.
 
 ### Full Citation Types (8)
 
-- `case` — `FullCaseCitation`: volume, reporter, page, court, year, caseName, plaintiff, defendant, proceduralPrefix, disposition, date (ISO + parsed), parallelCitations, groupId, fullSpan, inferredCourt, hasBlankPage, parentheticals, subsequentHistoryEntries, nominativeVolume/Reporter, possibleInterpretations
+- `case` — `FullCaseCitation`: volume, reporter, page, court, year, caseName, plaintiff, defendant, proceduralPrefix, disposition, date (ISO + parsed), parallelCitations, groupId, fullSpan, spans, inferredCourt, hasBlankPage, parentheticals, subsequentHistoryEntries, nominativeVolume/Reporter, possibleInterpretations
 - `statute` — `StatuteCitation`: title, code, section, subsection, pincite, jurisdiction, hasEtSeq
 - `constitutional` — `ConstitutionalCitation`: jurisdiction (US + 50 states), article, amendment, section, clause
 - `journal` — `JournalCitation`: author, title, volume, journal, abbreviation, page, pincite, year
@@ -74,7 +76,7 @@ Discriminated union on the `type` field. Switch on `citation.type` for type-safe
 
 ### Common Fields (CitationBase)
 
-All citations share: text, span, confidence (0–1), matchedText, processTimeMs, patternsChecked, warnings[], signal (see, see also, accord, cf, etc.), inFootnote, footnoteNumber, stringCitationGroupId/Index/GroupSize.
+All citations share: text, span, spans (component field positions), confidence (0–1), matchedText, processTimeMs, patternsChecked, warnings[], signal (see, see also, accord, cf, etc.), inFootnote, footnoteNumber, stringCitationGroupId/Index/GroupSize.
 
 ## Main API
 
@@ -197,8 +199,15 @@ import { detectFootnotes } from "eyecite-ts"
 
 const footnoteMap = detectFootnotes(text) // Auto-detects HTML or plain-text footnotes
 // Returns FootnoteZone[] with { start, end, footnoteNumber }
+// HTML strategy: regex-based tag scanner for <footnote>, <fn>, and elements with footnote class/id attributes. No DOM dependency.
+// Plain-text strategy: separator lines (5+ dashes/underscores) followed by numbered markers (1., FN1., [1], n.1)
 // Use with extractCitations(text, { detectFootnotes: true }) for automatic integration
+// Footnote scope strategy in resolver: Id. is strict (same zone only), supra/shortFormCase can cross from footnotes to body
 ```
+
+### Citation Signals
+
+Citation signals (introductory signals preceding a citation) are extracted automatically and stored in the `signal` field on every citation. Recognized values include: `see`, `see also`, `see, e.g.,`, `accord`, `cf.`, `but see`, `but cf.`, `contra`, `compare`, `with`, and bare citation (no signal). The signal is stripped from the matched text and does not affect span positions.
 
 ### Reporter Database
 
@@ -211,28 +220,33 @@ const reporters = await loadReporters()  // 1,200+ reporters, lazy-loaded (~86.5
 
 ## Supported Jurisdictions (Statutes)
 
-| Family | Jurisdictions |
-|---|---|
-| Federal | USC, CFR, prose ("section X of title Y") |
-| Named-code | NY (21 laws), CA (29 codes), TX (29 codes), MD (36 articles), VA, AL, MA |
-| Abbreviated-code | FL, OH, MI, UT, CO, WA, NC, GA, PA, IN, NJ, DE |
-| Chapter-act | IL (ILCS) |
+52 total jurisdictions (50 states + DC + US federal) across 4 statute families:
 
-Constitutional citations support U.S. Constitution + all 50 state constitutions. Roman numerals (I–XXVII) are automatically parsed to integers.
+| Family | Count | Jurisdictions |
+|---|---|---|
+| Federal | — | USC, CFR, prose ("section X of title Y") |
+| Named-code | 7 | NY (21 laws), CA (29 codes), TX (29 codes), MD (36 articles), VA, AL, MA |
+| Abbreviated-code | 44 | 43 states + DC (FL, OH, MI, UT, CO, WA, NC, GA, PA, IN, NJ, DE, and 32 more) |
+| Chapter-act | 1 | IL (ILCS) |
+
+Constitutional citations support the U.S. Constitution + all 50 state constitutions. Roman numerals (I–XXVII) are automatically parsed to integers.
 
 ## Key Features
 
 - **Parallel citation linking**: Automatic grouping of comma-separated citations sharing a parenthetical (e.g., "410 U.S. 113, 93 S. Ct. 705 (1973)") via shared `groupId`
+- **Component spans**: `spans` record maps field names to `{ start, end }` positions in original text for precise field-level highlighting (added v0.10.0)
 - **Case name extraction**: Backward search for party names including procedural prefixes (In re, Ex parte, etc.)
 - **Full span tracking**: `fullSpan` covers case name through final closing parenthetical; `span` covers citation core only
 - **Structured dates**: Parenthetical dates parsed to `{ iso, parsed: { year, month?, day? } }`. Supports "Jan. 15, 2020", "January 15, 2020", and "1/15/2020".
 - **Subsequent history**: Tracks procedural history signals (affirmed, reversed, cert. denied, etc.) with `subsequentHistoryEntries[]`
 - **Court inference**: `inferredCourt` provides court level (supreme/appellate/trial), jurisdiction (federal/state), and confidence
+- **Citation signals**: Introductory signals (see, see also, cf., etc.) extracted as metadata on every citation
 - **Confidence scoring**: 0–1 scale. 1.0 for exact reporter match; penalties for unknown reporters, ambiguous matches
 - **String citation groups**: Semicolon-separated citations sharing same proposition tracked via `stringCitationGroupId`
 - **Blank page citations**: Handles "___" and "---" placeholders in slip opinions
 - **Nominative reporter support**: Early SCOTUS citations (e.g., "67 U.S. (2 Black) 635")
 - **Possible interpretations**: `possibleInterpretations[]` for ambiguous citations
+- **Footnote detection**: Opt-in zone detection for both HTML and plain-text documents; resolver enforces footnote-aware scope isolation
 
 ## Patterns
 
@@ -258,16 +272,22 @@ pnpm format                       # Format with Biome (auto-fix)
 pnpm size                         # Check bundle size limits
 ```
 
-1,000+ tests across 57 test files. Tests mirror source structure in `tests/`. CI: GitHub Actions with Node 18/20/22 matrix. Releases via Changesets.
+1,748 tests across 72 test files. Tests mirror source structure in `tests/`. CI: GitHub Actions with Node 18/20/22 matrix. Releases via Changesets.
 
 ## Source Structure
 
 ```
 src/
   index.ts                   # Main entry point exports
-  types.ts                   # All citation type definitions (discriminated union)
+  types/                     # All citation type definitions (discriminated union)
+    citation.ts              # FullCaseCitation, StatuteCitation, etc.
+    componentSpans.ts        # Per-field span position types
+    guards.ts                # Type guard functions
+    span.ts                  # Span, DualSpan types
   clean/                     # Text cleaning + TransformationMap
     cleanText.ts             # HTML strip, whitespace/Unicode normalize, smart quotes
+    cleaners.ts              # Individual cleaner functions
+    segmentMap.ts            # TransformationMap position tracking
   tokenize/                  # Regex pattern matching
     tokenizer.ts             # Apply patterns, deduplicate by position
   patterns/                  # 26 regex patterns across 6 files
@@ -279,7 +299,7 @@ src/
     journalPatterns.ts
   extract/                   # Metadata extraction from tokens
     extractCitations.ts      # Main orchestrator + ExtractOptions
-    extractCase.ts           # Case name, parenthetical, full span, dates, disposition
+    extractCase.ts           # Case name, parenthetical, full span, component spans, dates, disposition
     extractStatute.ts
     extractConstitutional.ts
     extractJournal.ts
@@ -287,24 +307,38 @@ src/
     extractPublicLaw.ts
     extractFederalRegister.ts
     extractStatutesAtLarge.ts
-    pincite.ts               # Pincite parsing
+    extractShortForms.ts     # Id., supra, short-form case extraction
+    detectParallel.ts        # Parallel citation detection + grouping
+    detectStringCites.ts     # String citation group detection
+    courtInference.ts        # Court level/jurisdiction inference
     courtNormalization.ts    # Court name normalization
+    pincite.ts               # Pincite parsing
     dates.ts                 # Date parsing (parseMonth, parseDate, toIsoDate)
     filterFalsePositives.ts
+    validation.ts            # Citation validation helpers
+    unionFind.ts             # Union-find for citation grouping
+    statutes/                # Statute-specific extraction helpers
   resolve/                   # Short-form citation resolution
-    resolver.ts              # DocumentResolver class
+    DocumentResolver.ts      # DocumentResolver class
     types.ts                 # ResolutionOptions, ResolvedCitation
+    scopeBoundary.ts         # Paragraph/section/footnote scope logic
     bkTree.ts                # BKTree for fuzzy party name matching
     levenshtein.ts           # Levenshtein distance
   footnotes/                 # Footnote zone detection
-    htmlDetector.ts          # HTML tag-based detection
+    detectFootnotes.ts       # Strategy selector + FootnoteMap
+    htmlDetector.ts          # HTML tag-based detection (no DOM)
     textDetector.ts          # Plain-text separator/marker detection
+    mapZones.ts              # Map zones through TransformationMap
+    tagging.ts               # Tag citations with inFootnote/footnoteNumber
+    types.ts                 # FootnoteZone, FootnoteMap types
   annotate/                  # Citation annotation
     annotate.ts              # Template + callback annotation modes
     types.ts                 # AnnotationOptions, AnnotationResult
   data/                      # Reporter database (lazy-loaded)
     reporters.ts             # 1,200+ reporters
+    reportersCache.ts        # Lazy load + caching
     knownCodes.ts            # Jurisdiction code registry
+    stateStatutes.ts         # State statute code definitions
   utils/                     # Post-extraction utilities
     reporterKey.ts           # toReporterKey, toReporterKeys
     bluebook.ts              # toBluebook formatting
