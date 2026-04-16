@@ -373,7 +373,7 @@ const CASE_NAME_ABBREVS: ReadonlySet<string> = new Set([
   "mr", "mrs", "ms", "dr", "jr", "sr", "prof", "rev", "hon", "sgt", "capt",
   "col", "lt",
   // ── Other common legal abbreviations ──
-  "ed", "op", "ad", "dep", "ass", "is", "ry",
+  "ed", "op", "ad", "dep", "ass", "ry",
 ])
 
 /**
@@ -388,7 +388,7 @@ const CASE_NAME_ABBREVS: ReadonlySet<string> = new Set([
 function isLikelyAbbreviationPeriod(text: string, dotIndex: number): boolean {
   // Walk backward from the period to find the word
   let start = dotIndex
-  while (start > 0 && /[A-Za-z.'\-]/.test(text[start - 1])) {
+  while (start > 0 && /[-A-Za-z.']/.test(text[start - 1])) {
     start--
   }
   const word = text.substring(start, dotIndex)
@@ -409,14 +409,18 @@ function isLikelyAbbreviationPeriod(text: string, dotIndex: number): boolean {
   return false
 }
 
-/** Hard boundary: Id. citation marker — the scan must not cross this. */
-const ID_BOUNDARY_REGEX = /\bId\.\s+/gi
+/** Hard boundary: Id. citation marker — the scan must not cross this.
+ *  Case-sensitive: Bluebook convention is always capitalized "Id." */
+const ID_BOUNDARY_REGEX = /\bId\.\s+/g
 
 /** Hard boundary: parenthetical signal words that introduce nested citations.
  *  Matches opening paren + optional space + signal word + space.
  *  E.g., "(quoting ", "(citing ", "(cited in " */
 const PAREN_SIGNAL_BOUNDARY_REGEX =
-  /\(\s*(?:quoting|citing|cited\s+in|discussing|noting|explaining|describing|recognizing|applying|rejecting|adopting|requiring)\s+/gi
+  /\(\s*(?:quoting|citing|cited\s+in|discussing|noting|explaining|describing|recognizing|applying|rejecting|adopting|requiring|overruling|overruled\s+by|abrogated\s+by)\s+/gi
+
+/** Sentence boundary: closing paren or period, followed by space + uppercase letter. */
+const SENTENCE_BOUNDARY_REGEX = /[.)]\s+(?=[A-Z])/g
 
 /**
  * Extract case name via backward search from citation core.
@@ -453,6 +457,7 @@ function extractCaseName(
   let match: RegExpExecArray | null
 
   // Check citation boundaries (digit-period-space)
+  CITATION_BOUNDARY_REGEX.lastIndex = 0
   while ((match = CITATION_BOUNDARY_REGEX.exec(precedingText)) !== null) {
     lastBoundaryIndex = match.index + match[0].length
   }
@@ -477,8 +482,8 @@ function extractCaseName(
 
   // Check sentence boundaries: "). " or ". " followed by uppercase letter.
   // Skip when the period belongs to a legal abbreviation (comprehensive T6/T10/T7 check).
-  const SENTENCE_BOUNDARY = /[.)]\s+(?=[A-Z])/g
-  while ((match = SENTENCE_BOUNDARY.exec(precedingText)) !== null) {
+  SENTENCE_BOUNDARY_REGEX.lastIndex = 0
+  while ((match = SENTENCE_BOUNDARY_REGEX.exec(precedingText)) !== null) {
     // Only check abbreviation for period boundaries, not close-paren boundaries
     if (precedingText[match.index] === "." && isLikelyAbbreviationPeriod(precedingText, match.index)) {
       continue
