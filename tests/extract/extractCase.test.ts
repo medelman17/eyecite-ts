@@ -2030,4 +2030,129 @@ describe("nominative reporter support (#49, #16)", () => {
       expect(cite.year).toBe(1990)
     })
   })
+
+  describe("case name boundary bugs (#182, #183, #184)", () => {
+    // ── Issue #184: caseName undefined when plaintiff has abbreviation/initials ──
+
+    it("#184: plaintiff with trailing Inc. before v.", () => {
+      const text =
+        "Men Women N.Y. Model Mgt., Inc. v. Elite Model Mgt. LLC, 183 A.D.3d 501 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBeDefined()
+        expect(cite.caseName).toContain("v.")
+        expect(cite.caseName).toContain("Elite Model Mgt. LLC")
+      }
+    })
+
+    it("#184: plaintiff with simpler Inc. before v.", () => {
+      const text =
+        "Men Women Model Mgt., Inc. v. Elite Model Mgt. LLC, 183 A.D.3d 501 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBeDefined()
+        expect(cite.caseName).toContain("v.")
+      }
+    })
+
+    it("#184: single-letter initials in party names", () => {
+      const text = "A. Smith v. B. Jones, 500 F.3d 123 (2d Cir. 2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBeDefined()
+        expect(cite.caseName).toBe("A. Smith v. B. Jones")
+      }
+    })
+
+    // ── Issue #183: case name stops at intra-name abbreviation chains ──
+
+    it("#183: consecutive abbreviations Cent. Sch. Dist.", () => {
+      const text =
+        "See Alfred-Almond Cent. Sch. Dist. v. NY44 Health Benefits Plan Trust, 2019 NY Slip Op 6303 (4th Dep't 2019)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toContain("Alfred-Almond Cent. Sch. Dist.")
+        expect(cite.caseName).toContain("NY44 Health Benefits Plan Trust")
+      }
+    })
+
+    it("#183: initialism followed by abbreviation (A.N.L.Y.H. Invs.)", () => {
+      const text =
+        "A.N.L.Y.H. Invs. LP v. JDS Principal Highline LLC, 2024 NY Slip Op 05133 (1st Dep't 2024)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toContain("A.N.L.Y.H. Invs. LP")
+        expect(cite.caseName).toContain("JDS Principal Highline LLC")
+      }
+    })
+
+    // ── Issue #182: case name overshoots across Id. and nested citations ──
+
+    it("#182: does not overshoot across Id. boundary", () => {
+      const text =
+        "Id. at 19-20 (quoting Northeast Gen. Corp. v. Wellington Adv., 82 N.Y.2d 158, 162 [1993])."
+      const cites = extractCitations(text)
+      const fullCite = cites.find(
+        (c) => c.type === "case" && c.reporter === "N.Y.2d",
+      )
+      expect(fullCite).toBeDefined()
+      if (fullCite?.type === "case") {
+        expect(fullCite.caseName).toBe(
+          "Northeast Gen. Corp. v. Wellington Adv.",
+        )
+        expect(fullCite.caseName).not.toContain("Id.")
+      }
+    })
+
+    it("#182: does not overshoot across (cited in) parenthetical", () => {
+      const text =
+        "Clark-Fitzpatrick, Inc. v. Long Is. R.R. Co., 70 N.Y.2d 382, 388 (1987) (cited in Polaris Venture Partners VI L.P. v. AD-Venture Capital Partners L.P., 179 A.D.3d 548, 548 (1st Dep't 2020))."
+      const cites = extractCitations(text)
+      const innerCite = cites.find(
+        (c) => c.type === "case" && c.reporter === "A.D.3d",
+      )
+      expect(innerCite).toBeDefined()
+      if (innerCite?.type === "case") {
+        expect(innerCite.caseName).toContain("Polaris Venture Partners")
+        expect(innerCite.caseName).not.toContain("Co.")
+        expect(innerCite.caseName).not.toContain("70 N.Y.2d")
+      }
+    })
+
+    // ── Additional edge cases from the research ──
+
+    it("handles Corp. Sec. Litig. abbreviation chain", () => {
+      const text =
+        "In re ABC Corp. Sec. Litig., 500 F. Supp. 2d 100 (S.D.N.Y. 2007)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toContain("ABC Corp. Sec. Litig.")
+      }
+    })
+
+    it("handles Fed. Sav. Bank abbreviation chain", () => {
+      const text = "Smith v. First Fed. Sav. Bank, 500 F.3d 100 (5th Cir. 2007)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Smith v. First Fed. Sav. Bank")
+      }
+    })
+
+    it("handles Mun. Util. Dist. abbreviation chain", () => {
+      const text =
+        "Nw. Austin Mun. Util. Dist. No. 1 v. Holder, 557 U.S. 193 (2009)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toContain("Nw. Austin Mun. Util. Dist.")
+      }
+    })
+  })
 })

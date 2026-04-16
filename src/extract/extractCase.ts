@@ -319,6 +319,105 @@ function stripDateFromCourt(content: string): string | undefined {
   return court && /[A-Za-z]/.test(court) ? court : undefined
 }
 
+// ============================================================================
+// Case-name boundary detection: abbreviation set + heuristics
+// ============================================================================
+
+/**
+ * Comprehensive set of legal abbreviation stems (lowercase, without trailing period)
+ * used to distinguish abbreviation periods from sentence-ending periods during
+ * backward case-name scanning.
+ *
+ * Sources: Bluebook T6 (case name abbreviations), T7 (court abbreviations),
+ * T10 (geographic abbreviations), plus common titles and corporate suffixes.
+ */
+const CASE_NAME_ABBREVS: ReadonlySet<string> = new Set([
+  // ── Bluebook T6: Case name and institutional abbreviations ──
+  "acad", "acct", "accts", "admin", "adm", "advert", "advoc", "aff", "affs",
+  "afr", "agric", "all", "alt", "am", "ann", "app", "arb", "assoc", "assocs",
+  "atl", "auth", "auto", "ave", "bankr", "behav", "bd", "bor", "brit", "broad",
+  "bhd", "bros", "bldg", "bull", "bus", "can", "cap", "cas", "cath", "ctr",
+  "ctrs", "cent", "chem", "child", "chron", "coal", "coll", "com", "comm",
+  "compar", "comp", "comput", "condo", "conf", "cong", "consol", "const",
+  "constr", "cont", "coop", "corp", "corps", "corr", "cosm", "couns", "cntys",
+  "cnty", "crim", "def", "delinq", "det", "dev", "dig", "dir", "disc", "disp",
+  "distrib", "dist", "div", "econ", "educ", "elec", "emp", "eng", "enter",
+  "ent", "equal", "equip", "est", "eur", "exam", "exch", "exec", "expl", "exp",
+  "fac", "fam", "fams", "fed", "fid", "fin", "found", "gen", "glob", "grp",
+  "guar", "hist", "hosp", "hous", "hum", "immigr", "imp", "inc", "indem",
+  "indep", "indus", "info", "inj", "inst", "ins", "intell", "intel", "int",
+  "inv", "invs", "jurid", "just", "juv", "lab", "law", "liab", "ltd", "loc",
+  "mach", "mag", "maint", "mgmt", "mgt", "mfr", "mfrs", "mfg", "mar", "mkt",
+  "mktg", "matrim", "mech", "med", "merch", "metro", "min", "misc", "mod",
+  "mortg", "mun", "mut", "nat", "negl", "negot", "nw", "no", "nos", "off",
+  "org", "orgs", "pac", "pat", "pers", "pharm", "phil", "plan", "pol", "prac",
+  "pres", "priv", "prob", "proc", "prod", "pro", "prop", "psych", "pub", "rec",
+  "reg", "regul", "rehab", "rel", "rels", "rep", "reprod", "rsch", "rsrv",
+  "resol", "res", "resp", "rest", "ret", "rd", "sav", "sch", "schs", "sci",
+  "sec", "serv", "servs", "sess", "soc", "solic", "spec", "stat", "subcomm",
+  "sur", "surv", "sys", "tchr", "tech", "telecomm", "tel", "temp", "twp",
+  "transcon", "transp", "treas", "tr", "trs", "tpk", "unemplmt", "unif",
+  "univ", "urb", "util", "veh", "vehs", "vill", "voc", "whse", "whol",
+  "litig",
+  // ── T6: Directional abbreviations ──
+  "n", "s", "e", "w", "m", "ne", "se", "sw",
+  // ── T7: Court abbreviations ──
+  "v", "vs", "ct", "cir", "supp", "cl", "jud", "super", "sup", "magis",
+  "mil", "terr",
+  // ── T10: US state abbreviations ──
+  "ala", "ariz", "ark", "cal", "colo", "conn", "del", "fla", "ga", "haw",
+  "ida", "ill", "ind", "kan", "ky", "la", "me", "md", "mass", "mich", "minn",
+  "miss", "mo", "mont", "neb", "nev", "okla", "or", "pa", "tenn", "tex", "vt",
+  "va", "wash", "wis", "wyo",
+  // ── Titles and honorifics ──
+  "mr", "mrs", "ms", "dr", "jr", "sr", "prof", "rev", "hon", "sgt", "capt",
+  "col", "lt",
+  // ── Other common legal abbreviations ──
+  "ed", "op", "ad", "dep", "ass", "is", "ry",
+])
+
+/**
+ * Detect whether a period at `dotIndex` in `text` is likely an abbreviation
+ * rather than a sentence boundary.
+ *
+ * Three-tier check:
+ *   1. Word stem is in the comprehensive CASE_NAME_ABBREVS set
+ *   2. Single uppercase letter (initial: A., B., J., N.)
+ *   3. Word contains internal periods (dotted initialism: N.Y., U.S., D.C.)
+ */
+function isLikelyAbbreviationPeriod(text: string, dotIndex: number): boolean {
+  // Walk backward from the period to find the word
+  let start = dotIndex
+  while (start > 0 && /[A-Za-z.'\-]/.test(text[start - 1])) {
+    start--
+  }
+  const word = text.substring(start, dotIndex)
+  if (!word) return false
+
+  // Strip trailing periods/apostrophes for set lookup
+  const stem = word.replace(/[.']+$/, "").toLowerCase()
+
+  // Tier 1: Known legal abbreviation
+  if (CASE_NAME_ABBREVS.has(stem)) return true
+
+  // Tier 2: Single uppercase letter (initial)
+  if (stem.length === 1 && /[a-z]/i.test(stem)) return true
+
+  // Tier 3: Contains internal periods (dotted initialism like N.Y, U.S, D.C)
+  if (/\.[A-Za-z]/.test(word)) return true
+
+  return false
+}
+
+/** Hard boundary: Id. citation marker — the scan must not cross this. */
+const ID_BOUNDARY_REGEX = /\bId\.\s+/gi
+
+/** Hard boundary: parenthetical signal words that introduce nested citations.
+ *  Matches opening paren + optional space + signal word + space.
+ *  E.g., "(quoting ", "(citing ", "(cited in " */
+const PAREN_SIGNAL_BOUNDARY_REGEX =
+  /\(\s*(?:quoting|citing|cited\s+in|discussing|noting|explaining|describing|recognizing|applying|rejecting|adopting|requiring)\s+/gi
+
 /**
  * Extract case name via backward search from citation core.
  * Looks for "v." pattern or procedural prefixes (In re, Ex parte, Matter of).
@@ -344,11 +443,12 @@ function extractCaseName(
   let adjustedSearchStart = searchStart
 
   // Split at last boundary to avoid crossing citation/sentence boundaries.
-  // We check two boundary types:
+  // We check four boundary types:
   //   1. Citation boundary: digit-period-space (e.g., "10. " from a previous cite's page number)
-  //   2. Sentence boundary: closing paren + period + space + uppercase letter (e.g., "(2020). See")
-  //      Also handles plain sentence ends: period + space + uppercase, but ONLY when the
-  //      word before the period is NOT a known legal abbreviation (v, vs, Inc, Corp, etc.)
+  //   2. Id. boundary: "Id. " short-form citation marker (#182)
+  //   3. Parenthetical signal boundary: "(quoting ", "(citing ", "(cited in " (#182)
+  //   4. Sentence boundary: period/paren + space + uppercase, skipped when the
+  //      word before the period is a legal abbreviation (Bluebook T6/T10/T7)
   let lastBoundaryIndex = -1
   let match: RegExpExecArray | null
 
@@ -357,14 +457,32 @@ function extractCaseName(
     lastBoundaryIndex = match.index + match[0].length
   }
 
+  // Check Id. boundaries (#182)
+  ID_BOUNDARY_REGEX.lastIndex = 0
+  while ((match = ID_BOUNDARY_REGEX.exec(precedingText)) !== null) {
+    const boundaryEnd = match.index + match[0].length
+    if (boundaryEnd > lastBoundaryIndex) {
+      lastBoundaryIndex = boundaryEnd
+    }
+  }
+
+  // Check parenthetical signal boundaries (#182)
+  PAREN_SIGNAL_BOUNDARY_REGEX.lastIndex = 0
+  while ((match = PAREN_SIGNAL_BOUNDARY_REGEX.exec(precedingText)) !== null) {
+    const boundaryEnd = match.index + match[0].length
+    if (boundaryEnd > lastBoundaryIndex) {
+      lastBoundaryIndex = boundaryEnd
+    }
+  }
+
   // Check sentence boundaries: "). " or ". " followed by uppercase letter.
-  // Skip legal abbreviations that end with period.
-  const LEGAL_ABBREVS = /\b(?:v|vs|Inc|Corp|Ltd|Co|Cir|App|Ct|Supp|Dist|Rev|Stat|Gen|No|ed|Jr|Sr|Dr|Mr|Mrs|Ms|Prof|St|Dep|Auth|Ass|Comm)\.\s+$/i
+  // Skip when the period belongs to a legal abbreviation (comprehensive T6/T10/T7 check).
   const SENTENCE_BOUNDARY = /[.)]\s+(?=[A-Z])/g
   while ((match = SENTENCE_BOUNDARY.exec(precedingText)) !== null) {
-    // Check if this looks like a legal abbreviation before the period
-    const textBefore = precedingText.substring(Math.max(0, match.index - 15), match.index + 2)
-    if (LEGAL_ABBREVS.test(textBefore)) continue
+    // Only check abbreviation for period boundaries, not close-paren boundaries
+    if (precedingText[match.index] === "." && isLikelyAbbreviationPeriod(precedingText, match.index)) {
+      continue
+    }
     const boundaryEnd = match.index + match[0].length
     if (boundaryEnd > lastBoundaryIndex) {
       lastBoundaryIndex = boundaryEnd
