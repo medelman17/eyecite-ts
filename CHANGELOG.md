@@ -1,5 +1,13 @@
 # eyecite-ts
 
+## 0.10.2
+
+### Patch Changes
+
+- [#185](https://github.com/medelman17/eyecite-ts/pull/185) [`e1a46d0`](https://github.com/medelman17/eyecite-ts/commit/e1a46d0085f50ae9553277085e90ef889a104873) Thanks [@medelman17](https://github.com/medelman17)! - fix: robust case-name boundary detection with Bluebook T6/T10 abbreviations (#182, #183, #184)
+
+  Replace the narrow LEGAL_ABBREVS regex (~30 entries) with a comprehensive Bluebook-sourced abbreviation set (200+ entries from T6/T7/T10) backed by heuristics for single-letter initials and dotted initialisms. Add hard boundary detection for Id. markers and parenthetical signal words (quoting, citing, cited in). Fixes case names that were undefined, truncated, or overshot when party names contained abbreviation chains like "Cent. Sch. Dist.", "Mgt., Inc.", or "A.N.L.Y.H. Invs."
+
 ## 0.10.1
 
 ### Patch Changes
