@@ -2424,3 +2424,81 @@ describe("case name boundary bugs (#193)", () => {
   })
 })
 
+describe("reporters-db alignment + ampersand support", () => {
+  // Follow-up to #193 after aligning CASE_NAME_ABBREVS with
+  // freelawproject/reporters-db/case_name_abbreviations.json (Bluebook T6).
+
+  describe("period-form abbreviations (Co./Company etc.)", () => {
+    it("handles 'Co.' mid-caption (previously truncated to suffix)", () => {
+      const text =
+        "Smith & Co. United States Corp., 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Smith & Co. United States Corp.")
+      }
+    })
+
+    it("handles 'Co.' followed by capital word", () => {
+      const text = "Acme Co. International Group, 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Acme Co. International Group")
+      }
+    })
+  })
+
+  describe("apostrophe-form abbreviations (Nat'l, Dep't, Ass'n)", () => {
+    it("handles 'Nat'l.' with trailing period mid-caption", () => {
+      // Rare but valid form. Without the stem-strip fix, "Nat'l. B" would
+      // trigger a sentence boundary because the old stem computation
+      // preserved internal apostrophes ("nat'l" not in set).
+      const text = "Nat'l. Board Corp., 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Nat'l. Board Corp.")
+      }
+    })
+
+    it("handles 'Dep't of Health v. Smith' adversarial", () => {
+      const text = "Dep't of Health v. Smith, 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Dep't of Health v. Smith")
+      }
+    })
+  })
+
+  describe("ampersand in party names", () => {
+    it("captures 'Smith & Jones' (no v.)", () => {
+      const text = "Smith & Jones, 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Smith & Jones")
+      }
+    })
+
+    it("captures 'Goldman, Sachs & Co.' (comma + ampersand)", () => {
+      const text = "Goldman, Sachs & Co., 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Goldman, Sachs & Co.")
+      }
+    })
+
+    it("captures 'Acme & Sons v. Jones' adversarial", () => {
+      const text = "See Acme & Sons v. Jones, 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Acme & Sons v. Jones")
+      }
+    })
+  })
+})
+
