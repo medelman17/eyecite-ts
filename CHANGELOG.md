@@ -1,5 +1,78 @@
 # eyecite-ts
 
+## 0.11.0
+
+### Minor Changes
+
+- [#192](https://github.com/medelman17/eyecite-ts/pull/192) [`7f84d0c`](https://github.com/medelman17/eyecite-ts/commit/7f84d0c788d0ac7f9d84a15dc5997708dac756fc) Thanks [@medelman17](https://github.com/medelman17)! - feat: star-pagination (`at *N`) support on all pincite-bearing citation types (#191)
+
+  Star-pagination pincites (`at *1`, `at *2-4`) were silently dropped on `id`,
+  `supra`, `shortFormCase`, full case cites with slip-opinion reporters (NY Slip
+  Op), and neutrals (Westlaw, Lexis). In real-world NY state-court briefs this
+  meant a significant fraction of pincites came back `undefined`. Plain-integer
+  pincites (`at 465`) continued to work.
+
+  Changes:
+
+  - **`parsePincite` / `PinciteInfo`** — accept optional `*` prefix; new
+    `starPage?: boolean` flag distinguishes slip-opinion pages from reporter
+    pages. Existing `page: number` still carries the numeric portion, so
+    backward compatibility for consumers reading `pincite` as a number is
+    preserved.
+  - **Full case cites** — `PINCITE_REGEX`, `LOOKAHEAD_PINCITE_REGEX`, and
+    `PINCITE_SKIP_REGEX` now accept an optional `at` keyword and `*` prefix.
+    Pincite extraction also runs when no trailing parenthetical is present,
+    so forms like `2020 NY Slip Op 00001 at *2` capture the pin even though
+    there is no `(Court YYYY)` block.
+  - **Short-form citations** — `ID_PATTERN`, `IBID_PATTERN`, `SUPRA_PATTERN`,
+    `STANDALONE_SUPRA_PATTERN`, and `SHORT_FORM_CASE_PATTERN` now accept `*?`
+    before the pincite digits. The matching extractors populate
+    `pinciteInfo.starPage` and now expose `pinciteInfo` on `IdCitation`,
+    `SupraCitation`, and `ShortFormCaseCitation`.
+  - **Neutral citations** — `NeutralCitation` gains `pincite?: number` and
+    `pinciteInfo?: PinciteInfo` fields. `extractNeutral` now accepts the
+    cleaned source text and extracts a trailing `, at *N` / ` at *N` pincite.
+    Previously, **numeric** pincites on neutrals were also silently dropped;
+    this change fixes that as a side effect.
+
+  Known limitation: the second occurrence of a NY Slip Op short-form
+  (`2020 NY Slip Op 00001 at *2`) is still classified as `case` rather than
+  `shortFormCase`, because `SHORT_FORM_CASE_PATTERN` forbids a page between
+  the reporter and `at`. The pincite data itself is captured correctly.
+  Shortform classification for NY Slip Op will be addressed in a follow-up.
+
+### Patch Changes
+
+- [#195](https://github.com/medelman17/eyecite-ts/pull/195) [`f10c234`](https://github.com/medelman17/eyecite-ts/commit/f10c2347d368a3b87f5af81e191a223661ca4e82) Thanks [@medelman17](https://github.com/medelman17)! - fix: recognize single-party corporate captions and `In the Matter of …` prefix (#193)
+
+  `FullCaseCitation.caseName` came back `null` for any caption that didn't
+  contain `v.` or match the short procedural-prefix list (`In re`,
+  `Matter of`, `Estate of`, `Ex parte`, etc.). Common NY patterns like
+  `Board of Mgrs. of the St. Tropez Condominium` and `Board of Directors
+of Hill Park` silently lost their case names — downstream UI fell back
+  to displaying the bare reporter triple.
+
+  Two root causes:
+
+  - **Missing long-form procedural prefix.** `In the Matter of X` was
+    reduced to `Matter of X` because the short prefix matched mid-string
+    before the long one could. Added `In the Matter of` to
+    `PROCEDURAL_PREFIX_REGEX` and the `extractPartyNames` prefix list, both
+    with priority over `Matter of`.
+  - **No generic fallback for single-party captions.** When both `V.` and
+    procedural-prefix scans fail, the backward scanner now uses the
+    post-truncation `precedingText` itself as the caption, after stripping
+    any leading signal word (`See`, `cf.`, etc.) and validating via
+    `isLikelyPartyName` + `SENTENCE_INITIAL_WORDS`. Because the truncation
+    step already bounds `precedingText` by sentence/citation/paren-signal
+    boundaries, sentence prose like "The court held that..." is not
+    mis-matched.
+
+  11 new regression tests cover corporate captions (`Board of Mgrs. of`,
+  `Board of Managers of`, `Board of Directors of`, bare `Corp.`),
+  `In the Matter of` priority over `Matter of`, sentence-prose safety, and
+  pre-existing adversarial/`Estate of`/`ex rel.` controls.
+
 ## 0.10.3
 
 ### Patch Changes
