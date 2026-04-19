@@ -228,9 +228,11 @@ const LEADING_WORD_REGEX = /^([a-z]+)\b/i
 const V_CASE_NAME_REGEX =
   /([A-Z][A-Za-z0-9\s.,'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9\s.,'&()/-]+?)\s*,\s*$/
 
-/** Procedural prefix case name format */
+/** Procedural prefix case name format.
+ *  Longer prefixes listed first so `In the Matter of X` beats `Matter of X`.
+ *  See #193. */
 const PROCEDURAL_PREFIX_REGEX =
-  /\b(In re|Ex parte|Matter of|Estate of|State ex rel\.|United States ex rel\.|Application of|Petition of)\s+([A-Za-z0-9\s.,'&()/-]+?)\s*,\s*$/i
+  /\b(In\s+the\s+Matter\s+of|In re|Ex parte|Matter of|Estate of|State ex rel\.|United States ex rel\.|Application of|Petition of)\s+([A-Za-z0-9\s.,'&()/-]+?)\s*,\s*$/i
 
 /**
  * Lowercase words that legitimately appear in legal party names.
@@ -574,7 +576,7 @@ function extractCaseName(
     }
   }
 
-  // Priority 2: Procedural prefixes (including Estate of)
+  // Priority 2: Procedural prefixes (including Estate of, In the Matter of)
   const procMatch = PROCEDURAL_PREFIX_REGEX.exec(precedingText)
   if (procMatch) {
     // Check for semicolon in matched text (multi-citation separator)
@@ -582,6 +584,40 @@ function extractCaseName(
       const caseName = `${procMatch[1]} ${procMatch[2].trim()}`
       const nameStart = adjustedSearchStart + procMatch.index
       return { caseName, nameStart }
+    }
+  }
+
+  // Priority 3: Generic single-party caption (#193).
+  //
+  // V. and procedural-prefix scans failed. The precedingText is already
+  // bounded by sentence/citation/paren-signal boundaries, so whatever
+  // remains — typically a capitalized-words-only caption ending at ", " —
+  // is the caption candidate. Strip any leading signal word (See, cf., etc.)
+  // and validate via isLikelyPartyName to filter out sentence prose.
+  //
+  // Handles single-party corporate captions like "Board of Mgrs. of X",
+  // "Board of Directors of X", and unrecognized organizational prefixes
+  // that don't fit PROCEDURAL_PREFIX_REGEX.
+  const commaStrippedBody = precedingText.replace(/,\s*$/, "")
+  const leadingWsLen = commaStrippedBody.length - commaStrippedBody.trimStart().length
+  let captionBody = commaStrippedBody.substring(leadingWsLen)
+  let signalStripLen = 0
+  const sigStripMatch = SIGNAL_STRIP_REGEX.exec(captionBody)
+  if (sigStripMatch) {
+    signalStripLen = sigStripMatch[0].length
+    captionBody = captionBody.substring(signalStripLen)
+  }
+  const caption = captionBody.trim()
+
+  if (caption.length > 0 && isLikelyPartyName(caption)) {
+    const firstWord = caption.split(/\s+/)[0] ?? ""
+    const firstWordClean = firstWord.toLowerCase().replace(/[.,']+$/, "")
+    if (!SENTENCE_INITIAL_WORDS.has(firstWordClean)) {
+      // Skip multi-citation strings (joined by semicolons)
+      if (!caption.includes(";")) {
+        const nameStart = adjustedSearchStart + leadingWsLen + signalStripLen
+        return { caseName: caption, nameStart }
+      }
     }
   }
 
@@ -916,7 +952,9 @@ function extractPartyNames(caseName: string): {
 } {
   let signal: CitationSignal | undefined
   // Procedural prefix patterns (anchored to start, case-insensitive)
+  // Longer prefixes first so "In the Matter of X" wins over "Matter of X".
   const proceduralPrefixes = [
+    "In the Matter of",
     "In re",
     "Ex parte",
     "Matter of",
