@@ -447,6 +447,10 @@ export interface NeutralCitation extends CitationBase {
   court: string
   /** Document number */
   documentNumber: string
+  /** Pincite page (numeric portion, without "*" for star-pagination). */
+  pincite?: number
+  /** Structured pincite information (page, range, footnote, star-pagination). */
+  pinciteInfo?: import("../extract/pincite").PinciteInfo
 
   /** Precise text positions for each parsed component of this citation. */
   spans?: NeutralComponentSpans
@@ -541,6 +545,8 @@ export interface ConstitutionalCitation extends CitationBase {
 export interface IdCitation extends CitationBase {
   type: "id"
   pincite?: number
+  /** Structured pincite information (page, range, footnote, star-pagination). */
+  pinciteInfo?: import("../extract/pincite").PinciteInfo
 }
 
 /**
@@ -555,6 +561,8 @@ export interface SupraCitation extends CitationBase {
   partyName?: string
   /** Specific page reference */
   pincite?: number
+  /** Structured pincite information (page, range, footnote, star-pagination). */
+  pinciteInfo?: import("../extract/pincite").PinciteInfo
 }
 
 /**
@@ -569,6 +577,8 @@ export interface ShortFormCaseCitation extends CitationBase {
   reporter: string
   page?: number
   pincite?: number
+  /** Structured pincite information (page, range, footnote, star-pagination). */
+  pinciteInfo?: import("../extract/pincite").PinciteInfo
 }
 
 /**

@@ -12,30 +12,34 @@
 
 import type { Pattern } from "./casePatterns"
 
-/** Id. with optional pincite: "Id." or "Id. at 253" or "Id., at 253" */
-export const ID_PATTERN: RegExp = /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]d\.(?:,?\s+at\s+(\d+(?:\s*[-–]\s*\d+)?))?/g
+/** Id. with optional pincite: "Id." or "Id. at 253" or "Id., at 253".
+ *  Pincite captures an optional "*" prefix for star-pagination (NY Slip Op,
+ *  Westlaw, Lexis; see #191). */
+export const ID_PATTERN: RegExp =
+  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]d\.(?:,?\s+at\s+(\*?\d+(?:\s*[-–]\s*\*?\d+)?))?/g
 
-/** Ibid. with optional pincite (less common variant) */
-export const IBID_PATTERN: RegExp = /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]bid\.(?:,?\s+at\s+(\d+(?:\s*[-–]\s*\d+)?))?/g
+/** Ibid. with optional pincite (less common variant). */
+export const IBID_PATTERN: RegExp =
+  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]bid\.(?:,?\s+at\s+(\*?\d+(?:\s*[-–]\s*\*?\d+)?))?/g
 
 /**
  * Supra with party name and optional pincite.
  * Pattern: word(s), supra [note N] [, at page]
  * Captures: (1) party name, (2) note number (if any), (3) pincite
- * Note: Matches party names including hyphens, apostrophes, periods, and "v."
+ * Pincite accepts optional "*" prefix for star-pagination (#191).
  */
 export const SUPRA_PATTERN: RegExp =
-  /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+at\s+(\d+))?/g
+  /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+at\s+(\*?\d+))?/g
 
 /**
  * Standalone supra without party name (common in footnotes).
  * Matches: "supra note 12", "supra at 15", "supra § 3", "supra Part II"
  * Requires "note", "at", "§", "Part", or "p." after supra to avoid matching
  * the word "supra" in prose. Preceded by whitespace, start, or signal words.
- * Captures: (1) note number (if any), (2) pincite
+ * Captures: (1) note number (if any), (2) pincite (with optional "*" prefix, #191).
  */
 export const STANDALONE_SUPRA_PATTERN: RegExp =
-  /(?:^|(?<=\s)|(?<=[;.]))supra(?:\s+note\s+(\d+)(?:,?\s+at\s+(\d+))?|\s+at\s+(\d+)|\s+(?:§+|Part|p\.)\s*\S+)/g
+  /(?:^|(?<=\s)|(?<=[;.]))supra(?:\s+note\s+(\d+)(?:,?\s+at\s+(\*?\d+))?|\s+at\s+(\*?\d+)|\s+(?:§+|Part|p\.)\s*\S+)/g
 
 /**
  * Short-form case: volume reporter [,] at page
@@ -43,9 +47,10 @@ export const STANDALONE_SUPRA_PATTERN: RegExp =
  * Simplified detection; full parsing in extraction layer.
  * Supports reporters with 1-2 letter ordinal suffixes (e.g., F.4th, Cal.4th).
  * Handles SCOTUS/federal comma-before-at: "597 U.S., at 721", "116 F.4th, at 1193".
+ * Pincite accepts optional "*" prefix for star-pagination (#191).
  */
 export const SHORT_FORM_CASE_PATTERN: RegExp =
-  /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(\d+)\b/g
+  /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(\*?\d+)\b/g
 
 /** All short-form patterns for tokenization */
 export const SHORT_FORM_PATTERNS: readonly RegExp[] = [

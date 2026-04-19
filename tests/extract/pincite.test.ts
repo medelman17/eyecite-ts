@@ -95,4 +95,49 @@ describe("parsePincite", () => {
       raw: "570\u201475",
     })
   })
+
+  // ── star-pagination (#191) ──
+
+  it("parses a star-paginated page", () => {
+    expect(parsePincite("*2")).toEqual({
+      page: 2,
+      isRange: false,
+      starPage: true,
+      raw: "*2",
+    })
+  })
+
+  it("parses 'at *3' with star-pagination", () => {
+    expect(parsePincite("at *3")).toEqual({
+      page: 3,
+      isRange: false,
+      starPage: true,
+      raw: "at *3",
+    })
+  })
+
+  it("parses a star-paginated range", () => {
+    expect(parsePincite("*3-5")).toEqual({
+      page: 3,
+      endPage: 5,
+      isRange: true,
+      starPage: true,
+      raw: "*3-5",
+    })
+  })
+
+  it("parses a star-paginated range with star on both ends", () => {
+    expect(parsePincite("*3-*5")).toEqual({
+      page: 3,
+      endPage: 5,
+      isRange: true,
+      starPage: true,
+      raw: "*3-*5",
+    })
+  })
+
+  it("does not set starPage for numeric pincites", () => {
+    const result = parsePincite("570")
+    expect(result?.starPage).toBeUndefined()
+  })
 })

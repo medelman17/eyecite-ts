@@ -11,6 +11,13 @@ import type { Token } from "@/tokenize"
 import type { NeutralCitation } from "@/types/citation"
 import type { NeutralComponentSpans } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
+import { parsePincite, type PinciteInfo } from "./pincite"
+
+/** Matches a trailing pincite on a neutral citation. Accepts both
+ *  ", at *3" (comma + "at" keyword) and " at *3" (whitespace + "at") forms,
+ *  with optional "*" prefix for star-pagination. See #191. */
+const NEUTRAL_PINCITE_LOOKAHEAD =
+  /^(?:\s+at\s+|,\s*(?:at\s+)?)(\*?\d+(?:-\d+)?)/d
 
 /**
  * Extracts neutral citation metadata from a tokenized citation.
@@ -49,6 +56,7 @@ import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from 
 export function extractNeutral(
   token: Token,
   transformationMap: TransformationMap,
+  cleanedText?: string,
 ): NeutralCitation {
   const { text, span } = token
 
@@ -74,6 +82,19 @@ export function extractNeutral(
     }
   }
 
+  // Look ahead in cleaned text for a trailing pincite (e.g., ", at *3" on
+  // Westlaw and Lexis citations). See #191.
+  let pincite: number | undefined
+  let pinciteInfo: PinciteInfo | undefined
+  if (cleanedText) {
+    const afterToken = cleanedText.substring(span.cleanEnd)
+    const laMatch = NEUTRAL_PINCITE_LOOKAHEAD.exec(afterToken)
+    if (laMatch) {
+      pinciteInfo = parsePincite(laMatch[1]) ?? undefined
+      pincite = pinciteInfo?.page
+    }
+  }
+
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
@@ -96,6 +117,8 @@ export function extractNeutral(
     year,
     court,
     documentNumber,
+    pincite,
+    pinciteInfo,
     spans,
   }
 }
