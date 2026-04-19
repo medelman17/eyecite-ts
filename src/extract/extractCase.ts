@@ -361,6 +361,13 @@ const CASE_NAME_ABBREVS: ReadonlySet<string> = new Set([
   "litig",
   // ── T6: Directional abbreviations ──
   "n", "s", "e", "w", "m", "ne", "se", "sw",
+  // ── T6/T10: Geographic features and street types ──
+  // Appear mid-party-name as "Long Is.", "Mt. Sinai", "Ft. Worth", "Stony Pt.",
+  // "Route 66" (Rt.), "St. Paul" / "Main St.", "Wilshire Blvd.", "Times Sq.",
+  // "Pacific Hwy.", "Grand Central Pkwy.", "Washington Hts.". Without these,
+  // the backward scanner treats "Is. R" / "Mt. S" as sentence boundaries and
+  // truncates the case name. See #188.
+  "is", "mt", "ft", "pt", "rt", "st", "blvd", "sq", "hwy", "pkwy", "hts",
   // ── T7: Court abbreviations ──
   "v", "vs", "ct", "cir", "supp", "cl", "jud", "super", "sup", "magis",
   "mil", "terr",
@@ -414,10 +421,14 @@ function isLikelyAbbreviationPeriod(text: string, dotIndex: number): boolean {
 const ID_BOUNDARY_REGEX = /\bId\.\s+/g
 
 /** Hard boundary: parenthetical signal words that introduce nested citations.
- *  Matches opening paren + optional space + signal word + space.
- *  E.g., "(quoting ", "(citing ", "(cited in " */
+ *  Matches opening paren + optional space + signal word (+ optional ", e.g.,")
+ *  + whitespace.
+ *
+ *  E.g., "(quoting ", "(citing ", "(cited in ", "(quoted in ", "(accord ",
+ *  "(citing, e.g., ". The optional `, e.g.[,]` tail handles the common form
+ *  where a citing parenthetical introduces multiple authorities. See #187. */
 const PAREN_SIGNAL_BOUNDARY_REGEX =
-  /\(\s*(?:quoting|citing|cited\s+in|discussing|noting|explaining|describing|recognizing|applying|rejecting|adopting|requiring|overruling|overruled\s+by|abrogated\s+by)\s+/gi
+  /\(\s*(?:quoting|citing|cited\s+in|quoted\s+in|accord|discussing|noting|explaining|describing|recognizing|applying|rejecting|adopting|requiring|overruling|overruled\s+by|abrogated\s+by)(?:,\s*e\.g\.,?)?\s+/gi
 
 /** Sentence boundary: closing paren or period, followed by space + uppercase letter. */
 const SENTENCE_BOUNDARY_REGEX = /[.)]\s+(?=[A-Z])/g

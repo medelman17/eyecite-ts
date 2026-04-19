@@ -2156,3 +2156,149 @@ describe("nominative reporter support (#49, #16)", () => {
     })
   })
 })
+
+describe("case name boundary bugs (#187, #188)", () => {
+  // ── #187: backward scan overshoots into prior citation's (…) parenthetical ──
+
+  describe("#187: paren signal boundaries", () => {
+    it("stops at `(quoted in `", () => {
+      const text =
+        "Prior v. Case, 100 U.S. 1 (2020) (quoted in Target v. Name, 200 U.S. 2 [2000])."
+      const cites = extractCitations(text)
+      const target = cites.find(
+        (c) => c.type === "case" && c.text.includes("200 U.S. 2"),
+      )
+      expect(target?.type).toBe("case")
+      if (target?.type === "case") {
+        expect(target.caseName).toBe("Target v. Name")
+      }
+    })
+
+    it("stops at `(accord `", () => {
+      const text =
+        "Prior v. Case, 100 U.S. 1 (2020) (accord Target v. Name, 200 U.S. 2 [2000])."
+      const cites = extractCitations(text)
+      const target = cites.find(
+        (c) => c.type === "case" && c.text.includes("200 U.S. 2"),
+      )
+      expect(target?.type).toBe("case")
+      if (target?.type === "case") {
+        expect(target.caseName).toBe("Target v. Name")
+      }
+    })
+
+    it("stops at `(citing, e.g., ` with comma-prefixed e.g.", () => {
+      const text =
+        "Prior v. Case, 100 U.S. 1 (2020) (citing, e.g., Target v. Name, 200 U.S. 2 [2000])."
+      const cites = extractCitations(text)
+      const target = cites.find(
+        (c) => c.type === "case" && c.text.includes("200 U.S. 2"),
+      )
+      expect(target?.type).toBe("case")
+      if (target?.type === "case") {
+        expect(target.caseName).toBe("Target v. Name")
+      }
+    })
+  })
+
+  // ── #188: backward scan returns null for common NY reporter variants ──
+
+  describe("#188: geographic abbreviations in party names", () => {
+    it("handles `Long Is.` inside party name (NY2d, Inc. plaintiff)", () => {
+      const text =
+        "See Clark-Fitzpatrick, Inc. v. Long Is. R.R. Co., 70 NY2d 382, 388 [1987]."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Clark-Fitzpatrick, Inc. v. Long Is. R.R. Co.",
+        )
+      }
+    })
+
+    it("handles `Long Is.` inside `Matter of` proceeding", () => {
+      const text =
+        "See Matter of Long Is. Power Auth. Hurricane Sandy Litig., 134 A.D.3d 1119, 1120 (2d Dep't 2015)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Matter of Long Is. Power Auth. Hurricane Sandy Litig.",
+        )
+      }
+    })
+
+    it("handles `Mt.` (Mount) in party name", () => {
+      const text = "See Mt. Sinai Hosp. v. Jones, 500 F.3d 100 (2d Cir. 2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Mt. Sinai Hosp. v. Jones")
+      }
+    })
+
+    it("handles `Ft.` (Fort) in party name", () => {
+      const text = "See Ft. Worth, Inc. v. Jones, 500 F.3d 100 (5th Cir. 2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Ft. Worth, Inc. v. Jones")
+      }
+    })
+
+    it("handles `Pt.` (Point) in party name", () => {
+      const text =
+        "See Smith v. Stony Pt. Realty Corp., 500 F.3d 100 (2d Cir. 2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Smith v. Stony Pt. Realty Corp.")
+      }
+    })
+
+    it("handles `St.` (Saint/Street) in party name", () => {
+      const text =
+        "See St. Paul Fire & Marine Ins. Co. v. Jones, 500 F.3d 100 (8th Cir. 2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("St. Paul Fire & Marine Ins. Co. v. Jones")
+      }
+    })
+  })
+
+  // Additional #188 variants the reporter documented as already broken.
+
+  describe("#188: NY reporters without periods", () => {
+    it("scans past `NY3d`", () => {
+      const text =
+        "Dormitory Auth. of the State of N.Y. v. Samson Constr. Co., 30 NY3d 704, 712 [2018]."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Dormitory Auth. of the State of N.Y. v. Samson Constr. Co.",
+        )
+      }
+    })
+
+    it("scans past `NY3d` with short case name", () => {
+      const text = "See Cox v. NAP Constr. Co., Inc., 10 NY3d 592, 607 [2008]."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Cox v. NAP Constr. Co., Inc.")
+      }
+    })
+
+    it("handles party with internal abbreviations + commas", () => {
+      const text =
+        "See Dembeck v. 220 Cent. Park S., LLC, 33 A.D.3d 491, 492 [1st Dep't 2006]."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Dembeck v. 220 Cent. Park S., LLC")
+      }
+    })
+  })
+})
