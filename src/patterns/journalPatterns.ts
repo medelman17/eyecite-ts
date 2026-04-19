@@ -16,9 +16,9 @@ import type { Pattern } from "./casePatterns"
 export const journalPatterns: Pattern[] = [
   {
     id: "law-review",
-    regex: /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.\s]+)\s+(\d+)\b/g,
+    regex: /\b(\d+(?:-\d+)?)\s+([A-Z](?:(?!\s+vs?\.\s)[A-Za-z.\s])+)\s+(\d+)\b/g,
     description:
-      'Law review citations (e.g., "120 Harv. L. Rev. 500"), validated against journals-db in Phase 3',
+      'Law review citations (e.g., "120 Harv. L. Rev. 500"), validated against journals-db in Phase 3. Negative lookahead excludes " v. "/" vs. " so party-name text isn\'t mis-captured as a journal name.',
     type: "journal",
   },
 ]

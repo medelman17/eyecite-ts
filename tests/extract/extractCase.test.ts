@@ -2502,3 +2502,54 @@ describe("reporters-db alignment + ampersand support", () => {
   })
 })
 
+describe("phantom-citation suppression (#196)", () => {
+  // Numeric-prefixed party names like "15 Union Sq. W. Condominium v. BCRE 15"
+  // used to emit a phantom state-reporter citation because the non-greedy
+  // reporter capture happily spanned the " v. " case-name separator and
+  // backtracked until a second number appeared. Negative lookahead for
+  // " v. " / " vs. " blocks this at tokenization.
+
+  it("does not emit a phantom from numeric-prefixed party name with v.", () => {
+    const text = `Board of Mgrs. of the 15 Union Sq. W. Condominium v. BCRE 15 Union St., LLC, 2025 NY Slip Op 00784 (1st Dep't 2025).`
+    const cits = extractCitations(text)
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    expect(cases[0].text).toBe("2025 NY Slip Op 00784")
+  })
+
+  it("does not emit a phantom with 'vs.' form", () => {
+    const text = `See 10 Smith vs. Jones 10 Corp., 2025 NY Slip Op 00784.`
+    const cits = extractCitations(text)
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    expect(cases[0].text).toBe("2025 NY Slip Op 00784")
+  })
+
+  it("does not mis-classify phantom as a law-review journal", () => {
+    // The phantom moved to the `journal` type before both patterns were
+    // guarded. Regression guard: check no journal type is emitted here.
+    const text = `Board of Mgrs. of the 15 Union Sq. W. Condominium v. BCRE 15 Union St., LLC, 2025 NY Slip Op 00784.`
+    const cits = extractCitations(text)
+    expect(cits.some((c) => c.type === "journal")).toBe(false)
+  })
+
+  describe("controls — real citations adjacent to a v. still work", () => {
+    it("'Smith v. Jones, 100 U.S. 1' extracts the core cite", () => {
+      const text = "Smith v. Jones, 100 U.S. 1 (2020)."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      expect(cases[0].text).toBe("100 U.S. 1")
+    })
+
+    it("two adjacent v.-joined cites both extract", () => {
+      const text =
+        "Smith v. Jones, 100 F.3d 456 (2d Cir. 2020); see also Doe v. Roe, 200 F.3d 789 (9th Cir. 2021)."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(2)
+    })
+  })
+})
+
+
