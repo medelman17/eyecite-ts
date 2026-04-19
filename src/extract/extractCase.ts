@@ -279,6 +279,9 @@ function isLikelyPartyName(name: string): boolean {
   const words = name.split(/\s+/)
   for (const word of words) {
     if (!word) continue
+    // Standalone ampersand is ubiquitous in corporate captions
+    // ("Smith & Jones", "Goldman, Sachs & Co.").
+    if (word === "&") continue
     // Strip trailing punctuation for comparison (handles "Inc.", "Corp.,")
     const clean = word.toLowerCase().replace(/[.,']+$/, "")
     if (PARTY_NAME_CONNECTORS.has(clean)) continue
@@ -394,6 +397,21 @@ const CASE_NAME_ABBREVS: ReadonlySet<string> = new Set([
   "col", "lt",
   // ── Other common legal abbreviations ──
   "ed", "op", "ad", "dep", "ass", "ry",
+  // ── reporters-db alignment (Bluebook T6-derived, 19th ed) ──
+  // Period-form abbreviations. Source: freelawproject/reporters-db
+  // data/case_name_abbreviations.json. `co` (Co./Company) was the most
+  // impactful gap — "Smith & Co. United States Corp." was truncated to
+  // just "United States Corp." because the sentence-boundary scan fired
+  // on "Co. U".
+  "co", "cmty", "cty", "envtl", "gend", "par", "prot", "ref", "sol", "adver",
+  // Apostrophe-form abbreviations. Stored as pure-letter stems because
+  // isLikelyAbbreviationPeriod now strips all apostrophes/periods before
+  // set lookup. These appear in nearly every NY appellate citation
+  // ("2d Dep't", "Nat'l", "Int'l", "Ass'n", "Gov't", etc.).
+  "admr", "admx", "assn", "commcn", "commn", "commr", "contl", "dept",
+  "empr", "empt", "engg", "engr", "entmt", "envt", "examr", "exr", "exx",
+  "fedn", "govt", "intl", "invr", "meml", "natl", "profl", "pship",
+  "publg", "publn", "regl", "secy", "sholder", "socy",
 ])
 
 /**
@@ -414,8 +432,10 @@ function isLikelyAbbreviationPeriod(text: string, dotIndex: number): boolean {
   const word = text.substring(start, dotIndex)
   if (!word) return false
 
-  // Strip trailing periods/apostrophes for set lookup
-  const stem = word.replace(/[.']+$/, "").toLowerCase()
+  // Strip ALL periods and apostrophes for set lookup. This normalizes
+  // apostrophe-form abbreviations ("Ass'n" → "assn", "Dep't" → "dept",
+  // "Nat'l" → "natl") so the set can store pure-letter stems.
+  const stem = word.replace(/['.]/g, "").toLowerCase()
 
   // Tier 1: Known legal abbreviation
   if (CASE_NAME_ABBREVS.has(stem)) return true
