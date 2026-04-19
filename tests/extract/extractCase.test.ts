@@ -2302,3 +2302,125 @@ describe("case name boundary bugs (#187, #188)", () => {
     })
   })
 })
+
+describe("case name boundary bugs (#193)", () => {
+  // Single-party corporate / association captions that don't use ` v. ` and
+  // aren't matched by the procedural-prefix list. Previously `caseName`
+  // came back null; the generic Priority-3 fallback now recognizes them.
+
+  describe("#193: single-party corporate captions", () => {
+    it("captures 'Board of Mgrs. of X' (abbreviated)", () => {
+      const text =
+        "See Board of Mgrs. of the St. Tropez Condominium, 2021 NY Slip Op 00520, at *1."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Board of Mgrs. of the St. Tropez Condominium",
+        )
+      }
+    })
+
+    it("captures 'Board of Managers of X' (spelled out)", () => {
+      const text =
+        "See Board of Managers of the St. Tropez Condominium, 2021 NY Slip Op 00520, at *1."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Board of Managers of the St. Tropez Condominium",
+        )
+      }
+    })
+
+    it("captures 'Board of Directors of X'", () => {
+      const text =
+        "See Board of Directors of Hill Park, 2021 NY Slip Op 00520."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Board of Directors of Hill Park")
+      }
+    })
+
+    it("captures bare corporate caption with 'Corp.' suffix", () => {
+      const text = "Acme Widgets Corp., 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Acme Widgets Corp.")
+      }
+    })
+  })
+
+  describe("#193: procedural prefix long form", () => {
+    it("prefers 'In the Matter of' over 'Matter of' when present", () => {
+      const text =
+        "See In the Matter of Long Is. Power Auth. Litig., 2021 NY Slip Op 00520."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "In the Matter of Long Is. Power Auth. Litig.",
+        )
+      }
+    })
+
+    it("still matches 'Matter of X' (short form)", () => {
+      const text = "See Matter of Smith, 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Matter of Smith")
+      }
+    })
+  })
+
+  describe("#193: safety — fallback does not fire on sentence prose", () => {
+    it("returns null for 'The court held that this is fine. 100 U.S. 1.'", () => {
+      const text = "The court held that this is fine. 100 U.S. 1."
+      const [cite] = extractCitations(text)
+      if (cite?.type === "case") {
+        expect(cite.caseName).toBeUndefined()
+      }
+    })
+
+    it("returns null for 'The argument was strong. 100 U.S. 1.'", () => {
+      const text = "The argument was strong. 100 U.S. 1."
+      const [cite] = extractCitations(text)
+      if (cite?.type === "case") {
+        expect(cite.caseName).toBeUndefined()
+      }
+    })
+  })
+
+  describe("#193: control — adversarial captions still work", () => {
+    it("'Smith v. Jones' still matches via V. regex", () => {
+      const text = "See Smith v. Jones, 2021 NY Slip Op 00520, at *1."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Smith v. Jones")
+      }
+    })
+
+    it("'People ex rel. Smith v. Jones' still matches via V. regex", () => {
+      const text = "See People ex rel. Smith v. Jones, 2021 NY Slip Op 00520."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("People ex rel. Smith v. Jones")
+      }
+    })
+
+    it("'Estate of X' still matches via procedural prefix", () => {
+      const text = "See Estate of Smith, 2021 NY Slip Op 00520, at *1."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Estate of Smith")
+      }
+    })
+  })
+})
+
