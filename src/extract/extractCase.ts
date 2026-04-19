@@ -95,17 +95,27 @@ const VOLUME_REPORTER_PAGE_REGEX =
 /** Detects blank page placeholders (3+ underscores or dashes) */
 const BLANK_PAGE_REGEX = /^[_-]{3,}$/
 
-/** Extracts pincite (page reference after comma) */
-const PINCITE_REGEX = /,\s*(\d+)/d
+/** Extracts pincite (page reference after comma). Accepts optional "at "
+ *  keyword and optional "*" prefix for star-pagination (NY Slip Op, Westlaw,
+ *  Lexis, and other slip-opinion citations). See #191. */
+const PINCITE_REGEX = /,\s*(?:at\s+)?(\*?\d+(?:-\d+)?)/d
 
 /** Matches parenthetical content */
 const PAREN_REGEX = /\(([^)]+)\)/
 
-/** Look-ahead pattern for parenthetical after token */
-const LOOKAHEAD_PAREN_REGEX = /^(?:,\s*\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d+)?\s*\(([^)]+)\)/
+/** Look-ahead pattern for parenthetical after token. Skips pincite text
+ *  (including star-pagination) before the court/year parenthetical. */
+const LOOKAHEAD_PAREN_REGEX =
+  /^(?:,\s*(?:at\s+)?\*?\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d+)?\s*\(([^)]+)\)/
 
-/** Extracts pincite from look-ahead text */
-const LOOKAHEAD_PINCITE_REGEX = /^,\s*(\d+(?:-\d+)?)/d
+/** Extracts pincite from look-ahead text.
+ *  Accepts three prefix forms:
+ *    - ", 125"       (comma-separated, numeric)
+ *    - ", at *1"     (comma + "at" keyword; common with star-pagination)
+ *    - " at *2"      (whitespace + "at" keyword; NY Slip Op repeat form)
+ *  The "*" prefix marks star-pagination (#191). */
+const LOOKAHEAD_PINCITE_REGEX =
+  /^(?:\s+at\s+|,\s*(?:at\s+)?)(\*?\d+(?:-\d+)?)/d
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
@@ -118,7 +128,8 @@ const PAREN_SKIP_REGEX = /[\s,]/
  *  E.g., ", 199 n.2", ", 999-1000", ", 130 n.5"
  *  The outer `+` is intentionally greedy to handle multi-pincite citations
  *  (e.g., ", 199, 205, 210"). Safe because the scan window is bounded by maxLookahead. */
-const PINCITE_SKIP_REGEX = /^(?:,\s*\d+(?:[-–—]\d+)?(?:\s+(?:n|note)\s*\.?\s*\d+)?)+/
+const PINCITE_SKIP_REGEX =
+  /^(?:,\s*(?:at\s+)?\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:n|note)\s*\.?\s*\d+)?)+/
 
 /**
  * Signal normalization table. Longer patterns first so "aff'd on other grounds"
@@ -1064,13 +1075,15 @@ export function extractCase(
   const page = isBlankPage ? undefined : Number.parseInt(pageStr, 10)
   const hasBlankPage = isBlankPage ? true : undefined
 
-  // Extract optional pincite (page reference after comma)
-  // Pattern: ", digits" (e.g., ", 125")
+  // Extract optional pincite (page reference after comma).
+  // Pattern: ", digits" (e.g., ", 125") or ", at *N" (star-pagination, #191).
+  // Route the numeric part through parsePincite so star-page rawText ("*2")
+  // doesn't blow up Number.parseInt.
   const pinciteMatch = PINCITE_REGEX.exec(text)
-  let pincite = pinciteMatch ? Number.parseInt(pinciteMatch[1], 10) : undefined
   let pinciteInfo: PinciteInfo | undefined = pinciteMatch
     ? (parsePincite(pinciteMatch[1]) ?? undefined)
     : undefined
+  let pincite = pinciteInfo?.page
 
   // Initialize component spans for core regex-extracted fields
   const spans: CaseComponentSpans = {}
@@ -1147,19 +1160,23 @@ export function extractCase(
       court = metaParenResult.court
       date = metaParenResult.date
       disposition = metaParenResult.disposition
+    }
 
-      // Extract pincite from look-ahead if not already found in token text
-      if (pincite === undefined) {
-        const laPinciteMatch = LOOKAHEAD_PINCITE_REGEX.exec(afterToken)
-        if (laPinciteMatch) {
-          pincite = Number.parseInt(laPinciteMatch[1], 10)
-          if (!pinciteInfo) {
-            pinciteInfo = parsePincite(laPinciteMatch[1]) ?? undefined
-          }
-          // Pincite span: indices are relative to afterToken (which starts at span.cleanEnd)
-          if (laPinciteMatch.indices?.[1]) {
-            spans.pincite = spanFromGroupIndex(span.cleanEnd, laPinciteMatch.indices[1], transformationMap)
-          }
+    // Extract pincite from look-ahead independently of the parenthetical match.
+    // A citation can carry a pincite without a trailing court/year parenthetical,
+    // e.g. "2020 NY Slip Op 00001 at *2." — the second occurrence is classified
+    // as a full-case cite (because shortFormCase requires no page between reporter
+    // and "at"), but the pincite is still meaningful data. See #191.
+    if (pincite === undefined) {
+      const laPinciteMatch = LOOKAHEAD_PINCITE_REGEX.exec(afterToken)
+      if (laPinciteMatch) {
+        if (!pinciteInfo) {
+          pinciteInfo = parsePincite(laPinciteMatch[1]) ?? undefined
+        }
+        pincite = pinciteInfo?.page
+        // Pincite span: indices are relative to afterToken (which starts at span.cleanEnd)
+        if (laPinciteMatch.indices?.[1]) {
+          spans.pincite = spanFromGroupIndex(span.cleanEnd, laPinciteMatch.indices[1], transformationMap)
         }
       }
     }

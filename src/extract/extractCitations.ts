@@ -289,7 +289,7 @@ export function extractCitations(
         citation = extractJournal(token, transformationMap, cleaned)
         break
       case "neutral":
-        citation = extractNeutral(token, transformationMap)
+        citation = extractNeutral(token, transformationMap, cleaned)
         break
       case "publicLaw":
         citation = extractPublicLaw(token, transformationMap)

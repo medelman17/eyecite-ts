@@ -709,3 +709,124 @@ describe("short-form recall improvements (integration)", () => {
     })
   })
 })
+
+describe("star-pagination pincite (#191)", () => {
+  describe("Id. citations", () => {
+    it("captures 'at *2' on Id. citations", () => {
+      const text = `Smith v. Jones, 2020 NY Slip Op 00001, at *1 (2d Dep't 2020). Id. at *2.`
+      const cits = extractCitations(text)
+      const id = cits.find((c) => c.type === "id")
+      expect(id).toBeDefined()
+      if (id?.type === "id") {
+        expect(id.text).toBe("Id. at *2")
+        expect(id.pincite).toBe(2)
+        expect(id.pinciteInfo?.starPage).toBe(true)
+        expect(id.pinciteInfo?.raw).toBe("*2")
+      }
+    })
+
+    it("captures 'at *3-5' star range on Id.", () => {
+      const text = `Smith, 2020 NY Slip Op 00001, at *1 (2020). Id. at *3-5.`
+      const cits = extractCitations(text)
+      const id = cits.find((c) => c.type === "id")
+      expect(id?.type).toBe("id")
+      if (id?.type === "id") {
+        expect(id.pincite).toBe(3)
+        expect(id.pinciteInfo?.endPage).toBe(5)
+        expect(id.pinciteInfo?.isRange).toBe(true)
+        expect(id.pinciteInfo?.starPage).toBe(true)
+      }
+    })
+
+    it("preserves numeric Id. pincite behavior (control)", () => {
+      const text = `Foo v. Bar, 123 F.3d 456, 460 (2d Cir. 2020). Id. at 465.`
+      const cits = extractCitations(text)
+      const id = cits.find((c) => c.type === "id")
+      expect(id?.type).toBe("id")
+      if (id?.type === "id") {
+        expect(id.text).toBe("Id. at 465")
+        expect(id.pincite).toBe(465)
+        expect(id.pinciteInfo?.starPage).toBeUndefined()
+      }
+    })
+  })
+
+  describe("supra citations", () => {
+    it("captures 'at *4' on supra", () => {
+      const text = `Smith v. Jones, 2020 NY Slip Op 00001, at *1 (2d Dep't 2020). Smith, supra, at *4.`
+      const cits = extractCitations(text)
+      const supra = cits.find((c) => c.type === "supra")
+      expect(supra?.type).toBe("supra")
+      if (supra?.type === "supra") {
+        expect(supra.pincite).toBe(4)
+        expect(supra.pinciteInfo?.starPage).toBe(true)
+      }
+    })
+  })
+
+  describe("full-cite star pincite (NY Slip Op)", () => {
+    it("captures 'at *1' on a NY Slip Op neutral full cite", () => {
+      const text = `Smith v. Jones, 2020 NY Slip Op 00001, at *1 (2d Dep't 2020).`
+      const cits = extractCitations(text)
+      const cs = cits.find((c) => c.type === "case")
+      expect(cs?.type).toBe("case")
+      if (cs?.type === "case") {
+        expect(cs.pincite).toBe(1)
+        expect(cs.pinciteInfo?.starPage).toBe(true)
+      }
+    })
+
+    it("captures pincite on NY Slip Op shortform repeat without comma", () => {
+      const text = `Smith, 2020 NY Slip Op 00001, at *1 (2020). Smith, 2020 NY Slip Op 00001 at *2.`
+      const cits = extractCitations(text)
+      // Classification quirk: NY Slip Op short-form isn't caught by the
+      // shortFormCase pattern (which forbids a page between reporter and "at"),
+      // so both occurrences come back as `case`. The pincite data is still
+      // captured correctly on the second occurrence.
+      const seconds = cits.filter(
+        (c) => c.type === "case" && c.span.cleanStart > 40,
+      )
+      expect(seconds.length).toBeGreaterThanOrEqual(1)
+      const second = seconds[0]
+      if (second.type === "case") {
+        expect(second.pincite).toBe(2)
+        expect(second.pinciteInfo?.starPage).toBe(true)
+      }
+    })
+  })
+
+  describe("neutral citations (Westlaw, Lexis)", () => {
+    it("captures 'at *3' on Westlaw neutrals", () => {
+      const text = `Smith, 2020 WL 123456, at *3 (S.D.N.Y. Jan. 1, 2020).`
+      const cits = extractCitations(text)
+      const neutral = cits.find((c) => c.type === "neutral")
+      expect(neutral?.type).toBe("neutral")
+      if (neutral?.type === "neutral") {
+        expect(neutral.pincite).toBe(3)
+        expect(neutral.pinciteInfo?.starPage).toBe(true)
+      }
+    })
+
+    it("captures 'at *7' on Lexis neutrals", () => {
+      const text = `Smith v. Jones, 2020 U.S. Dist. LEXIS 12345, at *7 (S.D.N.Y. 2020).`
+      const cits = extractCitations(text)
+      const neutral = cits.find((c) => c.type === "neutral")
+      expect(neutral?.type).toBe("neutral")
+      if (neutral?.type === "neutral") {
+        expect(neutral.pincite).toBe(7)
+        expect(neutral.pinciteInfo?.starPage).toBe(true)
+      }
+    })
+
+    it("also captures numeric pincites on neutrals (previously unsupported)", () => {
+      const text = `Smith, 2020 WL 123456, at 3 (S.D.N.Y. 2020).`
+      const cits = extractCitations(text)
+      const neutral = cits.find((c) => c.type === "neutral")
+      expect(neutral?.type).toBe("neutral")
+      if (neutral?.type === "neutral") {
+        expect(neutral.pincite).toBe(3)
+        expect(neutral.pinciteInfo?.starPage).toBeUndefined()
+      }
+    })
+  })
+})
