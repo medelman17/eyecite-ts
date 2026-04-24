@@ -547,6 +547,8 @@ export interface IdCitation extends CitationBase {
   pincite?: number
   /** Structured pincite information (page, range, footnote, star-pagination). */
   pinciteInfo?: import("../extract/pincite").PinciteInfo
+  /** Component-level spans (currently just `pincite`; extend when needed). */
+  spans?: import("./componentSpans").IdComponentSpans
 }
 
 /**
@@ -563,6 +565,8 @@ export interface SupraCitation extends CitationBase {
   pincite?: number
   /** Structured pincite information (page, range, footnote, star-pagination). */
   pinciteInfo?: import("../extract/pincite").PinciteInfo
+  /** Component-level spans (currently just `pincite`; extend when needed). */
+  spans?: import("./componentSpans").SupraComponentSpans
 }
 
 /**
@@ -579,6 +583,8 @@ export interface ShortFormCaseCitation extends CitationBase {
   pincite?: number
   /** Structured pincite information (page, range, footnote, star-pagination). */
   pinciteInfo?: import("../extract/pincite").PinciteInfo
+  /** Component-level spans (currently just `pincite`; extend when needed). */
+  spans?: import("./componentSpans").ShortFormCaseComponentSpans
 }
 
 /**
