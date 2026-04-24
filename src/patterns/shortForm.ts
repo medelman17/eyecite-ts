@@ -50,11 +50,12 @@ export const STANDALONE_SUPRA_PATTERN: RegExp =
  * Simplified detection; full parsing in extraction layer.
  * Supports reporters with 1-2 letter ordinal suffixes (e.g., F.4th, Cal.4th).
  * Handles SCOTUS/federal comma-before-at: "597 U.S., at 721", "116 F.4th, at 1193".
- * Pincite accepts optional "*" prefix for star-pagination (#191) and an
- * optional trailing footnote suffix " n.14" / " nn.14-15" (#202).
+ * Pincite accepts optional "*" prefix for star-pagination (#191), an optional
+ * range end "462-65" / "462-*65" (#201), and an optional trailing footnote
+ * suffix " n.14" / " nn.14-15" (#202).
  */
 export const SHORT_FORM_CASE_PATTERN: RegExp =
-  /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(\*?\d+)(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?\b/g
+  /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(\*?\d+(?:[-–—]\*?\d+)?)(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?\b/g
 
 /** All short-form patterns for tokenization */
 export const SHORT_FORM_PATTERNS: readonly RegExp[] = [

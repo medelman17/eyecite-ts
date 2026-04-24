@@ -252,10 +252,11 @@ export function extractShortFormCase(
   // Pattern: number space abbreviation [, ] at space number.
   // Supports reporters with 1-2 letter ordinal suffixes (e.g., F.4th, Cal.4th).
   // Handles comma-before-at: "597 U.S., at 721", "116 F.4th, at 1193".
-  // Pincite accepts optional "*" prefix for star-pagination (#191) and an
-  // optional trailing footnote suffix " n.14" / " nn.14-15" (#202).
+  // Pincite accepts optional "*" prefix for star-pagination (#191), an optional
+  // range end "462-65" / "462-*65" (#201), and an optional trailing footnote
+  // suffix " n.14" / " nn.14-15" (#202).
   const shortFormRegex =
-    /(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(\*?\d+(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)/
+    /(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)/
   const match = shortFormRegex.exec(text)
 
   if (!match) {
