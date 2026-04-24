@@ -64,6 +64,26 @@ describe("parsePincite", () => {
     })
   })
 
+  it("parses a multi-footnote reference with nn.", () => {
+    expect(parsePincite("460 nn.14-15")).toEqual({
+      page: 460,
+      footnote: 14,
+      footnoteEnd: 15,
+      isRange: false,
+      raw: "460 nn.14-15",
+    })
+  })
+
+  it("parses a single-n footnote range", () => {
+    expect(parsePincite("460 n.14-15")).toEqual({
+      page: 460,
+      footnote: 14,
+      footnoteEnd: 15,
+      isRange: false,
+      raw: "460 n.14-15",
+    })
+  })
+
   it("returns null for unparseable input", () => {
     expect(parsePincite("")).toBeNull()
     expect(parsePincite("abc")).toBeNull()

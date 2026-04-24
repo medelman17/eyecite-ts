@@ -52,8 +52,9 @@ export function extractId(
 
   // Parse Id. with optional pincite.
   // Pattern: Id. or Ibid. with optional comma + "at [page]" (handles "Id., at 5").
-  // Pincite accepts optional "*" prefix for star-pagination (#191).
-  const idRegex = /([Ii])(?:d|bid)(\.)(,?)\s*(?:at\s+(\*?\d+(?:\s*[-–]\s*\*?\d+)?))?/
+  // Pincite accepts optional "*" prefix for star-pagination (#191) and an
+  // optional trailing footnote suffix " n.14" / " nn.14-15" (#202).
+  const idRegex = /([Ii])(?:d|bid)(\.)(,?)\s*(?:at\s+(\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/
   const match = idRegex.exec(text)
 
   if (!match) {
@@ -148,14 +149,15 @@ export function extractSupra(token: Token, transformationMap: TransformationMap)
   const { text, span } = token
 
   // Try party-name pattern first: "Smith, supra [note N] [, at page]".
-  // Pincite accepts optional "*" prefix for star-pagination (#191).
+  // Pincite accepts optional "*" prefix for star-pagination (#191) and an
+  // optional trailing footnote suffix (#202).
   const partySupraRegex =
-    /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+at\s+(\*?\d+))?/
+    /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+at\s+(\*?\d+(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/
   const partyMatch = partySupraRegex.exec(text)
 
   // Fallback: standalone supra — "supra note N", "supra at N", "supra § N".
   const standaloneRegex =
-    /supra(?:\s+note\s+(\d+)(?:,?\s+at\s+(\*?\d+))?|\s+at\s+(\*?\d+))?/
+    /supra(?:\s+note\s+(\d+)(?:,?\s+at\s+(\*?\d+(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?|\s+at\s+(\*?\d+(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/
   const match = partyMatch || standaloneRegex.exec(text)
 
   if (!match) {
@@ -250,8 +252,10 @@ export function extractShortFormCase(
   // Pattern: number space abbreviation [, ] at space number.
   // Supports reporters with 1-2 letter ordinal suffixes (e.g., F.4th, Cal.4th).
   // Handles comma-before-at: "597 U.S., at 721", "116 F.4th, at 1193".
-  // Pincite accepts optional "*" prefix for star-pagination (#191).
-  const shortFormRegex = /(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(\*?\d+)/
+  // Pincite accepts optional "*" prefix for star-pagination (#191) and an
+  // optional trailing footnote suffix " n.14" / " nn.14-15" (#202).
+  const shortFormRegex =
+    /(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(\*?\d+(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)/
   const match = shortFormRegex.exec(text)
 
   if (!match) {

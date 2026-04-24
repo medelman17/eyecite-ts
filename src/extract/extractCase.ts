@@ -96,9 +96,11 @@ const VOLUME_REPORTER_PAGE_REGEX =
 const BLANK_PAGE_REGEX = /^[_-]{3,}$/
 
 /** Extracts pincite (page reference after comma). Accepts optional "at "
- *  keyword and optional "*" prefix for star-pagination (NY Slip Op, Westlaw,
- *  Lexis, and other slip-opinion citations). See #191. */
-const PINCITE_REGEX = /,\s*(?:at\s+)?(\*?\d+(?:-\d+)?)/d
+ *  keyword, optional "*" prefix for star-pagination (NY Slip Op, Westlaw,
+ *  Lexis, and other slip-opinion citations; see #191), and an optional
+ *  trailing footnote suffix " n.14" / " nn.14-15" (see #202). */
+const PINCITE_REGEX =
+  /,\s*(?:at\s+)?(\*?\d+(?:-\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)/d
 
 /** Matches parenthetical content */
 const PAREN_REGEX = /\(([^)]+)\)/
@@ -113,9 +115,10 @@ const LOOKAHEAD_PAREN_REGEX =
  *    - ", 125"       (comma-separated, numeric)
  *    - ", at *1"     (comma + "at" keyword; common with star-pagination)
  *    - " at *2"      (whitespace + "at" keyword; NY Slip Op repeat form)
- *  The "*" prefix marks star-pagination (#191). */
+ *  The "*" prefix marks star-pagination (#191); a trailing " n.14" /
+ *  " nn.14-15" footnote suffix is captured when present (#202). */
 const LOOKAHEAD_PINCITE_REGEX =
-  /^(?:\s+at\s+|,\s*(?:at\s+)?)(\*?\d+(?:-\d+)?)/d
+  /^(?:\s+at\s+|,\s*(?:at\s+)?)(\*?\d+(?:-\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)/d
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
