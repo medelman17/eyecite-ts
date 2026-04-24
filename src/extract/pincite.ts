@@ -6,8 +6,11 @@ export interface PinciteInfo {
   page: number
   /** End page for ranges: "570-75" → 575 */
   endPage?: number
-  /** Footnote number: "570 n.3" → 3 */
+  /** Footnote number: "570 n.3" → 3. For multi-footnote refs ("nn.3-5"), the
+   *  first note; see `footnoteEnd` for the range end. */
   footnote?: number
+  /** End footnote for multi-note refs: "570 nn.3-5" → 5 */
+  footnoteEnd?: number
   /** True if this is a page range */
   isRange: boolean
   /** True when the pincite uses star-pagination (e.g., "*2"), denoting a
@@ -19,9 +22,9 @@ export interface PinciteInfo {
 }
 
 /** Matches: optional "at ", optional "*" (star pagination), digits, optional
- *  "-/–/—[*]digits", optional "n./note digits". */
+ *  "-/–/—[*]digits", optional "n./nn./note digits" with optional range end. */
 const PINCITE_PARSE_REGEX =
-  /^(?:at\s+)?(\*?)(\d+)(?:[-–—]\*?(\d+))?\s*(?:(?:n|note)\s*\.?\s*(\d+))?$/i
+  /^(?:at\s+)?(\*?)(\d+)(?:[-–—]\*?(\d+))?\s*(?:(?:nn?|note)\s*\.?\s*(\d+)(?:[-–—](\d+))?)?$/i
 
 /**
  * Parse a pincite string into structured components.
@@ -47,6 +50,7 @@ export function parsePincite(raw: string): PinciteInfo | null {
   const pageRaw = match[2]
   const endRaw = match[3]
   const footnoteRaw = match[4]
+  const footnoteEndRaw = match[5]
   const page = Number.parseInt(pageRaw, 10)
 
   let endPage: number | undefined
@@ -65,10 +69,12 @@ export function parsePincite(raw: string): PinciteInfo | null {
   }
 
   const footnote = footnoteRaw ? Number.parseInt(footnoteRaw, 10) : undefined
+  const footnoteEnd = footnoteEndRaw ? Number.parseInt(footnoteEndRaw, 10) : undefined
 
   const result: PinciteInfo = { page, isRange, raw: trimmed }
   if (endPage !== undefined) result.endPage = endPage
   if (footnote !== undefined) result.footnote = footnote
+  if (footnoteEnd !== undefined) result.footnoteEnd = footnoteEnd
   if (starPrefix === "*") result.starPage = true
 
   return result
