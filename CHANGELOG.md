@@ -1,5 +1,83 @@
 # eyecite-ts
 
+## 0.12.0
+
+### Minor Changes
+
+- [#213](https://github.com/medelman17/eyecite-ts/pull/213) [`6104fb9`](https://github.com/medelman17/eyecite-ts/commit/6104fb99efcd9eb0afe2ef5ad15129fc2361703f) Thanks [@medelman17](https://github.com/medelman17)! - feat: populate `spans.pincite` on `ShortFormCaseCitation`, `IdCitation`, `SupraCitation`, and `NeutralCitation` (#210)
+
+  Previously `spans.pincite` was populated only on `FullCaseCitation`. The
+  four short-form / short-form-like citation types did not surface a
+  pincite offset, so downstream consumers had to either trust
+  `span.originalEnd` (which works for short-form/Id/supra by coincidence
+  but sits _before_ the pincite on `NeutralCitation`) or fall back to a
+  brittle `indexOf(pinciteInfo.raw, ...)` search.
+
+  **Added:**
+
+  - `IdComponentSpans`, `SupraComponentSpans`, `ShortFormCaseComponentSpans`
+    types (currently carrying just `pincite?: Span`, extensible)
+  - `pincite?: Span` on the existing `NeutralComponentSpans`
+  - `spans?: <Type>ComponentSpans` on `IdCitation`, `SupraCitation`,
+    `ShortFormCaseCitation`
+  - Populated `spans.pincite` in `extractId`, `extractSupra`,
+    `extractShortFormCase`, and `extractNeutral`, using the existing
+    `spanFromGroupIndex` helper and the same pattern used by
+    `FullCaseCitation`
+
+  **Behavior:**
+
+  - `spans.pincite` is set when (and only when) the extractor captures a
+    pincite via its regex. Absent pincite → `spans.pincite` undefined.
+  - The `spans.pincite.originalStart` / `originalEnd` point to the pincite
+    substring in the original (pre-clean) text — e.g. `462-65`,
+    `462 n.14`, `*3-*5`.
+
+  Seven new tests covering all four types, footnote-carrying pincite,
+  star-page range pincite, and the no-pincite case.
+
+  No breaking changes — all additions are optional fields on types that
+  already permitted `spans` on their full-case counterpart.
+
+### Patch Changes
+
+- [#211](https://github.com/medelman17/eyecite-ts/pull/211) [`46d723b`](https://github.com/medelman17/eyecite-ts/commit/46d723b4b727691bb494a768a3cf364c599716dd) Thanks [@medelman17](https://github.com/medelman17)! - fix: drop phantom overlap citations via priority-aware subsumption dedup (#209)
+
+  0.11.3 regression: `extractCitations` emitted a phantom `case` citation
+  alongside a legitimate `shortFormCase` whose pincite ended in a footnote
+  suffix. Input `"... Smith, 100 F.3d at 462 n.14."` produced three
+  citations — the real full-case, the real shortFormCase, and a phantom
+  `case` whose span ended just before ` n.14` and whose `pinciteInfo.raw`
+  was `undefined`.
+
+  **Root cause.** The `state-reporter` tokenizer pattern is broad enough
+  to match `100 F.3d at 462` by treating `F.3d at` as a multi-word reporter
+  name. Before `#202`, the `shortFormCase` token covered the same span
+  exactly, and position-key dedup kept only one. `#202` grew the
+  shortFormCase token by ` n.14` to include the footnote. Same-span dedup
+  no longer caught it, and the phantom state-reporter survived into
+  extraction. Same shape as `#207` (law-review version of the same bug).
+
+  **Fix.** Replaced the exact-position dedup with priority-aware
+  subsumption dedup. Each token's priority is its first-occurrence index
+  in the composed pattern list — more specific patterns (neutral,
+  shortForm) come earlier than broader ones (case, journal). A token is
+  dropped if another kept token's span covers it _and_ that kept token is
+  from an equal-or-more-specific pattern. This correctly:
+
+  - drops the phantom `state-reporter [61,76]` inside
+    `shortFormCase [61,81]` (#209)
+  - drops the phantom `law-review [x,y]` inside `shortFormCase` (#207,
+    now handled structurally rather than by the `(?!\s+at\s+\d)` band-aid,
+    which is kept as belt-and-braces defense)
+  - **preserves** legitimate cases where a broader pattern contains a
+    more-specific one — e.g. a `named-code` token wrapping a
+    `state-constitution` token for `"Cal. Const. art. I, § 7."`. The
+    broader `named-code` has a _lower_ priority (later in the pattern
+    list), so it does not swallow the more-specific `state-constitution`.
+
+  Four new regression tests for #209. Full suite 1825/1825 green.
+
 ## 0.11.3
 
 ### Patch Changes
