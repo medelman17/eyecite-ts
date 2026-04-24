@@ -15,10 +15,11 @@ import { parsePincite, type PinciteInfo } from "./pincite"
 
 /** Matches a trailing pincite on a neutral citation. Accepts both
  *  ", at *3" (comma + "at" keyword) and " at *3" (whitespace + "at") forms,
- *  with optional "*" prefix for star-pagination (#191) and an optional
- *  trailing " n.14" / " nn.14-15" footnote suffix (#202). */
+ *  with optional "*" prefix for star-pagination on both ends of a range
+ *  (#191, #203 — "*3-*5" is common on Westlaw/Lexis/NY Slip Op), and an
+ *  optional trailing " n.14" / " nn.14-15" footnote suffix (#202). */
 const NEUTRAL_PINCITE_LOOKAHEAD =
-  /^(?:\s+at\s+|,\s*(?:at\s+)?)(\*?\d+(?:-\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)/d
+  /^(?:\s+at\s+|,\s*(?:at\s+)?)(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)/d
 
 /**
  * Extracts neutral citation metadata from a tokenized citation.
