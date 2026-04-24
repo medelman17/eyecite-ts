@@ -1,5 +1,88 @@
 # eyecite-ts
 
+## 0.11.3
+
+### Patch Changes
+
+- [#208](https://github.com/medelman17/eyecite-ts/pull/208) [`fc5e3d2`](https://github.com/medelman17/eyecite-ts/commit/fc5e3d2b5bf44f335f77f29c9eeaccf8437089ca) Thanks [@medelman17](https://github.com/medelman17)! - fix: capture `*N-*M` neutral-citation star-page ranges (#203)
+
+  `NeutralCitation` with a star-page range pincite (common on Westlaw,
+  Lexis, and NY Slip Op) captured only the starting page. Input
+  `See 2020 WL 1234567, at *3-*5 (S.D.N.Y. 2020).` produced
+  `{ page: 3, isRange: false, raw: '*3', starPage: true }` instead of
+  `{ page: 3, endPage: 5, isRange: true, raw: '*3-*5', starPage: true }`.
+  The `*3-5` form (star on first end only) already worked; `*3-*5` did not.
+
+  **Root cause.** `NEUTRAL_PINCITE_LOOKAHEAD`'s range tail `(?:-\d+)?`
+  accepted a trailing hyphen+digits but not the optional `*` prefix on the
+  range end. `parsePincite` already handled `*3-*5` correctly (its existing
+  unit test `parses a star-paginated range with star on both ends` passes);
+  the lookahead just never sent it the full text.
+
+  **Fix.** Changed the range tail to `(?:[-–—]\*?\d+)?` so the capture
+  group includes an optional star on the range end (and also accepts
+  en-dash/em-dash variants for consistency with `parsePincite`).
+
+  Three new regression tests: `*3-*5`, `*3-5`, and a non-range `*3`
+  regression guard.
+
+- [#205](https://github.com/medelman17/eyecite-ts/pull/205) [`9e9dec9`](https://github.com/medelman17/eyecite-ts/commit/9e9dec90d21c83e4352a253c593f85e5a604dca4) Thanks [@medelman17](https://github.com/medelman17)! - fix: populate `PinciteInfo.footnote` from `n.N` / `nn.N-N` pincite suffixes (#202)
+
+  `PinciteInfo.footnote` was declared on the public type but never populated at
+  runtime. A pincite like `460 n.14` produced `{ page: 460, isRange: false, raw: '460' }`
+  instead of the expected `{ page: 460, footnote: 14, isRange: false, raw: '460 n.14' }`.
+  The footnote suffix was dropped entirely, and `raw` was truncated so callers
+  couldn't even recover the footnote text themselves.
+
+  **Root cause.** `parsePincite` already supported `n.N` / `note N` in its
+  regex, but every upstream capture regex that fed it stopped at
+  `\*?\d+(?:-\d+)?` — page digits and an optional range, nothing more. So
+  `parsePincite` never saw the footnote text. This affected all citation types
+  with a `pinciteInfo` field: full-case, short-form case, `Id.`, `Ibid.`,
+  `supra`, and neutral.
+
+  **Fix.** Extended every pincite-capture regex (both tokenizer patterns in
+  `shortForm.ts` and extractor regexes in `extractCase`, `extractShortForms`,
+  `extractNeutral`) to include an optional trailing
+  `(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?` suffix. Extended
+  `parsePincite` to accept Bluebook's `nn.` multi-note prefix and to capture a
+  range end into a new `footnoteEnd?: number` field: `460 nn.14-15` now parses
+  as `{ page: 460, footnote: 14, footnoteEnd: 15, ... }`.
+
+  Seven new regression tests across full-case, short-form, `Id.`, neutral, and
+  `parsePincite` unit tests.
+
+- [#207](https://github.com/medelman17/eyecite-ts/pull/207) [`6a8de98`](https://github.com/medelman17/eyecite-ts/commit/6a8de98c1571dbdcb27409d32782ab42781fb9ca) Thanks [@medelman17](https://github.com/medelman17)! - fix: capture range end page on `ShortFormCaseCitation` pincites (#201)
+
+  `ShortFormCaseCitation` dropped the end page of range pincites. Input
+  `Smith, 100 F.3d at 462-65.` produced `pinciteInfo = { page: 462,
+isRange: false, raw: '462' }` instead of the expected `{ page: 462,
+endPage: 465, isRange: true, raw: '462-65' }`. The same range shape works
+  correctly on `FullCaseCitation`.
+
+  **Root cause.** `SHORT_FORM_CASE_PATTERN` (tokenizer) and `shortFormRegex`
+  (extractor) captured only `(\*?\d+)` for the pincite — no range. When
+  `parsePincite` finally ran, the text had already been truncated to the
+  starting page.
+
+  **Fix.** Extended both regexes to capture an optional range tail
+  `(?:[-–—]\*?\d+)?` after the starting page. Also permits mixed star
+  prefixes on range ends (`462-*65`) for neutral-cite compatibility.
+
+  **Collateral fix — journal false-positive.** Growing the short-form span
+  by `-NN` broke an identical-span dedup that had been silently absorbing a
+  latent law-review false-positive: the pattern
+  `\b(\d+)\s+([A-Z][A-Za-z.\s]+)\s+(\d+)\b` matched `554 U.S. at 621`
+  inside a short-form cite, treating `U.S. at` as a journal name. Before
+  `#201`, the short-form token covered the exact same span and won dedup;
+  after `#201`, the short-form token ends at `-22` and the phantom journal
+  slips through. Tightened the law-review pattern with an extra negative
+  lookahead `(?!\s+at\s+\d)` so a run of capitalised words can't span an
+  `at <digit>` token. No real journal name contains `" at <digit>"`.
+
+  Four new regression tests for short-form ranges (plain, full digits,
+  range + footnote, single-page regression guard). Full suite 1818/1818.
+
 ## 0.11.2
 
 ### Patch Changes
