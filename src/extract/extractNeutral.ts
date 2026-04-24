@@ -94,6 +94,16 @@ export function extractNeutral(
     if (laMatch) {
       pinciteInfo = parsePincite(laMatch[1]) ?? undefined
       pincite = pinciteInfo?.page
+      // Component span for pincite (#210). Indices are relative to afterToken,
+      // which starts at span.cleanEnd in cleanedText.
+      if (laMatch.indices?.[1]) {
+        if (!spans) spans = {}
+        spans.pincite = spanFromGroupIndex(
+          span.cleanEnd,
+          laMatch.indices[1],
+          transformationMap,
+        )
+      }
     }
   }
 

@@ -75,7 +75,29 @@ export interface NeutralComponentSpans {
   year?: Span
   court?: Span
   documentNumber?: Span
+  pincite?: Span
   signal?: Span
+}
+
+/**
+ * Component spans for Id./Ibid. citations (type: "id").
+ */
+export interface IdComponentSpans {
+  pincite?: Span
+}
+
+/**
+ * Component spans for supra citations (type: "supra").
+ */
+export interface SupraComponentSpans {
+  pincite?: Span
+}
+
+/**
+ * Component spans for short-form case citations (type: "shortFormCase").
+ */
+export interface ShortFormCaseComponentSpans {
+  pincite?: Span
 }
 
 /**

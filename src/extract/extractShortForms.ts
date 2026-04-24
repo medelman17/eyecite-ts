@@ -9,7 +9,12 @@
 
 import type { Token } from "@/tokenize"
 import type { IdCitation, ShortFormCaseCitation, SupraCitation } from "@/types/citation"
-import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
+import type {
+  IdComponentSpans,
+  ShortFormCaseComponentSpans,
+  SupraComponentSpans,
+} from "@/types/componentSpans"
+import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 import { COMMON_REPORTERS } from "./extractCase"
 import { parsePincite, type PinciteInfo } from "./pincite"
 
@@ -54,7 +59,7 @@ export function extractId(
   // Pattern: Id. or Ibid. with optional comma + "at [page]" (handles "Id., at 5").
   // Pincite accepts optional "*" prefix for star-pagination (#191) and an
   // optional trailing footnote suffix " n.14" / " nn.14-15" (#202).
-  const idRegex = /([Ii])(?:d|bid)(\.)(,?)\s*(?:at\s+(\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/
+  const idRegex = /([Ii])(?:d|bid)(\.)(,?)\s*(?:at\s+(\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/d
   const match = idRegex.exec(text)
 
   if (!match) {
@@ -67,6 +72,14 @@ export function extractId(
     ? (parsePincite(match[4]) ?? undefined)
     : undefined
   const pincite = pinciteInfo?.page
+
+  // Component span for pincite (#210)
+  let spans: IdComponentSpans | undefined
+  if (match[4] && match.indices?.[4]) {
+    spans = {
+      pincite: spanFromGroupIndex(span.cleanStart, match.indices[4], transformationMap),
+    }
+  }
 
   // Confidence scoring based on variant
   let confidence = 1.0
@@ -110,6 +123,7 @@ export function extractId(
     patternsChecked: 1,
     pincite,
     pinciteInfo,
+    spans,
   }
 }
 
@@ -152,12 +166,12 @@ export function extractSupra(token: Token, transformationMap: TransformationMap)
   // Pincite accepts optional "*" prefix for star-pagination (#191) and an
   // optional trailing footnote suffix (#202).
   const partySupraRegex =
-    /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+at\s+(\*?\d+(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/
+    /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+at\s+(\*?\d+(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/d
   const partyMatch = partySupraRegex.exec(text)
 
   // Fallback: standalone supra — "supra note N", "supra at N", "supra § N".
   const standaloneRegex =
-    /supra(?:\s+note\s+(\d+)(?:,?\s+at\s+(\*?\d+(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?|\s+at\s+(\*?\d+(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/
+    /supra(?:\s+note\s+(\d+)(?:,?\s+at\s+(\*?\d+(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?|\s+at\s+(\*?\d+(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/d
   const match = partyMatch || standaloneRegex.exec(text)
 
   if (!match) {
@@ -167,6 +181,7 @@ export function extractSupra(token: Token, transformationMap: TransformationMap)
   let partyName: string | undefined
   let pinciteInfo: PinciteInfo | undefined
   let confidence: number
+  let pinciteGroupIdx: number | undefined
 
   if (partyMatch) {
     partyName = partyMatch[1]
@@ -174,6 +189,7 @@ export function extractSupra(token: Token, transformationMap: TransformationMap)
       ? (parsePincite(partyMatch[3]) ?? undefined)
       : undefined
     confidence = 0.9
+    if (partyMatch[3]) pinciteGroupIdx = 3
   } else {
     // Standalone supra — no party name
     partyName = undefined
@@ -182,9 +198,23 @@ export function extractSupra(token: Token, transformationMap: TransformationMap)
     const rawPin = noteAtPage ?? atPage
     pinciteInfo = rawPin ? (parsePincite(rawPin) ?? undefined) : undefined
     confidence = 0.8 // Slightly lower — standalone supra is less specific
+    if (noteAtPage) pinciteGroupIdx = 2
+    else if (atPage) pinciteGroupIdx = 3
   }
 
   const pincite = pinciteInfo?.page
+
+  // Component span for pincite (#210)
+  let spans: SupraComponentSpans | undefined
+  if (pinciteGroupIdx !== undefined && match.indices?.[pinciteGroupIdx]) {
+    spans = {
+      pincite: spanFromGroupIndex(
+        span.cleanStart,
+        match.indices[pinciteGroupIdx],
+        transformationMap,
+      ),
+    }
+  }
 
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
@@ -205,6 +235,7 @@ export function extractSupra(token: Token, transformationMap: TransformationMap)
     partyName,
     pincite,
     pinciteInfo,
+    spans,
   }
 }
 
@@ -256,7 +287,7 @@ export function extractShortFormCase(
   // range end "462-65" / "462-*65" (#201), and an optional trailing footnote
   // suffix " n.14" / " nn.14-15" (#202).
   const shortFormRegex =
-    /(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)/
+    /(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)/d
   const match = shortFormRegex.exec(text)
 
   if (!match) {
@@ -268,6 +299,14 @@ export function extractShortFormCase(
   const reporter = match[2].trim() // Remove trailing spaces
   const pinciteInfo: PinciteInfo | undefined = parsePincite(match[3]) ?? undefined
   const pincite = pinciteInfo?.page
+
+  // Component span for pincite (#210)
+  let spans: ShortFormCaseComponentSpans | undefined
+  if (match.indices?.[3]) {
+    spans = {
+      pincite: spanFromGroupIndex(span.cleanStart, match.indices[3], transformationMap),
+    }
+  }
 
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
@@ -295,5 +334,6 @@ export function extractShortFormCase(
     reporter,
     pincite,
     pinciteInfo,
+    spans,
   }
 }
