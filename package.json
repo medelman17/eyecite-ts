@@ -1,6 +1,6 @@
 {
   "name": "eyecite-ts",
-  "version": "0.11.3",
+  "version": "0.12.0",
   "description": "TypeScript port of eyecite - extract, resolve, and annotate legal citations",
   "type": "module",
   "exports": {
