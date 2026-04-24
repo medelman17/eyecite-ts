@@ -233,24 +233,63 @@ export function extractCitations(
   ]
   const tokens = tokenize(cleaned, allPatterns)
 
-  // Step 3: Deduplicate overlapping tokens
-  // Multiple patterns may match the same text (e.g., "500 F.2d 123" matches both federal-reporter and state-reporter)
-  // Keep only the most specific match for each position
+  // Step 3: Deduplicate overlapping tokens via priority-aware subsumption.
+  //
+  // Multiple patterns may match the same or overlapping text:
+  //   (a) Exact-span duplicates — e.g., `100 F.3d 456` matches both
+  //       `federal-reporter` and `state-reporter`. Keep the higher-priority
+  //       one (earlier in the pattern list = more specific).
+  //   (b) Subsumed matches — a token whose span is a strict subset of
+  //       another token's span, and the containing token comes from a
+  //       more-or-equally-specific pattern. Canonical failure: `state-reporter`
+  //       or `law-review` treating `F.3d at` / `U.S. at` as a reporter/journal
+  //       name inside a `shortFormCase` cite (see #207, #209). Drop the
+  //       subsumed token only when the container is at least as specific —
+  //       otherwise we'd swallow legitimate shorter matches (e.g., a
+  //       `state-constitution` token that sits inside a broader `named-code`
+  //       match for "Cal. Const. art. I, § 7.").
+  //
+  // Priority = first occurrence index in `allPatterns`. Duplicate patternIds
+  // (e.g., "supra") share the earliest index, which is fine — they form a
+  // single priority bucket.
+  const priorityByPatternId = new Map<string, number>()
+  for (let i = 0; i < allPatterns.length; i++) {
+    const id = allPatterns[i].id
+    if (!priorityByPatternId.has(id)) priorityByPatternId.set(id, i)
+  }
+  const priorityOf = (t: (typeof tokens)[number]): number =>
+    priorityByPatternId.get(t.patternId) ?? Number.POSITIVE_INFINITY
+
+  // Sort by (cleanStart asc, cleanEnd desc, priority asc) so containers come
+  // before their contained tokens at each start position, and within any
+  // (start, end) bucket the higher-priority token comes first.
+  const sortedTokens = [...tokens].sort(
+    (a, b) =>
+      a.span.cleanStart - b.span.cleanStart ||
+      b.span.cleanEnd - a.span.cleanEnd ||
+      priorityOf(a) - priorityOf(b),
+  )
   const deduplicatedTokens: typeof tokens = []
-  const seenPositions = new Set<number | string>()
-
-  // Performance optimization: Use bitpacking for typical documents (<65K chars)
-  // For larger documents, fall back to string keys
-  const useBitpacking = cleaned.length < 65536
-
-  for (const token of tokens) {
-    const posKey = useBitpacking
-      ? (token.span.cleanStart << 16) | token.span.cleanEnd
-      : `${token.span.cleanStart}-${token.span.cleanEnd}`
-    if (!seenPositions.has(posKey)) {
-      seenPositions.add(posKey)
-      deduplicatedTokens.push(token)
+  for (const token of sortedTokens) {
+    let subsumed = false
+    for (const kept of deduplicatedTokens) {
+      const contains =
+        kept.span.cleanStart <= token.span.cleanStart &&
+        kept.span.cleanEnd >= token.span.cleanEnd
+      if (!contains) continue
+      if (priorityOf(kept) > priorityOf(token)) continue // kept is less specific, don't let it swallow
+      // `kept` is at least as specific AND contains this token. Drop `token`
+      // if this is a strict containment or an equal-span lower-priority duplicate.
+      if (
+        kept.span.cleanStart < token.span.cleanStart ||
+        kept.span.cleanEnd > token.span.cleanEnd ||
+        priorityOf(kept) < priorityOf(token)
+      ) {
+        subsumed = true
+        break
+      }
     }
+    if (!subsumed) deduplicatedTokens.push(token)
   }
 
   // Step 3.5: Detect parallel citation groups
