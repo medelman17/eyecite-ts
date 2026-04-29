@@ -58,6 +58,114 @@ describe("Resolution Integration Tests", () => {
     })
   })
 
+  // Bluebook Rule 4.1: Id. resolves to the immediately preceding cited
+  // authority. A full citation parsed inside another citation's explanatory
+  // parenthetical (e.g. "(citing X)") is a sub-reference, not the cited
+  // authority of that sentence. Regression guards for #214.
+  describe("Id. with parenthetical-internal full citations (#214)", () => {
+    it("Id. resolves to parent, not citation inside (citing X) parenthetical", () => {
+      const text =
+        "Bd. v. FirstService, 193 A.D.3d 672 (2d Dep't 2021) " +
+        "(citing Gall v. Colon-Sylvain, 151 A.D.3d 698 (2d Dep't 2016)). " +
+        "Id. at 673."
+
+      const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+      const bd = citations.find((c) => c.type === "case" && c.volume === 193)!
+      const gall = citations.find((c) => c.type === "case" && c.volume === 151)!
+      const id = citations.find((c) => c.type === "id")!
+
+      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(bd))
+      expect(id.resolution?.resolvedTo).not.toBe(citations.indexOf(gall))
+    })
+
+    it("supra still resolves to a parenthetical-internal citation", () => {
+      // Even though Gall doesn't become Id.'s default antecedent, it must
+      // still be tracked for supra/short-form lookups.
+      const text =
+        "Bd. v. FirstService, 193 A.D.3d 672 (2d Dep't 2021) " +
+        "(citing Gall v. Colon-Sylvain, 151 A.D.3d 698 (2d Dep't 2016)). " +
+        "Gall, supra, at 700."
+
+      const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+      const gall = citations.find((c) => c.type === "case" && c.volume === 151)!
+      const supra = citations.find((c) => c.type === "supra")!
+
+      expect(supra.resolution?.resolvedTo).toBe(citations.indexOf(gall))
+    })
+
+    it("short-form case still resolves to a parenthetical-internal citation", () => {
+      const text =
+        "Bd. v. FirstService, 193 A.D.3d 672 (2d Dep't 2021) " +
+        "(citing Gall v. Colon-Sylvain, 151 A.D.3d 698 (2d Dep't 2016)). " +
+        "151 A.D.3d at 700."
+
+      const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+      const gall = citations.find((c) => c.type === "case" && c.volume === 151)!
+      const shortForm = citations.find((c) => c.type === "shortFormCase")!
+
+      expect(shortForm.resolution?.resolvedTo).toBe(citations.indexOf(gall))
+    })
+
+    it("plain Id. after a single full cite is unaffected by the guard", () => {
+      const text = "Smith v. Jones, 100 F.2d 123 (2d Cir. 1990). Id. at 125."
+
+      const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+      const smith = citations.find((c) => c.type === "case")!
+      const id = citations.find((c) => c.type === "id")!
+
+      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(smith))
+    })
+
+    it("string cite with semicolons resolves Id. to most recent (no nesting)", () => {
+      const text =
+        "See Smith v. Jones, 100 F.2d 123 (2d Cir. 1990); " +
+        "Doe v. Roe, 200 F.3d 456 (3d Cir. 2000). Id. at 458."
+
+      const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+      const doe = citations.find((c) => c.type === "case" && c.volume === 200)!
+      const id = citations.find((c) => c.type === "id")!
+
+      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(doe))
+    })
+
+    it("subsequent history (aff'd) — Id. resolves to most recent reporter", () => {
+      // Bluebook treats a primary-then-affirming citation as a single
+      // authority chain. Either resolution is semantically the same case;
+      // we keep the existing behavior of pointing at the most recent cite.
+      const text =
+        "Smith v. Jones, 100 F.2d 123 (2d Cir. 1990), aff'd, 110 F.3d 222 " +
+        "(3d Cir. 1991). Id. at 224."
+
+      const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+      const ids = citations.filter((c) => c.type === "id")
+      const cases = citations.filter((c) => c.type === "case")
+
+      // Resolution should land on one of the two case cites in the chain;
+      // both refer to the same authority.
+      expect(ids).toHaveLength(1)
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      const resolvedIdx = ids[0].resolution?.resolvedTo
+      expect(resolvedIdx).not.toBeUndefined()
+      const resolvedTarget = citations[resolvedIdx as number]
+      expect(resolvedTarget.type).toBe("case")
+    })
+
+    it("parallel citations: Id. resolves within the parallel pair", () => {
+      const text = "Smith v. Jones, 100 F.2d 123, 200 P.2d 456 (Cal. 1990). Id. at 124."
+
+      const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+      const cases = citations.filter((c) => c.type === "case")
+      const id = citations.find((c) => c.type === "id")!
+
+      // Both reporters refer to the same case; Id. should resolve to one
+      // of them (semantically equivalent).
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      const resolvedIdx = id.resolution?.resolvedTo
+      expect(resolvedIdx).not.toBeUndefined()
+      expect(citations[resolvedIdx as number].type).toBe("case")
+    })
+  })
+
   describe("Id. Resolution Through Short-Form Citations (#170)", () => {
     it("resolves Id. through preceding short-form case citation", () => {
       const text =
@@ -68,10 +176,10 @@ describe("Resolution Integration Tests", () => {
 
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
 
-      const smith = citations.find(c => c.type === "case" && c.reporter === "F.2d")
-      const celotex = citations.find(c => c.type === "case" && c.reporter === "U.S.")
-      const shortForm = citations.find(c => c.type === "shortFormCase")
-      const id = citations.find(c => c.type === "id")
+      const smith = citations.find((c) => c.type === "case" && c.reporter === "F.2d")
+      const celotex = citations.find((c) => c.type === "case" && c.reporter === "U.S.")
+      const shortForm = citations.find((c) => c.type === "shortFormCase")
+      const id = citations.find((c) => c.type === "id")
 
       expect(smith).toBeDefined()
       expect(celotex).toBeDefined()
@@ -94,8 +202,8 @@ describe("Resolution Integration Tests", () => {
 
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
 
-      const smith = citations.find(c => c.type === "case" && c.reporter === "F.2d")
-      const id = citations.find(c => c.type === "id")
+      const smith = citations.find((c) => c.type === "case" && c.reporter === "F.2d")
+      const id = citations.find((c) => c.type === "id")
 
       expect(smith).toBeDefined()
       expect(id).toBeDefined()
@@ -109,8 +217,8 @@ describe("Resolution Integration Tests", () => {
 
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
 
-      const shortForm = citations.find(c => c.type === "shortFormCase")
-      const id = citations.find(c => c.type === "id")
+      const shortForm = citations.find((c) => c.type === "shortFormCase")
+      const id = citations.find((c) => c.type === "id")
 
       expect(shortForm).toBeDefined()
       expect(id).toBeDefined()
@@ -121,15 +229,12 @@ describe("Resolution Integration Tests", () => {
     })
 
     it("resolves Id. after statute citation", () => {
-      const text =
-        "Smith v. Jones, 500 F.2d 123 (2020). " +
-        "42 U.S.C. § 1983. " +
-        "Id."
+      const text = "Smith v. Jones, 500 F.2d 123 (2020). " + "42 U.S.C. § 1983. " + "Id."
 
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
 
-      const statute = citations.find(c => c.type === "statute")
-      const id = citations.find(c => c.type === "id")
+      const statute = citations.find((c) => c.type === "statute")
+      const id = citations.find((c) => c.type === "id")
 
       expect(statute).toBeDefined()
       expect(id).toBeDefined()
@@ -148,8 +253,8 @@ describe("Resolution Integration Tests", () => {
 
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
 
-      const smith = citations.find(c => c.type === "case" && c.reporter === "F.2d")
-      const ids = citations.filter(c => c.type === "id")
+      const smith = citations.find((c) => c.type === "case" && c.reporter === "F.2d")
+      const ids = citations.filter((c) => c.type === "id")
 
       expect(smith).toBeDefined()
       expect(ids).toHaveLength(2)

@@ -13,6 +13,7 @@ import type {
 export function isFullCitation(citation: Citation): citation is FullCitation {
   return (
     citation.type === "case" ||
+    citation.type === "docket" ||
     citation.type === "statute" ||
     citation.type === "journal" ||
     citation.type === "neutral" ||

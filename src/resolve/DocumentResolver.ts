@@ -18,6 +18,7 @@ import type {
   SupraCitation,
 } from "../types/citation"
 import { isFullCitation } from "../types/guards"
+import type { Span } from "../types/span"
 import { BKTree } from "./bkTree"
 import { levenshteinDistance } from "./levenshtein"
 import { buildFootnoteScopes, detectParagraphBoundaries, isWithinBoundary } from "./scopeBoundary"
@@ -27,6 +28,19 @@ import type {
   ResolutionResult,
   ResolvedCitation,
 } from "./types"
+
+/**
+ * Returns the citation's `fullSpan` if it has one. Only `case` and `docket`
+ * citations carry `fullSpan` (set during case-name backward search). Other
+ * full citation types (statute, journal, neutral, etc.) don't have a
+ * case-name span concept and never participate in parenthetical-child checks.
+ */
+function getFullSpan(citation: Citation): Span | undefined {
+  if (citation.type === "case" || citation.type === "docket") {
+    return citation.fullSpan
+  }
+  return undefined
+}
 
 /**
  * Document-scoped resolver that processes citations sequentially
@@ -115,9 +129,28 @@ export class DocumentResolver {
           resolution = this.resolveShortFormCase(citation)
           break
         default:
-          // Full citation - update context for future resolutions
+          // Full citation - update context for future resolutions.
           if (isFullCitation(citation)) {
-            this.context.lastResolvedIndex = i
+            // Bluebook Rule 4.1: Id. refers to the immediately preceding
+            // *cited authority*. A full citation parsed inside another
+            // citation's explanatory parenthetical (e.g. "(citing X)" or
+            // "(quoting Y)") is a sub-reference within the parent's
+            // citation, not the cited authority of that sentence — so it
+            // must not become Id.'s default antecedent. Detect this by
+            // checking whether the current cite's span lies within an
+            // earlier full cite's fullSpan. We still track it for
+            // supra/short-form resolution.
+            const isParentheticalChild = resolved.some((prior) => {
+              const priorFullSpan = getFullSpan(prior)
+              if (!priorFullSpan) return false
+              return (
+                priorFullSpan.cleanStart <= citation.span.cleanStart &&
+                priorFullSpan.cleanEnd >= citation.span.cleanEnd
+              )
+            })
+            if (!isParentheticalChild) {
+              this.context.lastResolvedIndex = i
+            }
             this.trackFullCitation(citation, i)
           }
           break
