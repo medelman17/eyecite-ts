@@ -1,5 +1,41 @@
 # eyecite-ts
 
+## 0.13.0
+
+### Minor Changes
+
+- [#217](https://github.com/medelman17/eyecite-ts/pull/217) [`2e07a41`](https://github.com/medelman17/eyecite-ts/commit/2e07a41826f3164b0655632fab775eb1a8ea28b0) Thanks [@medelman17](https://github.com/medelman17)! - feat: extract docket-number citations like `Party v. Party, No. 51 (N.Y. 2023)` (#215)
+
+  Adds a new `"docket"` citation type for cases identified by docket / slip-opinion number rather than a traditional reporter assignment. Common shapes:
+
+  - NY Court of Appeals slip ops: `IKB Int'l, S.A. v. Wells Fargo Bank, N.A., No. 51 (N.Y. 2023)`
+  - Federal district-court pre-reporter: `Smith v. Jones, No. 19-cv-12345 (S.D.N.Y. 2024)`
+  - Bankruptcy / `In re` shapes: `In re Smith, No. 22-bk-1234 (Bankr. S.D.N.Y. 2024)`
+
+  **Added:**
+
+  - `DocketCitation` type with `docketNumber`, `caseName`, `plaintiff`/`defendant`, `court`/`normalizedCourt`, `year`/`date`, `proceduralPrefix`, `fullSpan`, and party-name `*Normalized` fields
+  - `"docket"` discriminator added to `CitationType`, `FullCitationType`, and the `Citation` / `FullCitation` unions
+  - `docketPatterns` array with a single tokenizer pattern (`docket-paren-court-year`)
+  - `extractDocket` extractor with case-name backward-search and disambiguation guard
+  - `toBluebook` support for the new docket type
+
+  **Disambiguation:** A bare `No. 51 (N.Y. 2023)` is too generic to surface on its own, so the extractor only emits a `DocketCitation` when a preceding `Party v. Party,` or `In re Party,` anchor is found. Confidence is 0.7 (lower than reporter-based citations because there is no reporter to validate against).
+
+  `isFullCitation` now returns `true` for `"docket"` cites, so they participate in `Id.` and `supra` resolution like other full citations.
+
+  8 new tests in `tests/extract/extractDocket.test.ts` cover the NY slip-op shape, federal docket numbers (with and without month/day), `In re` shape, two false-positive guards (no case-name anchor, no year), span coverage, and coexistence with reporter-based cites.
+
+### Patch Changes
+
+- [#217](https://github.com/medelman17/eyecite-ts/pull/217) [`2e07a41`](https://github.com/medelman17/eyecite-ts/commit/2e07a41826f3164b0655632fab775eb1a8ea28b0) Thanks [@medelman17](https://github.com/medelman17)! - fix: resolve `Id.` to the parent citation, not a citation inside its `(citing X)` parenthetical (#214)
+
+  Bluebook Rule 4.1: `Id.` refers to the immediately preceding _cited authority_. A full citation parsed inside another citation's explanatory parenthetical (`(citing X)`, `(quoting Y)`, etc.) is a sub-reference within the parent's citation, not the cited authority of that sentence — so it must not become `Id.`'s default antecedent.
+
+  Previously `DocumentResolver` unconditionally promoted every full citation to `lastResolvedIndex`, including ones parsed inside another citation's explanatory parenthetical. After this fix, the resolver detects parenthetical-internal full citations by checking whether the current cite's `span` lies within an earlier full cite's `fullSpan`, and skips them when updating `lastResolvedIndex`. Such cites are still tracked for `supra` and short-form-case resolution.
+
+  Regression coverage: 7 new tests in `tests/integration/resolution.test.ts` covering the bug repro, supra/short-form lookups into parenthetical-internal cites, plain `Id.` after a single full cite, string cites with `;` separators, parallel cites, and subsequent history (`aff'd`).
+
 ## 0.12.0
 
 ### Minor Changes
