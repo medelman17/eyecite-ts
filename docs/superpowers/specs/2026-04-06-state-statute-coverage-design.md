@@ -83,7 +83,7 @@ The existing `abbreviatedCodes[]` array in `knownCodes.ts` migrates to derive fr
 
 ### 4. Data Population
 
-Source: the OurFirm.ai statute repo's research docs (`docs/srcs/*.md`) and `citation-normalizer.ts`.
+Source: an internal statute repo's research docs (`docs/srcs/*.md`) and `citation-normalizer.ts`.
 
 For each of the ~30 missing states:
 1. Read the state's research doc for citation format variants and abbreviations
