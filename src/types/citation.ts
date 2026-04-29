@@ -1,4 +1,3 @@
-import type { Span } from "./span"
 import type {
   CaseComponentSpans,
   ConstitutionalComponentSpans,
@@ -9,12 +8,14 @@ import type {
   StatuteComponentSpans,
   StatutesAtLargeComponentSpans,
 } from "./componentSpans"
+import type { Span } from "./span"
 
 /**
  * Citation type discriminator for type-safe pattern matching.
  */
 export type CitationType =
   | "case"
+  | "docket"
   | "statute"
   | "journal"
   | "neutral"
@@ -513,6 +514,54 @@ export interface StatutesAtLargeCitation extends CitationBase {
 }
 
 /**
+ * Docket-number-only case citation (no traditional reporter assignment).
+ *
+ * Used for very recent decisions identified by docket/slip number, common for:
+ * - NY Court of Appeals slip opinions: `IKB Int'l v. Wells Fargo, No. 51 (N.Y. 2023)`
+ * - Federal district court decisions before reporter assignment: `Smith v. Jones, No. 12-3456 (S.D.N.Y. 2024)`
+ * - Some unreported state-court orders
+ *
+ * Disambiguation: a bare `No. 51 (N.Y. 2023)` is too generic to extract on its
+ * own — extraction only emits a DocketCitation when a preceding case-name
+ * anchor (e.g. `Party v. Party,`) is present.
+ *
+ * @example "IKB Int'l, S.A. v. Wells Fargo Bank, N.A., No. 51 (N.Y. 2023)"
+ */
+export interface DocketCitation extends CitationBase {
+  type: "docket"
+  /** Docket / slip-opinion number (string to preserve hyphens, e.g. "12-3456") */
+  docketNumber: string
+  /** Court abbreviation extracted from the parenthetical (e.g. "N.Y.", "S.D.N.Y.") */
+  court?: string
+  /** Normalized court string: spaces collapsed, trailing period ensured */
+  normalizedCourt?: string
+  /** Year of decision */
+  year?: number
+  /** Date information when the parenthetical includes month/day */
+  date?: {
+    iso: string
+    parsed?: { year: number; month?: number; day?: number }
+  }
+  /** Extracted case name (party names around "v.") */
+  caseName?: string
+  /** Plaintiff party name */
+  plaintiff?: string
+  /** Defendant party name */
+  defendant?: string
+  /** Normalized plaintiff name for matching (lowercase, stripped of noise) */
+  plaintiffNormalized?: string
+  /** Normalized defendant name for matching (lowercase, stripped of noise) */
+  defendantNormalized?: string
+  /** Procedural prefix for non-adversarial cases (e.g. "In re") */
+  proceduralPrefix?: string
+  /**
+   * Full span covering citation from case name through closing parenthetical.
+   * @example For "Smith v. Jones, No. 51 (N.Y. 2023)", fullSpan covers the entire text.
+   */
+  fullSpan?: Span
+}
+
+/**
  * Constitutional citation (U.S. or state constitution).
  *
  * @example "U.S. Const. art. III, § 2"
@@ -606,6 +655,7 @@ export interface ShortFormCaseCitation extends CitationBase {
  */
 export type Citation =
   | FullCaseCitation
+  | DocketCitation
   | StatuteCitation
   | JournalCitation
   | NeutralCitation
@@ -622,6 +672,7 @@ export type Citation =
  */
 export type FullCitationType =
   | "case"
+  | "docket"
   | "statute"
   | "journal"
   | "neutral"
@@ -636,6 +687,7 @@ export type ShortFormCitationType = "id" | "supra" | "shortFormCase"
  */
 export type FullCitation =
   | FullCaseCitation
+  | DocketCitation
   | StatuteCitation
   | JournalCitation
   | NeutralCitation

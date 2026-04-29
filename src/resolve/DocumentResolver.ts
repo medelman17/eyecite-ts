@@ -30,13 +30,13 @@ import type {
 } from "./types"
 
 /**
- * Returns the citation's `fullSpan` if it has one. Only `case` citations
- * carry `fullSpan` (set during case-name backward search). Other full
- * citation types (statute, journal, neutral, etc.) don't have a
+ * Returns the citation's `fullSpan` if it has one. Only `case` and `docket`
+ * citations carry `fullSpan` (set during case-name backward search). Other
+ * full citation types (statute, journal, neutral, etc.) don't have a
  * case-name span concept and never participate in parenthetical-child checks.
  */
 function getFullSpan(citation: Citation): Span | undefined {
-  if (citation.type === "case") {
+  if (citation.type === "case" || citation.type === "docket") {
     return citation.fullSpan
   }
   return undefined

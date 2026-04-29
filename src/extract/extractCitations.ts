@@ -20,6 +20,7 @@ import type { FootnoteMap } from "@/footnotes/types"
 import {
   extractCase,
   extractConstitutional,
+  extractDocket,
   extractFederalRegister,
   extractJournal,
   extractNeutral,
@@ -31,6 +32,7 @@ import type { Pattern } from "@/patterns"
 import {
   casePatterns,
   constitutionalPatterns,
+  docketPatterns,
   journalPatterns,
   neutralPatterns,
   shortFormPatterns,
@@ -225,6 +227,7 @@ export function extractCitations(
   // Note: Pattern order matters for deduplication - more specific patterns first
   const allPatterns = options?.patterns || [
     ...neutralPatterns, // Most specific (year-based format)
+    ...docketPatterns, // Docket-number citations (anchored by "No. ")
     ...shortFormPatterns, // Short-form (requires " at " keyword)
     ...casePatterns, // Case citations (reporter-specific)
     ...constitutionalPatterns, // Constitutional citations (more specific than statutes)
@@ -274,8 +277,7 @@ export function extractCitations(
     let subsumed = false
     for (const kept of deduplicatedTokens) {
       const contains =
-        kept.span.cleanStart <= token.span.cleanStart &&
-        kept.span.cleanEnd >= token.span.cleanEnd
+        kept.span.cleanStart <= token.span.cleanStart && kept.span.cleanEnd >= token.span.cleanEnd
       if (!contains) continue
       if (priorityOf(kept) > priorityOf(token)) continue // kept is less specific, don't let it swallow
       // `kept` is at least as specific AND contains this token. Drop `token`
@@ -321,6 +323,15 @@ export function extractCitations(
           citation = extractCase(token, transformationMap, cleaned)
         }
         break
+      case "docket": {
+        // Docket extractor returns undefined when no case-name anchor is
+        // found — the bare "No. <N> (<court> <year>)" shape is too generic
+        // to surface without context.
+        const result = extractDocket(token, transformationMap, cleaned)
+        if (!result) continue
+        citation = result
+        break
+      }
       case "statute":
         citation = extractStatute(token, transformationMap)
         break

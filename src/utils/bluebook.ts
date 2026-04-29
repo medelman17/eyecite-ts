@@ -90,6 +90,19 @@ export function toBluebook(citation: Citation): string {
       return `${vol}${citation.abbreviation}${page}${pincite}${year}`
     }
 
+    case "docket": {
+      const caseName = citation.caseName ? `${citation.caseName}, ` : ""
+      const courtAndYear =
+        citation.court && citation.year
+          ? ` (${citation.court} ${citation.year})`
+          : citation.court
+            ? ` (${citation.court})`
+            : citation.year
+              ? ` (${citation.year})`
+              : ""
+      return `${caseName}No. ${citation.docketNumber}${courtAndYear}`
+    }
+
     case "neutral":
       return `${citation.year} ${citation.court} ${citation.documentNumber}`
 

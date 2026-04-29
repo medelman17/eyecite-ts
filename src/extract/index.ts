@@ -17,6 +17,7 @@
 export * from "./extractCase"
 export * from "./extractCitations"
 export * from "./extractConstitutional"
+export * from "./extractDocket"
 export * from "./extractFederalRegister"
 export * from "./extractJournal"
 export * from "./extractNeutral"

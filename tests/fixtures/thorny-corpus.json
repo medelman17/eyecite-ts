@@ -946,9 +946,15 @@
     {
       "id": "docket-number-only",
       "category": "docket-numbers",
-      "description": "Docket number without reporter citation",
+      "description": "Docket number without reporter citation (#215)",
       "text": "Smith v. Jones, No. 19-cv-12345 (S.D.N.Y. filed Jan. 5, 2019)",
-      "expected": []
+      "expected": [
+        {
+          "type": "docket",
+          "docketNumber": "19-cv-12345",
+          "year": 2019
+        }
+      ]
     },
     {
       "id": "docket-plus-reporter",
