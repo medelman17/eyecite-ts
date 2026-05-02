@@ -35,6 +35,7 @@ export type {
   ConstitutionalCitation,
   ConstitutionalComponentSpans,
   CourtInference,
+  DocketCitation,
   ExtractorMap,
   FederalRegisterCitation,
   FederalRegisterComponentSpans,

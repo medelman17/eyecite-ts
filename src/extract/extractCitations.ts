@@ -320,14 +320,14 @@ export function extractCitations(
         } else if (token.patternId === "shortFormCase") {
           citation = extractShortFormCase(token, transformationMap)
         } else {
-          citation = extractCase(token, transformationMap, cleaned)
+          citation = extractCase(token, transformationMap, cleaned, text)
         }
         break
       case "docket": {
         // Docket extractor returns undefined when no case-name anchor is
         // found — the bare "No. <N> (<court> <year>)" shape is too generic
         // to surface without context.
-        const result = extractDocket(token, transformationMap, cleaned)
+        const result = extractDocket(token, transformationMap, cleaned, text)
         if (!result) continue
         citation = result
         break
@@ -406,6 +406,13 @@ export function extractCitations(
   // Three-phase approach: match signals → union chains → aggregate entries.
   // Invariant: citations are in text order (guaranteed by token-order processing above).
   linkSubsequentHistory(citations)
+
+  // Step 4.55: Inherit case name from chain root for subsequent-history children (#224).
+  // Per Bluebook 10.7, all citations in a history chain reference one case.
+  // Without this, extractCaseName scans back from the child, captures the
+  // parent cite + connector ("Smith v. Doe, 100 F.3d 200 (...), aff'd"),
+  // and produces a nonsense caseName.
+  inheritSubsequentHistoryCaseName(citations)
 
   // Step 4.75: Detect string citation groups (semicolon-separated)
   detectStringCitations(citations, cleaned)
@@ -547,5 +554,55 @@ function linkSubsequentHistory(citations: Citation[]): void {
     }
 
     rootCitation.subsequentHistoryEntries = allEntries
+  }
+}
+
+/**
+ * Inherit case name fields from the chain root for subsequent-history children.
+ *
+ * In a chain like `<full cite A>, modified on other grounds, <full cite B>`,
+ * citation B has no preceding case-name string in the document — it implicitly
+ * shares A's case name (Bluebook Rule 10.7). The default case-name scanner
+ * walks left from B and captures all of A's text plus the history connector.
+ *
+ * After `linkSubsequentHistory` has set `subsequentHistoryOf` back-pointers,
+ * this pass overwrites the child's case-name fields with the chain root's,
+ * clears component spans (the child has no anchor), and trims `fullSpan`
+ * back to the child's own citation core.
+ *
+ * Closes #224.
+ */
+function inheritSubsequentHistoryCaseName(citations: Citation[]): void {
+  for (const child of citations) {
+    if (child.type !== "case") continue
+    if (!child.subsequentHistoryOf) continue
+    const parent = citations[child.subsequentHistoryOf.index]
+    if (!parent || parent.type !== "case") continue
+    if (!parent.caseName) continue
+
+    child.caseName = parent.caseName
+    child.plaintiff = parent.plaintiff
+    child.defendant = parent.defendant
+    child.plaintiffNormalized = parent.plaintiffNormalized
+    child.defendantNormalized = parent.defendantNormalized
+    child.proceduralPrefix = parent.proceduralPrefix
+
+    if (child.spans) {
+      child.spans.caseName = undefined
+      child.spans.plaintiff = undefined
+      child.spans.defendant = undefined
+    }
+
+    // Trim fullSpan to the child's own citation core. extractCaseName had
+    // anchored fullSpan at the parent's case name; that's not the child's
+    // text. Keep the original cleanEnd/originalEnd (parenthetical end).
+    if (child.fullSpan) {
+      child.fullSpan = {
+        cleanStart: child.span.cleanStart,
+        cleanEnd: child.fullSpan.cleanEnd,
+        originalStart: child.span.originalStart,
+        originalEnd: child.fullSpan.originalEnd,
+      }
+    }
   }
 }

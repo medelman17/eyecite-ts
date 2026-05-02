@@ -2552,4 +2552,108 @@ describe("phantom-citation suppression (#196)", () => {
   })
 })
 
+describe("case name scanback cluster (#221, #222, #223, #224)", () => {
+  describe("#221: paragraph boundaries halt the scanback", () => {
+    it("does not cross a \\n\\n paragraph break above the case name", () => {
+      const text = `B. Comparative Fault and Contributory Negligence
+
+California adopted comparative fault in Li v. Yellow Cab Co., 13 Cal.3d 804, 813 (1975).`
+      const cits = extractCitations(text)
+      const cite = cits.find((c) => c.type === "case")
+      expect(cite).toBeDefined()
+      if (cite?.type === "case") {
+        expect(cite.caseName).toBe("Li v. Yellow Cab Co.")
+      }
+    })
+
+    it("does not cross a paragraph break above an ALL-CAPS heading", () => {
+      const text = `INTENTIONAL INFLICTION OF EMOTIONAL DISTRESS
+
+New York first recognized IIED as a cognizable cause of action in Fischer v. Maloney, 43 N.Y.2d 553, 557 (1978).`
+      const cits = extractCitations(text)
+      const cite = cits.find((c) => c.type === "case")
+      expect(cite).toBeDefined()
+      if (cite?.type === "case") {
+        expect(cite.caseName).toBe("Fischer v. Maloney")
+      }
+    })
+  })
+
+  describe("#222: consolidated captions do not produce multi-segment caseName", () => {
+    it("returns a single-segment caption when multiple v.-anchors precede the cite", () => {
+      const text = `In Matter of New York City Asbestos Litigation, Doris Kay Dummitt v. A.W. Chesterton, Matter of Eighth Judicial District Asbestos Litigation, Joann H. Suttner v. A.W. Chesterton Company, 27 N.Y.3d 765, 787 (2016), the court held that successor-liability principles apply.`
+      const cits = extractCitations(text)
+      const cite = cits.find((c) => c.type === "case")
+      expect(cite).toBeDefined()
+      if (cite?.type === "case") {
+        // Acceptable canonical caption: either the leading "Matter of …" segment
+        // or the first "X v. Y" segment. The invariant is that the second/third
+        // segments must NOT be concatenated in.
+        expect(cite.caseName).not.toMatch(/Joann H\. Suttner/)
+        expect(cite.caseName).not.toMatch(/, Matter of Eighth/)
+      }
+    })
+  })
+
+  describe("#223: lead-in clauses are trimmed off the plaintiff", () => {
+    it("trims 'Under the controlling authority of the Court of Appeals in'", () => {
+      const text = `Under the controlling authority of the Court of Appeals in Dormitory Auth. of the State of N.Y. v. Samson Constr. Co., 30 N.Y.3d 704, 708 (2018), the rule is settled.`
+      const cits = extractCitations(text)
+      const cite = cits.find((c) => c.type === "case")
+      expect(cite).toBeDefined()
+      if (cite?.type === "case") {
+        expect(cite.caseName).toBe("Dormitory Auth. of the State of N.Y. v. Samson Constr. Co.")
+      }
+    })
+
+    it("trims 'As the Supreme Court emphasized in'", () => {
+      const text = `As the Supreme Court emphasized in Bell Atlantic Corp. v. Twombly, 550 U.S. 544, 570 (2007), pleading must be plausible.`
+      const cits = extractCitations(text)
+      const cite = cits.find((c) => c.type === "case")
+      expect(cite).toBeDefined()
+      if (cite?.type === "case") {
+        expect(cite.caseName).toBe("Bell Atlantic Corp. v. Twombly")
+      }
+    })
+
+    it("trims 'Pursuant to the rule announced in'", () => {
+      const text = `Pursuant to the rule announced in Mathews v. Eldridge, 424 U.S. 319, 335 (1976), three factors apply.`
+      const cits = extractCitations(text)
+      const cite = cits.find((c) => c.type === "case")
+      expect(cite).toBeDefined()
+      if (cite?.type === "case") {
+        expect(cite.caseName).toBe("Mathews v. Eldridge")
+      }
+    })
+  })
+
+  describe("#224: subsequent-history chains share a caseName", () => {
+    it("'modified on other grounds' chain — both cites share the original caseName", () => {
+      const text = `The court applied Corsello v. Verizon N.Y., Inc., 77 A.D.3d 344, 368 (2d Dep't 2010), modified on other grounds, 18 N.Y.3d 777 (2012), to find the claim time-barred.`
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(2)
+      if (cases[0]?.type === "case") {
+        expect(cases[0].caseName).toBe("Corsello v. Verizon N.Y., Inc.")
+      }
+      if (cases[1]?.type === "case") {
+        expect(cases[1].caseName).toBe("Corsello v. Verizon N.Y., Inc.")
+      }
+    })
+
+    it("'aff'd' chain — both cites share the original caseName", () => {
+      const text = `The Court relied on Smith v. Doe, 100 F.3d 200, 205 (2d Cir. 1996), aff'd, 200 F.3d 300 (2d Cir. 1997), to reach this result.`
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(2)
+      if (cases[0]?.type === "case") {
+        expect(cases[0].caseName).toBe("Smith v. Doe")
+      }
+      if (cases[1]?.type === "case") {
+        expect(cases[1].caseName).toBe("Smith v. Doe")
+      }
+    })
+  })
+})
+
 
