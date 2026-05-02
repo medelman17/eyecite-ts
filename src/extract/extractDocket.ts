@@ -56,6 +56,7 @@ export function extractDocket(
   token: Token,
   transformationMap: TransformationMap,
   cleanedText: string,
+  originalText?: string,
 ): DocketCitation | undefined {
   const { text, span } = token
 
@@ -70,7 +71,10 @@ export function extractDocket(
   // Backward case-name search — anchor for disambiguation. Without a
   // case-name we don't emit a citation: a bare "No. 51 (N.Y. 2023)" lacks
   // the context needed to be confident this is a citation at all.
-  const caseNameResult = extractCaseName(cleanedText, span.cleanStart)
+  const caseNameResult = extractCaseName(cleanedText, span.cleanStart, undefined, {
+    originalText,
+    transformationMap,
+  })
   if (!caseNameResult) return undefined
 
   // The case-name extractor's V_CASE_NAME_REGEX requires "Party v. Party"

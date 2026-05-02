@@ -267,13 +267,18 @@ const PROCEDURAL_PREFIX_REGEX =
  * Lowercase words that legitimately appear in legal party names.
  * Articles, prepositions, and legal connectors (e.g., "of", "the", "ex", "rel").
  * Used to distinguish real party names from sentence context captured by the regex.
+ *
+ * Note: "in" is intentionally NOT a connector. It's overwhelmingly a prose
+ * preposition ("the holding in", "the rule announced in") rather than a
+ * party-name internal token. Treating "in" as a connector lets lead-in
+ * clauses bleed into the captured plaintiff (#223). Procedural "In re"
+ * captions go through PROCEDURAL_PREFIX_REGEX instead.
  */
 const PARTY_NAME_CONNECTORS = new Set([
   "of",
   "the",
   "and",
   "for",
-  "in",
   "on",
   "by",
   "a",
@@ -294,6 +299,16 @@ const PARTY_NAME_CONNECTORS = new Set([
   "d",
   "or",
 ])
+
+/**
+ * Internal qualifier markers that appear inside legitimate party names
+ * (e.g., "Smith d/b/a Old Bob's Diner v. Jones", "Jones aka Johnson v. Smith").
+ * When such a marker is present, the plaintiff is correctly anchored at its
+ * first word — even if that word is followed by lowercase non-connector
+ * tokens. Without this signal, the firstWordIsProperName guard incorrectly
+ * preserves lead-in prose (#223).
+ */
+const INTERNAL_QUALIFIER_REGEX = /\b(?:d\/?b\/?a|a\/?k\/?a|f\/?k\/?a|n\/?k\/?a)\b/i
 
 /**
  * Check whether a string looks like a legal party name vs. sentence context.
@@ -823,6 +838,8 @@ const SENTENCE_BOUNDARY_REGEX = /[.)]\s+(?=[A-Z])/g
  * @param cleanedText - Full cleaned text
  * @param coreStart - Position where citation core begins (volume start)
  * @param maxLookback - Maximum characters to search backward (default 150)
+ * @param options - Optional original text + transformationMap to detect
+ *   paragraph-break boundaries that the cleaner has collapsed (#221).
  * @returns Case name and start position, or undefined if not found
  *
  * @example
@@ -835,25 +852,65 @@ export function extractCaseName(
   cleanedText: string,
   coreStart: number,
   maxLookback = 150,
+  options?: { originalText?: string; transformationMap?: TransformationMap },
 ): { caseName: string; nameStart: number } | undefined {
   const searchStart = Math.max(0, coreStart - maxLookback)
   let precedingText = cleanedText.substring(searchStart, coreStart)
   let adjustedSearchStart = searchStart
 
   // Split at last boundary to avoid crossing citation/sentence boundaries.
-  // We check four boundary types:
+  // We check five boundary types:
   //   1. Citation boundary: digit-period-space (e.g., "10. " from a previous cite's page number)
   //   2. Id. boundary: "Id. " short-form citation marker (#182)
   //   3. Parenthetical signal boundary: "(quoting ", "(citing ", "(cited in " (#182)
   //   4. Sentence boundary: period/paren + space + uppercase, skipped when the
   //      word before the period is a legal abbreviation (Bluebook T6/T10/T7)
+  //   5. Paragraph boundary: \n\s*\n in the original text, recovered via
+  //      transformationMap because the cleaner collapses newlines to spaces (#221)
   let lastBoundaryIndex = -1
   let match: RegExpExecArray | null
+
+  // Check paragraph boundaries via original text (#221).
+  // The default cleaner pipeline replaces \n with space, so paragraph breaks
+  // are invisible in cleanedText. Recover them from originalText by mapping
+  // the search window back to original coordinates.
+  if (options?.originalText && options.transformationMap) {
+    const { originalText, transformationMap } = options
+    const searchOriginalStart =
+      transformationMap.cleanToOriginal.get(searchStart) ?? searchStart
+    const coreOriginalStart =
+      transformationMap.cleanToOriginal.get(coreStart) ?? coreStart
+    if (coreOriginalStart > searchOriginalStart) {
+      const originalWindow = originalText.substring(searchOriginalStart, coreOriginalStart)
+      const paragraphBreakRegex = /\n[ \t\r]*\n/g
+      let pMatch: RegExpExecArray | null
+      while ((pMatch = paragraphBreakRegex.exec(originalWindow)) !== null) {
+        const breakOriginalEnd = searchOriginalStart + pMatch.index + pMatch[0].length
+        // Find the clean position immediately at/after the paragraph break.
+        // The break itself collapses to a space; the next non-whitespace char
+        // is the start of the new paragraph in cleanedText.
+        let cleanPos: number | undefined
+        for (let off = 0; off < 10; off++) {
+          cleanPos = transformationMap.originalToClean.get(breakOriginalEnd + off)
+          if (cleanPos !== undefined) break
+        }
+        if (cleanPos !== undefined && cleanPos >= searchStart && cleanPos <= coreStart) {
+          const relIndex = cleanPos - searchStart
+          if (relIndex > lastBoundaryIndex) {
+            lastBoundaryIndex = relIndex
+          }
+        }
+      }
+    }
+  }
 
   // Check citation boundaries (digit-period-space)
   CITATION_BOUNDARY_REGEX.lastIndex = 0
   while ((match = CITATION_BOUNDARY_REGEX.exec(precedingText)) !== null) {
-    lastBoundaryIndex = match.index + match[0].length
+    const boundaryEnd = match.index + match[0].length
+    if (boundaryEnd > lastBoundaryIndex) {
+      lastBoundaryIndex = boundaryEnd
+    }
   }
 
   // Check Id. boundaries (#182)
@@ -909,12 +966,12 @@ export function extractCaseName(
       // If the plaintiff contains lowercase non-connector words (e.g., "The court cited Smith"),
       // it captured sentence context. Trim from the left to the first valid party name start.
       //
-      // Two conditions must both hold for trimming to apply:
-      //   1. The plaintiff is not a valid party name (contains lowercase non-connector words)
-      //   2. The plaintiff does NOT start with a proper capitalized word (uppercase-initial,
-      //      non-connector). If the first word is already a capitalized party name word, the name
-      //      is correctly anchored — internal qualifiers like "d/b/a" or "aka" belong to the name
-      //      and should be left for downstream normalization, not trimmed away.
+      // The firstWordIsProperName guard preserves the original plaintiff when the
+      // first word is a real party name and the lowercase content is an internal
+      // qualifier ("Smith d/b/a Old Bob's Diner"). Without an internal-qualifier
+      // marker, a capitalized first word alone is NOT enough to suppress trimming —
+      // sentence-initial prepositions like "Under", "Pursuant", "Following" would
+      // otherwise be preserved as if they were proper nouns (#223).
       if (!isLikelyPartyName(plaintiff)) {
         const words = plaintiff.split(/\s+/)
         const firstWord = words[0] ?? ""
@@ -922,7 +979,8 @@ export function extractCaseName(
         const firstWordIsProperName =
           /^[A-Z]/.test(firstWord) &&
           !PARTY_NAME_CONNECTORS.has(firstWordClean) &&
-          !SENTENCE_INITIAL_WORDS.has(firstWordClean)
+          !SENTENCE_INITIAL_WORDS.has(firstWordClean) &&
+          INTERNAL_QUALIFIER_REGEX.test(plaintiff)
         if (!firstWordIsProperName) {
           // Check if the prefix starts with a signal word (See, See also, But see, etc.).
           // If so, keep it — extractPartyNames handles signal stripping downstream.
@@ -943,7 +1001,21 @@ export function extractCaseName(
         }
       }
 
-      const caseName = `${plaintiff} v. ${vMatch[2].trim()}`
+      // Detect consolidated captions: vMatch[0] contains 2+ "v." anchors.
+      // The non-greedy regex defendant (group 2) is anchored at the trailing
+      // ",$" and so absorbs downstream comma-separated caption segments
+      // including their own "v." anchors (#222). Recovery: truncate the
+      // defendant at its first comma to keep just the first "X v. Y" pair.
+      const vAnchorMatches = vMatch[0].match(/\bv(?:s)?\.\s/g)
+      let defendantText = vMatch[2].trim()
+      if (vAnchorMatches && vAnchorMatches.length >= 2) {
+        const firstCommaInDefendant = vMatch[2].indexOf(",")
+        if (firstCommaInDefendant !== -1) {
+          defendantText = vMatch[2].substring(0, firstCommaInDefendant).trim()
+        }
+      }
+
+      const caseName = `${plaintiff} v. ${defendantText}`
       const nameStart = adjustedSearchStart + vMatch.index + trimOffset
       return { caseName, nameStart }
     }
@@ -1460,6 +1532,7 @@ export function extractCase(
   token: Token,
   transformationMap: TransformationMap,
   cleanedText?: string,
+  originalText?: string,
 ): FullCaseCitation {
   const { text, span } = token
 
@@ -1729,7 +1802,10 @@ export function extractCase(
   // Phase 6: Extract case name via backward search
   let caseNameResult: ReturnType<typeof extractCaseName> | undefined
   if (cleanedText) {
-    caseNameResult = extractCaseName(cleanedText, span.cleanStart)
+    caseNameResult = extractCaseName(cleanedText, span.cleanStart, undefined, {
+      originalText,
+      transformationMap,
+    })
     if (caseNameResult) {
       caseName = caseNameResult.caseName
 
