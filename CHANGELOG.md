@@ -1,5 +1,72 @@
 # eyecite-ts
 
+## 0.13.2
+
+### Patch Changes
+
+- [#227](https://github.com/medelman17/eyecite-ts/pull/227) [`9fdf174`](https://github.com/medelman17/eyecite-ts/commit/9fdf174237c97e189fb8edab614d02769794ce1a) Thanks [@medelman17](https://github.com/medelman17)! - fix: case-name lookback recognizes ~58 additional abbreviations from cross-jurisdictional survey
+
+  Cross-agent research canvassed 15 jurisdictional clusters and produced consensus on abbreviations that appear in real case captions but were missing from `CASE_NAME_ABBREVS`. Adding them prevents the backward case-name scanner from treating intra-caption abbreviation periods as sentence boundaries.
+
+  Categories of additions (full per-stem source citations in `src/extract/extractCase.ts`):
+
+  - **Universal apostrophe-form + Bluebook BT1.2 party designations**: `atty` (Att'y / Att'y Gen. — 32k+ corpus matches across every state and federal AG case), `attys`, `petr` (Pet'r), `respt` (Resp't), `commrs` (plural of existing commr).
+  - **Plurals of existing singular stems for modern LLC-era captions**: `hldgs`, `hldg`, `props`, `prods`, `ents`, `invests`, `scis`, `emps`, `sols`, `corrs`, `telecomms`, `examrs`, `cmtys`, `colls`, `cts`, `amends`.
+  - **Standard institutional / agency**: `civ` (Civ. — including Ala. Civ. App., Civ. Rts. Div.), `enf` (Enforcement, distinct from existing `enft`), `advis`, `utils`, `lic` (License), `bur` (Bureau), `insp` (Inspection), `conserv` (Conservation), `retire` (distinct from `ret`), `discipl`, `supers` (PA Twp. Bd. of Supers.), `edn` (Ohio Edn.), `coun` (Council, distinct from existing `couns`), `stds`, `procs`, `quals`.
+  - **Regional / state-specific**: `boro` (NJ long-form alternative to existing `bor`), `commw` (PA Commonwealth Court), `adv` (NV Adv. Op.), `comn` (Hawaii single-m variant of Comm'n), `irrig`, `reclam`, `rptr` (Cal.Rptr.), `vet` (Vet. App., Sec'y of Vet. Aff.), `trib`, `adj`, `vol` (PA Vol. Fire Dept.).
+  - **Corporate entity forms**: `pty` (Australian Pty. Ltd.).
+  - **Bluebook 21st edition (2020) T6/T13.2 merger additions**: `poly` (Pol'y), `stud` (Stud.), `libr` (Libr.), `refin` (Refin., distinct from existing `ref`), `socio` (Sociology, distinct from existing `soc`), `laby` (Lab'y, distinct from existing `lab`), `naty` (Nat'y / Nationality), `wkly`, `appx` (App'x / F. App'x reporter).
+
+  Adds 21 regression tests covering representative samples from each category. Per-region research reports retained in `docs/research/2026-05-10-citation-abbrevs-*.md` plus a `2026-05-10-citation-style-quirks.md` parser-improvement roadmap (paragraph pincites `¶ N`, hyphenated neutral cites like `2010-NMSC-007`, CA year-first format, TX writ history, state LEXIS) for future work.
+
+- [#227](https://github.com/medelman17/eyecite-ts/pull/227) [`9fdf174`](https://github.com/medelman17/eyecite-ts/commit/9fdf174237c97e189fb8edab614d02769794ce1a) Thanks [@medelman17](https://github.com/medelman17)! - fix: case-name lookback recognizes Nebraska's apostrophe-dropped Comr./Comrs. and Bluebook Reins.
+
+  Re-dispatched the Plains + Upper Midwest research agent (MN, IA, MO, KS, NE, ND, SD) after its first run stalled. The region is substantially Bluebook-conforming, but three real gaps remained:
+
+  - **`comr` / `comrs`** — Nebraska reporter style drops the apostrophe from "Comm'r" / "Comm'rs" and uses the single-m spellings "Comr." / "Comrs." (e.g., "Cherry Cty. Bd. of Comrs."). These normalize to distinct stems from the existing two-m `commr` / `commrs`.
+  - **`reins`** — "Reinsurance" abbreviation from Bluebook T6, common in ND/IA insurance captions like "Grinnell Mut. Reins. Co. v. Farm & City Ins. Co."
+
+  Adds 2 regression tests. Report retained at `docs/research/2026-05-10-citation-abbrevs-plains-upper-midwest.md`.
+
+  Deferred: `equal` (Nebraska "Bd. of Equal." Equalization) — too common as a sentence-ending English word; would need stronger false-positive guards.
+
+- [#227](https://github.com/medelman17/eyecite-ts/pull/227) [`9fdf174`](https://github.com/medelman17/eyecite-ts/commit/9fdf174237c97e189fb8edab614d02769794ce1a) Thanks [@medelman17](https://github.com/medelman17)! - test: expand corpus-sourced regression tests with 12 additional captions
+
+  Follow-up to the earlier 22-caption real-world test set: an expanded corpus mining sweep (more reporters, more volumes per reporter, broader patterns) recovered captions for several stems that were missed in the first pass. Adds 12 more verbatim captions covering: `hldgs` (NY 1st Dep't, 3d Cir.), `hldg` (singular), `telecomms` (Erie Telecomms., Denver Area Educ. Telecomms.), `cmtys` (Residential Cmtys.), `scis` (Health Scis. Ctr.), `conserv` (Soil & Water Conserv. Dist. v. United States ex rel. Wilson), `insp` (Grain Insp. Serv.), `reins` (Bellefonte Reins., Gerling Global Reins.), and `appx` (United States v. Stenson, F. App'x).
+
+  Total real-world test count: 34 captions across 21 distinct stems. Combined with the synthetic tests from the earlier commits, the new abbreviation stems are now exercised by both stylistically diverse synthetic captions and verbatim real-world citations from the Harvard Caselaw Access Project corpus.
+
+  A few stems remain without corpus matches in the volumes sampled — typically because the abbreviated form doesn't appear in published opinions (e.g., `supers` for "Supers." is rare in PA appellate text where "Supervisors" is usually spelled out; `vol` for "Vol. Fire" appears as "Volunteer Fire" in real text). These remain covered by synthetic tests and are still valid set entries for any future opinion that does use the abbreviated form.
+
+- [#227](https://github.com/medelman17/eyecite-ts/pull/227) [`9fdf174`](https://github.com/medelman17/eyecite-ts/commit/9fdf174237c97e189fb8edab614d02769794ce1a) Thanks [@medelman17](https://github.com/medelman17)! - test: add 22 corpus-sourced regression tests for newly added abbreviation stems
+
+  The earlier commits on this branch added ~65 abbreviation stems based on style-manual research and synthetic test captions. This commit hardens that work with **22 verbatim case captions mined from the Harvard CAP corpus** — real opinions from federal Circuit, U.S. Supreme Court, NJ Supreme Court, Ohio Supreme Court, and other state appellate courts.
+
+  Each test is a real citation pulled from a published opinion that exercises one of the newly added stems. Together they constitute regression evidence: if any of the stem additions are removed, these tests fail because the case-name backward scanner would treat the abbreviation period as a sentence boundary and truncate the caption.
+
+  Stems covered by real-world captions: `tp`, `atty`, `commrs`, `hldgs`, `props`, `prods`, `ents`, `sols`, `corrs`, `colls`, `utils`, `bur`, `examrs`, `edn`, `conserv`, `emps`, `invests`, `boro`.
+
+  Example mined captions:
+
+  - `Levin v. Tp. Committee of Tp. of Bridgewater, 57 N.J. 506` (cited in _State v. Hatch_, 64 N.J. 179)
+  - `Stephens v. Att'y Gen. of Cal., 23 F.3d 248` (cited in _Chavez v. Weber_, 497 F.3d 796)
+  - `Board of County Comm'rs of Sedgwick County v. United States, 105 F. Supp. 995` (cited in _Rohr Aircraft Corp. v. County of San Diego_, 362 U.S. 628)
+  - `Sokol Hldgs., Inc. v. BMB Munal, Inc., 542 F.3d 354` (cited in _TicketNetwork, Inc. v. Darbouze_, 133 F. Supp. 3d 442)
+  - `Bd. of Regents of State Colls. v. Roth, 408 U.S. 564` (cited across many federal opinions)
+
+  Tests live in `tests/extract/realWorldCaptions.test.ts` as a data-driven block.
+
+- [#227](https://github.com/medelman17/eyecite-ts/pull/227) [`9fdf174`](https://github.com/medelman17/eyecite-ts/commit/9fdf174237c97e189fb8edab614d02769794ce1a) Thanks [@medelman17](https://github.com/medelman17)! - fix: case-name lookback now recognizes state-practice abbreviations missing from Bluebook T6
+
+  The case-name backward scanner uses a stem set to distinguish abbreviation periods from sentence-ending periods. Four common abbreviations were missing, so case names containing them were truncated at the abbreviation period:
+
+  - **`Tp.`** (NJ practice for "Township") — `"Parsippany-Troy Hills Tp. Council, 68 N.J. 604"` lost everything before `Council`.
+  - **`Tax'n`** (Taxation) — agency captions like `"Dep't of Tax'n v. ..."` lost the prefix.
+  - **`Enf't`** (Enforcement) — `"Drug Enf't Admin. v. ..."` lost the prefix.
+  - **`Rts.`** (Rights) — `"Human Rts. Watch v. ..."` and `"Civ. Rts. Div."` lost the prefix.
+
+  These appear in real captions across NJ, federal agency cases, and human-rights / civil-rights litigation. The Bluebook T6 reporters-db source we align with covers `Twp.` but not the NJ-style `Tp.` shorthand, and omits the three apostrophe-form variants. Added the four stems to `CASE_NAME_ABBREVS` with regression tests.
+
 ## 0.13.1
 
 ### Patch Changes
