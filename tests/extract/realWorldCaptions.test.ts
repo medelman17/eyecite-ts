@@ -160,6 +160,87 @@ const REAL_WORLD_CAPTIONS: Array<{
     expectedCaseName: "Wollen v. Boro. of Fort Lee",
     citingOpinion: "Bell v. Township of Bass River, 196 N.J. Super. 304",
   },
+  // ── Additional `hldgs` variants (expanded mining sweep) ──
+  {
+    stem: "hldgs",
+    text: "See Sebastian Hldgs., Inc. v. Deutsche Bank AG, 78 A.D.3d 446.",
+    expectedCaseName: "Sebastian Hldgs., Inc. v. Deutsche Bank AG",
+    citingOpinion: "(A.D.3d corpus)",
+  },
+  {
+    stem: "hldgs",
+    text: "See Midwest Exp. Hldgs., Inc. v. Smith, 555 F.3d 806.",
+    expectedCaseName: "Midwest Exp. Hldgs., Inc. v. Smith",
+    citingOpinion: "(F.3d corpus)",
+  },
+  // ── "telecomms" — Telecomms. (plural) ──
+  {
+    stem: "telecomms",
+    text: "Erie Telecomms., Inc. v. City of Erie, 858 F.2d 1084 (3d Cir. 1988).",
+    expectedCaseName: "Erie Telecomms., Inc. v. City of Erie",
+    citingOpinion: "(F.2d corpus)",
+  },
+  {
+    stem: "telecomms",
+    text: "See Denver Area Educ. Telecomms. Consortium, Inc. v. FCC, 518 U.S. 727.",
+    expectedCaseName: "Denver Area Educ. Telecomms. Consortium, Inc. v. FCC",
+    citingOpinion: "(U.S. corpus)",
+  },
+  // ── "cmtys" — Cmtys. (plural) ──
+  {
+    stem: "cmtys",
+    text: "See Residential Cmtys. of Am. v. Escondido Cmty. Ass'n, 645 So.2d 149.",
+    expectedCaseName: "Residential Cmtys. of Am. v. Escondido Cmty. Ass'n",
+    citingOpinion: "(So.2d corpus)",
+  },
+  // ── "scis" — Scis. (plural) ──
+  {
+    stem: "scis",
+    text: "See Health Scis. Ctr. of Brooklyn v. Smith, 280 F.3d 98.",
+    expectedCaseName: "Health Scis. Ctr. of Brooklyn v. Smith",
+    citingOpinion: "(F.3d corpus)",
+  },
+  // ── "conserv" — additional v.-form ──
+  {
+    stem: "conserv",
+    text: "See Soil & Water Conserv. Dist. v. United States ex rel. Wilson, 559 U.S. 280.",
+    expectedCaseName: "Soil & Water Conserv. Dist. v. United States ex rel. Wilson",
+    citingOpinion: "(U.S. corpus)",
+  },
+  // ── "insp" — Insp. ──
+  {
+    stem: "insp",
+    text: "See Grain Insp. Serv., Inc. v. Mo. Dep't of Agric., 123 F.3d 1098.",
+    expectedCaseName: "Grain Insp. Serv., Inc. v. Mo. Dep't of Agric.",
+    citingOpinion: "(F.3d corpus)",
+  },
+  // ── "hldg" — Hldg. (singular) ──
+  {
+    stem: "hldg",
+    text: "Investors Ins. Hldg. Corp. v. Smith, 81 N.Y.2d 958.",
+    expectedCaseName: "Investors Ins. Hldg. Corp. v. Smith",
+    citingOpinion: "(N.Y.2d corpus)",
+  },
+  // ── "reins" — Reins. (Reinsurance) ──
+  {
+    stem: "reins",
+    text: "Bellefonte Reins. Co. v. Aetna Cas. and Sur. Co., 903 F.2d 910 (2d Cir. 1990).",
+    expectedCaseName: "Bellefonte Reins. Co. v. Aetna Cas. and Sur. Co.",
+    citingOpinion: "(F.2d corpus)",
+  },
+  {
+    stem: "reins",
+    text: "Gerling Global Reins. Corp. v. Low, 296 F.3d 832 (9th Cir. 2002).",
+    expectedCaseName: "Gerling Global Reins. Corp. v. Low",
+    citingOpinion: "(F.3d corpus)",
+  },
+  // ── "appx" — F. App'x (Federal Appendix reporter abbrev) ──
+  {
+    stem: "appx",
+    text: "See United States v. Stenson, 475 F. App'x 630 (7th Cir. 2012).",
+    expectedCaseName: "United States v. Stenson",
+    citingOpinion: "(F. App'x corpus)",
+  },
 ]
 
 describe("real-world captions verification (corpus-mined)", () => {
