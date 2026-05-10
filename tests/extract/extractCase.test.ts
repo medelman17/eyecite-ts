@@ -2552,6 +2552,246 @@ describe("Cornell § 4-100 / state-practice abbreviations (Tp., Tax'n, Enf't, Rt
   })
 })
 
+describe("2026-05-10 jurisdiction-survey abbreviations", () => {
+  // Cross-agent jurisdictional canvas; reports in docs/research/2026-05-10-*.
+  // Tests cover representative samples from each addition category.
+
+  describe("universal apostrophe-form + Bluebook party designations", () => {
+    it("captures `Att'y Gen.` in federal captions (8+ agent consensus)", () => {
+      const text =
+        "See N.J. Bankers Ass'n v. Att'y Gen. of N.J., 49 F.4th 849 (3d Cir. 2022)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("N.J. Bankers Ass'n v. Att'y Gen. of N.J.")
+      }
+    })
+
+    it("captures `Att'ys` (plural) in party name", () => {
+      const text = "See Smith Att'ys, LLP v. Jones, 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Smith Att'ys, LLP v. Jones")
+      }
+    })
+
+    it("captures `Pet'r` / `Resp't` (Bluebook 21st BT1.2)", () => {
+      const text = "See Smith, Pet'r v. Doe, Resp't, 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Smith, Pet'r v. Doe, Resp't")
+      }
+    })
+
+    it("captures `Comm'rs` (plural of Comm'r) mid-caption", () => {
+      const text =
+        "Marrek v. Cleveland Metroparks Bd. of Comm'rs, 9 Ohio St.3d 194 (1984)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Marrek v. Cleveland Metroparks Bd. of Comm'rs",
+        )
+      }
+    })
+  })
+
+  describe("plurals of existing singular stems", () => {
+    it("captures `Hldgs.` in LLC captions (DE Chancery, NY 1st Dep't)", () => {
+      const text =
+        "See In re Lost Lake Hldgs. LLC v. Hogue, 100 N.Y.S.3d 1 (3d Dep't 2024)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toContain("Lost Lake Hldgs. LLC")
+      }
+    })
+
+    it("captures `Props.` (Properties plural)", () => {
+      const text = "See Lanvale Props., LLC v. Cnty. of Cabarrus, 366 N.C. 142 (2012)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Lanvale Props., LLC v. Cnty. of Cabarrus",
+        )
+      }
+    })
+
+    it("captures `Sols.` (Solutions plural) in modern LLC captions", () => {
+      const text = "See Med-Care Sols., LLC v. Smith, 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Med-Care Sols., LLC v. Smith")
+      }
+    })
+
+    it("captures `Emps.` (Employees plural) in agency captions", () => {
+      const text =
+        "See Okla. Pub. Emps. Ret. Sys. v. Smith, 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Okla. Pub. Emps. Ret. Sys. v. Smith",
+        )
+      }
+    })
+
+    it("captures `Corrs.` and `Telecomms.` (plurals)", () => {
+      const text =
+        "See Ark. Bd. of Corrs. v. BellSouth Telecomms., Inc., 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Ark. Bd. of Corrs. v. BellSouth Telecomms., Inc.",
+        )
+      }
+    })
+  })
+
+  describe("standard institutional / agency abbreviations", () => {
+    it("captures `Civ.` (Civil) — Ala. Civ. App. and Civ. Rts. Div.", () => {
+      const text =
+        "See Civ. Rts. Div. v. Smith, 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Civ. Rts. Div. v. Smith")
+      }
+    })
+
+    it("captures `Lic.` (License) — Bd. of License Comm'rs (R.I.)", () => {
+      const text =
+        "See Tiverton Bd. of License Comm'rs v. Pastore, 469 U.S. 238 (1985)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Tiverton Bd. of License Comm'rs v. Pastore",
+        )
+      }
+    })
+
+    it("captures `Bur.` (Bureau) and `Insp.` (Inspection)", () => {
+      const text =
+        "See Bur. of Driver Lic. & Insp. Review v. Smith, 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Bur. of Driver Lic. & Insp. Review v. Smith",
+        )
+      }
+    })
+
+    it("captures `Supers.` (Supervisors) — PA Twp. Bd. of Supers.", () => {
+      const text =
+        "See Cranberry Twp. Bd. of Supers. v. Smith, 100 Pa. Commw. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Cranberry Twp. Bd. of Supers. v. Smith",
+        )
+      }
+    })
+
+    it("captures `Retire.` (Retirement) — WV consolidated board", () => {
+      const text =
+        "See W. Va. Consol. Pub. Retire. Bd. v. Smith, 100 W. Va. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "W. Va. Consol. Pub. Retire. Bd. v. Smith",
+        )
+      }
+    })
+  })
+
+  describe("regional / state-specific", () => {
+    it("captures `Boro.` — NJ long-form alternative to Bor.", () => {
+      const text =
+        "See Male v. Pompton Lakes Boro. Mun. Util. Auth., 105 N.J. Super. 348 (App. Div. 1969)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Male v. Pompton Lakes Boro. Mun. Util. Auth.",
+        )
+      }
+    })
+
+    it("captures `Vol.` (Volunteer) — PA Vol. Fire Dept.", () => {
+      const text =
+        "See Univ. Vol. Fire Dept. v. Smith, 100 Pa. Commw. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Univ. Vol. Fire Dept. v. Smith")
+      }
+    })
+
+    it("captures `Vet.` (Veterans) — Sec'y of Vet. Aff.", () => {
+      const text =
+        "See Sec'y of Vet. Aff. v. Smith, 100 Vet. App. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Sec'y of Vet. Aff. v. Smith")
+      }
+    })
+
+    it("captures `Irrig.` (Irrigation) in water-rights captions", () => {
+      const text =
+        "See Pioneer Irrig. Dist. v. Smith, 100 Idaho 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Pioneer Irrig. Dist. v. Smith")
+      }
+    })
+  })
+
+  describe("Bluebook 21st ed. (2020) T6/T13.2 merger", () => {
+    it("captures `Lab'y` (Laboratory) — distinct from existing Lab. (Labor)", () => {
+      const text =
+        "See Smith Lab'y, Inc. v. Jones, 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Smith Lab'y, Inc. v. Jones")
+      }
+    })
+
+    it("captures `Pol'y` (Policy) and `Stud.` (Studies)", () => {
+      const text =
+        "See Ctr. for Health Pol'y & Stud. v. Smith, 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Ctr. for Health Pol'y & Stud. v. Smith",
+        )
+      }
+    })
+
+    it("captures `Refin.` (Refining) — distinct from existing Ref. (Referee)", () => {
+      const text = "See Acme Refin. Corp. v. Smith, 100 U.S. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Acme Refin. Corp. v. Smith")
+      }
+    })
+  })
+})
+
 describe("phantom-citation suppression (#196)", () => {
   // Numeric-prefixed party names like "15 Union Sq. W. Condominium v. BCRE 15"
   // used to emit a phantom state-reporter citation because the non-greedy
