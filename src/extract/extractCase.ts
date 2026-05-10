@@ -777,6 +777,17 @@ const CASE_NAME_ABBREVS: ReadonlySet<string> = new Set([
   "secy",
   "sholder",
   "socy",
+  // ── Cornell § 4-100 / state-practice gaps not in Bluebook T6 source ──
+  // Used in real case captions across multiple jurisdictions:
+  //   - "Tp." (NJ alternative to Bluebook "Twp." Township) —
+  //     "Parsippany-Troy Hills Tp. Council", "Bernards Tp. v. ..."
+  //   - "Tax'n" (Taxation) — "Dep't of Tax'n v. ..."
+  //   - "Enf't" (Enforcement) — "Drug Enf't Admin. v. ..."
+  //   - "Rts." (Rights) — "Human Rts. Watch v. ...", "Civ. Rts. Div."
+  "tp",
+  "taxn",
+  "enft",
+  "rts",
 ])
 
 /**

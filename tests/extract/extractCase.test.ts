@@ -2502,6 +2502,56 @@ describe("reporters-db alignment + ampersand support", () => {
   })
 })
 
+describe("Cornell § 4-100 / state-practice abbreviations (Tp., Tax'n, Enf't, Rts.)", () => {
+  it("handles `Tp.` (NJ Township) in compound party name", () => {
+    const text =
+      "See Troy Hills Village v. Parsippany-Troy Hills Tp. Council, 68 N.J. 604, 621-22 (1975)."
+    const [cite] = extractCitations(text)
+    expect(cite.type).toBe("case")
+    if (cite.type === "case") {
+      expect(cite.caseName).toBe(
+        "Troy Hills Village v. Parsippany-Troy Hills Tp. Council",
+      )
+    }
+  })
+
+  it("handles bare `Tp.` (NJ Township) as plaintiff", () => {
+    const text = "See Bernards Tp. v. Smith, 100 N.J. 1 (2020)."
+    const [cite] = extractCitations(text)
+    expect(cite.type).toBe("case")
+    if (cite.type === "case") {
+      expect(cite.caseName).toBe("Bernards Tp. v. Smith")
+    }
+  })
+
+  it("handles `Tax'n` (Taxation) in agency party name", () => {
+    const text = "See Dep't of Tax'n v. Smith Corp., 100 U.S. 1 (2020)."
+    const [cite] = extractCitations(text)
+    expect(cite.type).toBe("case")
+    if (cite.type === "case") {
+      expect(cite.caseName).toBe("Dep't of Tax'n v. Smith Corp.")
+    }
+  })
+
+  it("handles `Enf't` (Enforcement) in agency party name", () => {
+    const text = "See Drug Enf't Admin. v. Smith, 100 U.S. 1 (2020)."
+    const [cite] = extractCitations(text)
+    expect(cite.type).toBe("case")
+    if (cite.type === "case") {
+      expect(cite.caseName).toBe("Drug Enf't Admin. v. Smith")
+    }
+  })
+
+  it("handles `Rts.` (Rights) in organizational party name", () => {
+    const text = "See Human Rts. Watch v. Smith, 100 U.S. 1 (2020)."
+    const [cite] = extractCitations(text)
+    expect(cite.type).toBe("case")
+    if (cite.type === "case") {
+      expect(cite.caseName).toBe("Human Rts. Watch v. Smith")
+    }
+  })
+})
+
 describe("phantom-citation suppression (#196)", () => {
   // Numeric-prefixed party names like "15 Union Sq. W. Condominium v. BCRE 15"
   // used to emit a phantom state-reporter citation because the non-greedy
