@@ -2790,6 +2790,32 @@ describe("2026-05-10 jurisdiction-survey abbreviations", () => {
       }
     })
   })
+
+  describe("Plains + Upper Midwest (NE apostrophe-dropping, ND insurance)", () => {
+    it("captures `Comrs.` — NE Bd. of Comrs. (single-m, no apostrophe)", () => {
+      const text =
+        "See Cherry Cty. Bd. of Comrs. v. Smith, 100 Neb. 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Cherry Cty. Bd. of Comrs. v. Smith",
+        )
+      }
+    })
+
+    it("captures `Reins.` (Reinsurance) in insurance captions", () => {
+      const text =
+        "See Grinnell Mut. Reins. Co. v. Farm & City Ins. Co., 100 N.W.2d 1 (2020)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Grinnell Mut. Reins. Co. v. Farm & City Ins. Co.",
+        )
+      }
+    })
+  })
 })
 
 describe("phantom-citation suppression (#196)", () => {

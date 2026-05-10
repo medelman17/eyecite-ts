@@ -860,6 +860,10 @@ const CASE_NAME_ABBREVS: ReadonlySet<string> = new Set([
   "naty", //   Nat'y (Nationality)
   "wkly", //   Wkly. (Weekly)
   "appx", //   App'x (Appendix) — "F. App'x" reporter
+  // Plains + Upper Midwest (re-dispatch agent, report retained):
+  "comr", //   Comr. — Nebraska apostrophe-dropping single-m variant of Comm'r
+  "comrs", //  Comrs. — NE plural variant; "Cherry Cty. Bd. of Comrs."
+  "reins", //  Reins. — Bluebook T6; "Grinnell Mut. Reins. Co." (ND insurance)
 ])
 
 /**
