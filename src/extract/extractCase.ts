@@ -777,6 +777,93 @@ const CASE_NAME_ABBREVS: ReadonlySet<string> = new Set([
   "secy",
   "sholder",
   "socy",
+  // ── Cornell § 4-100 / state-practice gaps not in Bluebook T6 source ──
+  // Used in real case captions across multiple jurisdictions:
+  //   - "Tp." (NJ alternative to Bluebook "Twp." Township) —
+  //     "Parsippany-Troy Hills Tp. Council", "Bernards Tp. v. ..."
+  //   - "Tax'n" (Taxation) — "Dep't of Tax'n v. ..."
+  //   - "Enf't" (Enforcement) — "Drug Enf't Admin. v. ..."
+  //   - "Rts." (Rights) — "Human Rts. Watch v. ...", "Civ. Rts. Div."
+  "tp",
+  "taxn",
+  "enft",
+  "rts",
+  // ── 2026-05-10 jurisdiction-survey additions ──
+  // Cross-agent research canvassing 15 jurisdictional clusters (NY/NJ, PA/DE/
+  // MD/DC/WV, New England, CA, TX/OK, Southeast, Deep South, Great Lakes,
+  // Western/Pacific, federal courts, federal specialty courts, govt agencies +
+  // corporate entity forms, ALWD + Bluebook 21st + reporters-db sweep, and
+  // foreign/tribal/territorial) plus a parser-quirks audit. Reports retained
+  // in docs/research/2026-05-10-citation-abbrevs-*.md.
+  //
+  // Universal apostrophe-form + Bluebook BT1.2 party designations:
+  "atty", //   Att'y / Att'y Gen. — 32k+ corpus matches; every state + federal AG case
+  "attys", //  Att'ys (plural)
+  "petr", //   Pet'r — Bluebook 21st BT1.2 (habeas, immigration, PTAB captions)
+  "respt", //  Resp't — Bluebook 21st BT1.2 counterpart to Pet'r
+  "commrs", // Comm'rs (plural of existing commr) — "Bd. of Cnty. Comm'rs"
+  // Plurals of existing singular stems (modern LLC-era captions):
+  "hldgs", //  Hldgs. (Holdings) — DE Chancery, NY 1st Dep't, GA LLC
+  "hldg", //   Hldg. (singular)
+  "props", //  Props. — Lanvale Props. LLC (NC), Ryan Jackson Props.
+  "prods", //  Prods. (Products plural) — product-liability captions nationwide
+  "ents", //   Ents. (Enterprises plural) — "NC Ents., L.L.C."
+  "invests", //Invests. — Ohio "A.A.A. Invests. v. Columbus"
+  "scis", //   Scis. (Sciences plural)
+  "emps", //   Emps. — "Okla. Pub. Emps. Ret. Sys.", "Pub. Emps. Rel. Comm'n"
+  "sols", //   Sols. (Solutions plural) — modern LLC captions "Med-Care Sols., LLC"
+  "corrs", //  Corrs. (Corrections plural) — "Ark. Bd. of Corrs."
+  "telecomms", //Telecomms. (plural) — "BellSouth Telecomms., Inc."
+  "examrs", // Exam'rs (Examiners plural) — "Med. Exam'rs Comm'n", "Bar Exam'rs"
+  "cmtys", //  Cmtys. (Communities plural) — "Fla. Cmtys. Tr."
+  "colls", //  Colls. (Colleges plural) — "State Bd. of Cmty. Colls."
+  "cts", //    Cts. (Courts plural) — "Off. of the St. Cts. Admin'r"
+  "amends", // Amends. (Amendments plural)
+  // Standard institutional / agency abbreviations:
+  "civ", //    Civ. (Civil) — Ala. Civ. App., Civ. Rts. Div., Civ. Liberties Union
+  "enf", //    Enf. (Enforcement, distinct from existing enft) — "Drug Enf. Admin."
+  "advis", //  Advis. (Advisory) — "Advis. Council/Comm."
+  "utils", //  Utils. — "Utils. Comm'n", "Pub. Utils. Comm'n"
+  "lic", //    Lic. (License) — "Bd. of License Comm'rs" (Tiverton, 469 U.S. 238)
+  "bur", //    Bur. (Bureau) — "Bur. of Driver Lic.", "Bur. of Land Mgmt."
+  "insp", //   Insp. (Inspection) — "Bd. of Lic. & Insp. Review"
+  "conserv", //Conserv. (Conservation) — Bluebook 21st; 1.5k corpus matches
+  "retire", // Retire. (Retirement) — "W. Va. Consol. Pub. Retire. Bd." (distinct from ret)
+  "discipl", //Discipl. (Disciplinary) — "Lawyer Disciplinary Bd."
+  "supers", // Supers. (Supervisors) — PA "Twp. Bd. of Supers." (hundreds of captions)
+  "edn", //    Edn. (Ohio variant of Educ.) — "Bd. of Edn."
+  "coun", //   Coun. (Council) — NLRB "Dist. Council 9", distinct from couns (Counsel)
+  "stds", //   Stds. (Standards) — "Crim. Just. Stds. & Training Comm'n"
+  "procs", //  Procs. (Procedures)
+  "quals", //  Quals. (Qualifications) — "Jud. Quals. Comm'n"
+  // Regional / state-specific:
+  "boro", //   NJ "Boro." — alternative long form to existing "Bor." (Borough)
+  "commw", //  Commw. — PA Commonwealth Court ("Pa. Commw. Ct.")
+  "adv", //    Adv. (Advance) — NV "Nev., Adv. Op." form
+  "comn", //   Com'n — Hawaii single-m variant of Comm'n
+  "irrig", //  Irrig. (Irrigation) — ID/WY/WA "Pioneer Irrig. Dist."
+  "reclam", // Reclam. (Reclamation) — federal-project captions
+  "rptr", //   Rptr. — CA "Cal.Rptr." nested in bracketed parallel cites
+  "vet", //    Vet. (Veterans) — "Vet. App.", "Sec'y of Vet. Aff."
+  "trib", //   Trib. — Tribune (Bluebook 21st T6) + Tribal Ct.
+  "adj", //    Adj. — Adjustment (VT/NH "Zoning Bd. of Adj.") + Adjudicatory (FL)
+  "vol", //    Vol. (Volunteer) — PA "Univ. Vol. Fire Dept."; volume cites are pre-digit
+  // Corporate entity forms:
+  "pty", //    Pty. — Australian "Pty. Ltd."
+  // Bluebook 21st ed. (2020) T6 / T13.2 merger additions:
+  "poly", //   Pol'y (Policy)
+  "stud", //   Stud. (Studies)
+  "libr", //   Libr. (Library)
+  "refin", //  Refin. (Refining) — distinct from existing ref (Referee/Reference)
+  "socio", //  Socio. (Sociology) — distinct from existing soc (Social)
+  "laby", //   Lab'y (Laboratory) — distinct from existing lab (Labor)
+  "naty", //   Nat'y (Nationality)
+  "wkly", //   Wkly. (Weekly)
+  "appx", //   App'x (Appendix) — "F. App'x" reporter
+  // Plains + Upper Midwest (re-dispatch agent, report retained):
+  "comr", //   Comr. — Nebraska apostrophe-dropping single-m variant of Comm'r
+  "comrs", //  Comrs. — NE plural variant; "Cherry Cty. Bd. of Comrs."
+  "reins", //  Reins. — Bluebook T6; "Grinnell Mut. Reins. Co." (ND insurance)
 ])
 
 /**
