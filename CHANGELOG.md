@@ -1,5 +1,381 @@
 # eyecite-ts
 
+## 0.14.0
+
+### Minor Changes
+
+- [#275](https://github.com/medelman17/eyecite-ts/pull/275) [`feb1ee8`](https://github.com/medelman17/eyecite-ts/commit/feb1ee8a6c4a3dde94a7bd3ee57e7441d542a6dc) Thanks [@medelman17](https://github.com/medelman17)! - feat: paragraph-marker pincites — `¶ N`, `¶¶ N-M`, `para. N`, `paras. N-M` (#204)
+
+  Paragraph-marker pincites are the standard form for NY Slip Op, Canadian
+  neutrals, and other paragraph-numbered opinion sources. `Doe v. Roe, 45 NY2d
+101, ¶¶ 12-14 (1978)` previously produced a citation with `pinciteInfo`
+  undefined; it now yields `{ paragraph: 12, endParagraph: 14, isRange: true,
+raw: "¶¶ 12-14" }`.
+
+  ### Schema changes (`PinciteInfo`)
+
+  - `page` is now `number | undefined` (was required `number`). Paragraph-only
+    pincites leave `page` undefined.
+  - New: `paragraph?: number`, `endParagraph?: number`.
+
+  The top-level convenience `pincite` field on the citation continues to mirror
+  `page` only, so it stays undefined for paragraph-only pincites. Consumers
+  that need paragraph data read `pinciteInfo.paragraph` / `pinciteInfo.endParagraph`.
+
+  ### Coverage
+
+  - Full case (lookahead from citation core): `45 NY2d 101, ¶ 12`,
+    `45 NY2d 101, ¶¶ 12-14`, `45 NY2d 101, para. 12`,
+    `45 NY2d 101, paras. 12-14`
+  - Id.: `Id. ¶ 12`, `Id. at ¶ 12`, `Id. ¶¶ 12-14`
+  - Supra: `Smith, supra, ¶ 12`, `Smith, supra, at ¶ 12`,
+    `Smith, supra, paras. 12-14`
+  - `parsePincite` recognizes raw input directly.
+
+  Regex zoo updated across `LOOKAHEAD_PINCITE_REGEX`, `PINCITE_SKIP_REGEX`,
+  `ID_PATTERN`, `IBID_PATTERN`, `SUPRA_PATTERN`, `STANDALONE_SUPRA_PATTERN`,
+  `SHORT_FORM_CASE_PATTERN`, and the four local copies in
+  `extractShortForms.ts`. Paragraph forms allow `at` to be optional (lookahead-
+  only on the marker); page forms still require `at` or the existing comma form.
+
+- [#276](https://github.com/medelman17/eyecite-ts/pull/276) [`522c6a1`](https://github.com/medelman17/eyecite-ts/commit/522c6a1d17a6d19dae2102eea5081bcce83adb5e) Thanks [@medelman17](https://github.com/medelman17)! - feat: capture multiple discrete pincites (`113, 115, 153`) (#247)
+
+  `Roe v. Wade, 410 U.S. 113, 115, 153 (1973)` previously dropped the `153`
+  pincite — only the first comma-separated pincite survived. `PinciteInfo` now
+  carries an optional `additionalPincites: PinciteInfo[]` array; the primary
+  pincite continues to live in `page` / `endPage` / `paragraph` etc. (no API
+  break) and subsequent pincites accumulate as nested entries that each preserve
+  their own range / footnote / star-page semantics.
+
+  ### Coverage
+
+  - `, 115, 153` → primary `page: 115`, additional `[{ page: 153 }]`
+  - `, 105, 110, 120` → primary + 2 additional
+  - Mixed range+discrete: `, 105-110, 120` → primary has `endPage: 110`,
+    additional `[{ page: 120 }]`
+  - Discrete+range: `, 115, 105-110` → primary `page: 115`, additional has
+    range info preserved
+
+  ### API
+
+  - New: `pinciteInfo.additionalPincites?: PinciteInfo[]`.
+  - The top-level convenience `citation.pincite: number` continues to mirror
+    only the primary pincite — consumers needing all pincites read the
+    `additionalPincites` array.
+
+  Implementation: after `LOOKAHEAD_PINCITE_REGEX` captures the primary pincite,
+  a small loop matches a new `ADDITIONAL_PINCITE_REGEX` (comma + page form)
+  repeatedly from the scan position, parsing each via `parsePincite` and
+  appending to `additionalPincites`.
+
+### Patch Changes
+
+- [#267](https://github.com/medelman17/eyecite-ts/pull/267) [`f3b4dc9`](https://github.com/medelman17/eyecite-ts/commit/f3b4dc99f6c1526eef46ad09865434041a336a93) Thanks [@medelman17](https://github.com/medelman17)! - fix: bankruptcy adversary `(In re X)` admin parenthetical cleanup (#241)
+
+  In bankruptcy adversary proceedings, the case caption includes an administrative parenthetical naming the underlying debtor:
+
+  ```text
+  Spence v. Hintze (In re Hintze), 570 B.R. 369 (Bankr. D. Mass. 2017)
+  ```
+
+  **Finding:** the acceptance criteria from the issue were already satisfied by the existing parser — `caseName` preserves `(In re Hintze)`, `court` and `year` are correct, `fullSpan` covers the entire caption. The bug surfaced as a quality issue: the `defendant` field carried the admin parenthetical (`"Hintze (In re Hintze)"`), which polluted downstream consumers and `defendantNormalized`.
+
+  **Improvement:** the trailing `(In re <Debtor>)` is now stripped off the `defendant` field and exposed via a new `adminParenthetical?: string` field. The `caseName` continues to preserve the full caption text (including the admin paren) via the case-name rebuild step.
+
+  Example output for `Spence v. Hintze (In re Hintze), 570 B.R. 369 (Bankr. D. Mass. 2017)`:
+
+  | Field                 | Before                              | After                               |
+  | --------------------- | ----------------------------------- | ----------------------------------- |
+  | `caseName`            | `"Spence v. Hintze (In re Hintze)"` | `"Spence v. Hintze (In re Hintze)"` |
+  | `plaintiff`           | `"Spence"`                          | `"Spence"`                          |
+  | `defendant`           | `"Hintze (In re Hintze)"`           | `"Hintze"`                          |
+  | `defendantNormalized` | `"hintze (in re hintze)"`           | `"hintze"`                          |
+  | `adminParenthetical`  | —                                   | `"In re Hintze"`                    |
+  | `court`               | `"Bankr. D. Mass."`                 | `"Bankr. D. Mass."`                 |
+  | `year`                | 2017                                | 2017                                |
+
+  Adds 7 regression tests: 2 acceptance-criteria assertions (caseName preservation + fullSpan + non-regression in explanatory parens), 3 cleanup assertions (defendant strip, compound debtor name, hyphenated debtor name), 2 regression controls confirming non-bankruptcy parens don't trigger admin-paren handling.
+
+- [#268](https://github.com/medelman17/eyecite-ts/pull/268) [`a9b3128`](https://github.com/medelman17/eyecite-ts/commit/a9b31283a345f46a132f820ec1c3ad8274269969) Thanks [@medelman17](https://github.com/medelman17)! - fix: California bracketed parallel citations `[266 Cal.Rptr. 569]` now extract and link (#237)
+
+  California Style Manual wraps parallel reporter citations in brackets rather than placing them after a comma:
+
+  ```text
+  Smith v. Jones, 50 Cal.3d 100 (Cal. 1990) [266 Cal.Rptr. 569]
+  ```
+
+  Pre-fix, the bracketed cite either fell through to the journal pattern (wrong type) or failed to tokenize entirely. `detectParallel.ts` required a comma + shared parenthetical between citations to link them, so even when both extracted, they weren't recognized as parallels.
+
+  Two coordinated changes:
+
+  1. **`state-reporter` trailing lookahead** extended from `(?=\s|$|\(|,|;|\.|\[)` to `(?=\s|$|\(|,|;|\.|\[|\])` so a bracketed-end-of-citation pattern (`<vol> <Reporter> <page>` followed by `]`) tokenizes correctly. Without this, the broader journal pattern absorbed the citation with the wrong type.
+  2. **CA bracket-mode parallel detection** added to `detectParallel.ts` ahead of the comma-requirement gate. When the gap text between two adjacent case citations contains `[` and the secondary citation is immediately followed by `]`, the pair is treated as a parallel — no shared-paren requirement (CA cites often have a `(<year>)` paren _between_ the primary and the bracket, which would otherwise trip the existing separate-parens rejection).
+
+  Example output for `Smith v. Jones, 50 Cal.3d 100 (Cal. 1990) [266 Cal.Rptr. 569]`:
+
+  | Citation  | volume | reporter    | page | groupId                |
+  | --------- | ------ | ----------- | ---- | ---------------------- |
+  | Primary   | 50     | `Cal.3d`    | 100  | `50-Cal.3d-100`        |
+  | Bracketed | 266    | `Cal.Rptr.` | 569  | `50-Cal.3d-100` (same) |
+
+  Adds 7 regression tests: 4 bracketed-cite extraction tests (incl. compound `Cal.Rptr.2d`, pincite inside brackets, `Cal.4th`+`P.3d` parallel), 1 parallel linking assertion (shared `groupId`), 2 regression controls confirming NY Slip Op `[U]` unpublished markers (#231) and existing comma-separated parallels still work.
+
+- [#269](https://github.com/medelman17/eyecite-ts/pull/269) [`64431bf`](https://github.com/medelman17/eyecite-ts/commit/64431bf36bf286fbcb301a7f1e6df2a1d3d42cbe) Thanks [@medelman17](https://github.com/medelman17)! - fix: California research Tier 1 — 8 procedural prefixes, 7 history signals, `(in bank)` disposition
+
+  Synthesis of a six-agent research dispatch that audited California Style Manual citation forms across all practice disciplines (CSM core + appellate practice, family/probate/dependency, administrative agencies, criminal + bar, tax + business + employment, environmental + land use + specialty). Six research docs land alongside this change at `docs/research/2026-05-11-ca-style-*.md`.
+
+  This PR implements the **Tier 1 mechanical additions** — items where the existing parser infrastructure can absorb the change with a regex edit or table entry. Bigger structural items (CSM year-first format from #19, `Cal. Daily Op. Serv.` tokenization, slip-op-with-docket pattern, agency-decision citation type, `¶ N` paragraph pincite) are flagged in the research docs for follow-on work.
+
+  ### Procedural prefix additions (8)
+
+  - `Conservatorship of the Person and Estate of` — longest first; CA combined form
+  - `Conservatorship of the Person of` — CA Probate
+  - `Conservatorship of the Estate of` — CA Probate
+  - `In re Conservatorship of` — precision upgrade
+  - `In re Guardianship of` — precision upgrade
+  - `In re Adoption of` — precision upgrade (e.g., `In re Adoption of Kelsey S.`)
+  - `Inquiry Concerning Judge` — Commission on Judicial Performance discipline captions (e.g., `Inquiry Concerning Judge Saucedo, 2 Cal. 4th CJP Supp. 33`)
+  - `Appeal of` — Office of Tax Appeals (OTA) and predecessor BOE captions (e.g., `Appeal of Jali, LLC`)
+
+  ### `HistorySignal` additions (6)
+
+  - `not_published` — depublication: `ordered not pub.`, `nonpub. opn.`, `not for publication`
+  - `petition_for_review_filed` / `_granted` / `_denied` — CA Supreme Court petition-for-review status (parallels federal cert. denied/granted)
+  - `superseded_by_grant_of_review` — pre-2019 CA depublication-on-review rule
+  - `modified_on_denial_of_rehearing` — common CA post-judgment modification signal
+
+  ### Disposition addition
+
+  - `in bank` — California Supreme Court's en-banc equivalent. Anchored at content end so it doesn't trip on `dissenting from denial of rehearing in bank` (same defense applied to `en banc` in #235).
+
+  ### Tests
+
+  16 new regression tests + 2 regression controls confirming `(en banc)` still maps to `en banc` (not `in bank`) and the prior `review denied` signal (from #238) is unaffected.
+
+- [#270](https://github.com/medelman17/eyecite-ts/pull/270) [`f04bb6a`](https://github.com/medelman17/eyecite-ts/commit/f04bb6aea5ca0ebe23d5d32e702ddd0559fee843) Thanks [@medelman17](https://github.com/medelman17)! - fix: California Style Manual year-first citation format (#19)
+
+  The California Style Manual (CSM rule 1:1) and the California Rules of Court
+  place the year in parentheses _before_ the volume-reporter-page, not after —
+  e.g., `In re K.F. (2009) 173 Cal.App.4th 655` rather than the Bluebook
+  `In re K.F., 173 Cal.App.4th 655 (Cal. Ct. App. 2009)`. This is the canonical
+  form for California state-court opinions and is required for briefs filed in
+  CA courts.
+
+  Previously the parser tokenized the volume/reporter/page correctly but failed
+  to extract the case name (because the case-name scanback regexes anchored on a
+  trailing comma) and the year (because there was no trailing court parenthetical
+  to recover it from).
+
+  ### Changes
+
+  - `V_CASE_NAME_REGEX` and `PROCEDURAL_PREFIX_REGEX` now accept either `,\s*$`
+    (Bluebook) or `\((\d{4})\)\s*$` (CSM year-first) as the trailing form, with
+    the year captured as group 3.
+  - Both regexes carry the `d` flag so the caller can compute a clean-coordinate
+    year span.
+  - `extractCaseName` returns optional `year`, `yearStart`, `yearEnd` fields.
+  - `processCaseToken` plumbs the year and year span into the citation when a
+    trailing court paren did not already provide them.
+
+  ### Tests
+
+  Seven regression tests covering procedural-prefix and `v.`-style year-first
+  forms, plus regression controls confirming Bluebook form still parses
+  correctly.
+
+- [#273](https://github.com/medelman17/eyecite-ts/pull/273) [`b6fda80`](https://github.com/medelman17/eyecite-ts/commit/b6fda8091262c99ee041b63fd79274d1860e6ef4) Thanks [@medelman17](https://github.com/medelman17)! - fix: strip citation signals and sentence-initial connectors from supra partyName (#216)
+
+  `SUPRA_PATTERN`'s party-name group greedily captures any sequence of
+  capitalized words before `supra`, so `See Gall, supra`, `Cf. Gall, supra`,
+  `Then Gall, supra`, and `In Gall, supra` all leaked the leading word into
+  `partyName` — preventing `DocumentResolver` from matching the supra back to
+  its full-cite antecedent.
+
+  `extractSupra` now post-processes the captured party name through
+  `stripSupraPartyPrefix`, which removes leading:
+
+  - Citation signals: `See`, `See also`, `See, e.g.`, `But see`, `But cf.`,
+    `Compare`, `Cf.` / `Cf`, `Accord`, `E.g.`
+  - Sentence-initial connectors: `Also`, `Then`, `In` (but never `In re` —
+    the `(?!\s+re\b)` negative lookahead preserves the bankruptcy/dependency
+    caption prefix)
+
+  The original captured name is preserved when stripping would leave an empty
+  string (defensive: prevents a wholesale signal token from blanking out the
+  party name).
+
+  ### Tests
+
+  12 new tests under `supra party-name signal-leak (#216)`: 5 citation signals
+
+  - 3 sentence-initial connectors + 4 regression controls (including `In re
+Smith, supra` → preserves `Smith`, `Smith v. Jones, supra` → preserves both,
+    `See Smith v. Jones, supra` → strips `See` but keeps `Smith v. Jones`).
+
+- [#277](https://github.com/medelman17/eyecite-ts/pull/277) [`5910680`](https://github.com/medelman17/eyecite-ts/commit/5910680e81cdfd47c9fbd909542a0c2d0e5b1eda) Thanks [@medelman17](https://github.com/medelman17)! - fix: Louisiana date-in-number citations + two-digit-year slash dates (#232)
+
+  Louisiana practice prepends a docket-style identifier and slash-date court
+  parenthetical before the reporter citation:
+
+  ```
+  Herff Jones, Inc. v. Girouard, 07-393, p. 2 (La. App. 3d Cir. 10/3/07),
+    966 So. 2d 1127, 1130
+  ```
+
+  Previously the docket-prefix segment bled into the case name on the trailing
+  `So. 2d` / `So. 3d` citation, producing garbage like
+  `Herff Jones, Inc. v. Girouard, 07-393, p. 2 (La. App. 3d Cir. 10/3/07)`,
+  and the year/court/date metadata in the docket paren was dropped entirely
+  (no year, no court, no date on the citation).
+
+  ### Changes
+
+  - **`parseDate` accepts two-digit years**. `10/3/07`, `2/15/10`, `6/30/20`
+    now parse with century inferred at the 50 pivot (00-50 → 21st century,
+    51-99 → 20th century). Four-digit years continue to parse as before.
+  - **LA docket-prefix excision in case-name scanback**. The new
+    `LA_DOCKET_BOUNDARY_REGEX` recognizes the LA shape
+    `NN-NNNN (La. ... M/D/YY)` (with optional `, p. N` pincite) when it sits
+    between caption and reporter, splices it out of `precedingText` (leaving
+    just `, `), and surfaces the docket paren's court + date.
+  - **Metadata transfer**. `extractCaseName` returns an optional
+    `precedingDocketMeta` field; `processCaseToken` applies its court / year /
+    date as fallback for the trailing reporter citation when that citation has
+    no court paren of its own.
+
+  The Louisiana docket-prefix is not yet emitted as its own first-class
+  citation (linked via `detectParallel.ts` per the issue's full acceptance
+  criteria) — that remains follow-up work. The primary `So. 2d` / `So. 3d`
+  citation now carries clean caseName plus structured year / court / date.
+
+  ### Tests
+
+  - **`parseDate` two-digit years**: 7 new tests in `tests/extract/dates.test.ts`
+    covering the pivot, ranges, and 4-digit regression.
+  - **Louisiana citations**: 3 new fixtures (all three from the issue
+    reproduction) + 2 regression controls (plain `(La. 2010)` and non-LA
+    month-name dates).
+
+- [#272](https://github.com/medelman17/eyecite-ts/pull/272) [`3217d21`](https://github.com/medelman17/eyecite-ts/commit/3217d215641c1954027baaea83cac40b408fea2c) Thanks [@medelman17](https://github.com/medelman17)! - fix: California Style Manual `at p.` / `at pp.` pincites (#236)
+
+  `LOOKAHEAD_PINCITE_REGEX`, `PINCITE_SKIP_REGEX`, all five short-form tokenizer
+  patterns (`ID_PATTERN`, `IBID_PATTERN`, `SUPRA_PATTERN`,
+  `STANDALONE_SUPRA_PATTERN`, `SHORT_FORM_CASE_PATTERN`), and the four local
+  regexes in `extractShortForms.ts` (`idRegex`, `partySupraRegex`,
+  `standaloneRegex`, `shortFormRegex`) now accept an optional `p.` / `pp.`
+  prefix between `at` and the page number, plus page-range support on supra
+  matches. This is the California Style Manual standard form
+  (`Smith, supra, at p. 115`, `Id. at pp. 125-130`, `18 Cal.4th at p. 717`,
+  `50 Cal.3d 100, at p. 115`).
+
+  ### Why
+
+  CSM rule 1:1 requires `at p.` / `at pp.` for pincites, not Bluebook bare
+  `at <N>`. Every CA `supra at p.`, `Id. at p.`, and short-form `at p.` reference
+  previously produced a partial match with the pincite silently dropped, and
+  the bare full-case form `50 Cal.3d 100, at p. 115` lost the trailing pincite
+  entirely.
+
+  ### State-reporter pattern tightened
+
+  The state-reporter pattern in `casePatterns.ts` previously absorbed
+  `18 Cal.4th at p. 717` as `reporter: "Cal.4th at p."` because the broad
+  multi-word reporter character class accepts `[A-Za-z.\d\s&']` and the
+  non-greedy quantifier extended through the literal "at" word. A negative
+  lookahead `(?!\s+at\s)` now rejects that boundary, letting the short-form
+  case pattern correctly handle CSM mid-paragraph short-form references.
+
+  ### Tests
+
+  11 new tests (8 fixtures + 3 regression controls) cover supra, Id., short-form
+  case, and full case with `at p.` / `at pp.`, plus page-range forms.
+
+- [#274](https://github.com/medelman17/eyecite-ts/pull/274) [`3e01f2b`](https://github.com/medelman17/eyecite-ts/commit/3e01f2b88c9231dffdcc065c44ae68db5605bc25) Thanks [@medelman17](https://github.com/medelman17)! - fix: rehearing signals + multi-stage subsequent-history chain regression coverage (#246)
+
+  Add two new HistorySignal values — `rehearing_denied` and `rehearing_granted` —
+  and four SIGNAL_TABLE entries covering `reh'g denied`, `rehearing denied`,
+  `reh'g granted`, `rehearing granted`. Without these entries, `Acme Corp. v.
+Beta, 50 F.4th 1 (9th Cir. 2022), reh'g denied, 60 F.4th 50 (9th Cir. 2023)`
+  silently dropped the rehearing link AND let the case-name scanback over-scan
+  backward through the prior citation when extracting the next case name.
+
+  The broader multi-stage chain machinery (`aff'd, X, overruled by Y`,
+  `modified, X, cert. denied, Y`) already worked thanks to the earlier
+  `pendingSignal` flush fix; this PR locks the behavior in with 9 regression
+  tests under `multi-stage subsequent history chains (#246)`. Two of those test
+  the working `aff'd` and `modified` chains, four test the new rehearing
+  signals, two test single-link regression controls, and one tests the
+  `review granted, opinion vacated` no-paren chain that the earlier fix
+  landed.
+
+  These additions are distinct from the CA-specific
+  `modified_on_denial_of_rehearing` compound disposition, which anchors on
+  `^as modified on denial of rehearing` and remains separately matched.
+
+- [#271](https://github.com/medelman17/eyecite-ts/pull/271) [`0d7f907`](https://github.com/medelman17/eyecite-ts/commit/0d7f9074e399fd19a65f13f9836ca4c80965f479) Thanks [@medelman17](https://github.com/medelman17)! - test: regression fixtures for California year-first form (#263)
+
+  Eight regression tests covering the specific fixtures from issue #263 — all
+  documented California-style citations with year-first parentheticals between
+  caption and reporter that previously dropped caseName/plaintiff/defendant.
+
+  #263 reported 100% caseName-extraction failure on cluster 2636992 (People v.
+  Talibdeen, Cal. SC 2002) and ~5% on cluster 2252939 (In re Marriage of
+  Falcone & Fyke, Cal. Ct. App. 2008). All eight fixtures from the bug report
+  now pass — the underlying parser fix landed in #270 — and these tests pin
+  the behavior so any regression surfaces immediately.
+
+  Fixtures: `People v. Tillman (2000)`, `(People v. Tillman (2000))`,
+  `In re Marriage of Bower (2002)`, `(People v. Rubalcava (2000))`,
+  `In re Sophia B. (1988)`, `(Khan v. Medical Board (1993))`,
+  `People v. Smith (2001) ... [102 Cal.Rptr.2d 731]` (parallel form).
+
+- [#266](https://github.com/medelman17/eyecite-ts/pull/266) [`d1ec87b`](https://github.com/medelman17/eyecite-ts/commit/d1ec87ba5124fda9e713b8ccb0ae8a72c959043d) Thanks [@medelman17](https://github.com/medelman17)! - fix: structured justice-attribution parentheticals + en-banc false-positive fix (#235)
+
+  `parseParenthetical` previously recognized only `en banc` and `per curiam` as metadata-dispositions, so the very common justice-attribution form `(Brennan, J., dissenting)` landed as an unstructured "other" parenthetical. Three coordinated changes plus an en-banc false-positive fix:
+
+  1. **`FullCaseCitation`** gains two new fields:
+     - `justices?: string[]` — surnames captured from `(Brennan, J., dissenting)` or `(Brennan and Marshall, JJ., dissenting)`.
+     - `scope?: string` — qualifier value (`in_judgment`, `in_part`, `from_denial`).
+  2. **`parseParenthetical`** detects the justice-attribution pattern (`<Surname>(, <Surname>)*(?:,? and <Surname>)?,? (C\.J\.|J\.|JJ\.),? <role>`) and classifies the role into:
+     - `disposition`: `"dissent"`, `"concurrence"`, `"mixed"` (concurring in part and dissenting in part), `"majority"` (joining).
+     - `scope`: `"in_judgment"`, `"in_part"`, or `"from_denial"`.
+  3. **Non-justice disposition parens** newly recognized: `(plurality opinion)`, `(mem.)`, `(unpublished table decision)`.
+  4. **En-banc false-positive fix:** the `\ben banc\b` check is now anchored at the trimmed content end (`/\\ben banc\\b\\s*$/`) so a parenthetical like `(Cabranes, J., dissenting from denial of rehearing en banc)` no longer mistakenly sets `disposition = "en banc"`.
+
+  Example output for `(Roberts, C.J., concurring in part and dissenting in part)`:
+
+  ```ts
+  {
+    disposition: "mixed",
+    justices: ["Roberts"],
+    scope: "in_part",
+  }
+  ```
+
+  Adds 9 regression tests covering: single-justice dissent/concurrence, scope qualifiers (in_judgment / in_part / from_denial), `(plurality opinion)` / `(mem.)`, and 2 regression controls confirming `(en banc)` and `(per curiam)` still extract.
+
+- [#264](https://github.com/medelman17/eyecite-ts/pull/264) [`8ee7303`](https://github.com/medelman17/eyecite-ts/commit/8ee73039561f6e14263cdce08323ed905366fdff) Thanks [@medelman17](https://github.com/medelman17)! - fix: NY Slip Op `(U)` / `[U]` unpublished markers no longer pollute the court field (#231)
+
+  New York Slip Opinion citations carry a trailing `(U)` (older form) or `[U]` (newer form) marker immediately after the document number to flag an unpublished disposition. Pre-fix, the parser misread `(U)` as a court parenthetical and set `court = "U"`. The `[U]` bracket form additionally caused mis-classification as a `journal` citation because the state-reporter regex's trailing-character lookahead didn't accept `[`.
+
+  Three coordinated changes:
+
+  1. **`FullCaseCitation` interface** gains an `unpublished?: boolean` field (mirrors the existing flag on `NeutralCitation` from #230).
+  2. **`state-reporter` regex trailing lookahead** extended from `(?=\s|$|\(|,|;|\.)` to `(?=\s|$|\(|,|;|\.|\[)` so `[U]` doesn't break the page-boundary check.
+  3. **Pre-lookahead `(U)`/`[U]` consumer in `extractCase`.** Before `LOOKAHEAD_PAREN_REGEX` runs on the post-token text, a small regex `/^\s*(?:\(U\)|\[U\])/` detects and consumes the unpublished marker so the lookahead reaches the real court parenthetical (e.g., `(Sup. Ct. 2007)`) instead of capturing `(U)` as the court.
+
+  Result for `Pickard v. Tarnow, 2007 N.Y. Slip Op. 52377(U) (Sup. Ct. 2007)`:
+
+  | Field         | Before           | After                 |
+  | ------------- | ---------------- | --------------------- |
+  | `page`        | 52377            | 52377                 |
+  | `court`       | `"U"`            | `"Sup. Ct."`          |
+  | `year`        | undefined        | 2007                  |
+  | `unpublished` | —                | `true`                |
+  | `caseName`    | (sometimes lost) | `"Pickard v. Tarnow"` |
+
+  Adds 7 regression tests covering the bare `(U)` form, the `[U]` bracket form, citations with a following real court paren, and 2 regression controls (non-(U) Slip Op + federal cite) confirming no regression.
+
 ## 0.13.4
 
 ### Patch Changes
