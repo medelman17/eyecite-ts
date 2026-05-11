@@ -1,0 +1,940 @@
+{
+  "see_eg": [
+    {
+      "text": "See, e.g., Gerlich v. DOJ , 711 F.3d 161, 173 (D.C. Cir. 2013)",
+      "citing_opinion": "Al-Tamimi v. Adelson",
+      "citing_citation": "916 F.3d 1",
+      "reporter": "f3d",
+      "volume": "916"
+    },
+    {
+      "text": "See, e.g., Moriarty v. Colvin, 806 F.3d 664, 668 (1st Cir. 2015)",
+      "citing_opinion": "M\u00e9ndez-N\u00fa\u00f1ez v. Fin. Oversight & Mgmt. Bd. for P.R. (In re Fin. Oversight & Mgmt. Bd. for P.R.)",
+      "citing_citation": "916 F.3d 98",
+      "reporter": "f3d",
+      "volume": "916"
+    },
+    {
+      "text": "See, e.g., United States v. Spencer, 955 F.2d 814, 820 (2d Cir. 1992)",
+      "citing_opinion": "United States v. Moore",
+      "citing_citation": "916 F.3d 231",
+      "reporter": "f3d",
+      "volume": "916"
+    },
+    {
+      "text": "See, e.g., Coffelt v. Fawkes , 765 F.3d 197, 202 (3d Cir. 2014)",
+      "citing_opinion": "United States v. Island",
+      "citing_citation": "916 F.3d 249",
+      "reporter": "f3d",
+      "volume": "916"
+    },
+    {
+      "text": "See, e.g., United States v. Campbell , 883 F.3d 1148, 1153 (9th Cir. 2018)",
+      "citing_opinion": "United States v. Island",
+      "citing_citation": "916 F.3d 249",
+      "reporter": "f3d",
+      "volume": "916"
+    },
+    {
+      "text": "See, e.g., United States v. Farlee, 757 F.3d 810, 815 (8th Cir. 2014)",
+      "citing_opinion": "United States v. Horse",
+      "citing_citation": "916 F.3d 686",
+      "reporter": "f3d",
+      "volume": "916"
+    },
+    {
+      "text": "See, e.g., United States v. Bartlett, 567 F.3d 901, 906 (7th Cir. 2009)",
+      "citing_opinion": "United States v. Nickelous",
+      "citing_citation": "916 F.3d 721",
+      "reporter": "f3d",
+      "volume": "916"
+    },
+    {
+      "text": "See, e.g., United States v. Harrison, 809 F.3d 420, 423 (8th Cir. 2015)",
+      "citing_opinion": "United States v. Sutton",
+      "citing_citation": "916 F.3d 1134",
+      "reporter": "f3d",
+      "volume": "916"
+    },
+    {
+      "text": "See, e.g., United States v. Bain, 874 F.3d 1, 14 (1st Cir. 2017)",
+      "citing_opinion": "United States v. Owens",
+      "citing_citation": "917 F.3d 26",
+      "reporter": "f3d",
+      "volume": "917"
+    },
+    {
+      "text": "See, e.g., United States v. Romaszko, 253 F.3d 757, 760 (2d Cir. 2001)",
+      "citing_opinion": "United States v. Santiago-Col\u00f3n",
+      "citing_citation": "917 F.3d 43",
+      "reporter": "f3d",
+      "volume": "917"
+    }
+  ],
+  "tex_writ_history": [
+    {
+      "text": "Mesa Operating Co. v. Cal. Union Ins. Co. , 986 S.W.2d 749, 753 (Tex. App.-Dallas 1999, pet. denied)",
+      "citing_opinion": "Mid-Continent Cas. Co. v. Petroleum Solutions, Inc.",
+      "citing_citation": "917 F.3d 352",
+      "reporter": "f3d",
+      "volume": "917"
+    },
+    {
+      "text": "Bradt v. West , 892 S.W.2d 56, 72 (Tex. App.-Houston [1st Dist.] 1994, writ denied)",
+      "citing_opinion": "Troice v. Greenberg Traurig, L.L.P.",
+      "citing_citation": "921 F.3d 501",
+      "reporter": "f3d",
+      "volume": "921"
+    },
+    {
+      "text": "Gaia Envtl., Inc. v. Galbraith , 451 S.W.3d 398, 404 (Tex. App.-Houston [14th Dist.] 2014, pet. denied)",
+      "citing_opinion": "Troice v. Greenberg Traurig, L.L.P.",
+      "citing_citation": "921 F.3d 501",
+      "reporter": "f3d",
+      "volume": "921"
+    },
+    {
+      "text": "See Frizzell v. Cook , 790 S.W.2d 41, 45 (Tex. App.-San Antonio 1990, writ denied)",
+      "citing_opinion": "Troice v. Greenberg Traurig, L.L.P.",
+      "citing_citation": "921 F.3d 501",
+      "reporter": "f3d",
+      "volume": "921"
+    },
+    {
+      "text": "Certain Underwriters at Lloyd's of London v. Celebrity, Inc. , 950 S.W.2d 375, 377 (Tex. App.-Tyler 1996, writ dism'd w.o.j)",
+      "citing_opinion": "Halliburton Energy Servs., Inc. v. Ironshore Specialty Ins. Co.",
+      "citing_citation": "921 F.3d 522",
+      "reporter": "f3d",
+      "volume": "921"
+    },
+    {
+      "text": "Fridl v. Cook , 908 S.W.2d 507, 511 (Tex. App.-El Paso 1995, writ dism'd w.o.j.)",
+      "citing_opinion": "Halliburton Energy Servs., Inc. v. Ironshore Specialty Ins. Co.",
+      "citing_citation": "921 F.3d 522",
+      "reporter": "f3d",
+      "volume": "921"
+    },
+    {
+      "text": "D. Wilson Constr. Co., Inc. v. McAllen ISD , 848 S.W.2d 226, 231 (Tex. App.-Corpus Christi 1992, writ dism'd w.o.j.)",
+      "citing_opinion": "Halliburton Energy Servs., Inc. v. Ironshore Specialty Ins. Co.",
+      "citing_citation": "921 F.3d 522",
+      "reporter": "f3d",
+      "volume": "921"
+    },
+    {
+      "text": "Saxa Inc. v. DFD Architecture Inc. , 312 S.W.3d 224, 230 (Tex. App.-Dallas 2010, pet. denied)",
+      "citing_opinion": "Halliburton Energy Servs., Inc. v. Ironshore Specialty Ins. Co.",
+      "citing_citation": "921 F.3d 522",
+      "reporter": "f3d",
+      "volume": "921"
+    },
+    {
+      "text": "Am. Realty Tr., Inc. v. JDN Real Estate-McKinney, L.P. , 74 S.W.3d 527, 531 (Tex. App.-Dallas 2002, pet. denied)",
+      "citing_opinion": "Halliburton Energy Servs., Inc. v. Ironshore Specialty Ins. Co.",
+      "citing_citation": "921 F.3d 522",
+      "reporter": "f3d",
+      "volume": "921"
+    },
+    {
+      "text": "Jody James Farms, JV v. Altman Grp., Inc. , 506 S.W.3d 595, 599 (Tex. App.-Amarillo 2016, pet. filed)",
+      "citing_opinion": "Halliburton Energy Servs., Inc. v. Ironshore Specialty Ins. Co.",
+      "citing_citation": "921 F.3d 522",
+      "reporter": "f3d",
+      "volume": "921"
+    },
+    {
+      "text": "First State Bank v. Keilman , 851 S.W.2d 914, 930 (Tex. App.-Austin 1993, writ denied)",
+      "citing_opinion": "Puga v. RCX Solutions, Inc.",
+      "citing_citation": "922 F.3d 285",
+      "reporter": "f3d",
+      "volume": "922"
+    },
+    {
+      "text": "Matthews v. Lenoir , 439 S.W.3d 489, 497 (Tex. App.-Houston [1st Dist.] 2014, pet. denied)",
+      "citing_opinion": "Shakouri v. Davis",
+      "citing_citation": "923 F.3d 407",
+      "reporter": "f3d",
+      "volume": "923"
+    },
+    {
+      "text": "Such recipients bear the burden of proving TUFTA's good faith defense. Flores v. Robinson Roofing & Constr. Co., Inc. , 161 S.W.3d 750, 756 (Tex. App.-Fort Worth 2005, pet. denied)",
+      "citing_opinion": "Janvey v. GMAG, L.L.C.",
+      "citing_citation": "925 F.3d 229",
+      "reporter": "f3d",
+      "volume": "925"
+    },
+    {
+      "text": "Martinez v. English , 267 S.W.3d 521, 629 (Tex. App.-Austin 2008, pet. denied)",
+      "citing_opinion": "Najera v. United States",
+      "citing_citation": "926 F.3d 140",
+      "reporter": "f3d",
+      "volume": "926"
+    },
+    {
+      "text": "Tandy Corp. v. McGregor , 527 S.W.2d 246, 248 (Tex. Civ. App.-Texarkana 1975, writ ref'd n.r.e.)",
+      "citing_opinion": "Najera v. United States",
+      "citing_citation": "926 F.3d 140",
+      "reporter": "f3d",
+      "volume": "926"
+    },
+    {
+      "text": "Pate v. Stevens , 257 S.W.2d 763, 767 (Tex. Civ. App.-Texarkana 1953, writ dism'd)",
+      "citing_opinion": "Najera v. United States",
+      "citing_citation": "926 F.3d 140",
+      "reporter": "f3d",
+      "volume": "926"
+    },
+    {
+      "text": "Lane bore the burden of proof. See Brown v. RK Hall Constr., Ltd. , 500 S.W.3d 509, 512 (Tex. App.-Texarkana 2016, pet. denied)",
+      "citing_opinion": "Hoyt v. Lane Constr. Corp.",
+      "citing_citation": "927 F.3d 287",
+      "reporter": "f3d",
+      "volume": "927"
+    },
+    {
+      "text": "Hall v. Mut. Benefit Health & Accident Ass'n , 220 S.W.2d 934 (Tex. Civ. App.-Amarillo 1949, writ ref'd)",
+      "citing_opinion": "Glassell Non-Operated Interests, Ltd. v. Enerquest Oil & Gas, L. L.C.",
+      "citing_citation": "927 F.3d 303",
+      "reporter": "f3d",
+      "volume": "927"
+    },
+    {
+      "text": "Biaggi v. Patrizio Rest. Inc. , 149 S.W.3d 300, 303 (Tex. App.-Dallas 2004, pet. denied)",
+      "citing_opinion": "Frederking v. Cincinnati Ins. Co.",
+      "citing_citation": "929 F.3d 195",
+      "reporter": "f3d",
+      "volume": "929"
+    },
+    {
+      "text": "Venetoulias v. O'Brien , 909 S.W.2d 236, 239 (Tex. App.-Houston [14th Dist.] 1995, writ dism'd by agr.)",
+      "citing_opinion": "Frederking v. Cincinnati Ins. Co.",
+      "citing_citation": "929 F.3d 195",
+      "reporter": "f3d",
+      "volume": "929"
+    }
+  ],
+  "in_re_estate_of": [
+    {
+      "text": "In re Estate of Parker , 25 S.W.3d 611, 616 (Mo. App. 2000)",
+      "citing_opinion": "Paddock, LLC v. Bennett (In re Bennett)",
+      "citing_citation": "917 F.3d 676",
+      "reporter": "f3d",
+      "volume": "917"
+    },
+    {
+      "text": "In re Estate of Nerac , 35 Cal. 392, 396 (1868)",
+      "citing_opinion": "Kanter v. Barr",
+      "citing_citation": "919 F.3d 437",
+      "reporter": "f3d",
+      "volume": "919"
+    },
+    {
+      "text": "In re Estate of Marks , 187 S.W.3d 21, 28 (Tenn. Ct. App. 2005)",
+      "citing_opinion": "Church Joint Venture, L.P. v. Blasingame (In re Blasingame)",
+      "citing_citation": "920 F.3d 384",
+      "reporter": "f3d",
+      "volume": "920"
+    },
+    {
+      "text": "In re Estate of Ferdinand E. Marcos Human Rights Litigation , 978 F.2d 493 (9th Cir. 1992)",
+      "citing_opinion": "Dogan v. Barak",
+      "citing_citation": "932 F.3d 888",
+      "reporter": "f3d",
+      "volume": "932"
+    },
+    {
+      "text": "In re Estate of Hanau , 806 S.W.2d 900, 903 (Tex. App.-Corpus Christi-Edinburg 1991, no writ)",
+      "citing_opinion": "Johnston v. Dexel",
+      "citing_citation": "373 F. Supp. 3d 764",
+      "reporter": "f-supp-3d",
+      "volume": "373"
+    },
+    {
+      "text": "In re Estate of Delaney , 819 A.2d 968, 981 (D.C. 2003)",
+      "citing_opinion": "Krukas v. AARP, Inc.",
+      "citing_citation": "376 F. Supp. 3d 1",
+      "reporter": "f-supp-3d",
+      "volume": "376"
+    },
+    {
+      "text": "In re Estate of Kingseed, 413 N.E.2d 917, 923 (Ind.Ct.App.1980)",
+      "citing_opinion": "Buckmaster v. United States",
+      "citing_citation": "984 F.2d 379",
+      "reporter": "f2d",
+      "volume": "984"
+    },
+    {
+      "text": "In re Estate of Rhodes, 148 Misc.2d 744, 561 N.Y.S.2d 344 (1990)",
+      "citing_opinion": "Dexter v. Kirschner",
+      "citing_citation": "984 F.2d 979",
+      "reporter": "f2d",
+      "volume": "984"
+    },
+    {
+      "text": "In re Estate of Dodge, 685 P.2d 260, 264 (Colo.Ct.App.1984)",
+      "citing_opinion": "Region 12 Revolving Loan Fund Corp. v. Raymond",
+      "citing_citation": "987 F.2d 675",
+      "reporter": "f2d",
+      "volume": "987"
+    },
+    {
+      "text": "In re Estate of Zent, 459 N.W.2d 795, 798 (N.D.1990)",
+      "citing_opinion": "Commercial Associates v. Tilcon Gammino, Inc.",
+      "citing_citation": "998 F.2d 1092",
+      "reporter": "f2d",
+      "volume": "998"
+    },
+    {
+      "text": "In re Estate of Slaughter, 305 S.W.3d 804, 811 (Tex.App.2010)",
+      "citing_opinion": "Enerquest Oil & Gas, LLC v. Plains Exploration & Production Co.",
+      "citing_citation": "981 F. Supp. 2d 575",
+      "reporter": "f-supp-2d",
+      "volume": "981"
+    },
+    {
+      "text": "In re Estate of Tolin, 622 So.2d 988 (Fla.1993)",
+      "citing_opinion": "Kowalski v. Jackson National Life Insurance",
+      "citing_citation": "981 F. Supp. 2d 1309",
+      "reporter": "f-supp-2d",
+      "volume": "981"
+    },
+    {
+      "text": "In re Estate of Ascherl, 445 N.W.2d 391, 392 (Iowa Ct.App.1989)",
+      "citing_opinion": "Brondyke v. Bridgepoint Education, Inc.",
+      "citing_citation": "985 F. Supp. 2d 1079",
+      "reporter": "f-supp-2d",
+      "volume": "985"
+    },
+    {
+      "text": "In re Estate of Duane, 765 F.Supp. 1200, 1201 (S.D.N.Y.1991)",
+      "citing_opinion": "Gehm v. New York Life Insurance",
+      "citing_citation": "992 F. Supp. 209",
+      "reporter": "f-supp",
+      "volume": "992"
+    }
+  ],
+  "in_re_marriage_of": [
+    {
+      "text": "In re Marriage of Finer, 893 P.2d 1381, 1388 (Colo. App. 1995)",
+      "citing_opinion": "Butler v. Bd. of Cnty. Com'Rs for San Miguel Cnty.",
+      "citing_citation": "920 F.3d 651",
+      "reporter": "f3d",
+      "volume": "920"
+    },
+    {
+      "text": "In re Marriage of Manzo , 659 P.2d 669 (Colo. 1983)",
+      "citing_opinion": "Tatonka Capital Corp. v. Connelly",
+      "citing_citation": "390 F. Supp. 3d 1289",
+      "reporter": "f-supp-3d",
+      "volume": "390"
+    },
+    {
+      "text": "In re Marriage of Allen, 724 P.2d 651 (Colo.1986)",
+      "citing_opinion": "Lyons v. Jefferson Bank & Trust",
+      "citing_citation": "994 F.2d 716",
+      "reporter": "f2d",
+      "volume": "994"
+    },
+    {
+      "text": "In re Marriage of Anderson, 711 P.2d 699, 701 (Colo.Ct.App.1985)",
+      "citing_opinion": "Stegall v. Little Johnson Associates, Ltd.",
+      "citing_citation": "996 F.2d 1043",
+      "reporter": "f2d",
+      "volume": "996"
+    },
+    {
+      "text": "In re Marriage of Thomason, 802 P.2d 1189, 1190 (Colo.Ct.App.1990)",
+      "citing_opinion": "Stegall v. Little Johnson Associates, Ltd.",
+      "citing_citation": "996 F.2d 1043",
+      "reporter": "f2d",
+      "volume": "996"
+    },
+    {
+      "text": "In re Marriage of Schriner, 695 N.W.2d 493, 496 (Iowa 2005)",
+      "citing_opinion": "United States v. Schippers",
+      "citing_citation": "982 F. Supp. 2d 948",
+      "reporter": "f-supp-2d",
+      "volume": "982"
+    },
+    {
+      "text": "In re Marriage of McNemey, 417 N.W.2d 205, 207 (Iowa 1987)",
+      "citing_opinion": "United States v. Schippers",
+      "citing_citation": "982 F. Supp. 2d 948",
+      "reporter": "f-supp-2d",
+      "volume": "982"
+    },
+    {
+      "text": "In re Marriage of Dujfield and Pettit, 819 N.W.2d 426, at *3 (Iowa 2012)",
+      "citing_opinion": "United States v. Schippers",
+      "citing_citation": "982 F. Supp. 2d 948",
+      "reporter": "f-supp-2d",
+      "volume": "982"
+    },
+    {
+      "text": "In re Marriage of Engelbrecht, 829 N.W.2d 589, at *8 (Iowa 2013)",
+      "citing_opinion": "United States v. Schippers",
+      "citing_citation": "982 F. Supp. 2d 948",
+      "reporter": "f-supp-2d",
+      "volume": "982"
+    },
+    {
+      "text": "In re Marriage of Fennelly, 737 N.W.2d 97, 102 (Iowa 2007)",
+      "citing_opinion": "United States v. Schippers",
+      "citing_citation": "982 F. Supp. 2d 948",
+      "reporter": "f-supp-2d",
+      "volume": "982"
+    },
+    {
+      "text": "In re Marriage of Allison, 796 N.W.2d 458, at *3 (Iowa Ct.App.2004)",
+      "citing_opinion": "United States v. Schippers",
+      "citing_citation": "982 F. Supp. 2d 948",
+      "reporter": "f-supp-2d",
+      "volume": "982"
+    },
+    {
+      "text": "In re Marriage of Miller, 552 N.W.2d 460, 465 (Iowa Ct.App.1996)",
+      "citing_opinion": "United States v. Schippers",
+      "citing_citation": "982 F. Supp. 2d 948",
+      "reporter": "f-supp-2d",
+      "volume": "982"
+    },
+    {
+      "text": "In re Marriage of Hansen, 738 N.W.2d 683, 702 (Iowa 2007)",
+      "citing_opinion": "United States v. Schippers",
+      "citing_citation": "982 F. Supp. 2d 948",
+      "reporter": "f-supp-2d",
+      "volume": "982"
+    },
+    {
+      "text": "In re Marriage of Anliker, 694 N.W.2d 535, 542 (Iowa 2005)",
+      "citing_opinion": "United States v. Schippers",
+      "citing_citation": "982 F. Supp. 2d 948",
+      "reporter": "f-supp-2d",
+      "volume": "982"
+    },
+    {
+      "text": "In re Marriage of McDermott, 827 N.W.2d 671, 682 (Iowa 2013)",
+      "citing_opinion": "United States v. Schippers",
+      "citing_citation": "982 F. Supp. 2d 948",
+      "reporter": "f-supp-2d",
+      "volume": "982"
+    }
+  ],
+  "people_ex_rel": [
+    {
+      "text": "People ex rel. Salazar v. Davidson , 79 P.3d 1221 (Colo. 2003)",
+      "citing_opinion": "Ohio A. Philip Randolph Inst. v. Householder",
+      "citing_citation": "373 F. Supp. 3d 978",
+      "reporter": "f-supp-3d",
+      "volume": "373"
+    },
+    {
+      "text": "People ex rel. Alzayat v. Hebb , 18 Cal. App. 5th 801, 226 Cal.Rptr.3d 867 (Ct. App. 2017)",
+      "citing_opinion": "Kelly v. Denault",
+      "citing_citation": "374 F. Supp. 3d 884",
+      "reporter": "f-supp-3d",
+      "volume": "374"
+    },
+    {
+      "text": "People ex rel. Scott v. Cardet International, 24 Ill.App.3d 740, 321 N.E.2d 386 (1st Dist.1974)",
+      "citing_opinion": "Bixby's Food Systems, Inc. v. McKay",
+      "citing_citation": "985 F. Supp. 802",
+      "reporter": "f-supp",
+      "volume": "985"
+    },
+    {
+      "text": "People ex rel. Madigan v. Leavell, 228 Ill. 2d 552, 886 N.E.2d 1027 (2008)",
+      "citing_opinion": "People ex rel. Madigan v. Leavell",
+      "citing_citation": "388 Ill. App. 3d 283",
+      "reporter": "ill-app-3d",
+      "volume": "388"
+    },
+    {
+      "text": "People ex rel. Roberts v. Orenic, 88 Ill. 2d 502, 507 (1981)",
+      "citing_opinion": "People v. Edwards",
+      "citing_citation": "388 Ill. App. 3d 615",
+      "reporter": "ill-app-3d",
+      "volume": "388"
+    },
+    {
+      "text": "People ex rel. Baricevic v. Wharton, 136 Ill. 2d 423 (1990)",
+      "citing_opinion": "Bemis v. State Farm Fire & Casualty Co.",
+      "citing_citation": "388 Ill. App. 3d 687",
+      "reporter": "ill-app-3d",
+      "volume": "388"
+    },
+    {
+      "text": "People ex rel. Klaeren v. Lisle, 202 Ill. 2d 164, 177 (2002)",
+      "citing_opinion": "In re Marriage of Davenport",
+      "citing_citation": "388 Ill. App. 3d 988",
+      "reporter": "ill-app-3d",
+      "volume": "388"
+    },
+    {
+      "text": "People ex rel. Sherman v. Cryns, 203 Ill. 2d 264, 279 (2003)",
+      "citing_opinion": "Doe v. Hinsdale Township High School District 86",
+      "citing_citation": "388 Ill. App. 3d 995",
+      "reporter": "ill-app-3d",
+      "volume": "388"
+    },
+    {
+      "text": "People ex rel. Brenza v. Fleetwood, 413 Ill. 530, 549 (1952)",
+      "citing_opinion": "People v. Gonzalez",
+      "citing_citation": "388 Ill. App. 3d 1003",
+      "reporter": "ill-app-3d",
+      "volume": "388"
+    },
+    {
+      "text": "People ex rel. McCormick v. Czarnecki, 266 Ill. 372, 380 (1914)",
+      "citing_opinion": "Nelson v. Qualkinbush",
+      "citing_citation": "389 Ill. App. 3d 79",
+      "reporter": "ill-app-3d",
+      "volume": "389"
+    },
+    {
+      "text": "People ex rel. Sherman v. Cryns, 203 Ill. 2d 264, 275 (2003)",
+      "citing_opinion": "Walsh/II in One Joint Venture III v. Metropolitan Water Reclamation District",
+      "citing_citation": "389 Ill. App. 3d 138",
+      "reporter": "ill-app-3d",
+      "volume": "389"
+    },
+    {
+      "text": "People ex rel. Devine v. Sharkey, 221 Ill. 2d 613, 617 (2006)",
+      "citing_opinion": "Burnette v. Stroger",
+      "citing_citation": "389 Ill. App. 3d 321",
+      "reporter": "ill-app-3d",
+      "volume": "389"
+    },
+    {
+      "text": "People ex rel. Director of Corrections v. Booth, 215 Ill. 2d 416, 423 (2005)",
+      "citing_opinion": "Forsberg v. Edward Hospital & Health Services",
+      "citing_citation": "389 Ill. App. 3d 434",
+      "reporter": "ill-app-3d",
+      "volume": "389"
+    },
+    {
+      "text": "People ex rel. Peters v. Murphy-Knight, 248 Ill. App. 3d 382, 387 (1993)",
+      "citing_opinion": "Village of Bensenville v. City of Chicago",
+      "citing_citation": "389 Ill. App. 3d 446",
+      "reporter": "ill-app-3d",
+      "volume": "389"
+    },
+    {
+      "text": "People ex rel. Klaeren v. Village of Lisle, 202 Ill. 2d 164 (2002)",
+      "citing_opinion": "Village of Bensenville v. City of Chicago",
+      "citing_citation": "389 Ill. App. 3d 446",
+      "reporter": "ill-app-3d",
+      "volume": "389"
+    }
+  ],
+  "slash_alias_dba": [
+    {
+      "text": "N.P.U., Inc. d/b/a NE Plus Ultra v. Wilson Audio Specialties, Inc. , 343 F.Supp.3d 661, 665 (W.D. Tex. 2018)",
+      "citing_opinion": "Sw. Airlines Co. v. Roundpipe, LLC",
+      "citing_citation": "375 F. Supp. 3d 687",
+      "reporter": "f-supp-3d",
+      "volume": "375"
+    },
+    {
+      "text": "PBS, Inc., d/b/a Paris Adult Bookstore II v. City of Dallas, 493 U.S. 215, 224, 110 S.Ct. 596, 604, 107 L.Ed.2d 603 (1990)",
+      "citing_opinion": "Sanjour v. Environmental Protection Agency",
+      "citing_citation": "984 F.2d 434",
+      "reporter": "f2d",
+      "volume": "984"
+    },
+    {
+      "text": "International Cablevision, Inc. d/b/a Adelphia Cable v. John Sykes and Marvin Noel, 75 F.3d 123, 130 (2nd Cir.1996)",
+      "citing_opinion": "Cablevision Systems New York City Corp. v. Lokshin",
+      "citing_citation": "980 F. Supp. 107",
+      "reporter": "f-supp",
+      "volume": "980"
+    }
+  ],
+  "succession_of_la": [
+    {
+      "text": "Succession of Roy , 777 F.2d 992, 997 (5th Cir. 1985)",
+      "citing_opinion": "Miner, Ltd. v. Anguiano",
+      "citing_citation": "383 F. Supp. 3d 682",
+      "reporter": "f-supp-3d",
+      "volume": "383"
+    },
+    {
+      "text": "Succession of Fannaly v. Lafayette Insurance Co. , 805 So. 2d 1134, 1137 (La. 2002)",
+      "citing_opinion": "Apollo Energy, LLC v. Lloyd'S",
+      "citing_citation": "387 F. Supp. 3d 663",
+      "reporter": "f-supp-3d",
+      "volume": "387"
+    },
+    {
+      "text": "Succession of Roy, 111 F.2d 992, 995 (5th Cir.1985)",
+      "citing_opinion": "Rosa v. Allstate Insurance",
+      "citing_citation": "981 F.2d 669",
+      "reporter": "f2d",
+      "volume": "981"
+    },
+    {
+      "text": "Succession of Freeman, 854 F.2d 780 (5th Cir.1988)",
+      "citing_opinion": "Alldread v. City of Grenada",
+      "citing_citation": "988 F.2d 1425",
+      "reporter": "f2d",
+      "volume": "988"
+    },
+    {
+      "text": "Succession of Clement, 749 F.2d 217, 220 (5th Cir. 1984)",
+      "citing_opinion": "Ritter v. Ross",
+      "citing_citation": "992 F.2d 750",
+      "reporter": "f2d",
+      "volume": "992"
+    },
+    {
+      "text": "Succession of Roy, 777 F.2d 992, 996 (5th Cir.1985)",
+      "citing_opinion": "Houston v. Edgeworth",
+      "citing_citation": "993 F.2d 51",
+      "reporter": "f2d",
+      "volume": "993"
+    },
+    {
+      "text": "Succession of Macheca, 147 La. 164 84 So. 574 (1929)",
+      "citing_opinion": "Castillo v. Montelepre, Inc.",
+      "citing_citation": "999 F.2d 931",
+      "reporter": "f2d",
+      "volume": "999"
+    },
+    {
+      "text": "Succession of Picard, 238 La. 455, 115 So. 2d 817 (1959)",
+      "citing_opinion": "General Financial Services, Inc. v. Thompson",
+      "citing_citation": "987 F. Supp. 505",
+      "reporter": "f-supp",
+      "volume": "987"
+    },
+    {
+      "text": "Succession of Roy, 777 F.2d 992, 997 (5th Cir.1985)",
+      "citing_opinion": "DFW Vending, Inc. v. Jefferson County",
+      "citing_citation": "991 F. Supp. 578",
+      "reporter": "f-supp",
+      "volume": "991"
+    }
+  ],
+  "commonwealth_ex_rel": [
+    {
+      "text": "Commonwealth ex rel. Graham v. Schmid, 333 Pa. 568, 3 A.2d 701 (1938)",
+      "citing_opinion": "Carter v. City of Philadelphia",
+      "citing_citation": "989 F.2d 117",
+      "reporter": "f2d",
+      "volume": "989"
+    },
+    {
+      "text": "Commonwealth ex rel. Spriggs v. Carson, 470 Pa. 290, 368 A.2d 635 (1977)",
+      "citing_opinion": "Williams ex rel. Williams v. School District of Bethlehem, PA",
+      "citing_citation": "998 F.2d 168",
+      "reporter": "f2d",
+      "volume": "998"
+    },
+    {
+      "text": "Commonwealth ex rel. Banks v. Cain, 345 Pa. 581, 28 A.2d 897 (1942)",
+      "citing_opinion": "Beahm v. Burke",
+      "citing_citation": "982 F. Supp. 2d 451",
+      "reporter": "f-supp-2d",
+      "volume": "982"
+    },
+    {
+      "text": "Commonwealth ex rel. FX Analytics v. Bank of New York Mellon, 84 Va.Cir. 473, 2012 WL 7874398 (2012)",
+      "citing_opinion": "In re Bank of New York Mellon Corp. Forex Transactions Litigation",
+      "citing_citation": "991 F. Supp. 2d 479",
+      "reporter": "f-supp-2d",
+      "volume": "991"
+    },
+    {
+      "text": "Commonwealth ex rel. Smith v. Myers, 438 Pa. 218, 261 A.2d 550 (1970)",
+      "citing_opinion": "State v. O'Kelly",
+      "citing_citation": "135 N.M. 40",
+      "reporter": "nm",
+      "volume": "135"
+    },
+    {
+      "text": "Commonwealth ex rel. Falwell v. Di Giacinto, 324 Pa.Super. 200, 471 A.2d 533 (1984)",
+      "citing_opinion": "Rozario v. Commonwealth",
+      "citing_citation": "50 Va. App. 142",
+      "reporter": "va-app",
+      "volume": "50"
+    },
+    {
+      "text": "Commonwealth ex rel. Remeriez v. Maroney, 415 Pa. 534, 204 A.2d 446 (1964)",
+      "citing_opinion": "State v. Miller",
+      "citing_citation": "259 Iowa 188",
+      "reporter": "iowa",
+      "volume": "259"
+    },
+    {
+      "text": "Commonwealth ex rel. Goodfellow v. Rundle, 415 Pa. 528, 204 A.2d 446 (1964)",
+      "citing_opinion": "State v. Miller",
+      "citing_citation": "259 Iowa 188",
+      "reporter": "iowa",
+      "volume": "259"
+    }
+  ],
+  "but_see_eg": [
+    {
+      "text": "But see, e.g., American Postal Workers v. United States Postal, 789 F.2d 1, 8 (D.C.Cir.1986)",
+      "citing_opinion": "Gulf Coast Industrial Workers Union v. Exxon Co. U.S.A.",
+      "citing_citation": "991 F.2d 244",
+      "reporter": "f2d",
+      "volume": "991"
+    },
+    {
+      "text": "But see, e.g., Conestoga Wood Specialities Corp. v. Sebelius, 917 F.Supp.2d 394, 413 (E.D.Pa.2013)",
+      "citing_opinion": "Legatus v. Sebelius",
+      "citing_citation": "988 F. Supp. 2d 794",
+      "reporter": "f-supp-2d",
+      "volume": "988"
+    },
+    {
+      "text": "But see, e.g., Schneiker v. Gordon, 732 P.2d 603, 611 (Colo. 1987)",
+      "citing_opinion": "275 Washington Street Corp. v. Hudson River International, LLC",
+      "citing_citation": "465 Mass. 16",
+      "reporter": "mass",
+      "volume": "465"
+    },
+    {
+      "text": "But see, e.g., Watson v. State, 392 So. 2d 1274, 1279 (Ala. Crim. App. 1980)",
+      "citing_opinion": "Commonwealth v. Resende",
+      "citing_citation": "474 Mass. 455",
+      "reporter": "mass",
+      "volume": "474"
+    },
+    {
+      "text": "But see, e.g., Krieger v. Gast, 122 F.Supp.2d 836, 846 (W.D.Mich.2000)",
+      "citing_opinion": "McMinn v. MBF Operating, Inc.",
+      "citing_citation": "139 N.M. 419",
+      "reporter": "nm",
+      "volume": "139"
+    }
+  ],
+  "in_re_welfare_of": [
+    {
+      "text": "In re Welfare of C.M.K., 552 N.W.2d 768, 770 (Minn.App.1996)",
+      "citing_opinion": "Gao v. Jenifer",
+      "citing_citation": "991 F. Supp. 887",
+      "reporter": "f-supp",
+      "volume": "991"
+    },
+    {
+      "text": "In re Welfare of A.B., 140 Wn. App. 1024 (2007)",
+      "citing_opinion": "Salas v. Department of Social & Health Services",
+      "citing_citation": "168 Wash. 2d 908",
+      "reporter": "wash-2d",
+      "volume": "168"
+    },
+    {
+      "text": "In re Welfare of A.B., 164 Wn.2d 1001, 192 P.3d 368 (2008)",
+      "citing_opinion": "Salas v. Department of Social & Health Services",
+      "citing_citation": "168 Wash. 2d 908",
+      "reporter": "wash-2d",
+      "volume": "168"
+    },
+    {
+      "text": "In re Welfare of Luscier, 84 Wn.2d 135, 524 P.2d 906 (1974)",
+      "citing_opinion": "Jenkins v. Department of Social & Health Services",
+      "citing_citation": "171 Wash. 2d 568",
+      "reporter": "wash-2d",
+      "volume": "171"
+    },
+    {
+      "text": "In re Welfare of Snyder, 85 Wn.2d 182, 532 P.2d 278 (1975)",
+      "citing_opinion": "Franklin v. Johnston",
+      "citing_citation": "179 Wash. 2d 179",
+      "reporter": "wash-2d",
+      "volume": "179"
+    },
+    {
+      "text": "In re Welfare of C.S., 168 Wn.2d 51, 225 P.3d 953 (2010)",
+      "citing_opinion": "Department of Social & Health Services v. H.O.",
+      "citing_citation": "186 Wash. 2d 292",
+      "reporter": "wash-2d",
+      "volume": "186"
+    },
+    {
+      "text": "In re Welfare of S.J., 162 Wn. App. 873, 256 P.3d 470 (2011)",
+      "citing_opinion": "Department of Social & Health Services v. H.O.",
+      "citing_citation": "186 Wash. 2d 292",
+      "reporter": "wash-2d",
+      "volume": "186"
+    },
+    {
+      "text": "In re Welfare of Adams, 24 Wn. App. 517, 601 P.2d 995 (1979)",
+      "citing_opinion": "State v. Harrington",
+      "citing_citation": "181 Wash. App. 805",
+      "reporter": "wash-app",
+      "volume": "181"
+    }
+  ],
+  "in_re_adoption_of": [
+    {
+      "text": "In re Adoption of Ginnell, 316 Ill. App. 3d 789, 793 (2000)",
+      "citing_opinion": "People v. Hernandez",
+      "citing_citation": "392 Ill. App. 3d 527",
+      "reporter": "ill-app-3d",
+      "volume": "392"
+    },
+    {
+      "text": "In re Adoption of K.L.P., 198 Ill. 2d 448, 466 (2002)",
+      "citing_opinion": "Kaczka v. Retirement Board of the Policemen's Annuity & Benefit Fund of Chicago",
+      "citing_citation": "398 Ill. App. 3d 702",
+      "reporter": "ill-app-3d",
+      "volume": "398"
+    },
+    {
+      "text": "In re Adoption of K.A.S., 499 N.W.2d 558, 566 (N.D.1993)",
+      "citing_opinion": "In re the Adoption of J.E.V.",
+      "citing_citation": "226 N.J. 90",
+      "reporter": "nj",
+      "volume": "226"
+    },
+    {
+      "text": "In re Adoption of Halloway, 732 P.2d 962, 969 (Utah 1986)",
+      "citing_opinion": "New Jersey Division of Child Protection & Permanency v. K.T.D.",
+      "citing_citation": "439 N.J. Super. 363",
+      "reporter": "nj-super",
+      "volume": "439"
+    },
+    {
+      "text": "In re Adoption of Indian Child, 219 N.J.Super. 28, 529 A.2d 1009 (App.Div.1987)",
+      "citing_opinion": "A.A. v. Gramiccioni",
+      "citing_citation": "442 N.J. Super. 276",
+      "reporter": "nj-super",
+      "volume": "442"
+    },
+    {
+      "text": "In re Adoption of Henderson, 97 Wn.2d 356, 644 P.2d 1178 (1982)",
+      "citing_opinion": "State v. Gamble",
+      "citing_citation": "168 Wash. 2d 161",
+      "reporter": "wash-2d",
+      "volume": "168"
+    },
+    {
+      "text": "In re Adoption of TAW., 188 Wn. App. 799, 354 P.3d 46 (2015)",
+      "citing_opinion": "R.B. v. C.W.",
+      "citing_citation": "186 Wash. 2d 828",
+      "reporter": "wash-2d",
+      "volume": "186"
+    },
+    {
+      "text": "In re Adoption of Crews, 118 Wn.2d 561, 825 P.2d 305 (1992)",
+      "citing_opinion": "R.B. v. C.W.",
+      "citing_citation": "186 Wash. 2d 828",
+      "reporter": "wash-2d",
+      "volume": "186"
+    },
+    {
+      "text": "In re Adoption of Francisco A., 116 N.M. 708, 866 P.2d 1175 (Ct.App.1993)",
+      "citing_opinion": "State ex rel. Children, Youth & Families Department v. Hector C.",
+      "citing_citation": "144 N.M. 222",
+      "reporter": "nm",
+      "volume": "144"
+    }
+  ],
+  "in_re_parentage_of": [
+    {
+      "text": "In re Parentage of John M., 212 Ill. 2d 253, 263 (2004)",
+      "citing_opinion": "U.S. Bank v. Lindsey",
+      "citing_citation": "397 Ill. App. 3d 437",
+      "reporter": "ill-app-3d",
+      "volume": "397"
+    },
+    {
+      "text": "In re Parentage of G.E.M., 382 Ill. App. 3d 1102, 890 N.E.2d 944 (2008)",
+      "citing_opinion": "People v. Robert M.",
+      "citing_citation": "401 Ill. App. 3d 416",
+      "reporter": "ill-app-3d",
+      "volume": "401"
+    },
+    {
+      "text": "In re Parentage of John M., 212 Ill. 2d 253, 256 (2004)",
+      "citing_opinion": "Galvez v. Rentas",
+      "citing_citation": "403 Ill. App. 3d 491",
+      "reporter": "ill-app-3d",
+      "volume": "403"
+    },
+    {
+      "text": "In re Parentage of G.E.M., 382 Ill. App. 3d 1102, 1118 (2008)",
+      "citing_opinion": "Galvez v. Rentas",
+      "citing_citation": "403 Ill. App. 3d 491",
+      "reporter": "ill-app-3d",
+      "volume": "403"
+    },
+    {
+      "text": "In re Parentage of T.J.S., 419 N.J.Super. 46,16 A.3d 386 (App.Div.2011)",
+      "citing_opinion": "In re the Parentage of a Child by T.J.S.",
+      "citing_citation": "212 N.J. 334",
+      "reporter": "nj",
+      "volume": "212"
+    }
+  ],
+  "in_the_interest_of": [
+    {
+      "text": "In the Interest of V.A., 212 N.J. 1, 8, 50 A.3d 610 (2012)",
+      "citing_opinion": "State in the Interest of N.H",
+      "citing_citation": "226 N.J. 242",
+      "reporter": "nj",
+      "volume": "226"
+    },
+    {
+      "text": "In the Interest of J.C., 877 N.W.2d 447 (Iowa 2016)",
+      "citing_opinion": "State In the Interest of A.R.",
+      "citing_citation": "447 N.J. Super. 485",
+      "reporter": "nj-super",
+      "volume": "447"
+    },
+    {
+      "text": "In the Interest of C.H., 652 N.W.2d 144, 150 (Iowa 2002)",
+      "citing_opinion": "E.S. v. H.A.",
+      "citing_citation": "451 N.J. Super. 374",
+      "reporter": "nj-super",
+      "volume": "451"
+    },
+    {
+      "text": "In the Interest of K.K.C., 143 Wis. 2d 508, 422 N.W.2d 142 (Ct. App. 1988)",
+      "citing_opinion": "State v. Lynch",
+      "citing_citation": "371 Wis. 2d 1",
+      "reporter": "wis-2d",
+      "volume": "371"
+    },
+    {
+      "text": "In the Interest of K.K.C., 143 Wis. 2d 508, 511, 422 N.W.2d 142 (Ct. App. 1988)",
+      "citing_opinion": "State v. Lynch",
+      "citing_citation": "371 Wis. 2d 1",
+      "reporter": "wis-2d",
+      "volume": "371"
+    },
+    {
+      "text": "In the Interest of S.L.T., 180 So.2d 374, 378 (Fla. Dist.Ct.App.1965)",
+      "citing_opinion": "Papatheofanis v. Allen",
+      "citing_citation": "146 N.M. 840",
+      "reporter": "nm",
+      "volume": "146"
+    },
+    {
+      "text": "In the Interest of J.W., 528 N.W.2d 657, 662 (Iowa Ct. App. 1995)",
+      "citing_opinion": "State ex rel. Children, Youth & Families Department v. Casey J.",
+      "citing_citation": "2015-NMCA-088",
+      "reporter": "nm-app",
+      "volume": "8"
+    },
+    {
+      "text": "In the Interest of A.V., 849 S.W.2d 393, 399 (Tx.App.1993)",
+      "citing_opinion": "Billips v. Commonwealth",
+      "citing_citation": "48 Va. App. 278",
+      "reporter": "va-app",
+      "volume": "48"
+    }
+  ],
+  "in_re_termination_of_parental_rights": [
+    {
+      "text": "In re Termination of Parental Rights of James W.H., 115 N.M. 256, 849 P.2d 1079 (Ct.App.1993)",
+      "citing_opinion": "State ex rel. Children, Youth & Families Department v. Amanda M.",
+      "citing_citation": "140 N.M. 578",
+      "reporter": "nm",
+      "volume": "140"
+    }
+  ]
+}

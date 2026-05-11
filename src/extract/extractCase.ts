@@ -257,6 +257,7 @@ const SIGNAL_TABLE: ReadonlyArray<readonly [RegExp, HistorySignal]> = [
   [/^pet\.\s+denied\b/i, "pet_denied"],
   [/^pet\.\s+dism'?d\b/i, "pet_dismissed"],
   [/^pet\.\s+granted\b/i, "pet_granted"],
+  [/^pet\.\s+filed\b/i, "pet_filed"],
   [/^no\s+pet\.\s+h\./i, "no_pet"],
   [/^no\s+pet\./i, "no_pet"],
 ]
