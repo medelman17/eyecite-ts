@@ -1373,6 +1373,10 @@ export function parseParenthetical(content: string): {
   year?: number
   date?: StructuredDate
   disposition?: string
+  /** Surname(s) of justice(s) attributed to a justice-attribution paren (#235) */
+  justices?: string[]
+  /** Scope qualifier for a justice-attribution paren (#235): in_judgment | in_part | from_denial */
+  scope?: string
   /** Texas Greenbook writ/petition history clause inside the parenthetical (#229) */
   internalHistory?: { signal: HistorySignal; rawSignal: string; start: number; end: number }
   courtStart?: number
@@ -1385,6 +1389,8 @@ export function parseParenthetical(content: string): {
     year?: number
     date?: StructuredDate
     disposition?: string
+    justices?: string[]
+    scope?: string
     internalHistory?: {
       signal: HistorySignal
       rawSignal: string
@@ -1457,10 +1463,73 @@ export function parseParenthetical(content: string): {
     }
   }
 
-  // Check for disposition
-  if (/\ben banc\b/i.test(content)) {
+  // Justice-attribution parenthetical (#235). Detected BEFORE the bare
+  // en banc / per curiam check so a parenthetical like
+  // `Cabranes, J., dissenting from denial of rehearing en banc` doesn't
+  // false-positive on the trailing `en banc` substring.
+  //
+  // Pattern: <Surname>(, <Surname>)*(?:,? and <Surname>)?,? (C\.J\.|J\.|JJ\.),? <role>
+  const justiceMatch = /^(?<surnames>[A-Z][a-z]+(?:(?:,\s+|\s+and\s+)[A-Z][a-z]+)*)\s*,?\s*(?<title>C\.J\.|J\.|JJ\.)\s*,?\s*(?<role>.+)$/.exec(
+    content.trim(),
+  )
+  if (justiceMatch?.groups) {
+    const surnameText = justiceMatch.groups.surnames
+    const roleText = justiceMatch.groups.role.trim().replace(/[.,]+$/, "")
+    const justices = surnameText
+      .split(/(?:,\s+and\s+|,\s+|\s+and\s+)/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+    result.justices = justices
+
+    // Classify the role into a disposition + optional scope.
+    const lower = roleText.toLowerCase()
+    if (/^concurring\s+in\s+part\s+and\s+dissenting\s+in\s+part/.test(lower)) {
+      result.disposition = "mixed"
+      result.scope = "in_part"
+    } else if (/^concurring\s+in\s+the\s+judgment/.test(lower)) {
+      result.disposition = "concurrence"
+      result.scope = "in_judgment"
+    } else if (/^concurring\s+in\s+part/.test(lower)) {
+      result.disposition = "concurrence"
+      result.scope = "in_part"
+    } else if (/^dissenting\s+in\s+part/.test(lower)) {
+      result.disposition = "dissent"
+      result.scope = "in_part"
+    } else if (/^dissenting\s+from\s+denial\s+of/.test(lower)) {
+      result.disposition = "dissent"
+      result.scope = "from_denial"
+    } else if (/^concurring/.test(lower)) {
+      result.disposition = "concurrence"
+    } else if (/^dissenting/.test(lower)) {
+      result.disposition = "dissent"
+    } else if (/^joining/.test(lower)) {
+      result.disposition = "majority"
+    }
+    return result
+  }
+
+  // Non-justice disposition parens (#235): plurality opinion, mem.,
+  // unpublished table decision. Checked before en banc/per curiam.
+  if (/^plurality\s+opinion\b/i.test(content.trim())) {
+    result.disposition = "plurality opinion"
+    return result
+  }
+  if (/^mem\.\s*$/i.test(content.trim())) {
+    result.disposition = "mem."
+    return result
+  }
+  if (/^unpublished\s+table\s+decision\b/i.test(content.trim())) {
+    result.disposition = "unpublished table decision"
+    return result
+  }
+
+  // Check for disposition (en banc / per curiam). Anchored at content end
+  // (\s*$) so a parenthetical like `Cabranes, J., dissenting from denial of
+  // rehearing en banc` — caught above by the justice-attribution branch —
+  // does not also trip the en-banc check via substring match (#235).
+  if (/\ben banc\b\s*$/i.test(content.trim())) {
     result.disposition = "en banc"
-  } else if (/\bper curiam\b/i.test(content)) {
+  } else if (/\bper curiam\b\s*$/i.test(content.trim())) {
     result.disposition = "per curiam"
   }
 
@@ -1480,6 +1549,8 @@ function classifyParenthetical(raw: string):
       year?: number
       date?: StructuredDate
       disposition?: string
+      justices?: string[]
+      scope?: string
     }
   | {
       kind: "explanatory"
@@ -1504,7 +1575,7 @@ function classifyParenthetical(raw: string):
   // like "(9th Cir.)" will fall through to "other". This is acceptable since
   // court-only parens without year/date are extremely rare in legal text.
   const meta = parseParenthetical(raw)
-  if (meta.year || meta.date || meta.disposition) {
+  if (meta.year || meta.date || meta.disposition || meta.justices) {
     return { kind: "metadata", ...meta }
   }
 
@@ -1858,6 +1929,8 @@ export function extractCase(
   let court: string | undefined
   let date: StructuredDate | undefined
   let disposition: string | undefined
+  let justices: string[] | undefined
+  let scope: string | undefined
   let caseName: string | undefined
   let fullSpan: Span | undefined
 
@@ -1880,6 +1953,8 @@ export function extractCase(
     court = metaParenResult.court
     date = metaParenResult.date
     disposition = metaParenResult.disposition
+    justices = metaParenResult.justices
+    scope = metaParenResult.scope
   }
 
   // NY Slip Op unpublished marker (#231): `(U)` (older) or `[U]` (newer)
@@ -1915,6 +1990,8 @@ export function extractCase(
       court = metaParenResult.court
       date = metaParenResult.date
       disposition = metaParenResult.disposition
+      justices = metaParenResult.justices
+      scope = metaParenResult.scope
     }
 
     // Extract pincite from look-ahead independently of the parenthetical match.
@@ -1965,6 +2042,12 @@ export function extractCase(
         }
         if (classified.disposition && !disposition) {
           disposition = classified.disposition
+        }
+        if (classified.justices && !justices) {
+          justices = classified.justices
+        }
+        if (classified.scope && !scope) {
+          scope = classified.scope
         }
       } else {
         parentheticals ??= []
@@ -2367,6 +2450,8 @@ export function extractCase(
     parentheticals,
     subsequentHistoryEntries,
     ...(unpublished ? { unpublished: true } : {}),
+    ...(justices ? { justices } : {}),
+    ...(scope ? { scope } : {}),
     plaintiff,
     plaintiffNormalized,
     defendant,
