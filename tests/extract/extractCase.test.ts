@@ -3081,6 +3081,177 @@ New York first recognized IIED as a cognizable cause of action in Fischer v. Mal
   })
 })
 
+describe("Texas writ/petition history (#229)", () => {
+  // Texas Greenbook places writ/petition history inside the court-and-year
+  // parenthetical, after a second comma — e.g.,
+  //   (Tex. App.—Houston [1st Dist.] 2002, writ ref'd n.r.e.)
+  // The em-dash is converted to "---" by the existing cleaning step (which
+  // also handles em-dash blank-page placeholders), so test expectations use
+  // the cleaned-text form. parseParenthetical must:
+  //   1) extract court ending before the year (preserving em-dash & brackets)
+  //   2) extract year correctly when followed by a non-date trailing clause
+  //   3) populate subsequentHistory[] with the writ/pet signal
+
+  describe("court extraction with em-dash + brackets", () => {
+    it("captures 'Tex. App.---Houston [1st Dist.]' court", () => {
+      const cits = extractCitations(
+        "Smith v. State, 100 S.W.3d 1 (Tex. App.—Houston [1st Dist.] 2002, writ ref'd n.r.e.).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].court).toBe("Tex. App.---Houston [1st Dist.]")
+        expect(cases[0].year).toBe(2002)
+      }
+    })
+
+    it("captures 'Tex. App.---Dallas' court", () => {
+      const cits = extractCitations(
+        "Brown v. State, 200 S.W.3d 2 (Tex. App.—Dallas 2010, no pet.).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].court).toBe("Tex. App.---Dallas")
+        expect(cases[0].year).toBe(2010)
+      }
+    })
+
+    it("captures 'Tex. App.---Austin' court", () => {
+      const cits = extractCitations(
+        "Wilson v. State, 300 S.W.3d 3 (Tex. App.—Austin 2018, pet. ref'd).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].court).toBe("Tex. App.---Austin")
+        expect(cases[0].year).toBe(2018)
+      }
+    })
+
+    it("captures 'Tex. App.---Fort Worth' court (two-word city)", () => {
+      const cits = extractCitations(
+        "Richardson v. Kays, 234 S.W.3d 657 (Tex. App.—Fort Worth 2003, writ dism'd w.o.j.).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].court).toBe("Tex. App.---Fort Worth")
+        expect(cases[0].year).toBe(2003)
+      }
+    })
+  })
+
+  describe("writ history signals", () => {
+    const writCases: Array<[string, string]> = [
+      ["writ ref'd", "writ_refused"],
+      ["writ ref'd n.r.e.", "writ_refused"],
+      ["writ ref'd w.m.j.", "writ_refused"],
+      ["writ dism'd", "writ_dismissed"],
+      ["writ dism'd w.o.j.", "writ_dismissed"],
+      ["writ denied", "writ_denied"],
+      ["no writ", "no_writ"],
+    ]
+    for (const [phrase, normalized] of writCases) {
+      it(`recognizes '${phrase}' → ${normalized}`, () => {
+        const cits = extractCitations(
+          `Smith v. State, 100 S.W.3d 1 (Tex. App.—Dallas 2010, ${phrase}).`,
+        )
+        const cases = cits.filter((c) => c.type === "case")
+        expect(cases).toHaveLength(1)
+        if (cases[0].type === "case") {
+          const entries = cases[0].subsequentHistoryEntries
+          expect(entries).toBeDefined()
+          expect(entries?.[0]?.signal).toBe(normalized)
+          expect(entries?.[0]?.rawSignal).toBe(phrase)
+        }
+      })
+    }
+  })
+
+  describe("petition history signals", () => {
+    const petCases: Array<[string, string]> = [
+      ["pet. ref'd", "pet_refused"],
+      ["pet. denied", "pet_denied"],
+      ["pet. dism'd", "pet_dismissed"],
+      ["pet. granted", "pet_granted"],
+      ["no pet.", "no_pet"],
+      ["no pet. h.", "no_pet"],
+    ]
+    for (const [phrase, normalized] of petCases) {
+      it(`recognizes '${phrase}' → ${normalized}`, () => {
+        const cits = extractCitations(
+          `Smith v. State, 100 S.W.3d 1 (Tex. App.—Dallas 2010, ${phrase}).`,
+        )
+        const cases = cits.filter((c) => c.type === "case")
+        expect(cases).toHaveLength(1)
+        if (cases[0].type === "case") {
+          const entries = cases[0].subsequentHistoryEntries
+          expect(entries).toBeDefined()
+          expect(entries?.[0]?.signal).toBe(normalized)
+          expect(entries?.[0]?.rawSignal).toBe(phrase)
+        }
+      })
+    }
+  })
+
+  describe("In re Google example from issue body", () => {
+    it("captures court + year + 'no pet. h.' history with [15th Dist.] bracket", () => {
+      const cits = extractCitations(
+        "In re Google, LLC, 705 S.W.3d 479, 484 (Tex. App.—15th Dist. 2025, no pet. h.).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].court).toBe("Tex. App.---15th Dist.")
+        expect(cases[0].year).toBe(2025)
+        expect(cases[0].caseName).toBe("In re Google, LLC")
+        const entries = cases[0].subsequentHistoryEntries
+        expect(entries?.[0]?.signal).toBe("no_pet")
+      }
+    })
+  })
+
+  describe("regression — non-Texas parentheticals still parse correctly", () => {
+    it("'9th Cir. 2020' still extracts court='9th Cir.', year=2020", () => {
+      const cits = extractCitations("Smith v. Jones, 100 F.3d 200 (9th Cir. 2020).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].court).toBe("9th Cir.")
+        expect(cases[0].year).toBe(2020)
+        expect(cases[0].subsequentHistoryEntries).toBeUndefined()
+      }
+    })
+
+    it("'S.D.N.Y. 2010' still extracts court='S.D.N.Y.', year=2010", () => {
+      const cits = extractCitations("Smith v. Jones, 100 F. Supp. 2d 200 (S.D.N.Y. 2010).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].court).toBe("S.D.N.Y.")
+        expect(cases[0].year).toBe(2010)
+        expect(cases[0].subsequentHistoryEntries).toBeUndefined()
+      }
+    })
+
+    it("non-Texas trailing parenthetical does not populate subsequentHistory", () => {
+      // The existing case with 'aff'd' AFTER the closing paren still works
+      // via the existing between-parens collectParentheticals path — that's
+      // distinct from #229's inside-the-parens fix.
+      const cits = extractCitations(
+        "Smith v. Doe, 100 F.3d 200, 205 (2d Cir. 1996), aff'd, 200 F.3d 300 (2d Cir. 1997).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].court).toBe("2d Cir.")
+        expect(cases[0].year).toBe(1996)
+      }
+    })
+  })
+})
+
 describe("BIA hyphenated-initials respondent names (#244)", () => {
   // BIA opinions use a distinctive caption form where the respondent's name is
   // reduced to hyphenated single-letter initials (e.g., `Matter of A-B-`) for
