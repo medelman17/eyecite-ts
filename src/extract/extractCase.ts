@@ -186,6 +186,16 @@ const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
 /** Whitespace/comma skip pattern for parenthetical scanning */
 const PAREN_SKIP_REGEX = /[\s,]/
 
+/** Additional discrete pincite (`, NNN` continuation) after the primary
+ *  pincite has been consumed (#247). Matches a comma + optional whitespace
+ *  followed by a pincite body. Used in a loop after `LOOKAHEAD_PINCITE_REGEX`
+ *  to collect `115, 153, 200` chains.
+ *
+ *  Excludes paragraph forms (`¶ 12` mixed with page numbers is exceedingly
+ *  rare and would conflict with the citation core's lookahead boundary). */
+const ADDITIONAL_PINCITE_REGEX =
+  /^,\s*(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)(?=\s|$|\(|,|;|\.)/
+
 /** Pincite text that appears between core citation and parentheticals.
  *  Matches: comma-separated page numbers/ranges and optional note refs.
  *  E.g., ", 199 n.2", ", 999-1000", ", 130 n.5", ", at p. 115" (CSM, #236),
@@ -2113,6 +2123,29 @@ export function extractCase(
             laPinciteMatch.indices[1],
             transformationMap,
           )
+        }
+
+        // Multiple discrete pincites (#247): continue scanning for additional
+        // comma-separated pincites (`, 115, 153, 200`). Each entry is parsed
+        // through `parsePincite` so range / footnote / paragraph semantics
+        // inside the chain are preserved. The convenience `pincite` field
+        // continues to point at the primary; consumers walk `additionalPincites`.
+        if (pinciteInfo) {
+          const additionalPincites: PinciteInfo[] = []
+          let scanStart =
+            (laPinciteMatch.index ?? 0) + laPinciteMatch[0].length
+          while (scanStart < afterToken.length) {
+            const remainder = afterToken.substring(scanStart)
+            const addMatch = ADDITIONAL_PINCITE_REGEX.exec(remainder)
+            if (!addMatch) break
+            const addInfo = parsePincite(addMatch[1])
+            if (!addInfo) break
+            additionalPincites.push(addInfo)
+            scanStart += addMatch[0].length
+          }
+          if (additionalPincites.length > 0) {
+            pinciteInfo = { ...pinciteInfo, additionalPincites }
+          }
         }
       }
     }

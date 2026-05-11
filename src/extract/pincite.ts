@@ -28,6 +28,14 @@ export interface PinciteInfo {
   paragraph?: number
   /** End paragraph for `¶¶ N-M` / `paras. N-M` pincites (#204). */
   endParagraph?: number
+  /** Additional discrete pincites following the primary one (#247). E.g.,
+   *  `410 U.S. 113, 115, 153` → first pincite is page=115, additionalPincites
+   *  is `[{ page: 153, ... }]`. Each entry is a full `PinciteInfo` so ranges
+   *  / footnotes / star-pages inside the comma chain are preserved
+   *  (`115, 105-110` → additional has `endPage` set). The top-level
+   *  convenience `pincite: number` field on the citation continues to mirror
+   *  only the primary pincite; consumers needing all pincites read this array. */
+  additionalPincites?: PinciteInfo[]
   /** Original text before parsing */
   raw: string
 }
