@@ -3081,6 +3081,128 @@ New York first recognized IIED as a cognizable cause of action in Fischer v. Mal
   })
 })
 
+describe("California review history signals (#238)", () => {
+  // California Supreme Court history uses "review denied" / "review granted"
+  // / "opinion vacated" / "disapproved on other grounds" — signals distinct
+  // from federal cert. denied/granted. The current SIGNAL_TABLE has no
+  // entries for these, so the after-citation history clause is dropped.
+
+  describe("review denied / granted", () => {
+    it("captures 'review denied' as review_denied", () => {
+      const cits = extractCitations(
+        "People v. Smith, 50 Cal. 3d 100 (Cal. 1990), review denied.",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe("review_denied")
+      }
+    })
+
+    it("captures 'review den.' (abbreviated) as review_denied", () => {
+      const cits = extractCitations(
+        "People v. Smith, 50 Cal. 3d 100 (Cal. 1990), review den.",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe("review_denied")
+      }
+    })
+
+    it("captures 'review granted' as review_granted", () => {
+      const cits = extractCitations(
+        "Doe v. Roe, 1 Cal. 4th 50 (Cal. 2010), review granted.",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe("review_granted")
+      }
+    })
+  })
+
+  describe("opinion vacated", () => {
+    it("captures 'opinion vacated' as opinion_vacated", () => {
+      const cits = extractCitations(
+        "Doe v. Roe, 1 Cal. 4th 50 (Cal. 2010), opinion vacated.",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe("opinion_vacated")
+      }
+    })
+  })
+
+  describe("disapproved on other grounds (CA-specific)", () => {
+    it("captures 'disapproved on other grounds' as disapproved_other_grounds (beats bare 'disapproved')", () => {
+      const cits = extractCitations(
+        "People v. Davis, 5 Cal. 5th 200 (Cal. 2020), disapproved on other grounds in People v. Jones.",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe(
+          "disapproved_other_grounds",
+        )
+      }
+    })
+  })
+
+  describe("multi-stage chains", () => {
+    it("captures 'review granted, opinion vacated' as 2 chained entries", () => {
+      const cits = extractCitations(
+        "Doe v. Roe, 1 Cal. 4th 50 (Cal. 2010), review granted, opinion vacated.",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        const entries = cases[0].subsequentHistoryEntries
+        expect(entries?.length).toBeGreaterThanOrEqual(2)
+        expect(entries?.[0]?.signal).toBe("review_granted")
+        expect(entries?.[1]?.signal).toBe("opinion_vacated")
+      }
+    })
+  })
+
+  describe("regression — existing signals still work", () => {
+    it("still recognizes 'disapproved' (bare) as disapproved", () => {
+      // The longer "disapproved on other grounds" must not over-match the bare form.
+      const cits = extractCitations(
+        "Smith v. Jones, 100 F.3d 200 (2d Cir. 1996), disapproved, 200 F.3d 300 (2d Cir. 1997).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe("disapproved")
+      }
+    })
+
+    it("still recognizes 'cert. denied' (federal — distinct from CA review)", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 100 F.3d 200 (2d Cir. 1996), cert. denied, 500 U.S. 100 (1997).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe("cert_denied")
+      }
+    })
+
+    it("still recognizes 'aff'd' chain", () => {
+      const cits = extractCitations(
+        "Smith v. Doe, 100 F.3d 200 (2d Cir. 1996), aff'd, 200 F.3d 300 (2d Cir. 1997).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe("affirmed")
+      }
+    })
+  })
+})
+
 describe("Texas writ/petition history (#229)", () => {
   // Texas Greenbook places writ/petition history inside the court-and-year
   // parenthetical, after a second comma — e.g.,

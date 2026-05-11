@@ -206,6 +206,11 @@ export type HistorySignal =
   | "pet_granted"
   | "pet_filed"
   | "no_pet"
+  // California Supreme Court review history + CA-specific signals (#238)
+  | "review_denied"
+  | "review_granted"
+  | "opinion_vacated"
+  | "disapproved_other_grounds"
 
 /**
  * A single subsequent history entry from a case citation.

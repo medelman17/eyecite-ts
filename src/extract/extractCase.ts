@@ -233,6 +233,9 @@ const SIGNAL_TABLE: ReadonlyArray<readonly [RegExp, HistorySignal]> = [
   // additional signals
   [/^superseded\s+by\b/i, "superseded"],
   [/^superseded\b/i, "superseded"],
+  // CA-specific "disapproved on other grounds" precedes the bare/of forms
+  // so alternation prefers the more specific match (#238).
+  [/^disapproved\s+on\s+other\s+grounds\b/i, "disapproved_other_grounds"],
   [/^disapproved\s+of\b/i, "disapproved"],
   [/^disapproved\b/i, "disapproved"],
   [/^questioned\s+by\b/i, "questioned"],
@@ -260,6 +263,12 @@ const SIGNAL_TABLE: ReadonlyArray<readonly [RegExp, HistorySignal]> = [
   [/^pet\.\s+filed\b/i, "pet_filed"],
   [/^no\s+pet\.\s+h\./i, "no_pet"],
   [/^no\s+pet\./i, "no_pet"],
+  // California Supreme Court review history (#238). Bluebook T8 only covers
+  // federal cert. denied/granted — these CA-specific forms appear in Cal.,
+  // Cal.App., and federal opinions citing CA cases.
+  [/^review\s+den(?:ied|\.)/i, "review_denied"],
+  [/^review\s+granted\b/i, "review_granted"],
+  [/^opinion\s+vacated\b/i, "opinion_vacated"],
 ]
 
 /**
@@ -1281,6 +1290,13 @@ function collectParentheticals(
       const remainingText = text.substring(pos, endLimit)
       const normalized = normalizeSignal(remainingText)
       if (normalized) {
+        // Multi-stage chain (e.g., "review granted, opinion vacated"): if a
+        // prior signal is still pending with no following paren, flush it
+        // before overwriting. Without this, only the last link of a chain
+        // survives. (#238)
+        if (pendingSignal) {
+          signals.push({ signal: pendingSignal, nextParenIndex: -1 })
+        }
         pendingSignal = {
           text: remainingText.substring(0, normalized.matchLength).replace(/\s+$/, ""),
           normalized: normalized.signal,
