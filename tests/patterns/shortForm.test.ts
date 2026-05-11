@@ -196,14 +196,16 @@ describe("SUPRA_PATTERN", () => {
 })
 
 describe("SHORT_FORM_CASE_PATTERN", () => {
+  // Group order (#278): 1=partyName (optional), 2=volume, 3=reporter, 4=pincite
   it("should match short-form case citation", () => {
     const text = "500 F.2d at 125"
     const match = SHORT_FORM_CASE_PATTERN.exec(text)
     expect(match).not.toBeNull()
     expect(match?.[0]).toBe("500 F.2d at 125")
-    expect(match?.[1]).toBe("500") // Volume
-    expect(match?.[2]).toBe("F.2d") // Reporter
-    expect(match?.[3]).toBe("125") // Page
+    expect(match?.[1]).toBeUndefined() // No party name
+    expect(match?.[2]).toBe("500") // Volume
+    expect(match?.[3]).toBe("F.2d") // Reporter
+    expect(match?.[4]).toBe("125") // Page
   })
 
   it("should match U.S. short-form", () => {
@@ -211,9 +213,9 @@ describe("SHORT_FORM_CASE_PATTERN", () => {
     const text = "410 U.S. at 113"
     const match = SHORT_FORM_CASE_PATTERN.exec(text)
     expect(match).not.toBeNull()
-    expect(match?.[1]).toBe("410")
-    expect(match?.[2]).toBe("U.S.")
-    expect(match?.[3]).toBe("113")
+    expect(match?.[2]).toBe("410")
+    expect(match?.[3]).toBe("U.S.")
+    expect(match?.[4]).toBe("113")
   })
 
   it("should match state reporter short-form", () => {
@@ -221,9 +223,9 @@ describe("SHORT_FORM_CASE_PATTERN", () => {
     const text = "123 Cal.Rptr. at 456"
     const match = SHORT_FORM_CASE_PATTERN.exec(text)
     expect(match).not.toBeNull()
-    expect(match?.[1]).toBe("123")
-    expect(match?.[2]).toBe("Cal.Rptr.")
-    expect(match?.[3]).toBe("456")
+    expect(match?.[2]).toBe("123")
+    expect(match?.[3]).toBe("Cal.Rptr.")
+    expect(match?.[4]).toBe("456")
   })
 
   it("should match F.4th reporter (two-letter ordinal suffix)", () => {
@@ -231,9 +233,9 @@ describe("SHORT_FORM_CASE_PATTERN", () => {
     const text = "74 F.4th at 30"
     const match = SHORT_FORM_CASE_PATTERN.exec(text)
     expect(match).not.toBeNull()
-    expect(match?.[1]).toBe("74")
-    expect(match?.[2]).toBe("F.4th")
-    expect(match?.[3]).toBe("30")
+    expect(match?.[2]).toBe("74")
+    expect(match?.[3]).toBe("F.4th")
+    expect(match?.[4]).toBe("30")
   })
 
   it("should match Cal.4th reporter", () => {
@@ -241,9 +243,21 @@ describe("SHORT_FORM_CASE_PATTERN", () => {
     const text = "500 Cal.4th at 120"
     const match = SHORT_FORM_CASE_PATTERN.exec(text)
     expect(match).not.toBeNull()
-    expect(match?.[1]).toBe("500")
-    expect(match?.[2]).toBe("Cal.4th")
-    expect(match?.[3]).toBe("120")
+    expect(match?.[2]).toBe("500")
+    expect(match?.[3]).toBe("Cal.4th")
+    expect(match?.[4]).toBe("120")
+  })
+
+  it("should match short-form with leading party name (#278)", () => {
+    SHORT_FORM_CASE_PATTERN.lastIndex = 0
+    const text = "Smith, 500 F.2d at 125"
+    const match = SHORT_FORM_CASE_PATTERN.exec(text)
+    expect(match).not.toBeNull()
+    expect(match?.[0]).toBe("Smith, 500 F.2d at 125")
+    expect(match?.[1]).toBe("Smith")
+    expect(match?.[2]).toBe("500")
+    expect(match?.[3]).toBe("F.2d")
+    expect(match?.[4]).toBe("125")
   })
 })
 

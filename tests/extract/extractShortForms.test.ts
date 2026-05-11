@@ -1211,3 +1211,119 @@ describe("paragraph-marker pincites on short-forms (#204)", () => {
     })
   })
 })
+
+/**
+ * Short-form case back-reference party name (#278).
+ *
+ * Bluebook short-forms commonly include a leading back-reference name
+ * (`Smith, 500 F.2d at 125`). Previously the tokenizer recognized only
+ * `vol reporter at page`, dropping the disambiguating name entirely — the
+ * resolver then matched purely on volume + reporter, so two cases sharing
+ * those values silently lost the distinguishing signal.
+ *
+ * Coverage:
+ *   - Bare `500 F.2d at 125` still works (regression).
+ *   - `Smith, 500 F.2d at 125` captures `partyName: "Smith"`.
+ *   - Signal-stripped: `See Smith, 500 F.2d at 125` → `Smith` (reuses
+ *     `stripSupraPartyPrefix` from #216).
+ *   - Multi-word: `Smith v. Jones, 500 F.2d at 125` → `Smith v. Jones`.
+ *   - Resolver: when two earlier full cites share vol+reporter, the short-
+ *     form with `partyName` resolves to the matching antecedent (not the
+ *     most-recent one).
+ */
+describe("short-form case party-name back-reference (#278)", () => {
+  describe("regex captures leading party name", () => {
+    it("`Smith, 500 F.2d at 125` → partyName='Smith'", () => {
+      const text =
+        "Smith v. Jones, 500 F.2d 100 (9th Cir. 1990). Smith, 500 F.2d at 125."
+      const cits = extractCitations(text)
+      const sf = cits.find((c) => c.type === "shortFormCase")
+      expect(sf).toBeDefined()
+      if (sf?.type === "shortFormCase") {
+        expect(sf.partyName).toBe("Smith")
+        expect(sf.volume).toBe(500)
+        expect(sf.reporter).toBe("F.2d")
+        expect(sf.pincite).toBe(125)
+      }
+    })
+
+    it("`See Smith, 500 F.2d at 125` strips `See` from partyName", () => {
+      const text =
+        "Smith v. Jones, 500 F.2d 100 (9th Cir. 1990). See Smith, 500 F.2d at 125."
+      const cits = extractCitations(text)
+      const sf = cits.find((c) => c.type === "shortFormCase")
+      expect(sf).toBeDefined()
+      if (sf?.type === "shortFormCase") {
+        expect(sf.partyName).toBe("Smith")
+      }
+    })
+
+    it("`Smith v. Jones, 500 F.2d at 125` captures both parties", () => {
+      const text =
+        "Smith v. Jones, 500 F.2d 100 (9th Cir. 1990). Smith v. Jones, 500 F.2d at 125."
+      const cits = extractCitations(text)
+      const sf = cits.find((c) => c.type === "shortFormCase")
+      expect(sf).toBeDefined()
+      if (sf?.type === "shortFormCase") {
+        expect(sf.partyName).toBe("Smith v. Jones")
+      }
+    })
+
+    it("bare `500 F.2d at 125` has no partyName (regression)", () => {
+      const text = "Smith v. Jones, 500 F.2d 100 (9th Cir. 1990). 500 F.2d at 125."
+      const cits = extractCitations(text)
+      const sf = cits.find((c) => c.type === "shortFormCase")
+      expect(sf).toBeDefined()
+      if (sf?.type === "shortFormCase") {
+        expect(sf.partyName).toBeUndefined()
+        expect(sf.volume).toBe(500)
+        expect(sf.pincite).toBe(125)
+      }
+    })
+  })
+
+  describe("resolver uses partyName for disambiguation", () => {
+    it("two cases share vol+reporter — partyName picks the right antecedent", () => {
+      const text = [
+        "Smith v. Jones, 500 F.2d 100 (9th Cir. 1990).",
+        "Then we cited Brown v. Doe, 500 F.2d 100 (2d Cir. 1995).",
+        "But in Smith, 500 F.2d at 125, the rule was settled.",
+      ].join(" ")
+      const cits = extractCitations(text, { resolve: true })
+      const sf = cits.find((c) => c.type === "shortFormCase")
+      expect(sf).toBeDefined()
+      if (sf?.type === "shortFormCase") {
+        // Find the Smith v. Jones full-cite index
+        const smithIdx = cits.findIndex(
+          (c) =>
+            c.type === "case" &&
+            c.plaintiff === "Smith" &&
+            c.defendant === "Jones",
+        )
+        expect(smithIdx).toBeGreaterThanOrEqual(0)
+        expect(sf.resolution?.resolvedTo).toBe(smithIdx)
+      }
+    })
+
+    it("no partyName → falls back to recency (most recent vol+reporter wins)", () => {
+      const text = [
+        "Smith v. Jones, 500 F.2d 100 (9th Cir. 1990).",
+        "Then we cited Brown v. Doe, 500 F.2d 100 (2d Cir. 1995).",
+        "But 500 F.2d at 125 settled the rule.",
+      ].join(" ")
+      const cits = extractCitations(text, { resolve: true })
+      const sf = cits.find((c) => c.type === "shortFormCase")
+      expect(sf).toBeDefined()
+      if (sf?.type === "shortFormCase") {
+        // No partyName → recency: most recent matching full is Brown v. Doe
+        const brownIdx = cits.findIndex(
+          (c) =>
+            c.type === "case" &&
+            c.plaintiff === "Brown" &&
+            c.defendant === "Doe",
+        )
+        expect(sf.resolution?.resolvedTo).toBe(brownIdx)
+      }
+    })
+  })
+})

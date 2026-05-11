@@ -715,6 +715,17 @@ export interface ShortFormCaseCitation extends CitationBase {
   pinciteInfo?: import("../extract/pincite").PinciteInfo
   /** Component-level spans (currently just `pincite`; extend when needed). */
   spans?: import("./componentSpans").ShortFormCaseComponentSpans
+  /** Back-reference party name when the short-form includes one (Bluebook
+   *  form: `Smith, 500 F.2d at 125`). Citation signals (`See`, `Cf.`, etc.)
+   *  and sentence-initial connectors (`Then`, `Also`, `In` not-`In re`) are
+   *  stripped via the same helper as supra (#216). Undefined when the
+   *  short-form is bare `500 F.2d at 125`. Used by the resolver to
+   *  disambiguate when multiple full citations share the same vol+reporter. */
+  partyName?: string
+  /** Normalized party name for resolver matching (lowercased, whitespace
+   *  collapsed). Mirrors `defendantNormalized` / `plaintiffNormalized` on
+   *  `FullCaseCitation`. */
+  partyNameNormalized?: string
 }
 
 /**
