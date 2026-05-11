@@ -211,6 +211,13 @@ export type HistorySignal =
   | "review_granted"
   | "opinion_vacated"
   | "disapproved_other_grounds"
+  // CA Tier 1 research additions (2026-05-11)
+  | "not_published"
+  | "petition_for_review_filed"
+  | "petition_for_review_granted"
+  | "petition_for_review_denied"
+  | "superseded_by_grant_of_review"
+  | "modified_on_denial_of_rehearing"
 
 /**
  * A single subsequent history entry from a case citation.

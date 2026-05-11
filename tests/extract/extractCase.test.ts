@@ -3081,6 +3081,211 @@ New York first recognized IIED as a cognizable cause of action in Fischer v. Mal
   })
 })
 
+describe("California research Tier 1 additions (2026-05-11)", () => {
+  // Six-agent CA research dispatch identified Tier 1 mechanical additions:
+  // - Conservatorship extended forms (Person of / Estate of / Person and Estate of)
+  // - In re Conservatorship/Guardianship/Adoption of (precision upgrades)
+  // - Inquiry Concerning Judge (CJP discipline captions)
+  // - Appeal of (OTA/BOE tax appeals)
+  // - (in bank) disposition (CA Supreme Court en-banc equivalent)
+  // - Depublication signals (ordered not pub., nonpub. opn., not for publication)
+  // - Additional CA history: petition for review filed/granted/denied,
+  //   superseded by grant of review, as modified on denial of rehearing
+
+  describe("Conservatorship extended forms", () => {
+    it("captures 'Conservatorship of the Person of O.B.' (Cal.5th)", () => {
+      const cits = extractCitations(
+        "See Conservatorship of the Person of O.B., 9 Cal.5th 989 (Cal. 2020).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Conservatorship of the Person of O.B.")
+        expect(cases[0].proceduralPrefix).toBe("Conservatorship of the Person of")
+      }
+    })
+
+    it("captures 'Conservatorship of the Estate of Smith'", () => {
+      const cits = extractCitations(
+        "See Conservatorship of the Estate of Smith, 100 Cal.4th 1 (Cal. 2010).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].proceduralPrefix).toBe("Conservatorship of the Estate of")
+      }
+    })
+
+    it("captures 'Conservatorship of the Person and Estate of Jones' (longest first)", () => {
+      const cits = extractCitations(
+        "See Conservatorship of the Person and Estate of Jones, 50 Cal.App.5th 100 (Cal. Ct. App. 2020).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].proceduralPrefix).toBe(
+          "Conservatorship of the Person and Estate of",
+        )
+      }
+    })
+  })
+
+  describe("In re explicit-prefix forms (precision upgrades)", () => {
+    it("captures 'In re Conservatorship of Wendland' as proceduralPrefix='In re Conservatorship of'", () => {
+      const cits = extractCitations(
+        "See In re Conservatorship of Wendland, 26 Cal.4th 519 (Cal. 2001).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].proceduralPrefix).toBe("In re Conservatorship of")
+      }
+    })
+
+    it("captures 'In re Guardianship of Saul H.'", () => {
+      const cits = extractCitations(
+        "See In re Guardianship of Saul H., 13 Cal.5th 827 (Cal. 2022).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].proceduralPrefix).toBe("In re Guardianship of")
+      }
+    })
+
+    it("captures 'In re Adoption of Kelsey S.'", () => {
+      const cits = extractCitations(
+        "See In re Adoption of Kelsey S., 1 Cal.4th 816 (Cal. 1992).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].proceduralPrefix).toBe("In re Adoption of")
+      }
+    })
+  })
+
+  describe("Inquiry Concerning Judge (CJP discipline)", () => {
+    it("captures 'Inquiry Concerning Judge Saucedo'", () => {
+      const cits = extractCitations(
+        "See Inquiry Concerning Judge Saucedo, 2 Cal. 4th CJP Supp. 33 (1997).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].proceduralPrefix).toBe("Inquiry Concerning Judge")
+      }
+    })
+  })
+
+  describe("Appeal of (OTA/BOE tax appeals)", () => {
+    it("captures 'Appeal of Jali, LLC'", () => {
+      const cits = extractCitations(
+        "See Appeal of Jali, LLC, 100 Cal.App.5th 1 (Cal. Ct. App. 2024).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].proceduralPrefix).toBe("Appeal of")
+      }
+    })
+  })
+
+  describe("(in bank) disposition", () => {
+    it("captures '(in bank)' as disposition='in bank'", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 50 Cal.3d 100 (Cal. 1990) (in bank).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].disposition).toBe("in bank")
+      }
+    })
+  })
+
+  describe("CA history signals — depublication + petition for review", () => {
+    it("captures 'ordered not pub.' as not_published", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 50 Cal.App.5th 100 (Cal. Ct. App. 2020), ordered not pub.",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe("not_published")
+      }
+    })
+
+    it("captures 'nonpub. opn.' as not_published", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 50 Cal.App.5th 100 (Cal. Ct. App. 2020), nonpub. opn.",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe("not_published")
+      }
+    })
+
+    it("captures 'petition for review filed'", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 50 Cal.App.5th 100 (Cal. Ct. App. 2024), petition for review filed.",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe("petition_for_review_filed")
+      }
+    })
+
+    it("captures 'superseded by grant of review' (pre-2019 form)", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 50 Cal.App.5th 100 (Cal. Ct. App. 2018), superseded by grant of review.",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe(
+          "superseded_by_grant_of_review",
+        )
+      }
+    })
+
+    it("captures 'as modified on denial of rehearing'", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 50 Cal.3d 100 (Cal. 1990), as modified on denial of rehearing.",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe(
+          "modified_on_denial_of_rehearing",
+        )
+      }
+    })
+  })
+
+  describe("regression — existing CA fixes still work", () => {
+    it("'(en banc)' still maps to disposition='en banc' (not 'in bank')", () => {
+      const cits = extractCitations("Smith v. Jones, 100 F.3d 200 (9th Cir. 2020) (en banc).")
+      const cases = cits.filter((c) => c.type === "case")
+      if (cases[0].type === "case") {
+        expect(cases[0].disposition).toBe("en banc")
+      }
+    })
+
+    it("review denied (from #238) still maps to review_denied", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 50 Cal.3d 100 (Cal. 1990), review denied.",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      if (cases[0].type === "case") {
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe("review_denied")
+      }
+    })
+  })
+})
+
 describe("California bracketed parallel citations (#237)", () => {
   // California Style Manual uses `[<vol> <Reporter> <page>]` brackets for
   // parallel reporter citations, e.g.,

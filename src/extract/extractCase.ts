@@ -230,7 +230,9 @@ const SIGNAL_TABLE: ReadonlyArray<readonly [RegExp, HistorySignal]> = [
   [/^abrogated\s+by\b/i, "abrogated"],
   [/^abrogated\s+in\b/i, "abrogated"],
   [/^abrogated\b/i, "abrogated"],
-  // additional signals
+  // additional signals — CA-specific "superseded by grant of review" precedes
+  // the bare "superseded by" so alternation prefers the more specific match.
+  [/^superseded\s+by\s+grant\s+of\s+review\b/i, "superseded_by_grant_of_review"],
   [/^superseded\s+by\b/i, "superseded"],
   [/^superseded\b/i, "superseded"],
   // CA-specific "disapproved on other grounds" precedes the bare/of forms
@@ -269,6 +271,18 @@ const SIGNAL_TABLE: ReadonlyArray<readonly [RegExp, HistorySignal]> = [
   [/^review\s+den(?:ied|\.)/i, "review_denied"],
   [/^review\s+granted\b/i, "review_granted"],
   [/^opinion\s+vacated\b/i, "opinion_vacated"],
+  // CA Tier 1 research additions (2026-05-11). Longer disposition modifiers
+  // precede the bare forms so alternation prefers the more specific match.
+  // (`superseded_by_grant_of_review` is placed earlier in SIGNAL_TABLE next to
+  // the bare `superseded by` entry — see comment there.)
+  [/^petition\s+for\s+review\s+filed\b/i, "petition_for_review_filed"],
+  [/^petition\s+for\s+review\s+granted\b/i, "petition_for_review_granted"],
+  [/^petition\s+for\s+review\s+denied\b/i, "petition_for_review_denied"],
+  [/^as\s+modified\s+on\s+denial\s+of\s+rehearing\b/i, "modified_on_denial_of_rehearing"],
+  // Depublication signals — order: longest-first
+  [/^ordered\s+not\s+pub\.?/i, "not_published"],
+  [/^not\s+for\s+publication\b/i, "not_published"],
+  [/^nonpubl?\.?\s+opn\.?/i, "not_published"],
 ]
 
 /**
@@ -322,7 +336,7 @@ const V_CASE_NAME_REGEX =
  *  beats `Commonwealth ex rel.`). See #193, #242, and the six 2026-05-11
  *  procedural-prefix research dispatches in `docs/research/`. */
 const PROCEDURAL_PREFIX_REGEX =
-  /\b(In\s+the\s+Matter\s+of\s+the\s+Liquidation\s+of|In\s+the\s+Matter\s+of\s+the\s+Rehabilitation\s+of|In\s+the\s+Matter\s+of\s+the\s+Receivership\s+of|In\s+the\s+Matter\s+of\s+the\s+Extradition\s+of|In\s+the\s+Matter\s+of\s+the\s+Application\s+of|In\s+the\s+Matter\s+of\s+the\s+Welfare\s+of|In\s+the\s+Matter\s+of|In\s+re\s+Petition\s+for\s+Naturalization\s+of|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+as\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+of|In\s+re\s+Marriage\s+of|In\s+re\s+Liquidation\s+of|In\s+re\s+Rehabilitation\s+of|In\s+re\s+Receivership\s+of|In\s+re\s+Naturalization\s+of|In\s+re\s+Extradition\s+of|In\s+re\s+Application\s+of|In\s+re\s+Welfare\s+of|In\s+re\s+Dependency\s+of|In\s+re\s+Paternity\s+of|In\s+re\s+Parentage\s+of|In\s+the\s+Interest\s+of|Matter\s+of\s+Liquidation\s+of|Matter\s+of\s+Rehabilitation\s+of|Commonwealth\s+of\s+Puerto\s+Rico\s+ex\s+rel\.|Government\s+of\s+the\s+Virgin\s+Islands\s+ex\s+rel\.|Commonwealth\s+ex\s+rel\.|Petition\s+for\s+Naturalization\s+of|People\s+ex\s+rel\.|District\s+of\s+Columbia\s+ex\s+rel\.|Care\s+and\s+Protection\s+of|Succession\s+of|In re|Ex parte|Matter of|Estate of|State ex rel\.|United States ex rel\.|Application of|On Petition of|Petition of|Adoption of|Conservatorship of|Guardianship of)\s+([A-Za-z0-9\s.,'&()/-]+?)\s*,\s*$/i
+  /\b(In\s+the\s+Matter\s+of\s+the\s+Liquidation\s+of|In\s+the\s+Matter\s+of\s+the\s+Rehabilitation\s+of|In\s+the\s+Matter\s+of\s+the\s+Receivership\s+of|In\s+the\s+Matter\s+of\s+the\s+Extradition\s+of|In\s+the\s+Matter\s+of\s+the\s+Application\s+of|In\s+the\s+Matter\s+of\s+the\s+Welfare\s+of|In\s+the\s+Matter\s+of|In\s+re\s+Petition\s+for\s+Naturalization\s+of|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+as\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+of|In\s+re\s+Marriage\s+of|In\s+re\s+Liquidation\s+of|In\s+re\s+Rehabilitation\s+of|In\s+re\s+Receivership\s+of|In\s+re\s+Naturalization\s+of|In\s+re\s+Extradition\s+of|In\s+re\s+Application\s+of|In\s+re\s+Welfare\s+of|In\s+re\s+Dependency\s+of|In\s+re\s+Paternity\s+of|In\s+re\s+Parentage\s+of|In\s+re\s+Conservatorship\s+of|In\s+re\s+Guardianship\s+of|In\s+re\s+Adoption\s+of|In\s+the\s+Interest\s+of|Matter\s+of\s+Liquidation\s+of|Matter\s+of\s+Rehabilitation\s+of|Commonwealth\s+of\s+Puerto\s+Rico\s+ex\s+rel\.|Government\s+of\s+the\s+Virgin\s+Islands\s+ex\s+rel\.|Commonwealth\s+ex\s+rel\.|Petition\s+for\s+Naturalization\s+of|People\s+ex\s+rel\.|District\s+of\s+Columbia\s+ex\s+rel\.|Conservatorship\s+of\s+the\s+Person\s+and\s+Estate\s+of|Conservatorship\s+of\s+the\s+Person\s+of|Conservatorship\s+of\s+the\s+Estate\s+of|Inquiry\s+Concerning\s+Judge|Appeal\s+of|Care\s+and\s+Protection\s+of|Succession\s+of|In re|Ex parte|Matter of|Estate of|State ex rel\.|United States ex rel\.|Application of|On Petition of|Petition of|Adoption of|Conservatorship of|Guardianship of)\s+([A-Za-z0-9\s.,'&()/-]+?)\s*,\s*$/i
 
 /**
  * Lowercase words that legitimately appear in legal party names.
@@ -1523,12 +1537,16 @@ export function parseParenthetical(content: string): {
     return result
   }
 
-  // Check for disposition (en banc / per curiam). Anchored at content end
-  // (\s*$) so a parenthetical like `Cabranes, J., dissenting from denial of
-  // rehearing en banc` — caught above by the justice-attribution branch —
-  // does not also trip the en-banc check via substring match (#235).
+  // Check for disposition (en banc / in bank / per curiam). Anchored at
+  // content end (\s*$) so a parenthetical like `Cabranes, J., dissenting from
+  // denial of rehearing en banc` — caught above by the justice-attribution
+  // branch — does not also trip the en-banc check via substring match (#235).
+  // `(in bank)` is the California Supreme Court's equivalent of `(en banc)`
+  // — added as a separate disposition value to preserve the CA distinction.
   if (/\ben banc\b\s*$/i.test(content.trim())) {
     result.disposition = "en banc"
+  } else if (/\bin bank\b\s*$/i.test(content.trim())) {
+    result.disposition = "in bank"
   } else if (/\bper curiam\b\s*$/i.test(content.trim())) {
     result.disposition = "per curiam"
   }
@@ -1697,6 +1715,10 @@ export function extractPartyNames(caseName: string): {
     "In re Dependency of",
     "In re Paternity of",
     "In re Parentage of",
+    // CA Tier 1 — In re precision upgrades for conservatorship/guardianship/adoption
+    "In re Conservatorship of",
+    "In re Guardianship of",
+    "In re Adoption of",
     "In the Interest of",
     "In re",
     "Ex parte",
@@ -1719,12 +1741,19 @@ export function extractPartyNames(caseName: string): {
     "Petition of",
     // Other "X of" forms
     "Adoption of",
+    // CA Tier 1 — Conservatorship extended forms must precede bare "Conservatorship of"
+    "Conservatorship of the Person and Estate of",
+    "Conservatorship of the Person of",
+    "Conservatorship of the Estate of",
     "Conservatorship of",
     "Guardianship of",
     "Estate of",
     // Bare forms with no "In re" prefix (no alternation-ordering collisions)
     "Care and Protection of",
     "Succession of",
+    // CA Tier 1 — agency / discipline procedural prefixes (2026-05-11)
+    "Inquiry Concerning Judge",
+    "Appeal of",
   ]
 
   // Check for procedural prefix first
