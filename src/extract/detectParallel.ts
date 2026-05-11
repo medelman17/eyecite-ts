@@ -106,6 +106,19 @@ export function detectParallelCitations(tokens: Token[], cleanedText = ""): Map<
       // Extract the gap text between citations
       const gapText = cleanedText.substring(gapStart, gapEnd)
 
+      // California Style Manual bracket form (#237): the parallel citation
+      // is wrapped in brackets — `<primary> (<year>) [<secondary>]`. Check
+      // this BEFORE the comma-requirement gate so we don't reject CA parallels.
+      const inBracket =
+        gapText.includes("[") &&
+        cleanedText[secondary.span.cleanEnd] === "]"
+      if (inBracket) {
+        secondaryIndices.push(j)
+        usedAsSecondary.add(j)
+        // CA brackets always close after a single parallel cite — chain ends here.
+        break
+      }
+
       // Bluebook requires comma separator for parallel citations
       if (!gapText.includes(",")) {
         break // No comma = not parallel, stop looking

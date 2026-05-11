@@ -3081,6 +3081,101 @@ New York first recognized IIED as a cognizable cause of action in Fischer v. Mal
   })
 })
 
+describe("California bracketed parallel citations (#237)", () => {
+  // California Style Manual uses `[<vol> <Reporter> <page>]` brackets for
+  // parallel reporter citations, e.g.,
+  //   People v. Smith, 50 Cal.3d 100 (Cal. 1990) [266 Cal.Rptr. 569]
+  // Pre-fix the bracketed cite was tokenized as a journal (wrong type) or
+  // missed entirely. After fix: the bracketed cite extracts as a `case`
+  // citation and is linked as a parallel to the preceding primary.
+
+  describe("bracketed cite extraction", () => {
+    it("extracts '[266 Cal.Rptr. 569]' as a case citation (Bluebook-form leading cite)", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 50 Cal.3d 100 (Cal. 1990) [266 Cal.Rptr. 569]",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(2)
+      const bracketed = cases.find((c) => c.type === "case" && c.reporter === "Cal.Rptr.")
+      expect(bracketed).toBeDefined()
+      if (bracketed?.type === "case") {
+        expect(bracketed.volume).toBe(266)
+        expect(bracketed.page).toBe(569)
+      }
+    })
+
+    it("extracts '[54 Cal.Rptr.2d 370]' (no pincite) as case", () => {
+      const cits = extractCitations(
+        "Smith v. Williams, 65 Cal.2d 263, 265 (Cal. 1966) [54 Cal.Rptr.2d 370]",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(2)
+      const bracketed = cases.find(
+        (c) => c.type === "case" && c.reporter === "Cal.Rptr.2d",
+      )
+      expect(bracketed).toBeDefined()
+    })
+
+    it("extracts bracketed cite with pincite '[266 Cal.Rptr. 569, 575]'", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 50 Cal.3d 100, 115 (Cal. 1990) [266 Cal.Rptr. 569, 575]",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(2)
+      const bracketed = cases.find((c) => c.type === "case" && c.reporter === "Cal.Rptr.")
+      expect(bracketed).toBeDefined()
+      if (bracketed?.type === "case") {
+        expect(bracketed.pincite).toBe(575)
+      }
+    })
+
+    it("extracts '[100 P.3d 1]' (Cal.4th + P.3d parallel)", () => {
+      const cits = extractCitations(
+        "Doe v. Roe, 1 Cal.4th 50 (Cal. 2010) [100 P.3d 1]",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(2)
+      const bracketed = cases.find((c) => c.type === "case" && c.reporter === "P.3d")
+      expect(bracketed).toBeDefined()
+    })
+  })
+
+  describe("parallel linking", () => {
+    it("links primary 'Cal.3d' with bracketed 'Cal.Rptr.' via parallelCitations", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 50 Cal.3d 100 (Cal. 1990) [266 Cal.Rptr. 569]",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(2)
+      // Both citations should share a groupId set by parallel detection
+      const primary = cases.find((c) => c.type === "case" && c.reporter === "Cal.3d")
+      const secondary = cases.find((c) => c.type === "case" && c.reporter === "Cal.Rptr.")
+      expect(primary?.groupId).toBeDefined()
+      expect(secondary?.groupId).toBeDefined()
+      expect(primary?.groupId).toBe(secondary?.groupId)
+    })
+  })
+
+  describe("regression — non-CA-bracket forms unaffected", () => {
+    it("NY Slip Op '[U]' unpublished marker is NOT treated as a bracket parallel", () => {
+      const cits = extractCitations("2024 NY Slip Op 51192[U]")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].unpublished).toBe(true)
+      }
+    })
+
+    it("non-bracketed Cal.Rptr. parallel still works (comma-separated)", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 50 Cal.3d 100, 266 Cal.Rptr. 569 (Cal. 1990)",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(2)
+    })
+  })
+})
+
 describe("bankruptcy adversary admin parenthetical (#241)", () => {
   // In bankruptcy adversary proceedings, the case caption includes an
   // administrative parenthetical naming the underlying debtor:
