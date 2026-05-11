@@ -171,10 +171,11 @@ const LOOKAHEAD_PAREN_REGEX =
  *    - ", 125"       (comma-separated, numeric)
  *    - ", at *1"     (comma + "at" keyword; common with star-pagination)
  *    - " at *2"      (whitespace + "at" keyword; NY Slip Op repeat form)
+ *    - ", at p. 115" (CSM form with `p.` / `pp.` prefix; #236)
  *  The "*" prefix marks star-pagination (#191); a trailing " n.14" /
  *  " nn.14-15" footnote suffix is captured when present (#202). */
 const LOOKAHEAD_PINCITE_REGEX =
-  /^(?:\s+at\s+|,\s*(?:at\s+)?)(\*?\d+(?:-\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)/d
+  /^(?:\s+at\s+(?:pp?\.\s*)?|,\s*(?:at\s+(?:pp?\.\s*)?)?)(\*?\d+(?:-\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)/d
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
@@ -184,11 +185,11 @@ const PAREN_SKIP_REGEX = /[\s,]/
 
 /** Pincite text that appears between core citation and parentheticals.
  *  Matches: comma-separated page numbers/ranges and optional note refs.
- *  E.g., ", 199 n.2", ", 999-1000", ", 130 n.5"
+ *  E.g., ", 199 n.2", ", 999-1000", ", 130 n.5", ", at p. 115" (CSM, #236).
  *  The outer `+` is intentionally greedy to handle multi-pincite citations
  *  (e.g., ", 199, 205, 210"). Safe because the scan window is bounded by maxLookahead. */
 const PINCITE_SKIP_REGEX =
-  /^(?:,\s*(?:at\s+)?\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:n|note)\s*\.?\s*\d+)?)+/
+  /^(?:,\s*(?:at\s+(?:pp?\.\s*)?)?\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:n|note)\s*\.?\s*\d+)?)+/
 
 /**
  * Signal normalization table. Longer patterns first so "aff'd on other grounds"
