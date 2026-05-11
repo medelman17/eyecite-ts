@@ -1027,6 +1027,18 @@ const PAREN_SIGNAL_BOUNDARY_REGEX =
 /** Sentence boundary: closing paren or period, followed by space + uppercase letter. */
 const SENTENCE_BOUNDARY_REGEX = /[.)]\s+(?=[A-Z])/g
 
+/** Louisiana docket-prefix boundary (#232). Matches the Louisiana citation
+ *  shape `NN-NNNN (La. ... M/D/YY)` or `YYYY-K-NNNN (La. ... M/D/YY)` that
+ *  precedes the parallel `So. 2d` / `So. 3d` reporter citation. The capture
+ *  groups expose the court (group 2) and the date string (group 3) so the
+ *  trailing reporter citation can inherit the metadata. Includes an optional
+ *  `, p. N` pincite segment commonly present in LA practice.
+ *
+ *  The trailing `,` + whitespace is consumed so that everything BEFORE this
+ *  pattern is the caption. */
+const LA_DOCKET_BOUNDARY_REGEX =
+  /,?\s*(\d{2,4}-[A-Z\d-]+)(?:,\s*p\.\s*\d+)?\s*\((La\.[^)]*?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\),\s*/g
+
 /**
  * Extract case name via backward search from citation core.
  * Looks for "v." pattern or procedural prefixes (In re, Ex parte, Matter of).
@@ -1059,6 +1071,15 @@ export function extractCaseName(
       yearStart?: number
       /** Clean-coordinate position after the year digits. */
       yearEnd?: number
+      /** Metadata recovered from a Louisiana docket-prefix paren that sits
+       *  between the caption and the citation core (#232). Applied by the
+       *  caller as fallback for `year` / `court` / `date` when the citation's
+       *  own trailing paren is absent. */
+      precedingDocketMeta?: {
+        court: string
+        year: number
+        date: StructuredDate
+      }
     }
   | undefined {
   const searchStart = Math.max(0, coreStart - maxLookback)
@@ -1136,6 +1157,35 @@ export function extractCaseName(
     if (boundaryEnd > lastBoundaryIndex) {
       lastBoundaryIndex = boundaryEnd
     }
+  }
+
+  // Louisiana docket-prefix segments (#232) sit *between* the caption and
+  // the trailing reporter citation: `Smith v. Jones, 07-393, p. 2 (La. App.
+  // 3d Cir. 10/3/07), 966 So. 2d 1127`. Unlike sentence / Id. / paren-signal
+  // boundaries, the segment is INTERIOR — stripping it from `precedingText`
+  // preserves the caption to its left. Capture the docket paren's court +
+  // date for metadata transfer onto the trailing reporter citation.
+  let precedingDocketMeta:
+    | { court: string; year: number; date: StructuredDate }
+    | undefined
+  LA_DOCKET_BOUNDARY_REGEX.lastIndex = 0
+  const laDocketMatch = LA_DOCKET_BOUNDARY_REGEX.exec(precedingText)
+  if (laDocketMatch) {
+    const dateStr = laDocketMatch[3]
+    const date = parseDate(dateStr)
+    if (date) {
+      precedingDocketMeta = {
+        court: laDocketMatch[2].trim(),
+        year: date.parsed.year,
+        date,
+      }
+    }
+    // Excise the docket segment, leaving just the trailing ", " so the
+    // V_CASE_NAME_REGEX still sees a comma-terminated caption to its left.
+    precedingText =
+      precedingText.substring(0, laDocketMatch.index) +
+      ", " +
+      precedingText.substring(laDocketMatch.index + laDocketMatch[0].length)
   }
 
   // Check sentence boundaries: "). " or ". " followed by uppercase letter.
@@ -1235,7 +1285,14 @@ export function extractCaseName(
         yearStart = adjustedSearchStart + vMatch.indices[3][0]
         yearEnd = adjustedSearchStart + vMatch.indices[3][1]
       }
-      return { caseName, nameStart, year, yearStart, yearEnd }
+      return {
+        caseName,
+        nameStart,
+        year,
+        yearStart,
+        yearEnd,
+        precedingDocketMeta,
+      }
     }
   }
 
@@ -1255,7 +1312,14 @@ export function extractCaseName(
         yearStart = adjustedSearchStart + procMatch.indices[3][0]
         yearEnd = adjustedSearchStart + procMatch.indices[3][1]
       }
-      return { caseName, nameStart, year, yearStart, yearEnd }
+      return {
+        caseName,
+        nameStart,
+        year,
+        yearStart,
+        yearEnd,
+        precedingDocketMeta,
+      }
     }
   }
 
@@ -1288,7 +1352,7 @@ export function extractCaseName(
       // Skip multi-citation strings (joined by semicolons)
       if (!caption.includes(";")) {
         const nameStart = adjustedSearchStart + leadingWsLen + signalStripLen
-        return { caseName: caption, nameStart }
+        return { caseName: caption, nameStart, precedingDocketMeta }
       }
     }
   }
@@ -2353,6 +2417,18 @@ export function extractCase(
             originalEnd: yearOrig.originalEnd,
           }
         }
+      }
+
+      // Louisiana docket-prefix paren metadata transfer (#232). When a Louisiana
+      // citation places `NN-NNNN (La. ... M/D/YY)` between the caption and the
+      // reporter, the trailing reporter citation typically carries no court
+      // paren of its own — pull court/year/date from the docket paren so the
+      // citation surfaces structured metadata instead of dropping it.
+      if (caseNameResult.precedingDocketMeta) {
+        const meta = caseNameResult.precedingDocketMeta
+        if (!year) year = meta.year
+        if (!court) court = meta.court
+        if (!date) date = meta.date
       }
 
       // Calculate fullSpan: case name start through parenthetical end
