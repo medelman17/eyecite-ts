@@ -54,8 +54,8 @@ export const STANDALONE_SUPRA_PATTERN: RegExp =
   /(?:^|(?<=\s)|(?<=[;.]))supra(?:\s+note\s+(\d+)(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?|\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)|\s+(?:§+|Part|p\.)\s*\S+)/g
 
 /**
- * Short-form case: volume reporter [,] at page
- * Pattern: number space abbreviation [, ] at space number
+ * Short-form case: [Party,] volume reporter [,] at page
+ * Pattern: optional Party name, then number space abbreviation [, ] at space number.
  * Simplified detection; full parsing in extraction layer.
  * Supports reporters with 1-2 letter ordinal suffixes (e.g., F.4th, Cal.4th).
  * Handles SCOTUS/federal comma-before-at: "597 U.S., at 721", "116 F.4th, at 1193".
@@ -64,9 +64,17 @@ export const STANDALONE_SUPRA_PATTERN: RegExp =
  * " n.14" / " nn.14-15" (#202), an optional `p.` / `pp.` prefix for
  * California Style Manual form (`18 Cal.4th at p. 717`; see #236), and `¶` /
  * `¶¶` / `para.` / `paras.` paragraph markers (#204).
+ *
+ * Optional leading party-name group captures Bluebook back-references like
+ * `Smith, 500 F.2d at 125` so the resolver can disambiguate when multiple
+ * full citations share the same volume+reporter (#278). Group order:
+ *   1: party name (optional)
+ *   2: volume
+ *   3: reporter
+ *   4: pincite
  */
 export const SHORT_FORM_CASE_PATTERN: RegExp =
-  /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)\b/g
+  /\b(?:([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*),\s+)?(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)\b/g
 
 /** All short-form patterns for tokenization */
 export const SHORT_FORM_PATTERNS: readonly RegExp[] = [

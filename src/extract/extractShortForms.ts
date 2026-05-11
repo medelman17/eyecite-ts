@@ -309,8 +309,8 @@ export function extractShortFormCase(
 ): ShortFormCaseCitation {
   const { text, span } = token
 
-  // Parse volume-reporter-[,]-at-page.
-  // Pattern: number space abbreviation [, ] at space number.
+  // Parse [Party,] volume-reporter-[,]-at-page.
+  // Pattern: optional Party name then number space abbreviation [, ] at space number.
   // Supports reporters with 1-2 letter ordinal suffixes (e.g., F.4th, Cal.4th).
   // Handles comma-before-at: "597 U.S., at 721", "116 F.4th, at 1193".
   // Pincite accepts optional "*" prefix for star-pagination (#191), an optional
@@ -318,25 +318,45 @@ export function extractShortFormCase(
   // suffix " n.14" / " nn.14-15" (#202), an optional `p.` / `pp.` prefix for
   // CSM form (`18 Cal.4th at p. 717`; see #236), and `¶` / `¶¶` / `para.` /
   // `paras.` paragraph markers (#204).
+  // Optional leading party-name group (#278) captures Bluebook back-references
+  // (`Smith, 500 F.2d at 125`). Group order:
+  //   1: party name (optional, undefined for bare form)
+  //   2: volume
+  //   3: reporter
+  //   4: pincite
   const shortFormRegex =
-    /(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)/d
+    /(?:([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*),\s+)?(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)/d
   const match = shortFormRegex.exec(text)
 
   if (!match) {
     throw new Error(`Failed to parse short-form case citation: ${text}`)
   }
 
-  const rawVolume = match[1]
+  const rawPartyName = match[1]
+  const rawVolume = match[2]
   const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
-  const reporter = match[2].trim() // Remove trailing spaces
-  const pinciteInfo: PinciteInfo | undefined = parsePincite(match[3]) ?? undefined
+  const reporter = match[3].trim() // Remove trailing spaces
+  const pinciteInfo: PinciteInfo | undefined = parsePincite(match[4]) ?? undefined
   const pincite = pinciteInfo?.page
+
+  // Strip leading citation signals from the captured party name (#216 helper).
+  // The optional party-name group itself doesn't include signal prefixes —
+  // the outer SHORT_FORM_CASE_PATTERN's `\b` anchor lands at the signal word
+  // (e.g., `See` is matched as the first capitalized token, then `Smith` as
+  // the second). `stripSupraPartyPrefix` peels off any leading signal /
+  // sentence-initial connector, mirroring the supra handling.
+  let partyName: string | undefined
+  let partyNameNormalized: string | undefined
+  if (rawPartyName) {
+    partyName = stripSupraPartyPrefix(rawPartyName)
+    partyNameNormalized = partyName.toLowerCase().replace(/\s+/g, " ").trim()
+  }
 
   // Component span for pincite (#210)
   let spans: ShortFormCaseComponentSpans | undefined
-  if (match.indices?.[3]) {
+  if (match.indices?.[4]) {
     spans = {
-      pincite: spanFromGroupIndex(span.cleanStart, match.indices[3], transformationMap),
+      pincite: spanFromGroupIndex(span.cleanStart, match.indices[4], transformationMap),
     }
   }
 
@@ -366,6 +386,8 @@ export function extractShortFormCase(
     reporter,
     pincite,
     pinciteInfo,
+    partyName,
+    partyNameNormalized,
     spans,
   }
 }

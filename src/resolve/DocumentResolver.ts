@@ -262,39 +262,72 @@ export class DocumentResolver {
   }
 
   /**
-   * Resolves short-form case citation by matching volume/reporter.
+   * Resolves short-form case citation by matching volume/reporter, with
+   * party-name disambiguation when the short-form includes a back-reference
+   * name (#278).
+   *
+   * Algorithm:
+   *   1. Collect all backward candidates with matching volume + normalized
+   *      reporter that are in-scope.
+   *   2. If the short-form has `partyNameNormalized`: prefer the candidate
+   *      whose plaintiff/defendant matches (substring containment in either
+   *      direction handles abbreviations: `"Smith" ⊂ "Smith"` or
+   *      `"Smith"` in `"Smith, Inc."`). Tie-break by recency.
+   *   3. If no candidate matches the party name (or no party name on the
+   *      short-form): fall back to recency.
    */
   private resolveShortFormCase(citation: ShortFormCaseCitation): ResolutionResult | undefined {
     const currentIndex = this.context.citationIndex
+    const targetReporter = this.normalizeReporter(citation.reporter)
+    const targetParty = citation.partyNameNormalized
 
-    // Search backwards for matching full case citation
+    // Collect all backward candidates (most recent first) that match
+    // vol+reporter AND are in-scope.
+    const candidates: number[] = []
     for (let i = currentIndex - 1; i >= 0; i--) {
       const candidate = this.citations[i]
+      if (candidate.type !== "case") continue
+      if (candidate.volume !== citation.volume) continue
+      if (this.normalizeReporter(candidate.reporter) !== targetReporter) continue
+      if (!this.isWithinScope(i, currentIndex, true)) continue
+      candidates.push(i)
+    }
 
-      // Only match against full case citations
-      if (candidate.type !== "case") {
-        continue
-      }
+    if (candidates.length === 0) {
+      return this.createFailureResult("No matching full case citation found")
+    }
 
-      // Check if volume and reporter match
-      if (
-        candidate.volume === citation.volume &&
-        this.normalizeReporter(candidate.reporter) === this.normalizeReporter(citation.reporter)
-      ) {
-        // Check scope boundary (short-form case allows cross-zone: footnote -> body)
-        if (!this.isWithinScope(i, currentIndex, true)) {
-          return this.createFailureResult("Matching citation outside scope boundary")
-        }
-
-        // Found a match
+    // With a party name, prefer the candidate whose plaintiff or defendant
+    // normalized name contains (or is contained by) the short-form's party
+    // name. Substring containment in either direction tolerates common
+    // abbreviation patterns: short-form `Smith` matches full `Smith, Inc.`
+    // and vice versa. Recency breaks ties.
+    if (targetParty) {
+      const namedMatch = candidates.find((idx) => {
+        const c = this.citations[idx]
+        if (c.type !== "case") return false
+        const plaintiff = c.plaintiffNormalized
+        const defendant = c.defendantNormalized
+        const hit = (name: string | undefined) =>
+          name !== undefined &&
+          (name === targetParty ||
+            name.includes(targetParty) ||
+            targetParty.includes(name))
+        return hit(plaintiff) || hit(defendant)
+      })
+      if (namedMatch !== undefined) {
         return {
-          resolvedTo: i,
-          confidence: 0.95, // High confidence but not perfect (multiple cases could have same volume/reporter)
+          resolvedTo: namedMatch,
+          confidence: 0.98, // Higher than bare vol+reporter — party-name disambiguation tightens.
         }
       }
     }
 
-    return this.createFailureResult("No matching full case citation found")
+    // No party name (or no name match): pick most recent candidate.
+    return {
+      resolvedTo: candidates[0],
+      confidence: 0.95,
+    }
   }
 
   /**
