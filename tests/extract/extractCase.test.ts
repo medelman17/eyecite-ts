@@ -3081,6 +3081,102 @@ New York first recognized IIED as a cognizable cause of action in Fischer v. Mal
   })
 })
 
+describe("NY Slip Op (U)/[U] unpublished markers (#231)", () => {
+  // New York Slip Opinion citations carry a trailing `(U)` (older form) or
+  // `[U]` (newer form) marker immediately after the document number to flag
+  // an unpublished disposition. Pre-fix, the parser misread `(U)` as a court
+  // parenthetical and set `court = "U"`. These tests pin down the fix:
+  // the marker is consumed and exposed via `unpublished: true`, and a
+  // following real court paren (e.g., `(Sup. Ct. 2007)`) is still captured.
+
+  describe("bare (U) suffix", () => {
+    it("recognizes '52377(U)' as unpublished, court is not 'U'", () => {
+      const cits = extractCitations("2007 N.Y. Slip Op. 52377(U)")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].page).toBe(52377)
+        expect(cases[0].unpublished).toBe(true)
+        // The (U) must not pollute the court field
+        expect(cases[0].court).not.toBe("U")
+      }
+    })
+
+    it("recognizes '64325(U)' as unpublished", () => {
+      const cits = extractCitations("2024 NY Slip Op 64325(U)")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].page).toBe(64325)
+        expect(cases[0].unpublished).toBe(true)
+      }
+    })
+  })
+
+  describe("bracket [U] suffix (newer form)", () => {
+    it("recognizes '51192[U]' as unpublished", () => {
+      const cits = extractCitations("2024 NY Slip Op 51192[U]")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].page).toBe(51192)
+        expect(cases[0].unpublished).toBe(true)
+      }
+    })
+  })
+
+  describe("with following real court parenthetical", () => {
+    it("captures '52377(U) ... (Sup. Ct. 2007)' — court is 'Sup. Ct.', not 'U'", () => {
+      const cits = extractCitations(
+        "Pickard v. Tarnow, 2007 N.Y. Slip Op. 52377(U) (Sup. Ct. 2007)",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].page).toBe(52377)
+        expect(cases[0].unpublished).toBe(true)
+        expect(cases[0].court).toBe("Sup. Ct.")
+        expect(cases[0].year).toBe(2007)
+      }
+    })
+
+    it("captures case name preceding (U)-suffixed Slip Op", () => {
+      const cits = extractCitations(
+        "Doe v. Roe, 2024 NY Slip Op 51192[U] (Sup. Ct. 2024)",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].unpublished).toBe(true)
+        expect(cases[0].caseName).toBe("Doe v. Roe")
+      }
+    })
+  })
+
+  describe("regression — non-(U) Slip Op still extracts normally", () => {
+    it("'2020 NY Slip Op 12345' without (U) — unpublished is undefined/false", () => {
+      const cits = extractCitations("Smith v. Jones, 2020 NY Slip Op 12345 (Sup. Ct. 2020)")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].page).toBe(12345)
+        expect(cases[0].unpublished).toBeFalsy()
+        expect(cases[0].court).toBe("Sup. Ct.")
+      }
+    })
+
+    it("'500 F.3d 123 (9th Cir. 2020)' — normal federal cite unaffected", () => {
+      const cits = extractCitations("Smith v. Jones, 500 F.3d 123 (9th Cir. 2020)")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].unpublished).toBeFalsy()
+        expect(cases[0].court).toBe("9th Cir.")
+      }
+    })
+  })
+})
+
 describe("California review history signals (#238)", () => {
   // California Supreme Court history uses "review denied" / "review granted"
   // / "opinion vacated" / "disapproved on other grounds" — signals distinct

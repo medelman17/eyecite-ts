@@ -49,9 +49,10 @@ export const casePatterns: Pattern[] = [
     // (e.g., `I&N Dec.` and `I. & N. Dec.` for BIA immigration decisions — #244).
     // Apostrophe `'` is admitted for reporters like `F. App'x` already covered by
     // federal-reporter; including it here is harmless and future-proofs other
-    // possessive forms.
+    // possessive forms. Trailing lookahead also accepts `[` so NY Slip Op
+    // `[U]` unpublished markers don't break the boundary check (#231).
     regex:
-      /\b(\d+(?:-\d+)?)\s+([A-Z](?:(?! L\.[JQR\s])(?!\s+vs?\.\s)[A-Za-z.\d\s&'])+?)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.)/g,
+      /\b(\d+(?:-\d+)?)\s+([A-Z](?:(?! L\.[JQR\s])(?!\s+vs?\.\s)[A-Za-z.\d\s&'])+?)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.|\[)/g,
     description:
       'State reporters (broad pattern allowing multi-word reporters with & and \', excludes journal patterns with " L.J/Q/Rev" and phantom matches across a case-name separator " v. "/" vs. ", validated against reporters-db in Phase 3)',
     type: "case",
