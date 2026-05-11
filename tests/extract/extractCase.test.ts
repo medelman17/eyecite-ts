@@ -5471,4 +5471,120 @@ describe("Louisiana date-in-number citations (#232)", () => {
   })
 })
 
+/**
+ * Parallel-citation pincite disambiguation.
+ *
+ * Bug: when a primary cite is followed by a comma-separated parallel cite —
+ * `329 Pa. 256, 198 A. 154 (1938)` — the volume of the parallel cite (`198`)
+ * was consumed by `LOOKAHEAD_PINCITE_REGEX` as a pincite for the first cite.
+ * Cascading effects: the first cite then could not find its trailing year
+ * parenthetical (hidden behind the parallel cite), and the case-name backward
+ * walk for the second cite over-included the first cite's reporter text.
+ *
+ * Fix path:
+ *   (A) Regex guard — refuse `, NUM` when NUM looks like a parallel-cite
+ *       volume (i.e., followed by whitespace + a capital letter that begins
+ *       a reporter token).
+ *   (B) Span-aware extraction — refuse to consume pincite or parenthetical
+ *       bytes that overlap another tokenized citation, and continue the
+ *       parenthetical search past intervening citations so the shared
+ *       trailing year is found.
+ */
+describe("parallel-cite pincite disambiguation (regression)", () => {
+  describe("two-reporter parallel cite — `329 Pa. 256, 198 A. 154 (1938)`", () => {
+    const text = "See Nixon v. Nixon, 329 Pa. 256, 198 A. 154 (1938)."
+
+    it("first cite has no pincite (parallel volume is not a pincite)", () => {
+      const cases = extractCitations(text).filter((c) => c.type === "case")
+      expect(cases).toHaveLength(2)
+      if (cases[0].type === "case") {
+        expect(cases[0].pincite).toBeUndefined()
+      }
+    })
+
+    it("first cite gets year=1938 from the shared trailing parenthetical", () => {
+      const cases = extractCitations(text).filter((c) => c.type === "case")
+      if (cases[0].type === "case") {
+        expect(cases[0].year).toBe(1938)
+      }
+    })
+
+    it("second (parallel) cite's caseName does not leak the first reporter cite", () => {
+      // Fix B's job: the case-name backward walk for the parallel cite is
+      // bounded by the prior cite's end, so it cannot absorb `329 Pa. 256`.
+      // (Propagating the caption from the primary cite to its parallels is a
+      // separate concern — handled by parallel-cite linking, not extractCase.)
+      const cases = extractCitations(text).filter((c) => c.type === "case")
+      if (cases[1]?.type === "case") {
+        expect(cases[1].caseName ?? "").not.toContain("Pa.")
+        expect(cases[1].caseName ?? "").not.toContain("329")
+      }
+    })
+  })
+
+  describe("three-reporter parallel cite — Roe v. Wade", () => {
+    const text =
+      "Roe v. Wade, 410 U.S. 113, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973)."
+
+    it("none of the three cites have a (false) pincite", () => {
+      const cases = extractCitations(text).filter((c) => c.type === "case")
+      expect(cases).toHaveLength(3)
+      for (const c of cases) {
+        if (c.type === "case") {
+          expect(c.pincite).toBeUndefined()
+        }
+      }
+    })
+
+    it("all three cites get year=1973 from the shared trailing parenthetical", () => {
+      const cases = extractCitations(text).filter((c) => c.type === "case")
+      for (const c of cases) {
+        if (c.type === "case") {
+          expect(c.year).toBe(1973)
+        }
+      }
+    })
+  })
+
+  describe("pincite WITH a following parallel cite — `410 U.S. 113, 117, 93 S. Ct. 705 (1973)`", () => {
+    const text =
+      "Roe v. Wade, 410 U.S. 113, 117, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973)."
+
+    it("first cite has pincite=117 (real pincite before the parallel)", () => {
+      const cases = extractCitations(text).filter((c) => c.type === "case")
+      if (cases[0]?.type === "case") {
+        expect(cases[0].pincite).toBe(117)
+      }
+    })
+
+    it("first cite does not pick up parallel-cite volume as additional pincite", () => {
+      const cases = extractCitations(text).filter((c) => c.type === "case")
+      if (cases[0]?.type === "case") {
+        expect(cases[0].pinciteInfo?.additionalPincites ?? []).toEqual([])
+      }
+    })
+
+    it("first cite still gets year=1973 from the shared trailing parenthetical", () => {
+      const cases = extractCitations(text).filter((c) => c.type === "case")
+      if (cases[0]?.type === "case") {
+        expect(cases[0].year).toBe(1973)
+      }
+    })
+  })
+
+  describe("regression: discrete multi-pincite chains still work (no parallel cite)", () => {
+    it("`410 U.S. 113, 115, 153 (1973)` — pincite=115, additionalPincites=[153]", () => {
+      const cases = extractCitations(
+        "Smith, 410 U.S. 113, 115, 153 (1973).",
+      ).filter((c) => c.type === "case")
+      if (cases[0]?.type === "case") {
+        expect(cases[0].pincite).toBe(115)
+        expect(cases[0].pinciteInfo?.additionalPincites).toHaveLength(1)
+        expect(cases[0].pinciteInfo?.additionalPincites?.[0]?.page).toBe(153)
+        expect(cases[0].year).toBe(1973)
+      }
+    })
+  })
+})
+
 
