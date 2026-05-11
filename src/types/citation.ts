@@ -204,6 +204,7 @@ export type HistorySignal =
   | "pet_denied"
   | "pet_dismissed"
   | "pet_granted"
+  | "pet_filed"
   | "no_pet"
 
 /**
