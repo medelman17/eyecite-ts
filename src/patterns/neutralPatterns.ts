@@ -36,10 +36,21 @@ export const neutralPatterns: Pattern[] = [
     type: "neutral",
   },
   {
+    // Multi-word neutral courts (#230). Alternation order matters — longer,
+    // more specific patterns must precede the bare `[A-Z]{2}` fallback so the
+    // regex prefers the more specific match:
+    //   - `IL App (Nst)` — Illinois Rule 23 form with district parenthetical
+    //     (districts 1st / 2d / 3d / 4th / 5th)
+    //   - `OK CIV APP|CR|AG` — Oklahoma multi-word courts
+    //   - `[A-Z]{2}(?:\s+App\.?)?` — existing single-word + optional App fallback
+    // The trailing `(-U)?` captures Illinois Rule 23 unpublished marker; the
+    // extractor consumes it into the `unpublished` flag and strips it from
+    // `documentNumber`.
     id: "state-vendor-neutral",
-    regex: /\b(\d{4})\s+([A-Z]{2}(?:\s+App\.?)?)\s+(\d+)\b/g,
+    regex:
+      /\b(\d{4})\s+(IL\s+App\s+\(\d+(?:st|nd|rd|th|d)\)|OK\s+(?:CIV\s+APP|CR|AG)|[A-Z]{2}(?:\s+App\.?)?)\s+(\d+(?:-U)?)\b/g,
     description:
-      'State vendor-neutral citations (e.g., "2007 UT 49", "2017 WI 17", "2013 IL 112116")',
+      'State vendor-neutral citations (e.g., "2007 UT 49", "2017 WI 17", "2013 IL 112116", "2011 IL App (1st) 101234", "2020 OK CIV APP 67", "2020 IL App (2d) 190123-U")',
     type: "neutral",
   },
   {

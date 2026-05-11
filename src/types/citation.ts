@@ -473,6 +473,12 @@ export interface NeutralCitation extends CitationBase {
   court: string
   /** Document number */
   documentNumber: string
+  /**
+   * True when the citation has an Illinois Rule 23 `-U` suffix (or analogous
+   * unpublished marker). The suffix is consumed and stripped from
+   * `documentNumber`. Absent or `false` for published decisions. (#230)
+   */
+  unpublished?: boolean
   /** Pincite page (numeric portion, without "*" for star-pagination). */
   pincite?: number
   /** Structured pincite information (page, range, footnote, star-pagination). */

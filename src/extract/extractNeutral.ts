@@ -71,6 +71,7 @@ export function extractNeutral(
   let year: number
   let court: string
   let documentNumber: string
+  let unpublished = false
   let spans: NeutralComponentSpans | undefined
 
   const msMatch = /^(\d{4})-([A-Z]+)-(\d+)-([A-Z]+)$/d.exec(text)
@@ -96,7 +97,9 @@ export function extractNeutral(
     }
   } else {
     // 3-segment forms: hyphenated (NM/Ohio/NC) or whitespace (UT/WI/IL/WL).
-    const neutralRegex = /^(\d{4})[-\s]+(.+?)[-\s]+(\d+)$/d
+    // Trailing `(-U)?` captures Illinois Rule 23 unpublished marker (#230);
+    // the suffix is consumed but excluded from `documentNumber`.
+    const neutralRegex = /^(\d{4})[-\s]+(.+?)[-\s]+(\d+)(-U)?$/d
     const match = neutralRegex.exec(text)
     if (!match) {
       throw new Error(`Failed to parse neutral citation: ${text}`)
@@ -104,6 +107,9 @@ export function extractNeutral(
     year = Number.parseInt(match[1], 10)
     court = match[2]
     documentNumber = match[3]
+    if (match[4] === "-U") {
+      unpublished = true
+    }
     if (match.indices) {
       spans = {
         year: spanFromGroupIndex(span.cleanStart, match.indices[1]!, transformationMap),
@@ -162,6 +168,7 @@ export function extractNeutral(
     year,
     court,
     documentNumber,
+    ...(unpublished ? { unpublished: true } : {}),
     pincite,
     pinciteInfo,
     spans,
