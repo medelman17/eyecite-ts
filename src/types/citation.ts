@@ -193,6 +193,10 @@ export type HistorySignal =
   | "distinguished"
   | "withdrawn"
   | "reinstated"
+  // Federal rehearing history (Bluebook 10.7; #246). `modified_on_denial_of_rehearing`
+  // below is a CA-specific compound disposition, distinct from these standalone signals.
+  | "rehearing_denied"
+  | "rehearing_granted"
   // Texas writ-of-error history (pre-Sept. 1, 1997 — older opinions still cite)
   | "writ_refused"
   | "writ_dismissed"

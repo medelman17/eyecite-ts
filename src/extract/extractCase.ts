@@ -247,6 +247,13 @@ const SIGNAL_TABLE: ReadonlyArray<readonly [RegExp, HistorySignal]> = [
   [/^distinguished\b/i, "distinguished"],
   [/^withdrawn\b/i, "withdrawn"],
   [/^reinstated\b/i, "reinstated"],
+  // Federal rehearing history (#246). `as modified on denial of rehearing`
+  // (CA compound, listed later) anchors on `^as modified` so the bare
+  // `reh'g denied` / `rehearing denied` entries here do not conflict.
+  [/^reh'?g\s+denied\b/i, "rehearing_denied"],
+  [/^rehearing\s+denied\b/i, "rehearing_denied"],
+  [/^reh'?g\s+granted\b/i, "rehearing_granted"],
+  [/^rehearing\s+granted\b/i, "rehearing_granted"],
   // Texas writ-of-error history (Tex. R. App. P. 47.7, pre-Sept. 1997).
   // Longer disposition modifiers must precede the bare forms so alternation
   // picks the more specific match (#229).
