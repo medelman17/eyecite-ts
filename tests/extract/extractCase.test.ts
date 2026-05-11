@@ -5269,4 +5269,110 @@ describe("paragraph-marker pincites in full case citations (#204)", () => {
   })
 })
 
+/**
+ * Multiple discrete pincites (#247).
+ *
+ * Citations to multiple pages of the same opinion (`410 U.S. 113, 115, 153`)
+ * previously produced a single-element pincite — only the first page survived.
+ * The first pincite continues to live in `pinciteInfo.page` / `endPage` /
+ * `paragraph` etc. (no API break); additional pincites are appended to
+ * `pinciteInfo.additionalPincites` as nested `PinciteInfo` entries so each
+ * preserves its own range / footnote / star-page semantics.
+ *
+ * The top-level convenience `pincite: number | undefined` field continues to
+ * mirror the FIRST pincite's `page` — consumers needing all pincites read
+ * the `additionalPincites` array.
+ */
+describe("multiple discrete pincites (#247)", () => {
+  it("captures `113, 115, 153` as primary + 2 additional", () => {
+    const text = "See Roe v. Wade, 410 U.S. 113, 115, 153 (1973)."
+    const cits = extractCitations(text)
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0].type === "case") {
+      expect(cases[0].pincite).toBe(115)
+      expect(cases[0].pinciteInfo?.page).toBe(115)
+      expect(cases[0].pinciteInfo?.additionalPincites).toHaveLength(1)
+      expect(cases[0].pinciteInfo?.additionalPincites?.[0]?.page).toBe(153)
+    }
+  })
+
+  it("captures `100, 105, 110, 120` as primary + 3 additional", () => {
+    const text = "See Smith v. Jones, 500 F.2d 100, 105, 110, 120 (9th Cir. 2020)."
+    const cits = extractCitations(text)
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0].type === "case") {
+      expect(cases[0].pincite).toBe(105)
+      expect(cases[0].pinciteInfo?.additionalPincites).toHaveLength(2)
+      expect(cases[0].pinciteInfo?.additionalPincites?.[0]?.page).toBe(110)
+      expect(cases[0].pinciteInfo?.additionalPincites?.[1]?.page).toBe(120)
+    }
+  })
+
+  it("handles mixed range + discrete: `105-110, 120` keeps range info", () => {
+    const text = "See Roe, 410 U.S. 113, 105-110, 120 (1973)."
+    const cits = extractCitations(text)
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0].type === "case") {
+      // Primary pincite is the range "105-110"
+      expect(cases[0].pinciteInfo?.page).toBe(105)
+      expect(cases[0].pinciteInfo?.endPage).toBe(110)
+      expect(cases[0].pinciteInfo?.isRange).toBe(true)
+      // Additional pincite is the discrete page "120"
+      expect(cases[0].pinciteInfo?.additionalPincites).toHaveLength(1)
+      expect(cases[0].pinciteInfo?.additionalPincites?.[0]?.page).toBe(120)
+    }
+  })
+
+  it("handles `113, 105-110` (discrete then range)", () => {
+    const text = "See Roe, 410 U.S. 113, 115, 105-110 (1973)."
+    const cits = extractCitations(text)
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0].type === "case") {
+      expect(cases[0].pinciteInfo?.page).toBe(115)
+      expect(cases[0].pinciteInfo?.additionalPincites?.[0]?.page).toBe(105)
+      expect(cases[0].pinciteInfo?.additionalPincites?.[0]?.endPage).toBe(110)
+      expect(cases[0].pinciteInfo?.additionalPincites?.[0]?.isRange).toBe(true)
+    }
+  })
+
+  describe("regression controls — single-pincite citations", () => {
+    it("`, 115` (one pincite) → no additionalPincites field", () => {
+      const text = "See Roe v. Wade, 410 U.S. 113, 115 (1973)."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].pincite).toBe(115)
+        expect(cases[0].pinciteInfo?.additionalPincites).toBeUndefined()
+      }
+    })
+
+    it("range only `, 100-110` → no additionalPincites", () => {
+      const text = "Smith v. Jones, 500 F.2d 100, 105-110 (9th Cir. 2020)."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      if (cases[0].type === "case") {
+        expect(cases[0].pinciteInfo?.page).toBe(105)
+        expect(cases[0].pinciteInfo?.endPage).toBe(110)
+        expect(cases[0].pinciteInfo?.additionalPincites).toBeUndefined()
+      }
+    })
+
+    it("`, 115 n.5` (footnote) still parses without additionalPincites", () => {
+      const text = "Roe v. Wade, 410 U.S. 113, 115 n.5 (1973)."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      if (cases[0].type === "case") {
+        expect(cases[0].pinciteInfo?.page).toBe(115)
+        expect(cases[0].pinciteInfo?.footnote).toBe(5)
+        expect(cases[0].pinciteInfo?.additionalPincites).toBeUndefined()
+      }
+    })
+  })
+})
+
 
