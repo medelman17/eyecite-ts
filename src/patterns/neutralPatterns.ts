@@ -15,6 +15,27 @@ import type { Pattern } from "./casePatterns"
 
 export const neutralPatterns: Pattern[] = [
   {
+    // Mississippi 4-segment form: year-caseType-number-appellateTrack. Listed
+    // before the 3-segment hyphenated pattern so it wins on the longer match
+    // (e.g., "2010-CT-01234-SCT"). (#233)
+    id: "state-vendor-neutral-hyphenated-ms",
+    regex: /\b(\d{4})-([A-Z]+)-(\d+)-([A-Z]+)\b/g,
+    description:
+      'Mississippi 4-segment vendor-neutral (e.g., "2010-CT-01234-SCT", "2015-CA-00567-COA")',
+    type: "neutral",
+  },
+  {
+    // 3-segment hyphenated form used by NM (NMSC, NMCA, NMCERT), Ohio
+    // (mixed-case "Ohio" token), and NC (NCSC, NCCOA). The court token starts
+    // with an uppercase letter and may contain lowercase (so the Ohio token
+    // matches). (#233)
+    id: "state-vendor-neutral-hyphenated",
+    regex: /\b(\d{4})-([A-Z][A-Za-z]+)-(\d+)\b/g,
+    description:
+      'Hyphenated vendor-neutral (e.g., "2010-NMSC-007", "2024-Ohio-764", "2020-NCSC-118")',
+    type: "neutral",
+  },
+  {
     id: "state-vendor-neutral",
     regex: /\b(\d{4})\s+([A-Z]{2}(?:\s+App\.?)?)\s+(\d+)\b/g,
     description:
