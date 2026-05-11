@@ -415,6 +415,17 @@ export interface FullCaseCitation extends CitationBase {
   scope?: string
 
   /**
+   * Administrative parenthetical from a bankruptcy adversary caption (#241).
+   * In `Spence v. Hintze (In re Hintze), 570 B.R. 369`, the `(In re Hintze)`
+   * names the underlying debtor and is part of the case name (preserved on
+   * `caseName`). This field exposes the debtor identification separately so
+   * `defendant` / `defendantNormalized` can hold just the adversary defendant.
+   * Content is the parenthetical text without the surrounding parens — e.g.,
+   * `"In re Hintze"`.
+   */
+  adminParenthetical?: string
+
+  /**
    * Court level/jurisdiction inferred from reporter series.
    * Always populated independently of the parenthetical `court` field.
    * Uses a curated static lookup table — does not depend on the reporter DB

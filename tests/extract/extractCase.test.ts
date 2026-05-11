@@ -3081,6 +3081,105 @@ New York first recognized IIED as a cognizable cause of action in Fischer v. Mal
   })
 })
 
+describe("bankruptcy adversary admin parenthetical (#241)", () => {
+  // In bankruptcy adversary proceedings, the case caption includes an
+  // administrative parenthetical naming the underlying debtor:
+  //   Spence v. Hintze (In re Hintze), 570 B.R. 369 (Bankr. D. Mass. 2017)
+  // The `(In re Hintze)` is part of the case name, not an explanatory paren.
+  // Acceptance criteria: caseName preserves the clause, fullSpan covers it.
+  // Cleanup: defendant strips the admin paren; new adminParenthetical field.
+
+  describe("acceptance criteria (already satisfied — regression tests)", () => {
+    it("'Spence v. Hintze (In re Hintze), 570 B.R. 369 (...)' — caseName preserves admin paren", () => {
+      const cits = extractCitations(
+        "Spence v. Hintze (In re Hintze), 570 B.R. 369 (Bankr. D. Mass. 2017)",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Spence v. Hintze (In re Hintze)")
+        expect(cases[0].court).toBe("Bankr. D. Mass.")
+        expect(cases[0].year).toBe(2017)
+        // fullSpan must cover the entire caption-plus-parenthetical text
+        expect(cases[0].fullSpan?.originalStart).toBe(0)
+      }
+    })
+
+    it("no regression in explanatory parens after citation core", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 100 F.3d 200 (9th Cir. 2020) (holding that X requires Y)",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Smith v. Jones")
+        expect(cases[0].parentheticals?.[0]?.text).toMatch(/holding that X/)
+      }
+    })
+  })
+
+  describe("defendant cleanup + adminParenthetical field", () => {
+    it("strips '(In re Hintze)' from defendant; exposes via adminParenthetical", () => {
+      const cits = extractCitations(
+        "Spence v. Hintze (In re Hintze), 570 B.R. 369 (Bankr. D. Mass. 2017)",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].defendant).toBe("Hintze")
+        expect(cases[0].defendantNormalized).toBe("hintze")
+        expect(cases[0].adminParenthetical).toBe("In re Hintze")
+      }
+    })
+
+    it("handles compound debtor name '(In re Roe Corp.)'", () => {
+      const cits = extractCitations(
+        "Doe v. Roe (In re Roe Corp.), 250 B.R. 50 (Bankr. S.D.N.Y. 2018)",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].defendant).toBe("Roe")
+        expect(cases[0].adminParenthetical).toBe("In re Roe Corp.")
+      }
+    })
+
+    it("handles hyphenated debtor name '(In re Jones-Smith Estate)'", () => {
+      const cits = extractCitations(
+        "Trustee v. Jones-Smith (In re Jones-Smith Estate), 300 B.R. 100 (Bankr. D. Del. 2019)",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].defendant).toBe("Jones-Smith")
+        expect(cases[0].adminParenthetical).toBe("In re Jones-Smith Estate")
+      }
+    })
+  })
+
+  describe("regression — non-bankruptcy parens don't trigger adminParenthetical", () => {
+    it("'Smith v. Jones' without admin paren — adminParenthetical is undefined", () => {
+      const cits = extractCitations("Smith v. Jones, 100 F.3d 200 (9th Cir. 2020)")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].adminParenthetical).toBeUndefined()
+        expect(cases[0].defendant).toBe("Jones")
+      }
+    })
+
+    it("non-(In re) paren after defendant doesn't trigger admin-paren treatment", () => {
+      // Hypothetical (rare but plausible): "X v. Y (publisher)" — not adversary
+      const cits = extractCitations("Smith v. Jones (publisher), 100 F.3d 200 (9th Cir. 2020)")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].adminParenthetical).toBeUndefined()
+      }
+    })
+  })
+})
+
 describe("justice-attribution parentheticals (#235)", () => {
   // Justice-attribution form: `(Brennan, J., dissenting)` and variants.
   // The parser now extracts structured fields: `disposition` (dissent /

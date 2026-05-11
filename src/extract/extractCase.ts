@@ -1662,6 +1662,8 @@ export function extractPartyNames(caseName: string): {
   defendantNormalized?: string
   proceduralPrefix?: string
   signal?: CitationSignal
+  /** Bankruptcy adversary admin parenthetical (#241), e.g., "In re Hintze". */
+  adminParenthetical?: string
 } {
   let signal: CitationSignal | undefined
   // Procedural prefix patterns (anchored to start, case-insensitive).
@@ -1764,7 +1766,20 @@ export function extractPartyNames(caseName: string): {
   const vMatch = vRegex.exec(caseName)
   if (vMatch) {
     let plaintiff = vMatch[1].trim()
-    const defendant = vMatch[2].trim()
+    let defendant = vMatch[2].trim()
+
+    // Bankruptcy adversary admin parenthetical (#241): trailing
+    // `(In re <Debtor>)` immediately after the defendant identifies the
+    // underlying bankruptcy debtor. Strip from defendant; expose separately
+    // via `adminParenthetical`. The leading "In re" anchor distinguishes the
+    // adversary admin form from explanatory parens which appear *after* the
+    // citation core, not inside the case name.
+    let adminParenthetical: string | undefined
+    const adminMatch = /\s*\(\s*(In\s+re\s+[^)]+?)\s*\)\s*$/i.exec(defendant)
+    if (adminMatch) {
+      adminParenthetical = adminMatch[1]
+      defendant = defendant.substring(0, adminMatch.index).trim()
+    }
 
     // Strip signal words from plaintiff (e.g., "See Jones" → "Jones")
     // Uses SIGNAL_STRIP_REGEX derived from VALID_SIGNALS for single source of truth.
@@ -1794,6 +1809,7 @@ export function extractPartyNames(caseName: string): {
       defendant,
       defendantNormalized: normalizePartyName(defendant),
       signal,
+      ...(adminParenthetical ? { adminParenthetical } : {}),
     }
   }
 
@@ -2235,6 +2251,7 @@ export function extractCase(
   let defendant: string | undefined
   let defendantNormalized: string | undefined
   let proceduralPrefix: string | undefined
+  let adminParenthetical: string | undefined
 
   let signal: CitationSignal | undefined
   if (caseName) {
@@ -2245,12 +2262,16 @@ export function extractCase(
     defendantNormalized = partyResult.defendantNormalized
     proceduralPrefix = partyResult.proceduralPrefix
     signal = partyResult.signal
+    adminParenthetical = partyResult.adminParenthetical
 
     // Rebuild caseName when extractPartyNames modified the plaintiff (signal stripped,
     // "In"/"Also" prefix removed, etc.). Find the plaintiff's actual position in the
-    // cleaned text to update fullSpan and caseName span.
+    // cleaned text to update fullSpan and caseName span. Bankruptcy admin
+    // parenthetical is preserved as part of the rebuilt caseName so it remains
+    // visible to consumers even though it's stripped off the `defendant` field.
     if (plaintiff && defendant) {
-      const rebuiltName = `${plaintiff} v. ${defendant}`
+      const adminSuffix = adminParenthetical ? ` (${adminParenthetical})` : ""
+      const rebuiltName = `${plaintiff} v. ${defendant}${adminSuffix}`
       if (rebuiltName !== caseName && fullSpan && cleanedText) {
         caseName = rebuiltName
 
@@ -2452,6 +2473,7 @@ export function extractCase(
     ...(unpublished ? { unpublished: true } : {}),
     ...(justices ? { justices } : {}),
     ...(scope ? { scope } : {}),
+    ...(adminParenthetical ? { adminParenthetical } : {}),
     plaintiff,
     plaintiffNormalized,
     defendant,
