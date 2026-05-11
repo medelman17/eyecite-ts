@@ -51,11 +51,14 @@ export const casePatterns: Pattern[] = [
     // federal-reporter; including it here is harmless and future-proofs other
     // possessive forms. Trailing lookahead also accepts `[` (NY Slip Op `[U]`
     // markers — #231) and `]` (California Style Manual bracketed parallel
-    // cites like `[266 Cal.Rptr. 569]` — #237).
+    // cites like `[266 Cal.Rptr. 569]` — #237). Negative lookahead on the
+    // reporter body rejects ` at ` so `18 Cal.4th at p. 717` (CSM short-form,
+    // #236) doesn't absorb `at p.` into the reporter; the short-form pattern
+    // handles it instead.
     regex:
-      /\b(\d+(?:-\d+)?)\s+([A-Z](?:(?! L\.[JQR\s])(?!\s+vs?\.\s)[A-Za-z.\d\s&'])+?)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.|\[|\])/g,
+      /\b(\d+(?:-\d+)?)\s+([A-Z](?:(?! L\.[JQR\s])(?!\s+vs?\.\s)(?!\s+at\s)[A-Za-z.\d\s&'])+?)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.|\[|\])/g,
     description:
-      'State reporters (broad pattern allowing multi-word reporters with & and \', excludes journal patterns with " L.J/Q/Rev" and phantom matches across a case-name separator " v. "/" vs. ", validated against reporters-db in Phase 3)',
+      'State reporters (broad pattern allowing multi-word reporters with & and \', excludes journal patterns with " L.J/Q/Rev", phantom matches across " v. "/" vs. ", and CSM " at " short-form boundaries, validated against reporters-db in Phase 3)',
     type: "case",
   },
 ]

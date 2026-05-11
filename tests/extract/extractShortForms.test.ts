@@ -829,4 +829,158 @@ describe("star-pagination pincite (#191)", () => {
       }
     })
   })
+
+  /**
+   * California Style Manual `at p.` / `at pp.` pincite forms (#236).
+   *
+   * CSM rule 1:1 uses `at p. <N>` for a single pincite and `at pp. <N-M>` for
+   * a range — never bare `at <N>` as Bluebook does. Every CA `supra at p.`,
+   * Id. at p., and short-form at-p. reference previously produced an
+   * incomplete match with the pincite silently dropped.
+   *
+   * Coverage:
+   *   - Supra with `, at p.` and `, at pp.` (ranges)
+   *   - Supra with volume+reporter then `at p.` (short-form-ish)
+   *   - Id. with `at p.` and `at pp.`
+   *   - Short-form case with `at p.` and `at pp.`
+   *   - Full case with trailing `, at p.` pincite
+   *
+   * Regression controls confirm existing Bluebook `at N` forms still work.
+   */
+  describe("California `at p.` / `at pp.` pincites (#236)", () => {
+    describe("supra", () => {
+      it("`Smith, supra, at p. 115`", () => {
+        const cits = extractCitations("As Smith, supra, at p. 115 held.")
+        const sup = cits.find((c) => c.type === "supra")
+        expect(sup).toBeDefined()
+        if (sup?.type === "supra") {
+          expect(sup.pincite).toBe(115)
+        }
+      })
+
+      it("`Smith, supra, at pp. 115-117` (range)", () => {
+        const cits = extractCitations("See Smith, supra, at pp. 115-117 here.")
+        const sup = cits.find((c) => c.type === "supra")
+        expect(sup).toBeDefined()
+        if (sup?.type === "supra") {
+          expect(sup.pincite).toBe(115)
+          expect(sup.pinciteInfo?.endPage).toBe(117)
+          expect(sup.pinciteInfo?.isRange).toBe(true)
+        }
+      })
+    })
+
+    describe("Id.", () => {
+      it("`Id. at p. 125`", () => {
+        const text =
+          "Smith v. Jones, 50 Cal.3d 100, 110 (Cal. 1990). Id. at p. 125."
+        const cits = extractCitations(text)
+        const id = cits.find((c) => c.type === "id")
+        expect(id).toBeDefined()
+        if (id?.type === "id") {
+          expect(id.pincite).toBe(125)
+        }
+      })
+
+      it("`Id. at pp. 125-130` (range)", () => {
+        const text =
+          "Smith v. Jones, 50 Cal.3d 100, 110 (Cal. 1990). Id. at pp. 125-130."
+        const cits = extractCitations(text)
+        const id = cits.find((c) => c.type === "id")
+        expect(id).toBeDefined()
+        if (id?.type === "id") {
+          expect(id.pincite).toBe(125)
+          expect(id.pinciteInfo?.endPage).toBe(130)
+        }
+      })
+    })
+
+    describe("short-form case", () => {
+      it("`(Davis, supra, 18 Cal.4th at p. 717.)`", () => {
+        // Should produce a Davis supra AND a short-form case with the Cal.4th
+        // reporter intact (not absorbed as `Cal.4th at p.`).
+        const cits = extractCitations("(Davis, supra, 18 Cal.4th at p. 717.)")
+        const sf = cits.find((c) => c.type === "shortFormCase")
+        expect(sf).toBeDefined()
+        if (sf?.type === "shortFormCase") {
+          expect(sf.volume).toBe(18)
+          expect(sf.reporter).toBe("Cal.4th")
+          expect(sf.pincite).toBe(717)
+        }
+      })
+
+      it("`50 Cal.3d at pp. 115-117` range", () => {
+        const cits = extractCitations(
+          "(Smith, supra, 50 Cal.3d at pp. 115-117 held.)",
+        )
+        const sf = cits.find((c) => c.type === "shortFormCase")
+        expect(sf).toBeDefined()
+        if (sf?.type === "shortFormCase") {
+          expect(sf.volume).toBe(50)
+          expect(sf.reporter).toBe("Cal.3d")
+          expect(sf.pincite).toBe(115)
+          expect(sf.pinciteInfo?.endPage).toBe(117)
+        }
+      })
+    })
+
+    describe("full case with trailing at p. pincite", () => {
+      it("`People v. Smith (1990) 50 Cal.3d 100, at p. 115`", () => {
+        const cits = extractCitations(
+          "People v. Smith (1990) 50 Cal.3d 100, at p. 115.",
+        )
+        const cases = cits.filter((c) => c.type === "case")
+        expect(cases).toHaveLength(1)
+        if (cases[0].type === "case") {
+          expect(cases[0].pincite).toBe(115)
+        }
+      })
+
+      it("`People v. Smith (1990) 50 Cal.3d 100, at pp. 115-118` range", () => {
+        const cits = extractCitations(
+          "People v. Smith (1990) 50 Cal.3d 100, at pp. 115-118.",
+        )
+        const cases = cits.filter((c) => c.type === "case")
+        expect(cases).toHaveLength(1)
+        if (cases[0].type === "case") {
+          expect(cases[0].pincite).toBe(115)
+          expect(cases[0].pinciteInfo?.endPage).toBe(118)
+        }
+      })
+    })
+
+    describe("regression controls — Bluebook `at N` still works", () => {
+      it("`Id. at 125` (Bluebook)", () => {
+        const text =
+          "Smith v. Jones, 50 F.3d 100, 110 (2d Cir. 1995). Id. at 125."
+        const cits = extractCitations(text)
+        const id = cits.find((c) => c.type === "id")
+        expect(id).toBeDefined()
+        if (id?.type === "id") {
+          expect(id.pincite).toBe(125)
+        }
+      })
+
+      it("`Smith, supra, at 460` (Bluebook)", () => {
+        const cits = extractCitations("See Smith, supra, at 460 held.")
+        const sup = cits.find((c) => c.type === "supra")
+        expect(sup).toBeDefined()
+        if (sup?.type === "supra") {
+          expect(sup.pincite).toBe(460)
+        }
+      })
+
+      it("`50 F.2d at 125` (Bluebook short-form)", () => {
+        const text = "Smith v. Jones, 50 F.2d 100 (1990). 50 F.2d at 125."
+        const cits = extractCitations(text)
+        const sf = cits.find((c) => c.type === "shortFormCase")
+        expect(sf).toBeDefined()
+        if (sf?.type === "shortFormCase") {
+          expect(sf.volume).toBe(50)
+          expect(sf.reporter).toBe("F.2d")
+          expect(sf.pincite).toBe(125)
+        }
+      })
+    })
+  })
 })
