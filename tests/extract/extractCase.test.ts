@@ -1930,6 +1930,61 @@ describe("signal word extraction", () => {
     expect(caseCite?.plaintiff).toBe("Smith")
     expect(caseCite?.signal).toBe("see")
   })
+
+  describe("combined signals with 'e.g.' (#239)", () => {
+    // The `, e.g.,` interjection between a signal and the citation has both
+    // an internal comma (after the signal stem) and a trailing comma (before
+    // the case name). Without combined-signal support, the case-name backward
+    // scanner gets confused — `e.g.,` looks like noise prefix and the signal
+    // field stays unset.
+
+    it("captures 'see, e.g.' as the signal", () => {
+      const text = "See, e.g., Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)."
+      const citations = extractCitations(text)
+      const caseCite = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+      expect(caseCite).toBeDefined()
+      expect(caseCite?.signal).toBe("see, e.g.")
+      expect(caseCite?.plaintiff).toBe("Smith")
+      expect(caseCite?.defendant).toBe("Jones")
+    })
+
+    it("captures 'but see, e.g.' as the signal", () => {
+      const text =
+        "But see, e.g., Acme Corp. v. Beta Inc., 100 U.S. 1 (2020)."
+      const citations = extractCitations(text)
+      const caseCite = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+      expect(caseCite).toBeDefined()
+      expect(caseCite?.signal).toBe("but see, e.g.")
+      expect(caseCite?.plaintiff).toBe("Acme Corp.")
+    })
+
+    it("captures 'see also, e.g.' as the signal", () => {
+      const text =
+        "See also, e.g., Gamma LLC v. Delta Co., 200 U.S. 2 (2021)."
+      const citations = extractCitations(text)
+      const caseCite = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+      expect(caseCite).toBeDefined()
+      expect(caseCite?.signal).toBe("see also, e.g.")
+      expect(caseCite?.plaintiff).toBe("Gamma LLC")
+    })
+
+    it("captures 'cf., e.g.' as the signal", () => {
+      const text = "Cf., e.g., Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)."
+      const citations = extractCitations(text)
+      const caseCite = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+      expect(caseCite).toBeDefined()
+      expect(caseCite?.signal).toBe("cf., e.g.")
+      expect(caseCite?.plaintiff).toBe("Smith")
+    })
+
+    it("does not regress bare 'see' for non-combined captions", () => {
+      const text = "See Smith v. Jones, 500 F.2d 123 (9th Cir. 2020)."
+      const citations = extractCitations(text)
+      const caseCite = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
+      expect(caseCite?.signal).toBe("see")
+      expect(caseCite?.plaintiff).toBe("Smith")
+    })
+  })
 })
 
 describe("nominative reporter support (#49, #16)", () => {
