@@ -62,25 +62,58 @@ export function extractNeutral(
 ): NeutralCitation {
   const { text, span } = token
 
-  // Parse year-court-documentNumber using regex
-  // Pattern: 4-digit year + court identifier (WL, LEXIS, state codes, etc.) + document number
-  const neutralRegex = /^(\d{4})\s+(.+?)\s+(\d+)$/d
-  const match = neutralRegex.exec(text)
-
-  if (!match) {
-    throw new Error(`Failed to parse neutral citation: ${text}`)
-  }
-
-  const year = Number.parseInt(match[1], 10)
-  const court = match[2]
-  const documentNumber = match[3]
-
+  // Parse year-court-documentNumber. Two-step:
+  // 1. Try the Mississippi 4-segment hyphenated form (#233):
+  //    year-caseType-number-appellateTrack, e.g., "2010-CT-01234-SCT".
+  //    Court is composed as `${caseType}-${appellateTrack}` so the single
+  //    `court` field preserves the full sovereign identifier.
+  // 2. Try the 3-segment hyphenated form (NM/Ohio/NC) or the whitespace form.
+  let year: number
+  let court: string
+  let documentNumber: string
   let spans: NeutralComponentSpans | undefined
-  if (match.indices) {
-    spans = {
-      year: spanFromGroupIndex(span.cleanStart, match.indices[1]!, transformationMap),
-      court: spanFromGroupIndex(span.cleanStart, match.indices[2]!, transformationMap),
-      documentNumber: spanFromGroupIndex(span.cleanStart, match.indices[3]!, transformationMap),
+
+  const msMatch = /^(\d{4})-([A-Z]+)-(\d+)-([A-Z]+)$/d.exec(text)
+  if (msMatch) {
+    year = Number.parseInt(msMatch[1], 10)
+    court = `${msMatch[2]}-${msMatch[4]}`
+    documentNumber = msMatch[3]
+    if (msMatch.indices) {
+      const caseTypeIndices = msMatch.indices[2]!
+      const trackIndices = msMatch.indices[4]!
+      // Span covers the case-type token through the appellate-track token so
+      // the position range reflects the combined court identifier.
+      const courtIndices: [number, number] = [caseTypeIndices[0], trackIndices[1]]
+      spans = {
+        year: spanFromGroupIndex(span.cleanStart, msMatch.indices[1]!, transformationMap),
+        court: spanFromGroupIndex(span.cleanStart, courtIndices, transformationMap),
+        documentNumber: spanFromGroupIndex(
+          span.cleanStart,
+          msMatch.indices[3]!,
+          transformationMap,
+        ),
+      }
+    }
+  } else {
+    // 3-segment forms: hyphenated (NM/Ohio/NC) or whitespace (UT/WI/IL/WL).
+    const neutralRegex = /^(\d{4})[-\s]+(.+?)[-\s]+(\d+)$/d
+    const match = neutralRegex.exec(text)
+    if (!match) {
+      throw new Error(`Failed to parse neutral citation: ${text}`)
+    }
+    year = Number.parseInt(match[1], 10)
+    court = match[2]
+    documentNumber = match[3]
+    if (match.indices) {
+      spans = {
+        year: spanFromGroupIndex(span.cleanStart, match.indices[1]!, transformationMap),
+        court: spanFromGroupIndex(span.cleanStart, match.indices[2]!, transformationMap),
+        documentNumber: spanFromGroupIndex(
+          span.cleanStart,
+          match.indices[3]!,
+          transformationMap,
+        ),
+      }
     }
   }
 
