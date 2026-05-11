@@ -3026,6 +3026,396 @@ New York first recognized IIED as a cognizable cause of action in Fischer v. Mal
   })
 })
 
+describe("procedural prefix research expansion (2026-05-11)", () => {
+  // Follow-up to #242 — six cross-domain research dispatches (family, probate,
+  // bankruptcy, immigration, criminal/habeas, ex rel./qui tam) identified ~29
+  // additional procedural-prefix forms appearing in published opinions but
+  // missed by the current regex. All test inputs are verbatim corpus examples
+  // from the research docs in docs/research/2026-05-11-procedural-prefixes-*.md.
+
+  describe("ex rel. sovereign variants", () => {
+    it("recognizes 'People ex rel.' (NY habeas)", () => {
+      const cits = extractCitations(
+        "See People ex rel. Williams v. La Vallee, 19 N.Y.2d 238 (1967).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("People ex rel. Williams v. La Vallee")
+      }
+    })
+
+    it("recognizes 'District of Columbia ex rel.'", () => {
+      const cits = extractCitations(
+        "See District of Columbia ex rel. Lupo v. Smith, 100 D.C. 1 (2020).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("District of Columbia ex rel. Lupo v. Smith")
+      }
+    })
+
+    it("recognizes 'Commonwealth of Puerto Rico ex rel.' (beats Commonwealth ex rel.)", () => {
+      const cits = extractCitations(
+        "See Commonwealth of Puerto Rico ex rel. Quiros v. Alfred L. Snapp & Son, 458 U.S. 592 (1982).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe(
+          "Commonwealth of Puerto Rico ex rel. Quiros v. Alfred L. Snapp & Son",
+        )
+      }
+    })
+
+    it("recognizes 'Government of the Virgin Islands ex rel.'", () => {
+      const cits = extractCitations(
+        "See Government of the Virgin Islands ex rel. Suris v. Suris, 100 V.I. 1 (2020).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Government of the Virgin Islands ex rel. Suris v. Suris")
+      }
+    })
+  })
+
+  describe("family / juvenile prefixes", () => {
+    it("recognizes 'In re Welfare of' (MN — beats 'In re')", () => {
+      const cits = extractCitations(
+        "See In re Welfare of M.A.B., 999 N.W.2d 100 (Minn. Ct. App. 2024).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Welfare of M.A.B.")
+        expect(cases[0].proceduralPrefix).toBe("In re Welfare of")
+      }
+    })
+
+    it("recognizes 'In the Matter of the Welfare of' (MN long form)", () => {
+      const cits = extractCitations(
+        "See In the Matter of the Welfare of M.A.B., 999 N.W.2d 100 (Minn. Ct. App. 2024).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In the Matter of the Welfare of M.A.B.")
+        expect(cases[0].proceduralPrefix).toBe("In the Matter of the Welfare of")
+      }
+    })
+
+    it("recognizes 'In re Dependency of' (WA)", () => {
+      const cits = extractCitations(
+        "See In re Dependency of A.B., 100 Wn.2d 1 (2020).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Dependency of A.B.")
+        expect(cases[0].proceduralPrefix).toBe("In re Dependency of")
+      }
+    })
+
+    it("recognizes 'In re Termination of Parental Rights to' (WI)", () => {
+      const cits = extractCitations(
+        "See In re Termination of Parental Rights to B.W., 100 Wis. 2d 1 (2020).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Termination of Parental Rights to B.W.")
+        expect(cases[0].proceduralPrefix).toBe("In re Termination of Parental Rights to")
+      }
+    })
+
+    it("recognizes 'In re Termination of Parental Rights as to' (AZ — beats 'to' variant)", () => {
+      const cits = extractCitations(
+        "See In re Termination of Parental Rights as to C.D., 100 Ariz. 1 (2020).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Termination of Parental Rights as to C.D.")
+        expect(cases[0].proceduralPrefix).toBe("In re Termination of Parental Rights as to")
+      }
+    })
+
+    it("recognizes 'In re Termination of Parental Rights of' (WI alt)", () => {
+      const cits = extractCitations(
+        "See In re Termination of Parental Rights of E.F., 100 Wis. 2d 1 (2020).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Termination of Parental Rights of E.F.")
+        expect(cases[0].proceduralPrefix).toBe("In re Termination of Parental Rights of")
+      }
+    })
+
+    it("recognizes 'In re Paternity of' (IN)", () => {
+      const cits = extractCitations(
+        "See In re Paternity of M.R., 778 N.E.2d 861 (Ind. Ct. App. 2002).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Paternity of M.R.")
+        expect(cases[0].proceduralPrefix).toBe("In re Paternity of")
+      }
+    })
+
+    it("recognizes 'In re Parentage of' (CA/IL)", () => {
+      const cits = extractCitations(
+        "See In re Parentage of Scarlett Z.-D., 100 Ill. 2d 1 (2015).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Parentage of Scarlett Z.-D.")
+        expect(cases[0].proceduralPrefix).toBe("In re Parentage of")
+      }
+    })
+
+    it("recognizes 'Care and Protection of' (MA bare form)", () => {
+      const cits = extractCitations(
+        "See Care and Protection of Jaylen, 493 Mass. 798 (2024).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Care and Protection of Jaylen")
+        expect(cases[0].proceduralPrefix).toBe("Care and Protection of")
+      }
+    })
+  })
+
+  describe("probate (Louisiana civil law)", () => {
+    it("recognizes 'Succession of' (LA bare form, no 'In re')", () => {
+      const cits = extractCitations("See Succession of Talbot, 530 So. 2d 1132 (La. 1988).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Succession of Talbot")
+        expect(cases[0].proceduralPrefix).toBe("Succession of")
+      }
+    })
+  })
+
+  describe("bankruptcy / insurance insolvency prefixes", () => {
+    it("recognizes 'In re Liquidation of' (PA insurance)", () => {
+      const cits = extractCitations(
+        "See In re Liquidation of Legion Insurance Co., 831 A.2d 1196 (Pa. Cmwlth. 2003).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Liquidation of Legion Insurance Co.")
+        expect(cases[0].proceduralPrefix).toBe("In re Liquidation of")
+      }
+    })
+
+    it("recognizes 'In the Matter of the Liquidation of' (MA insurance long form)", () => {
+      const cits = extractCitations(
+        "See In the Matter of the Liquidation of American Mutual Liability Insurance Co., 434 Mass. 272 (2001).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe(
+          "In the Matter of the Liquidation of American Mutual Liability Insurance Co.",
+        )
+        expect(cases[0].proceduralPrefix).toBe("In the Matter of the Liquidation of")
+      }
+    })
+
+    it("recognizes 'In re Rehabilitation of' (state insurance)", () => {
+      const cits = extractCitations(
+        "See In re Rehabilitation of Scottish RE Inc., 100 A.3d 1 (Del. Ch. 2022).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Rehabilitation of Scottish RE Inc.")
+        expect(cases[0].proceduralPrefix).toBe("In re Rehabilitation of")
+      }
+    })
+
+    it("recognizes 'In the Matter of the Rehabilitation of' (NH long form)", () => {
+      const cits = extractCitations(
+        "See In the Matter of the Rehabilitation of the Home Insurance Co., 166 N.H. 84 (2014).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe(
+          "In the Matter of the Rehabilitation of the Home Insurance Co.",
+        )
+        expect(cases[0].proceduralPrefix).toBe("In the Matter of the Rehabilitation of")
+      }
+    })
+
+    it("recognizes 'Matter of Liquidation of' (NY)", () => {
+      const cits = extractCitations(
+        "See Matter of Liquidation of Union Indemnity Insurance Co., 89 N.Y.2d 94 (1996).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe(
+          "Matter of Liquidation of Union Indemnity Insurance Co.",
+        )
+        expect(cases[0].proceduralPrefix).toBe("Matter of Liquidation of")
+      }
+    })
+
+    it("recognizes 'In re Receivership of'", () => {
+      const cits = extractCitations(
+        "See In re Receivership of Bayou Group LLC, 372 B.R. 661 (S.D.N.Y. 2007).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Receivership of Bayou Group LLC")
+        expect(cases[0].proceduralPrefix).toBe("In re Receivership of")
+      }
+    })
+  })
+
+  describe("immigration / naturalization prefixes", () => {
+    it("recognizes 'In re Petition for Naturalization of' (federal naturalization)", () => {
+      const cits = extractCitations(
+        "See In re Petition for Naturalization of Haniatakis, 246 F. Supp. 545 (W.D. Pa. 1965).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Petition for Naturalization of Haniatakis")
+        expect(cases[0].proceduralPrefix).toBe("In re Petition for Naturalization of")
+      }
+    })
+
+    it("recognizes 'In re Naturalization of'", () => {
+      const cits = extractCitations(
+        "See In re Naturalization of Vafaei-Makhsoos, 597 F. Supp. 499 (D. Minn. 1984).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Naturalization of Vafaei-Makhsoos")
+        expect(cases[0].proceduralPrefix).toBe("In re Naturalization of")
+      }
+    })
+
+    it("recognizes 'Petition for Naturalization of' (no 'In re' prefix)", () => {
+      const cits = extractCitations(
+        "See Petition for Naturalization of Clarino, 691 F. Supp. 193 (C.D. Cal. 1988).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Petition for Naturalization of Clarino")
+        expect(cases[0].proceduralPrefix).toBe("Petition for Naturalization of")
+      }
+    })
+  })
+
+  describe("criminal / habeas / extradition prefixes", () => {
+    it("recognizes 'In re Extradition of'", () => {
+      const cits = extractCitations(
+        "See In re Extradition of Kirby, 106 F.3d 855 (9th Cir. 1996).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Extradition of Kirby")
+        expect(cases[0].proceduralPrefix).toBe("In re Extradition of")
+      }
+    })
+
+    it("recognizes 'In the Matter of the Extradition of'", () => {
+      const cits = extractCitations(
+        "See In the Matter of the Extradition of Kirby, 106 F.3d 855 (9th Cir. 1996).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In the Matter of the Extradition of Kirby")
+        expect(cases[0].proceduralPrefix).toBe("In the Matter of the Extradition of")
+      }
+    })
+
+    it("recognizes 'In re Application of' (federal surveillance — beats bare 'Application of')", () => {
+      const cits = extractCitations(
+        "See In re Application of the United States, 724 F.3d 600 (5th Cir. 2013).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Application of the United States")
+        expect(cases[0].proceduralPrefix).toBe("In re Application of")
+      }
+    })
+
+    it("recognizes 'In the Matter of the Application of'", () => {
+      const cits = extractCitations(
+        "See In the Matter of the Application of John Smith, 100 N.Y.S.2d 1 (1950).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In the Matter of the Application of John Smith")
+        expect(cases[0].proceduralPrefix).toBe("In the Matter of the Application of")
+      }
+    })
+  })
+
+  describe("regression controls — existing prefixes still work after expansion", () => {
+    it("still recognizes 'In re'", () => {
+      const cits = extractCitations("See In re Smith, 100 U.S. 1 (2020).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].proceduralPrefix).toBe("In re")
+      }
+    })
+
+    it("still recognizes 'Commonwealth ex rel.' (without Puerto Rico)", () => {
+      const cits = extractCitations(
+        "See Commonwealth ex rel. Smith v. Jones, 100 Pa. 1 (2020).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Commonwealth ex rel. Smith v. Jones")
+      }
+    })
+
+    it("still recognizes bare 'Application of'", () => {
+      const cits = extractCitations(
+        "See Application of Jones, 100 U.S. 1 (2020).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].proceduralPrefix).toBe("Application of")
+      }
+    })
+
+    it("does not mis-classify 'People v.' criminal as 'People ex rel.'", () => {
+      const cits = extractCitations("See People v. Smith, 100 N.Y. 1 (2020).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("People v. Smith")
+        expect(cases[0].plaintiff).toBe("People")
+        expect(cases[0].defendant).toBe("Smith")
+      }
+    })
+  })
+})
+
 describe("procedural prefix expansion (#242)", () => {
   // PROCEDURAL_PREFIX_REGEX covered In re, Ex parte, Matter of, Estate of,
   // State ex rel., United States ex rel., Application of, Petition of. Many
