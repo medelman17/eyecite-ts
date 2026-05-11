@@ -4925,6 +4925,117 @@ describe("California year-first citation format (#19)", () => {
       }
     })
   })
+
+  /**
+   * Issue #263 reproductions. The user's original bug report against 0.13.4
+   * documented eight specific California-style fixtures with 100% caseName-
+   * extraction failure on cluster 2636992 (Talibdeen) and 5.5% on cluster
+   * 2252939 (Falcone & Fyke). The #19 fix in #270 resolves all of them; this
+   * suite locks the behavior in so regressions surface immediately.
+   */
+  describe("regression fixtures from #263", () => {
+    it("extracts plaintiff/defendant for `People v. Tillman (2000) 22 Cal.4th 300, 303`", () => {
+      const cits = extractCitations(
+        "In People v. Tillman (2000) 22 Cal.4th 300, 303, we held that ...",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("People v. Tillman")
+        expect(cases[0].plaintiff).toBe("People")
+        expect(cases[0].defendant).toBe("Tillman")
+        expect(cases[0].year).toBe(2000)
+      }
+    })
+
+    it("preserves signal on `See People v. Tillman (2000) 22 Cal.4th 300`", () => {
+      const cits = extractCitations(
+        "See People v. Tillman (2000) 22 Cal.4th 300.",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("People v. Tillman")
+        expect(cases[0].signal).toBe("see")
+      }
+    })
+
+    it("extracts caption inside parens: `(People v. Tillman (2000) 22 Cal.4th 300, 303.)`", () => {
+      const cits = extractCitations(
+        "(People v. Tillman (2000) 22 Cal.4th 300, 303.)",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("People v. Tillman")
+      }
+    })
+
+    it("extracts `In re Marriage of Bower (2002) 96 Cal.App.4th 893`", () => {
+      const cits = extractCitations(
+        "See In re Marriage of Bower (2002) 96 Cal.App.4th 893.",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Marriage of Bower")
+        expect(cases[0].year).toBe(2002)
+      }
+    })
+
+    it("extracts `(People v. Rubalcava (2000) 23 Cal.4th 322, 328, ...)`", () => {
+      const cits = extractCitations(
+        "(People v. Rubalcava (2000) 23 Cal.4th 322, 328, here.)",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("People v. Rubalcava")
+      }
+    })
+
+    it("extracts initial-letter party: `In re Sophia B. (1988) 203 Cal.App.3d 1436, 1439`", () => {
+      const cits = extractCitations(
+        "See In re Sophia B. (1988) 203 Cal.App.3d 1436, 1439, here.",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Sophia B.")
+        expect(cases[0].year).toBe(1988)
+      }
+    })
+
+    it("extracts multi-word v.: `(Khan v. Medical Board (1993) 12 Cal.App.4th 1834, 1841)`", () => {
+      const cits = extractCitations(
+        "(Khan v. Medical Board (1993) 12 Cal.App.4th 1834, 1841, here.)",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Khan v. Medical Board")
+      }
+    })
+
+    it("primary citation parses on parallel form `People v. Smith (2001) 24 Cal.4th 849, 853 [102 Cal.Rptr.2d 731]`", () => {
+      // The primary Cal.4th citation must carry the caseName. The bracketed
+      // Cal.Rptr.2d parallel is its own citation; sharing the caseName across
+      // parallels is detectParallel's concern, not this scanner's.
+      const cits = extractCitations(
+        "See People v. Smith (2001) 24 Cal.4th 849, 853 [102 Cal.Rptr.2d 731].",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases.length).toBeGreaterThanOrEqual(1)
+      const primary = cases.find(
+        (c) => c.type === "case" && c.reporter === "Cal.4th",
+      )
+      expect(primary).toBeDefined()
+      if (primary && primary.type === "case") {
+        expect(primary.caseName).toBe("People v. Smith")
+        expect(primary.year).toBe(2001)
+      }
+    })
+  })
 })
 
 
