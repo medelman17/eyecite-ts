@@ -1661,6 +1661,60 @@ describe("party name extraction (Phase 7)", () => {
       }
     })
 
+    describe("slash-alias party-name aliases (#240)", () => {
+      // d/b/a, f/k/a, n/k/a, a/k/a are slash-form party-name aliases that appear
+      // mid-caption (~96k corpus matches). The full caseName must be preserved
+      // verbatim with the alias clause intact; plaintiffNormalized strips it.
+
+      it('preserves "f/k/a" in caseName and strips it in plaintiffNormalized', () => {
+        const citations = extractCitations(
+          "Acme Corp. f/k/a Beta Inc. v. Jones, 500 F.3d 100 (2d Cir. 2020)",
+        )
+        expect(citations).toHaveLength(1)
+        if (citations[0].type === "case") {
+          expect(citations[0].caseName).toBe("Acme Corp. f/k/a Beta Inc. v. Jones")
+          expect(citations[0].plaintiff).toBe("Acme Corp. f/k/a Beta Inc.")
+          expect(citations[0].plaintiffNormalized).toBe("acme")
+        }
+      })
+
+      it('preserves "d/b/a" in caseName and strips it in plaintiffNormalized', () => {
+        const citations = extractCitations(
+          "Smith d/b/a Old Bob's Diner v. Roe, 100 U.S. 1 (2020)",
+        )
+        expect(citations).toHaveLength(1)
+        if (citations[0].type === "case") {
+          expect(citations[0].caseName).toBe("Smith d/b/a Old Bob's Diner v. Roe")
+          expect(citations[0].plaintiff).toBe("Smith d/b/a Old Bob's Diner")
+          expect(citations[0].plaintiffNormalized).toBe("smith")
+        }
+      })
+
+      it('preserves "n/k/a" in caseName and strips it in plaintiffNormalized', () => {
+        const citations = extractCitations(
+          "Doe n/k/a Doe-Smith v. State, 200 U.S. 2 (2020)",
+        )
+        expect(citations).toHaveLength(1)
+        if (citations[0].type === "case") {
+          expect(citations[0].caseName).toBe("Doe n/k/a Doe-Smith v. State")
+          expect(citations[0].plaintiff).toBe("Doe n/k/a Doe-Smith")
+          expect(citations[0].plaintiffNormalized).toBe("doe")
+        }
+      })
+
+      it('preserves "a/k/a" in caseName and strips it in plaintiffNormalized', () => {
+        const citations = extractCitations(
+          "Acme LLC a/k/a Acme Holdings v. Beta Corp., 300 F.3d 200 (9th Cir. 2020)",
+        )
+        expect(citations).toHaveLength(1)
+        if (citations[0].type === "case") {
+          expect(citations[0].caseName).toBe("Acme LLC a/k/a Acme Holdings v. Beta Corp.")
+          expect(citations[0].plaintiff).toBe("Acme LLC a/k/a Acme Holdings")
+          expect(citations[0].plaintiffNormalized).toBe("acme")
+        }
+      })
+    })
+
     it('strips leading article "The"', () => {
       const citations = extractCitations("The Ford Motor Co. v. Smith, 500 F.2d 123 (2020)")
       expect(citations).toHaveLength(1)

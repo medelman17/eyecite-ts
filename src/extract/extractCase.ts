@@ -1408,7 +1408,7 @@ function classifyParenthetical(raw: string):
  * Normalize party name for matching by removing legal noise.
  * Normalization pipeline:
  * 1. Strip "et al." (case-insensitive)
- * 2. Strip "d/b/a" and everything after (case-insensitive)
+ * 2. Strip slash-aliases "d/b/a", "f/k/a", "n/k/a", "a/k/a" and everything after
  * 3. Strip "aka" and everything after (case-insensitive, word boundary)
  * 4. Strip trailing corporate suffixes (Inc., LLC, Corp., Ltd., Co., LLP, LP, P.C.) - iterative
  * 5. Strip leading articles (The, A, An)
@@ -1431,8 +1431,10 @@ function normalizePartyName(name: string): string {
   // Strip "et al." (with or without period, case-insensitive)
   normalized = normalized.replace(/\bet\s+al\.?/gi, "")
 
-  // Strip "d/b/a" and everything after it (case-insensitive)
-  normalized = normalized.replace(/\s+d\/b\/a\b.*/gi, "")
+  // Strip slash-alias variants ("d/b/a", "f/k/a", "n/k/a", "a/k/a") and
+  // everything after them. Matches the slash forms produced by Bluebook-style
+  // captions; the non-slash "aka" form is handled below (#240).
+  normalized = normalized.replace(/\s+(?:d\/b\/a|[fna]\/k\/a)\b.*/gi, "")
 
   // Strip "aka" and everything after it (case-insensitive, word boundary)
   normalized = normalized.replace(/\s+aka\b.*/gi, "")
