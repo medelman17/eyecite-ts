@@ -19,6 +19,29 @@ import { COMMON_REPORTERS } from "./extractCase"
 import { parsePincite, type PinciteInfo } from "./pincite"
 
 /**
+ * Strip leading citation signals (`See`, `See also`, `Cf.`, `Compare`,
+ * `Accord`, `But see`, `But cf.`, `E.g.`) and sentence-initial connectors
+ * (`Also`, `Then`, `In` (but never `In re`)) from a captured supra party name.
+ *
+ * The `SUPRA_PATTERN` tokenizer is greedy with leading capitalized words, so
+ * `See Gall, supra` produces `partyName = "See Gall"` and prevents the
+ * resolver from matching the supra to its `Gall v. Colon-Sylvain` antecedent.
+ * The `In(?!\s+re\b)` negative lookahead preserves `In re Smith` — only the
+ * bare `In` directly preceding a proper-name party gets stripped (#216).
+ *
+ * The original captured name is returned unchanged when stripping would leave
+ * an empty string (defensive: prevents a wholesale signal token from blanking
+ * out the party name).
+ */
+const SUPRA_PARTY_PREFIX_REGEX =
+  /^(?:But\s+(?:see|cf\.?)|See(?:\s+also)?(?:\s*,\s*e\.\s*g\.?)?|Compare|Cf\.?|Accord|E\.\s*g\.?|Also|In(?!\s+re\b)|Then)\s+/i
+
+function stripSupraPartyPrefix(raw: string): string {
+  const stripped = raw.replace(SUPRA_PARTY_PREFIX_REGEX, "").trim()
+  return stripped.length > 0 ? stripped : raw
+}
+
+/**
  * Extracts Id. citation metadata from a tokenized citation.
  *
  * Parses token text to extract:
@@ -187,7 +210,7 @@ export function extractSupra(token: Token, transformationMap: TransformationMap)
   let pinciteGroupIdx: number | undefined
 
   if (partyMatch) {
-    partyName = partyMatch[1]
+    partyName = stripSupraPartyPrefix(partyMatch[1])
     pinciteInfo = partyMatch[3]
       ? (parsePincite(partyMatch[3]) ?? undefined)
       : undefined

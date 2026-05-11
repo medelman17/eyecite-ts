@@ -984,3 +984,158 @@ describe("star-pagination pincite (#191)", () => {
     })
   })
 })
+
+/**
+ * Supra party-name signal-leak (#216).
+ *
+ * `SUPRA_PATTERN`'s party-name group greedily captures any sequence of
+ * capitalized words before `supra`, so a citation that starts with a citation
+ * signal (`See`, `Cf.`, `Compare`) or a sentence-initial connector (`In`,
+ * `Also`, `Then`) bleeds that leading word into the captured `partyName`,
+ * preventing `DocumentResolver` from matching the supra back to its full-cite
+ * antecedent.
+ *
+ * Suite covers the issue's title fixtures (`Then Gall`, `See Gall`), the
+ * issue's enumerated signal list (See / But see / But cf. / Compare / Cf. /
+ * Accord / Also / E.g. / In), and the `In re` regression — `In re Smith`
+ * must NOT lose the `In` because the `re` is part of the prefix.
+ */
+describe("supra party-name signal-leak (#216)", () => {
+  describe("citation signals stripped from partyName", () => {
+    it("`See Gall, supra` → partyName = 'Gall'", () => {
+      const text =
+        "Bd. v. FirstService, 193 A.D.3d 672 (2d Dep't 2021). See Gall, supra, at 700."
+      const cits = extractCitations(text)
+      const sup = cits.find((c) => c.type === "supra")
+      expect(sup).toBeDefined()
+      if (sup?.type === "supra") {
+        expect(sup.partyName).toBe("Gall")
+      }
+    })
+
+    it("`See also Gall, supra` → partyName = 'Gall'", () => {
+      const cits = extractCitations(
+        "Foo v. Bar, 1 F.3d 2 (1990). See also Gall, supra, at 700.",
+      )
+      const sup = cits.find((c) => c.type === "supra")
+      expect(sup).toBeDefined()
+      if (sup?.type === "supra") {
+        expect(sup.partyName).toBe("Gall")
+      }
+    })
+
+    it("`Compare Gall, supra` → partyName = 'Gall'", () => {
+      const cits = extractCitations(
+        "Foo v. Bar, 1 F.3d 2 (1990). Compare Gall, supra, at 700.",
+      )
+      const sup = cits.find((c) => c.type === "supra")
+      expect(sup).toBeDefined()
+      if (sup?.type === "supra") {
+        expect(sup.partyName).toBe("Gall")
+      }
+    })
+
+    it("`Cf. Gall, supra` → partyName = 'Gall'", () => {
+      const cits = extractCitations(
+        "Foo v. Bar, 1 F.3d 2 (1990). Cf. Gall, supra, at 700.",
+      )
+      const sup = cits.find((c) => c.type === "supra")
+      expect(sup).toBeDefined()
+      if (sup?.type === "supra") {
+        expect(sup.partyName).toBe("Gall")
+      }
+    })
+
+    it("`Accord Gall, supra` → partyName = 'Gall'", () => {
+      const cits = extractCitations(
+        "Foo v. Bar, 1 F.3d 2 (1990). Accord Gall, supra, at 700.",
+      )
+      const sup = cits.find((c) => c.type === "supra")
+      expect(sup).toBeDefined()
+      if (sup?.type === "supra") {
+        expect(sup.partyName).toBe("Gall")
+      }
+    })
+  })
+
+  describe("sentence-initial connectors stripped from partyName", () => {
+    it("`Then Gall, supra` → partyName = 'Gall'", () => {
+      const text =
+        "Bd. v. FirstService, 193 A.D.3d 672 (2d Dep't 2021). Then Gall, supra, at 700."
+      const cits = extractCitations(text)
+      const sup = cits.find((c) => c.type === "supra")
+      expect(sup).toBeDefined()
+      if (sup?.type === "supra") {
+        expect(sup.partyName).toBe("Gall")
+      }
+    })
+
+    it("`Also Gall, supra` → partyName = 'Gall'", () => {
+      const cits = extractCitations(
+        "Foo v. Bar, 1 F.3d 2 (1990). Also Gall, supra, at 700.",
+      )
+      const sup = cits.find((c) => c.type === "supra")
+      expect(sup).toBeDefined()
+      if (sup?.type === "supra") {
+        expect(sup.partyName).toBe("Gall")
+      }
+    })
+
+    it("`In Gall, supra` → partyName = 'Gall' (but NOT 'In Gall')", () => {
+      const cits = extractCitations(
+        "Foo v. Bar, 1 F.3d 2 (1990). In Gall, supra, at 700.",
+      )
+      const sup = cits.find((c) => c.type === "supra")
+      expect(sup).toBeDefined()
+      if (sup?.type === "supra") {
+        expect(sup.partyName).toBe("Gall")
+      }
+    })
+  })
+
+  describe("regression controls — must preserve real party names", () => {
+    it("`In re Smith, supra` → partyName = 'Smith'", () => {
+      const cits = extractCitations(
+        "Foo v. Bar, 1 F.3d 2 (1990). In re Smith, supra, at 700.",
+      )
+      const sup = cits.find((c) => c.type === "supra")
+      expect(sup).toBeDefined()
+      if (sup?.type === "supra") {
+        expect(sup.partyName).toBe("Smith")
+      }
+    })
+
+    it("`Gall, supra` (no prefix) → partyName = 'Gall'", () => {
+      const cits = extractCitations(
+        "Foo v. Bar, 1 F.3d 2 (1990). Gall, supra, at 700.",
+      )
+      const sup = cits.find((c) => c.type === "supra")
+      expect(sup).toBeDefined()
+      if (sup?.type === "supra") {
+        expect(sup.partyName).toBe("Gall")
+      }
+    })
+
+    it("`Smith v. Jones, supra` (multi-word) → partyName = 'Smith v. Jones'", () => {
+      const cits = extractCitations(
+        "Foo v. Bar, 1 F.3d 2 (1990). Smith v. Jones, supra, at 460.",
+      )
+      const sup = cits.find((c) => c.type === "supra")
+      expect(sup).toBeDefined()
+      if (sup?.type === "supra") {
+        expect(sup.partyName).toBe("Smith v. Jones")
+      }
+    })
+
+    it("`See Smith v. Jones, supra` (signal + v.) → partyName = 'Smith v. Jones'", () => {
+      const cits = extractCitations(
+        "Foo v. Bar, 1 F.3d 2 (1990). See Smith v. Jones, supra, at 460.",
+      )
+      const sup = cits.find((c) => c.type === "supra")
+      expect(sup).toBeDefined()
+      if (sup?.type === "supra") {
+        expect(sup.partyName).toBe("Smith v. Jones")
+      }
+    })
+  })
+})
