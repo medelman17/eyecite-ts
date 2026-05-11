@@ -325,18 +325,30 @@ function isSignalWord(word: string): word is ParentheticalType {
 /** Matches a leading word (used to extract signal word candidate) */
 const LEADING_WORD_REGEX = /^([a-z]+)\b/i
 
-/** Standard "v." or "vs." case name format */
+/** Standard "v." or "vs." case name format.
+ *
+ *  The trailing alternation accepts either a comma (Bluebook form:
+ *  `Smith v. Jones, 50 Cal.3d 100 (Cal. 1990)`) or a year paren (California
+ *  Style Manual year-first form: `Smith v. Jones (1990) 50 Cal.3d 100`). The
+ *  optional `(\d{4})` capture surfaces the year so the CSM form doesn't drop
+ *  it on the floor — there is no trailing court parenthetical from which to
+ *  recover the year later. The `d` flag enables `match.indices` so the
+ *  caller can compute a year span. See #19. */
 const V_CASE_NAME_REGEX =
-  /([A-Z][A-Za-z0-9\s.,'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9\s.,'&()/-]+?)\s*,\s*$/
+  /([A-Z][A-Za-z0-9\s.,'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9\s.,'&()/-]+?)\s*(?:,|\((\d{4})\))\s*$/d
 
 /** Procedural prefix case name format.
  *  Longer prefixes listed first so the alternation prefers the longer match
  *  (e.g., `In the Matter of the Liquidation of X` beats `In the Matter of X`,
  *  `In re Marriage of X` beats `In re X`, `Commonwealth of Puerto Rico ex rel.`
  *  beats `Commonwealth ex rel.`). See #193, #242, and the six 2026-05-11
- *  procedural-prefix research dispatches in `docs/research/`. */
+ *  procedural-prefix research dispatches in `docs/research/`.
+ *
+ *  The trailing alternation matches either `,` (Bluebook) or `(YYYY)` (CSM
+ *  year-first form, #19). Year is captured as group 3; the `d` flag enables
+ *  `match.indices` so the caller can compute a year span. */
 const PROCEDURAL_PREFIX_REGEX =
-  /\b(In\s+the\s+Matter\s+of\s+the\s+Liquidation\s+of|In\s+the\s+Matter\s+of\s+the\s+Rehabilitation\s+of|In\s+the\s+Matter\s+of\s+the\s+Receivership\s+of|In\s+the\s+Matter\s+of\s+the\s+Extradition\s+of|In\s+the\s+Matter\s+of\s+the\s+Application\s+of|In\s+the\s+Matter\s+of\s+the\s+Welfare\s+of|In\s+the\s+Matter\s+of|In\s+re\s+Petition\s+for\s+Naturalization\s+of|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+as\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+of|In\s+re\s+Marriage\s+of|In\s+re\s+Liquidation\s+of|In\s+re\s+Rehabilitation\s+of|In\s+re\s+Receivership\s+of|In\s+re\s+Naturalization\s+of|In\s+re\s+Extradition\s+of|In\s+re\s+Application\s+of|In\s+re\s+Welfare\s+of|In\s+re\s+Dependency\s+of|In\s+re\s+Paternity\s+of|In\s+re\s+Parentage\s+of|In\s+re\s+Conservatorship\s+of|In\s+re\s+Guardianship\s+of|In\s+re\s+Adoption\s+of|In\s+the\s+Interest\s+of|Matter\s+of\s+Liquidation\s+of|Matter\s+of\s+Rehabilitation\s+of|Commonwealth\s+of\s+Puerto\s+Rico\s+ex\s+rel\.|Government\s+of\s+the\s+Virgin\s+Islands\s+ex\s+rel\.|Commonwealth\s+ex\s+rel\.|Petition\s+for\s+Naturalization\s+of|People\s+ex\s+rel\.|District\s+of\s+Columbia\s+ex\s+rel\.|Conservatorship\s+of\s+the\s+Person\s+and\s+Estate\s+of|Conservatorship\s+of\s+the\s+Person\s+of|Conservatorship\s+of\s+the\s+Estate\s+of|Inquiry\s+Concerning\s+Judge|Appeal\s+of|Care\s+and\s+Protection\s+of|Succession\s+of|In re|Ex parte|Matter of|Estate of|State ex rel\.|United States ex rel\.|Application of|On Petition of|Petition of|Adoption of|Conservatorship of|Guardianship of)\s+([A-Za-z0-9\s.,'&()/-]+?)\s*,\s*$/i
+  /\b(In\s+the\s+Matter\s+of\s+the\s+Liquidation\s+of|In\s+the\s+Matter\s+of\s+the\s+Rehabilitation\s+of|In\s+the\s+Matter\s+of\s+the\s+Receivership\s+of|In\s+the\s+Matter\s+of\s+the\s+Extradition\s+of|In\s+the\s+Matter\s+of\s+the\s+Application\s+of|In\s+the\s+Matter\s+of\s+the\s+Welfare\s+of|In\s+the\s+Matter\s+of|In\s+re\s+Petition\s+for\s+Naturalization\s+of|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+as\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+of|In\s+re\s+Marriage\s+of|In\s+re\s+Liquidation\s+of|In\s+re\s+Rehabilitation\s+of|In\s+re\s+Receivership\s+of|In\s+re\s+Naturalization\s+of|In\s+re\s+Extradition\s+of|In\s+re\s+Application\s+of|In\s+re\s+Welfare\s+of|In\s+re\s+Dependency\s+of|In\s+re\s+Paternity\s+of|In\s+re\s+Parentage\s+of|In\s+re\s+Conservatorship\s+of|In\s+re\s+Guardianship\s+of|In\s+re\s+Adoption\s+of|In\s+the\s+Interest\s+of|Matter\s+of\s+Liquidation\s+of|Matter\s+of\s+Rehabilitation\s+of|Commonwealth\s+of\s+Puerto\s+Rico\s+ex\s+rel\.|Government\s+of\s+the\s+Virgin\s+Islands\s+ex\s+rel\.|Commonwealth\s+ex\s+rel\.|Petition\s+for\s+Naturalization\s+of|People\s+ex\s+rel\.|District\s+of\s+Columbia\s+ex\s+rel\.|Conservatorship\s+of\s+the\s+Person\s+and\s+Estate\s+of|Conservatorship\s+of\s+the\s+Person\s+of|Conservatorship\s+of\s+the\s+Estate\s+of|Inquiry\s+Concerning\s+Judge|Appeal\s+of|Care\s+and\s+Protection\s+of|Succession\s+of|In re|Ex parte|Matter of|Estate of|State ex rel\.|United States ex rel\.|Application of|On Petition of|Petition of|Adoption of|Conservatorship of|Guardianship of)\s+([A-Za-z0-9\s.,'&()/-]+?)\s*(?:,|\((\d{4})\))\s*$/id
 
 /**
  * Lowercase words that legitimately appear in legal party names.
@@ -1015,7 +1027,18 @@ export function extractCaseName(
   coreStart: number,
   maxLookback = 150,
   options?: { originalText?: string; transformationMap?: TransformationMap },
-): { caseName: string; nameStart: number } | undefined {
+):
+  | {
+      caseName: string
+      nameStart: number
+      /** Year captured from CSM year-first form (`In re K.F. (2009)`). */
+      year?: number
+      /** Clean-coordinate position of the year digits (excluding parens). */
+      yearStart?: number
+      /** Clean-coordinate position after the year digits. */
+      yearEnd?: number
+    }
+  | undefined {
   const searchStart = Math.max(0, coreStart - maxLookback)
   let precedingText = cleanedText.substring(searchStart, coreStart)
   let adjustedSearchStart = searchStart
@@ -1179,7 +1202,18 @@ export function extractCaseName(
 
       const caseName = `${plaintiff} v. ${defendantText}`
       const nameStart = adjustedSearchStart + vMatch.index + trimOffset
-      return { caseName, nameStart }
+      // vMatch[3] holds the year captured by the CSM year-first tail
+      // (`Smith v. Jones (1990)` — #19). Bluebook form leaves it undefined.
+      // vMatch.indices[3] (enabled by the `d` flag) gives the position within
+      // precedingText; translate to cleanedText coordinates.
+      const year = vMatch[3] ? Number.parseInt(vMatch[3], 10) : undefined
+      let yearStart: number | undefined
+      let yearEnd: number | undefined
+      if (year !== undefined && vMatch.indices?.[3]) {
+        yearStart = adjustedSearchStart + vMatch.indices[3][0]
+        yearEnd = adjustedSearchStart + vMatch.indices[3][1]
+      }
+      return { caseName, nameStart, year, yearStart, yearEnd }
     }
   }
 
@@ -1190,7 +1224,16 @@ export function extractCaseName(
     if (!procMatch[0].includes(";")) {
       const caseName = `${procMatch[1]} ${procMatch[2].trim()}`
       const nameStart = adjustedSearchStart + procMatch.index
-      return { caseName, nameStart }
+      // procMatch[3] holds the year captured by the CSM year-first tail
+      // (`In re K.F. (2009)` — #19). Bluebook form leaves it undefined.
+      const year = procMatch[3] ? Number.parseInt(procMatch[3], 10) : undefined
+      let yearStart: number | undefined
+      let yearEnd: number | undefined
+      if (year !== undefined && procMatch.indices?.[3]) {
+        yearStart = adjustedSearchStart + procMatch.indices[3][0]
+        yearEnd = adjustedSearchStart + procMatch.indices[3][1]
+      }
+      return { caseName, nameStart, year, yearStart, yearEnd }
     }
   }
 
@@ -2238,6 +2281,34 @@ export function extractCase(
     })
     if (caseNameResult) {
       caseName = caseNameResult.caseName
+
+      // CSM year-first form puts the year *before* volume-reporter-page
+      // (`In re K.F. (2009) 173 Cal.App.4th 655` — #19). Pick it up here when
+      // there's no trailing court parenthetical to recover it from. Don't
+      // overwrite a year already parsed from a trailing paren — the trailing
+      // paren may also carry court information that the year-first paren lacks.
+      if (caseNameResult.year && !year) {
+        year = caseNameResult.year
+        if (
+          caseNameResult.yearStart !== undefined &&
+          caseNameResult.yearEnd !== undefined &&
+          !spans.year
+        ) {
+          const yearOrig = resolveOriginalSpan(
+            {
+              cleanStart: caseNameResult.yearStart,
+              cleanEnd: caseNameResult.yearEnd,
+            },
+            transformationMap,
+          )
+          spans.year = {
+            cleanStart: caseNameResult.yearStart,
+            cleanEnd: caseNameResult.yearEnd,
+            originalStart: yearOrig.originalStart,
+            originalEnd: yearOrig.originalEnd,
+          }
+        }
+      }
 
       // Calculate fullSpan: case name start through parenthetical end
       // Reuse allParens from classify loop to avoid scanning twice

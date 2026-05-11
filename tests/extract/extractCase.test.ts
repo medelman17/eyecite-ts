@@ -4804,4 +4804,127 @@ describe("reporter edition future-proofing (#234)", () => {
   })
 })
 
+/**
+ * California Style Manual year-first citation format (#19).
+ *
+ * CSM rule 1:1 places the year in parentheses BEFORE the volume-reporter-page,
+ * not after — e.g., `Smith v. Jones (2020) 50 Cal.App.5th 100` rather than the
+ * Bluebook `Smith v. Jones, 50 Cal.App.5th 100 (Cal. Ct. App. 2020)`. This is
+ * the canonical form for California state-court opinions and is required by
+ * the CRC for briefs filed in CA courts. The case name and year must both
+ * round-trip into the FullCaseCitation; the year-bearing paren is *not* a
+ * trailing court parenthetical (no court abbreviation; year-only).
+ *
+ * Six research dispatches at docs/research/2026-05-11-ca-style-* confirm this
+ * is the single biggest CA blocker — every CA practice discipline uses it.
+ */
+describe("California year-first citation format (#19)", () => {
+  describe("procedural prefix + year-first", () => {
+    it("extracts case name and year from `In re K.F. (2009) 173 Cal.App.4th 655`", () => {
+      const text = "See In re K.F. (2009) 173 Cal.App.4th 655 for the rule."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re K.F.")
+        expect(cases[0].year).toBe(2009)
+        expect(cases[0].volume).toBe(173)
+        expect(cases[0].reporter).toBe("Cal.App.4th")
+        expect(cases[0].page).toBe(655)
+        // Year span should point at the digits (excluding the parens).
+        expect(cases[0].spans?.year).toBeDefined()
+        if (cases[0].spans?.year) {
+          expect(
+            text.substring(
+              cases[0].spans.year.originalStart,
+              cases[0].spans.year.originalEnd,
+            ),
+          ).toBe("2009")
+        }
+      }
+    })
+
+    it("extracts `In re Marriage of Bonds (2000) 24 Cal.4th 1`", () => {
+      const text = "Citing In re Marriage of Bonds (2000) 24 Cal.4th 1, 5."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Marriage of Bonds")
+        expect(cases[0].year).toBe(2000)
+        expect(cases[0].volume).toBe(24)
+        expect(cases[0].reporter).toBe("Cal.4th")
+        expect(cases[0].page).toBe(1)
+        expect(cases[0].pincite).toBe(5)
+      }
+    })
+
+    it("extracts `Conservatorship of Wendland (2001) 26 Cal.4th 519`", () => {
+      const text = "Cf. Conservatorship of Wendland (2001) 26 Cal.4th 519."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Conservatorship of Wendland")
+        expect(cases[0].year).toBe(2001)
+      }
+    })
+  })
+
+  describe("v. + year-first", () => {
+    it("extracts `People v. Smith (1990) 50 Cal.3d 100`", () => {
+      const text = "Cf. People v. Smith (1990) 50 Cal.3d 100, 105."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("People v. Smith")
+        expect(cases[0].year).toBe(1990)
+        expect(cases[0].pincite).toBe(105)
+      }
+    })
+
+    it("extracts `Yield Dynamics, Inc. v. TEA Systems Corp. (2007) 154 Cal.App.4th 547, 558`", () => {
+      const text =
+        "We followed Yield Dynamics, Inc. v. TEA Systems Corp. (2007) 154 Cal.App.4th 547, 558 there."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe(
+          "Yield Dynamics, Inc. v. TEA Systems Corp.",
+        )
+        expect(cases[0].year).toBe(2007)
+        expect(cases[0].pincite).toBe(558)
+      }
+    })
+  })
+
+  describe("regression controls — Bluebook form still works", () => {
+    it("`Smith v. Jones, 50 Cal.3d 100 (Cal. 1990)` still parses court+year", () => {
+      const text = "Smith v. Jones, 50 Cal.3d 100 (Cal. 1990) held that..."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Smith v. Jones")
+        expect(cases[0].year).toBe(1990)
+        expect(cases[0].court).toBe("Cal.")
+      }
+    })
+
+    it("`In re K.F., 173 Cal.App.4th 655 (Cal. Ct. App. 2009)` (Bluebook)", () => {
+      const text =
+        "See In re K.F., 173 Cal.App.4th 655 (Cal. Ct. App. 2009) for it."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re K.F.")
+        expect(cases[0].year).toBe(2009)
+      }
+    })
+  })
+})
+
 
