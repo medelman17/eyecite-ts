@@ -3026,6 +3026,128 @@ New York first recognized IIED as a cognizable cause of action in Fischer v. Mal
   })
 })
 
+describe("procedural prefix expansion (#242)", () => {
+  // PROCEDURAL_PREFIX_REGEX covered In re, Ex parte, Matter of, Estate of,
+  // State ex rel., United States ex rel., Application of, Petition of. Many
+  // common procedural prefixes were missing, so captions like "In re Marriage
+  // of Smith" lost everything before the second word and "In the Interest of
+  // A.B." collapsed to "A.B." (the initials-only party form). All 7 prefixes
+  // below appear in real opinions across PA, NJ, CA, MA, NY, VT.
+
+  it("recognizes 'Commonwealth ex rel.' as a procedural plaintiff (PA)", () => {
+    const cits = extractCitations(
+      "See Commonwealth ex rel. Smith v. Jones, 100 Pa. 1 (2020).",
+    )
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0].type === "case") {
+      expect(cases[0].caseName).toBe("Commonwealth ex rel. Smith v. Jones")
+    }
+  })
+
+  it("recognizes 'In the Interest of' with initials-only party (juvenile)", () => {
+    const cits = extractCitations(
+      "See In the Interest of A.B., a Minor, 200 N.J. 1 (2020).",
+    )
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0].type === "case") {
+      expect(cases[0].caseName).toBe("In the Interest of A.B., a Minor")
+    }
+  })
+
+  it("recognizes 'In re Marriage of' (CA family) — beats 'In re' alone", () => {
+    const cits = extractCitations(
+      "See In re Marriage of Smith, 50 Cal.4th 100 (2010).",
+    )
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0].type === "case") {
+      expect(cases[0].caseName).toBe("In re Marriage of Smith")
+      expect(cases[0].proceduralPrefix).toBe("In re Marriage of")
+    }
+  })
+
+  it("recognizes 'Adoption of' with initials-only party", () => {
+    const cits = extractCitations("See Adoption of J.K., 100 Mass. 1 (2020).")
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0].type === "case") {
+      expect(cases[0].caseName).toBe("Adoption of J.K.")
+      expect(cases[0].proceduralPrefix).toBe("Adoption of")
+    }
+  })
+
+  it("recognizes 'Conservatorship of' with initials-only party (CA probate)", () => {
+    const cits = extractCitations(
+      "See Conservatorship of L.M., 1 Cal.5th 50 (2018).",
+    )
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0].type === "case") {
+      expect(cases[0].caseName).toBe("Conservatorship of L.M.")
+      expect(cases[0].proceduralPrefix).toBe("Conservatorship of")
+    }
+  })
+
+  it("recognizes 'Guardianship of' with initials-only party", () => {
+    const cits = extractCitations(
+      "See Guardianship of N.O., 300 N.Y.S.2d 100 (2020).",
+    )
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0].type === "case") {
+      expect(cases[0].caseName).toBe("Guardianship of N.O.")
+      expect(cases[0].proceduralPrefix).toBe("Guardianship of")
+    }
+  })
+
+  it("recognizes 'On Petition of' (older form) — beats 'Petition of' alone", () => {
+    const cits = extractCitations(
+      "See On Petition of P.Q., 100 Vt. 1 (2020).",
+    )
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0].type === "case") {
+      expect(cases[0].caseName).toBe("On Petition of P.Q.")
+      expect(cases[0].proceduralPrefix).toBe("On Petition of")
+    }
+  })
+
+  describe("regression controls — existing prefixes still work", () => {
+    it("still recognizes 'In re'", () => {
+      const cits = extractCitations("See In re Smith, 100 U.S. 1 (2020).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].proceduralPrefix).toBe("In re")
+      }
+    })
+
+    it("still recognizes 'Petition of' (without 'On')", () => {
+      const cits = extractCitations(
+        "See Petition of Smith, 100 U.S. 1 (2020).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].proceduralPrefix).toBe("Petition of")
+      }
+    })
+
+    it("still recognizes 'Estate of'", () => {
+      const cits = extractCitations(
+        "See Estate of Smith, 100 U.S. 1 (2020).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].proceduralPrefix).toBe("Estate of")
+      }
+    })
+  })
+})
+
 describe("reporter edition future-proofing (#234)", () => {
   // The federal-reporter pattern hard-codes editions (F., F.2d, F.3d, F.4th)
   // and the COMMON_REPORTERS confidence-boost set mirrors that enumeration.

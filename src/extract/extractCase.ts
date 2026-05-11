@@ -276,10 +276,11 @@ const V_CASE_NAME_REGEX =
   /([A-Z][A-Za-z0-9\s.,'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9\s.,'&()/-]+?)\s*,\s*$/
 
 /** Procedural prefix case name format.
- *  Longer prefixes listed first so `In the Matter of X` beats `Matter of X`.
- *  See #193. */
+ *  Longer prefixes listed first so `In the Matter of X` beats `Matter of X`,
+ *  `In re Marriage of X` beats `In re X`, and `On Petition of X` beats
+ *  `Petition of X`. See #193, #242. */
 const PROCEDURAL_PREFIX_REGEX =
-  /\b(In\s+the\s+Matter\s+of|In re|Ex parte|Matter of|Estate of|State ex rel\.|United States ex rel\.|Application of|Petition of)\s+([A-Za-z0-9\s.,'&()/-]+?)\s*,\s*$/i
+  /\b(In\s+the\s+Matter\s+of|In\s+re\s+Marriage\s+of|In\s+the\s+Interest\s+of|Commonwealth\s+ex\s+rel\.|In re|Ex parte|Matter of|Estate of|State ex rel\.|United States ex rel\.|Application of|On Petition of|Petition of|Adoption of|Conservatorship of|Guardianship of)\s+([A-Za-z0-9\s.,'&()/-]+?)\s*,\s*$/i
 
 /**
  * Lowercase words that legitimately appear in legal party names.
@@ -1503,17 +1504,26 @@ export function extractPartyNames(caseName: string): {
   signal?: CitationSignal
 } {
   let signal: CitationSignal | undefined
-  // Procedural prefix patterns (anchored to start, case-insensitive)
-  // Longer prefixes first so "In the Matter of X" wins over "Matter of X".
+  // Procedural prefix patterns (anchored to start, case-insensitive).
+  // Longer prefixes first so "In the Matter of X" wins over "Matter of X",
+  // "In re Marriage of X" wins over "In re X", and "On Petition of X" wins
+  // over "Petition of X" (#242).
   const proceduralPrefixes = [
     "In the Matter of",
+    "In re Marriage of",
+    "In the Interest of",
+    "Commonwealth ex rel.",
     "In re",
     "Ex parte",
     "Matter of",
     "State ex rel.",
     "United States ex rel.",
     "Application of",
+    "On Petition of",
     "Petition of",
+    "Adoption of",
+    "Conservatorship of",
+    "Guardianship of",
     "Estate of",
   ]
 
