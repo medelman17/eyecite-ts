@@ -241,6 +241,24 @@ const SIGNAL_TABLE: ReadonlyArray<readonly [RegExp, HistorySignal]> = [
   [/^distinguished\b/i, "distinguished"],
   [/^withdrawn\b/i, "withdrawn"],
   [/^reinstated\b/i, "reinstated"],
+  // Texas writ-of-error history (Tex. R. App. P. 47.7, pre-Sept. 1997).
+  // Longer disposition modifiers must precede the bare forms so alternation
+  // picks the more specific match (#229).
+  [/^writ\s+ref'?d\s+n\.r\.e\./i, "writ_refused"],
+  [/^writ\s+ref'?d\s+w\.m\.j\./i, "writ_refused"],
+  [/^writ\s+ref'?d\b/i, "writ_refused"],
+  [/^writ\s+dism'?d\s+w\.o\.j\./i, "writ_dismissed"],
+  [/^writ\s+dism'?d\b/i, "writ_dismissed"],
+  [/^writ\s+denied\b/i, "writ_denied"],
+  [/^writ\s+granted\b/i, "writ_granted"],
+  [/^no\s+writ\b/i, "no_writ"],
+  // Texas petition history (post-Sept. 1997).
+  [/^pet\.\s+ref'?d\b/i, "pet_refused"],
+  [/^pet\.\s+denied\b/i, "pet_denied"],
+  [/^pet\.\s+dism'?d\b/i, "pet_dismissed"],
+  [/^pet\.\s+granted\b/i, "pet_granted"],
+  [/^no\s+pet\.\s+h\./i, "no_pet"],
+  [/^no\s+pet\./i, "no_pet"],
 ]
 
 /**
@@ -1338,6 +1356,8 @@ export function parseParenthetical(content: string): {
   year?: number
   date?: StructuredDate
   disposition?: string
+  /** Texas Greenbook writ/petition history clause inside the parenthetical (#229) */
+  internalHistory?: { signal: HistorySignal; rawSignal: string; start: number; end: number }
   courtStart?: number
   courtEnd?: number
   yearStart?: number
@@ -1348,6 +1368,12 @@ export function parseParenthetical(content: string): {
     year?: number
     date?: StructuredDate
     disposition?: string
+    internalHistory?: {
+      signal: HistorySignal
+      rawSignal: string
+      start: number
+      end: number
+    }
     courtStart?: number
     courtEnd?: number
     yearStart?: number
@@ -1361,8 +1387,40 @@ export function parseParenthetical(content: string): {
     result.year = dateResult.parsed.year
   }
 
-  // Extract court (strips date components)
-  const courtResult = stripDateFromCourt(content)
+  // Texas writ/pet history: detect trailing ",\s*<signal>" clause after year
+  // (e.g., "Tex. App.—Dallas 2010, writ ref'd n.r.e."). Strip the clause from
+  // the working content so stripDateFromCourt sees the conventional shape.
+  let workingContent = content
+  if (result.year) {
+    const yearStr = String(result.year)
+    const yearIdx = content.lastIndexOf(yearStr)
+    if (yearIdx !== -1) {
+      const afterYearStart = yearIdx + yearStr.length
+      const afterYear = content.substring(afterYearStart)
+      const trailing = /^\s*,\s*(.+?)\s*$/.exec(afterYear)
+      if (trailing) {
+        const sigText = trailing[1]
+        const normalized = normalizeSignal(sigText)
+        if (normalized) {
+          const rawSignal = sigText.substring(0, normalized.matchLength)
+          // Compute the absolute offset of the signal text within the content.
+          const sigOffset = content.indexOf(rawSignal, afterYearStart)
+          result.internalHistory = {
+            signal: normalized.signal,
+            rawSignal,
+            start: sigOffset !== -1 ? sigOffset : afterYearStart,
+            end:
+              (sigOffset !== -1 ? sigOffset : afterYearStart) + rawSignal.length,
+          }
+          workingContent = content.substring(0, afterYearStart)
+        }
+      }
+    }
+  }
+
+  // Extract court (strips date components) — runs on workingContent so the
+  // Texas trailing-history clause does not interfere with date-end detection.
+  const courtResult = stripDateFromCourt(workingContent)
   if (courtResult) {
     result.court = courtResult
     const courtIdx = content.indexOf(courtResult)
@@ -1945,8 +2003,39 @@ export function extractCase(
   }
 
   // Build subsequentHistoryEntries from captured signals (already normalized
-  // during collection to avoid a second SIGNAL_TABLE scan)
+  // during collection to avoid a second SIGNAL_TABLE scan).
+  // Texas Greenbook writ/petition history (#229) lives *inside* the
+  // court-and-year parenthetical, so it's captured by parseParenthetical's
+  // `internalHistory` field rather than the between-parens collector. Emit
+  // it first so it appears at order=0 in the chain — it semantically precedes
+  // any later signals between separate parens.
   let subsequentHistoryEntries: SubsequentHistoryEntry[] | undefined
+  if (cleanedText && metaParenResult?.internalHistory && allParens && allParens.length > 0) {
+    const metaParen = parentheticalContent ? allParens[0] : undefined
+    if (metaParen) {
+      const contentStart = metaParen.start + 1
+      const ih = metaParenResult.internalHistory
+      const sigCleanStart = contentStart + ih.start
+      const sigCleanEnd = contentStart + ih.end
+      const { originalStart: sigOrigStart, originalEnd: sigOrigEnd } =
+        resolveOriginalSpan(
+          { cleanStart: sigCleanStart, cleanEnd: sigCleanEnd },
+          transformationMap,
+        )
+      subsequentHistoryEntries ??= []
+      subsequentHistoryEntries.push({
+        signal: ih.signal,
+        rawSignal: ih.rawSignal,
+        signalSpan: {
+          cleanStart: sigCleanStart,
+          cleanEnd: sigCleanEnd,
+          originalStart: sigOrigStart,
+          originalEnd: sigOrigEnd,
+        },
+        order: 0,
+      })
+    }
+  }
   if (cleanedText && collected && collected.signals.length > 0) {
     for (let i = 0; i < collected.signals.length; i++) {
       const { signal: rawSig } = collected.signals[i]
@@ -1964,7 +2053,7 @@ export function extractCase(
           originalStart: sigOrigStart,
           originalEnd: sigOrigEnd,
         },
-        order: i,
+        order: subsequentHistoryEntries.length,
       })
     }
   }

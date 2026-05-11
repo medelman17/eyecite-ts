@@ -171,6 +171,11 @@ export interface Parenthetical {
 /**
  * Normalized subsequent history signal classification.
  * Maps variant spellings (aff'd, affirmed) to canonical forms.
+ *
+ * Texas Greenbook writ/petition history forms (placed inside the court-and-year
+ * parenthetical, per Tex. R. App. P. 47.7) are tracked with their own categories
+ * so downstream consumers can distinguish them from federal-style subsequent
+ * history. See #229.
  */
 export type HistorySignal =
   | "affirmed"
@@ -188,6 +193,18 @@ export type HistorySignal =
   | "distinguished"
   | "withdrawn"
   | "reinstated"
+  // Texas writ-of-error history (pre-Sept. 1, 1997 — older opinions still cite)
+  | "writ_refused"
+  | "writ_dismissed"
+  | "writ_denied"
+  | "writ_granted"
+  | "no_writ"
+  // Texas petition history (post-Sept. 1, 1997)
+  | "pet_refused"
+  | "pet_denied"
+  | "pet_dismissed"
+  | "pet_granted"
+  | "no_pet"
 
 /**
  * A single subsequent history entry from a case citation.
