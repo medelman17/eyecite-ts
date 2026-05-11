@@ -5188,4 +5188,85 @@ describe("multi-stage subsequent history chains (#246)", () => {
   })
 })
 
+/**
+ * Paragraph-marker pincites in full case citations (#204).
+ *
+ * NY Slip Op and Canadian neutrals number paragraphs and reference them with
+ * `¶` / `¶¶` or `para.` / `paras.` after the volume-reporter-page. The
+ * pincite parser now recognizes these forms; the top-level `pincite` field
+ * remains page-only (undefined for paragraph-only) while `pinciteInfo.paragraph`
+ * and `pinciteInfo.endParagraph` carry the paragraph number(s).
+ */
+describe("paragraph-marker pincites in full case citations (#204)", () => {
+  it("captures `¶¶ 12-14` after `45 NY2d 101`", () => {
+    const text = "Doe v. Roe, 45 NY2d 101, ¶¶ 12-14 (1978)."
+    const cits = extractCitations(text)
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0].type === "case") {
+      expect(cases[0].pinciteInfo?.paragraph).toBe(12)
+      expect(cases[0].pinciteInfo?.endParagraph).toBe(14)
+      expect(cases[0].pinciteInfo?.isRange).toBe(true)
+      // Top-level pincite stays page-only (undefined for paragraph-only).
+      expect(cases[0].pincite).toBeUndefined()
+    }
+  })
+
+  it("captures `¶ 12` after `45 NY2d 101`", () => {
+    const text = "Doe v. Roe, 45 NY2d 101, ¶ 12 (1978)."
+    const cits = extractCitations(text)
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0].type === "case") {
+      expect(cases[0].pinciteInfo?.paragraph).toBe(12)
+      expect(cases[0].pinciteInfo?.endParagraph).toBeUndefined()
+    }
+  })
+
+  it("captures `para. 12` (spelled-out singular)", () => {
+    const text = "Doe v. Roe, 45 NY2d 101, para. 12 (1978)."
+    const cits = extractCitations(text)
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0].type === "case") {
+      expect(cases[0].pinciteInfo?.paragraph).toBe(12)
+    }
+  })
+
+  it("captures `paras. 12-14` (spelled-out range)", () => {
+    const text = "Doe v. Roe, 45 NY2d 101, paras. 12-14 (1978)."
+    const cits = extractCitations(text)
+    const cases = cits.filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0].type === "case") {
+      expect(cases[0].pinciteInfo?.paragraph).toBe(12)
+      expect(cases[0].pinciteInfo?.endParagraph).toBe(14)
+    }
+  })
+
+  describe("regression controls — page pincites still work", () => {
+    it("`, 105` (bare page) still parses", () => {
+      const text = "Doe v. Roe, 45 NY2d 101, 105 (1978)."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].pincite).toBe(105)
+        expect(cases[0].pinciteInfo?.page).toBe(105)
+        expect(cases[0].pinciteInfo?.paragraph).toBeUndefined()
+      }
+    })
+
+    it("`, 105-107` (page range) still parses", () => {
+      const text = "Doe v. Roe, 45 NY2d 101, 105-107 (1978)."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      if (cases[0].type === "case") {
+        expect(cases[0].pinciteInfo?.page).toBe(105)
+        expect(cases[0].pinciteInfo?.endPage).toBe(107)
+      }
+    })
+  })
+})
+
 

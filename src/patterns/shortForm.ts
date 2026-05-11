@@ -12,29 +12,34 @@
 
 import type { Pattern } from "./casePatterns"
 
-/** Id. with optional pincite: "Id." or "Id. at 253" or "Id., at 253".
+/** Id. with optional pincite: "Id." or "Id. at 253" or "Id., at 253" or
+ *  "Id. ¶ 12" (#204).
  *  Pincite captures an optional "*" prefix for star-pagination (NY Slip Op,
  *  Westlaw, Lexis; see #191), an optional trailing " n.14" / " nn.14-15"
- *  footnote suffix (see #202), and an optional `p.` / `pp.` prefix used by
- *  the California Style Manual (e.g., `Id. at p. 115`, `Id. at pp. 115-117`;
- *  see #236). */
+ *  footnote suffix (see #202), an optional `p.` / `pp.` prefix for
+ *  California Style Manual form (see #236), and `¶` / `¶¶` / `para.` /
+ *  `paras.` paragraph markers (#204). When the pincite is a paragraph form,
+ *  `at` is optional — `Id. ¶ 12` and `Id. at ¶ 12` both match. */
 export const ID_PATTERN: RegExp =
-  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]d\.(?:,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:\s*[-–]\s*\*?\d+)?)(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)?/g
+  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]d\.(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
 
-/** Ibid. with optional pincite (less common variant). */
+/** Ibid. with optional pincite (less common variant). Paragraph forms (#204)
+ *  follow the same convention as Id. */
 export const IBID_PATTERN: RegExp =
-  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]bid\.(?:,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:\s*[-–]\s*\*?\d+)?)(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)?/g
+  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]bid\.(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
 
 /**
  * Supra with party name and optional pincite.
  * Pattern: word(s), supra [note N] [, at page]
  * Captures: (1) party name, (2) note number (if any), (3) pincite
  * Pincite accepts optional "*" prefix for star-pagination (#191), an optional
- * range end (#236), an optional trailing footnote suffix (#202), and an
- * optional `p.` / `pp.` prefix for California Style Manual form (#236).
+ * range end (#236), an optional trailing footnote suffix (#202), an optional
+ * `p.` / `pp.` prefix for California Style Manual form (#236), and `¶` /
+ * `¶¶` / `para.` / `paras.` paragraph markers (#204). When the pincite is a
+ * paragraph form, `at` is optional.
  */
 export const SUPRA_PATTERN: RegExp =
-  /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:[-–—]\*?\d+)?)(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)?/g
+  /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
 
 /**
  * Standalone supra without party name (common in footnotes).
@@ -42,11 +47,11 @@ export const SUPRA_PATTERN: RegExp =
  * Requires "note", "at", "§", "Part", or "p." after supra to avoid matching
  * the word "supra" in prose. Preceded by whitespace, start, or signal words.
  * Captures: (1) note number (if any), (2) pincite (with optional "*" prefix,
- * #191, optional range end / `p.`/`pp.` prefix #236, and optional trailing
- * footnote suffix, #202).
+ * #191, optional range end / `p.`/`pp.` prefix #236, optional trailing
+ * footnote suffix #202, and `¶`/`para.` paragraph markers #204).
  */
 export const STANDALONE_SUPRA_PATTERN: RegExp =
-  /(?:^|(?<=\s)|(?<=[;.]))supra(?:\s+note\s+(\d+)(?:,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:[-–—]\*?\d+)?)(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)?|\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:[-–—]\*?\d+)?)(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|\s+(?:§+|Part|p\.)\s*\S+)/g
+  /(?:^|(?<=\s)|(?<=[;.]))supra(?:\s+note\s+(\d+)(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?|\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)|\s+(?:§+|Part|p\.)\s*\S+)/g
 
 /**
  * Short-form case: volume reporter [,] at page
@@ -56,11 +61,12 @@ export const STANDALONE_SUPRA_PATTERN: RegExp =
  * Handles SCOTUS/federal comma-before-at: "597 U.S., at 721", "116 F.4th, at 1193".
  * Pincite accepts optional "*" prefix for star-pagination (#191), an optional
  * range end "462-65" / "462-*65" (#201), an optional trailing footnote suffix
- * " n.14" / " nn.14-15" (#202), and an optional `p.` / `pp.` prefix for
- * California Style Manual form (`18 Cal.4th at p. 717`; see #236).
+ * " n.14" / " nn.14-15" (#202), an optional `p.` / `pp.` prefix for
+ * California Style Manual form (`18 Cal.4th at p. 717`; see #236), and `¶` /
+ * `¶¶` / `para.` / `paras.` paragraph markers (#204).
  */
 export const SHORT_FORM_CASE_PATTERN: RegExp =
-  /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:[-–—]\*?\d+)?)(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?\b/g
+  /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)\b/g
 
 /** All short-form patterns for tokenization */
 export const SHORT_FORM_PATTERNS: readonly RegExp[] = [

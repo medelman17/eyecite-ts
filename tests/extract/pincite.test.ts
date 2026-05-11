@@ -160,4 +160,65 @@ describe("parsePincite", () => {
     const result = parsePincite("570")
     expect(result?.starPage).toBeUndefined()
   })
+
+  /**
+   * Paragraph-marker pincites (#204). Common in NY Slip Op, Canadian, and
+   * other paragraph-numbered opinion sources. The `page` field is left
+   * undefined for paragraph-only pincites — consumers read `paragraph` /
+   * `endParagraph` instead. The top-level convenience `pincite` field on the
+   * citation stays page-only and remains undefined for these.
+   */
+  describe("paragraph-marker pincites (#204)", () => {
+    it("parses `¶ 12` as single paragraph", () => {
+      expect(parsePincite("¶ 12")).toEqual({
+        paragraph: 12,
+        isRange: false,
+        raw: "¶ 12",
+      })
+    })
+
+    it("parses `¶¶ 12-14` as paragraph range", () => {
+      expect(parsePincite("¶¶ 12-14")).toEqual({
+        paragraph: 12,
+        endParagraph: 14,
+        isRange: true,
+        raw: "¶¶ 12-14",
+      })
+    })
+
+    it("parses `para. 12` (spelled-out, singular)", () => {
+      expect(parsePincite("para. 12")).toEqual({
+        paragraph: 12,
+        isRange: false,
+        raw: "para. 12",
+      })
+    })
+
+    it("parses `paras. 12-14` (spelled-out, plural+range)", () => {
+      expect(parsePincite("paras. 12-14")).toEqual({
+        paragraph: 12,
+        endParagraph: 14,
+        isRange: true,
+        raw: "paras. 12-14",
+      })
+    })
+
+    it("parses `at ¶ 12` (with 'at' prefix)", () => {
+      expect(parsePincite("at ¶ 12")).toEqual({
+        paragraph: 12,
+        isRange: false,
+        raw: "at ¶ 12",
+      })
+    })
+
+    it("paragraph result has no page field", () => {
+      const r = parsePincite("¶ 12")
+      expect(r?.page).toBeUndefined()
+    })
+
+    it("page result has no paragraph field", () => {
+      const r = parsePincite("570")
+      expect(r?.paragraph).toBeUndefined()
+    })
+  })
 })
