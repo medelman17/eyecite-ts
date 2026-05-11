@@ -49,10 +49,15 @@ export const neutralPatterns: Pattern[] = [
     type: "neutral",
   },
   {
+    // Generalized to accept any uppercase-prefixed court abbreviation before
+    // LEXIS so state variants (Cal. LEXIS, Tex. App. LEXIS, N.Y. Misc. LEXIS,
+    // Ill. App. LEXIS, etc.) tokenize alongside the federal U.S. forms (#228).
+    // The non-greedy `[A-Z][A-Za-z.\s]+?` is bounded by the literal `\s+LEXIS`
+    // that follows it, so it can't run away.
     id: "lexis",
-    regex: /\b(\d{4})\s+U\.S\.(?:\s+(?:App|Dist)\.)?\s+LEXIS\s+(\d+)\b/g,
+    regex: /\b(\d{4})\s+[A-Z][A-Za-z.\s]+?\s+LEXIS\s+(\d+)\b/g,
     description:
-      'LexisNexis citations (e.g., "2021 U.S. LEXIS 5000", "2021 U.S. App. LEXIS 12345", "2021 U.S. Dist. LEXIS 67890")',
+      'LexisNexis citations (federal: "2021 U.S. LEXIS 5000", "2021 U.S. App. LEXIS 12345"; state: "2020 Cal. LEXIS 1000", "2020 Tex. App. LEXIS 5000")',
     type: "neutral",
   },
   {
