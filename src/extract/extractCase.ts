@@ -1882,11 +1882,29 @@ export function extractCase(
     disposition = metaParenResult.disposition
   }
 
+  // NY Slip Op unpublished marker (#231): `(U)` (older) or `[U]` (newer)
+  // appears immediately after the page number and must be consumed *before*
+  // LOOKAHEAD_PAREN_REGEX runs, otherwise the regex captures `(U)` as the
+  // court parenthetical and produces `court = "U"`. Detected once and used
+  // both in the in-token paren path and the lookahead path.
+  let unpublished = false
+  if (cleanedText) {
+    const afterTokenForFlag = cleanedText.substring(span.cleanEnd)
+    if (/^\s*(?:\(U\)|\[U\])/.test(afterTokenForFlag)) {
+      unpublished = true
+    }
+  }
+
   // Look ahead in cleaned text for parenthetical after the token
   // Tokenization patterns only capture volume-reporter-page, so parentheticals
   // like "(1989)" or "(9th Cir. 2020)" are not in the token text.
   if (cleanedText && !parentheticalContent) {
-    const afterToken = cleanedText.substring(span.cleanEnd)
+    let afterToken = cleanedText.substring(span.cleanEnd)
+    // Consume any leading (U)/[U] marker so the real court paren is found.
+    const unpubMatch = /^\s*(?:\(U\)|\[U\])/.exec(afterToken)
+    if (unpubMatch) {
+      afterToken = afterToken.substring(unpubMatch[0].length)
+    }
     const lookAheadMatch = LOOKAHEAD_PAREN_REGEX.exec(afterToken)
     if (lookAheadMatch) {
       parentheticalContent = lookAheadMatch[1]
@@ -2348,6 +2366,7 @@ export function extractCase(
     disposition,
     parentheticals,
     subsequentHistoryEntries,
+    ...(unpublished ? { unpublished: true } : {}),
     plaintiff,
     plaintiffNormalized,
     defendant,

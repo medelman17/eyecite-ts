@@ -247,6 +247,12 @@ export interface FullCaseCitation extends CitationBase {
   /** Structured pincite information (page, range, footnote) */
   pinciteInfo?: import("../extract/pincite").PinciteInfo
   court?: string
+  /**
+   * True for citations whose source carried an unpublished-disposition marker.
+   * Set by NY Slip Op `(U)` / `[U]` suffix detection (#231). Absent or `false`
+   * for published decisions.
+   */
+  unpublished?: boolean
   /** Normalized court string: spaces collapsed, trailing period ensured */
   normalizedCourt?: string
   year?: number
