@@ -276,11 +276,13 @@ const V_CASE_NAME_REGEX =
   /([A-Z][A-Za-z0-9\s.,'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9\s.,'&()/-]+?)\s*,\s*$/
 
 /** Procedural prefix case name format.
- *  Longer prefixes listed first so `In the Matter of X` beats `Matter of X`,
- *  `In re Marriage of X` beats `In re X`, and `On Petition of X` beats
- *  `Petition of X`. See #193, #242. */
+ *  Longer prefixes listed first so the alternation prefers the longer match
+ *  (e.g., `In the Matter of the Liquidation of X` beats `In the Matter of X`,
+ *  `In re Marriage of X` beats `In re X`, `Commonwealth of Puerto Rico ex rel.`
+ *  beats `Commonwealth ex rel.`). See #193, #242, and the six 2026-05-11
+ *  procedural-prefix research dispatches in `docs/research/`. */
 const PROCEDURAL_PREFIX_REGEX =
-  /\b(In\s+the\s+Matter\s+of|In\s+re\s+Marriage\s+of|In\s+the\s+Interest\s+of|Commonwealth\s+ex\s+rel\.|In re|Ex parte|Matter of|Estate of|State ex rel\.|United States ex rel\.|Application of|On Petition of|Petition of|Adoption of|Conservatorship of|Guardianship of)\s+([A-Za-z0-9\s.,'&()/-]+?)\s*,\s*$/i
+  /\b(In\s+the\s+Matter\s+of\s+the\s+Liquidation\s+of|In\s+the\s+Matter\s+of\s+the\s+Rehabilitation\s+of|In\s+the\s+Matter\s+of\s+the\s+Receivership\s+of|In\s+the\s+Matter\s+of\s+the\s+Extradition\s+of|In\s+the\s+Matter\s+of\s+the\s+Application\s+of|In\s+the\s+Matter\s+of\s+the\s+Welfare\s+of|In\s+the\s+Matter\s+of|In\s+re\s+Petition\s+for\s+Naturalization\s+of|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+as\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+of|In\s+re\s+Marriage\s+of|In\s+re\s+Liquidation\s+of|In\s+re\s+Rehabilitation\s+of|In\s+re\s+Receivership\s+of|In\s+re\s+Naturalization\s+of|In\s+re\s+Extradition\s+of|In\s+re\s+Application\s+of|In\s+re\s+Welfare\s+of|In\s+re\s+Dependency\s+of|In\s+re\s+Paternity\s+of|In\s+re\s+Parentage\s+of|In\s+the\s+Interest\s+of|Matter\s+of\s+Liquidation\s+of|Matter\s+of\s+Rehabilitation\s+of|Commonwealth\s+of\s+Puerto\s+Rico\s+ex\s+rel\.|Government\s+of\s+the\s+Virgin\s+Islands\s+ex\s+rel\.|Commonwealth\s+ex\s+rel\.|Petition\s+for\s+Naturalization\s+of|People\s+ex\s+rel\.|District\s+of\s+Columbia\s+ex\s+rel\.|Care\s+and\s+Protection\s+of|Succession\s+of|In re|Ex parte|Matter of|Estate of|State ex rel\.|United States ex rel\.|Application of|On Petition of|Petition of|Adoption of|Conservatorship of|Guardianship of)\s+([A-Za-z0-9\s.,'&()/-]+?)\s*,\s*$/i
 
 /**
  * Lowercase words that legitimately appear in legal party names.
@@ -1505,26 +1507,64 @@ export function extractPartyNames(caseName: string): {
 } {
   let signal: CitationSignal | undefined
   // Procedural prefix patterns (anchored to start, case-insensitive).
-  // Longer prefixes first so "In the Matter of X" wins over "Matter of X",
-  // "In re Marriage of X" wins over "In re X", and "On Petition of X" wins
-  // over "Petition of X" (#242).
+  // Longer prefixes first so the for-loop's `prefixRegex.exec(caseName)` finds
+  // the most specific match. Six 2026-05-11 cross-domain research dispatches
+  // (family, probate, bankruptcy, immigration, criminal/habeas, ex rel./qui tam)
+  // identified the additions; corpus-sourced examples live in
+  // `docs/research/2026-05-11-procedural-prefixes-*.md`.
   const proceduralPrefixes = [
+    // "In the Matter of the X of" cluster — must precede "In the Matter of"
+    "In the Matter of the Liquidation of",
+    "In the Matter of the Rehabilitation of",
+    "In the Matter of the Receivership of",
+    "In the Matter of the Extradition of",
+    "In the Matter of the Application of",
+    "In the Matter of the Welfare of",
     "In the Matter of",
+    // "In re X of" cluster — must precede "In re"
+    "In re Petition for Naturalization of",
+    "In re Termination of Parental Rights as to",
+    "In re Termination of Parental Rights to",
+    "In re Termination of Parental Rights of",
     "In re Marriage of",
+    "In re Liquidation of",
+    "In re Rehabilitation of",
+    "In re Receivership of",
+    "In re Naturalization of",
+    "In re Extradition of",
+    "In re Application of",
+    "In re Welfare of",
+    "In re Dependency of",
+    "In re Paternity of",
+    "In re Parentage of",
     "In the Interest of",
-    "Commonwealth ex rel.",
     "In re",
     "Ex parte",
+    // "Matter of X of" cluster — must precede "Matter of"
+    "Matter of Liquidation of",
+    "Matter of Rehabilitation of",
     "Matter of",
+    // Sovereign ex rel. — long forms precede short forms
+    "Commonwealth of Puerto Rico ex rel.",
+    "Government of the Virgin Islands ex rel.",
+    "Commonwealth ex rel.",
     "State ex rel.",
     "United States ex rel.",
+    "People ex rel.",
+    "District of Columbia ex rel.",
+    // Petition variants — "Petition for Naturalization of" precedes "Petition of"
+    "Petition for Naturalization of",
     "Application of",
     "On Petition of",
     "Petition of",
+    // Other "X of" forms
     "Adoption of",
     "Conservatorship of",
     "Guardianship of",
     "Estate of",
+    // Bare forms with no "In re" prefix (no alternation-ordering collisions)
+    "Care and Protection of",
+    "Succession of",
   ]
 
   // Check for procedural prefix first
