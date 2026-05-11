@@ -5038,4 +5038,154 @@ describe("California year-first citation format (#19)", () => {
   })
 })
 
+/**
+ * Multi-stage subsequent history chains (#246).
+ *
+ * Bluebook 10.7 supports unlimited-depth subsequent-history chains, e.g.
+ * `Smith v. Jones, 100 F.2d 100 (2d Cir. 1990), aff'd, 200 U.S. 1 (1992),
+ * overruled by Doe v. Roe, 300 U.S. 50 (2010)`. The parent's
+ * `subsequentHistoryEntries` must contain BOTH `affirmed` and `overruled`
+ * (in order), and each follow-on citation must back-reference the parent
+ * with the correct signal in `subsequentHistoryOf`.
+ *
+ * The session that fixed the underlying `pendingSignal` flush bug
+ * (`review granted, opinion vacated` → keep both, not just the last) also
+ * resolved the basic case here; this suite locks that behavior in across
+ * representative chain shapes and surfaces the missing `reh'g denied` /
+ * `rehearing denied` signal entries.
+ */
+describe("multi-stage subsequent history chains (#246)", () => {
+  describe("two-link chains lock in correct parent entries + back-pointers", () => {
+    it("`aff'd, X, overruled by Y` produces two entries on the parent", () => {
+      const text =
+        "Smith v. Jones, 100 F.2d 100 (2d Cir. 1990), aff'd, 200 U.S. 1 (1992), overruled by Doe v. Roe, 300 U.S. 50 (2010)."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(3)
+      const parent = cases[0]
+      const link2 = cases[1]
+      const link3 = cases[2]
+      if (
+        parent.type === "case" &&
+        link2.type === "case" &&
+        link3.type === "case"
+      ) {
+        expect(parent.text).toBe("100 F.2d 100")
+        expect(parent.subsequentHistoryEntries?.length).toBe(2)
+        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe("affirmed")
+        expect(parent.subsequentHistoryEntries?.[1]?.signal).toBe("overruled")
+        expect(link2.subsequentHistoryOf?.signal).toBe("affirmed")
+        expect(link3.subsequentHistoryOf?.signal).toBe("overruled")
+      }
+    })
+
+    it("`modified, X, cert. denied, Y` produces two entries on the parent", () => {
+      const text =
+        "Brown v. State, 100 S.W.3d 1 (Tex. 2003), modified, 200 S.W.3d 100 (Tex. 2004), cert. denied, 600 U.S. 1 (2005)."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(3)
+      const parent = cases[0]
+      if (parent.type === "case") {
+        expect(parent.subsequentHistoryEntries?.length).toBe(2)
+        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe("modified")
+        expect(parent.subsequentHistoryEntries?.[1]?.signal).toBe("cert_denied")
+      }
+    })
+
+    it("`reh'g denied, X, cert. granted, Y` produces two entries on the parent", () => {
+      const text =
+        "Acme Corp. v. Beta, 50 F.4th 1 (9th Cir. 2022), reh'g denied, 60 F.4th 50 (9th Cir. 2023), cert. granted, 700 U.S. 1 (2024)."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(3)
+      const parent = cases[0]
+      if (parent.type === "case") {
+        expect(parent.subsequentHistoryEntries?.length).toBe(2)
+        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe(
+          "rehearing_denied",
+        )
+        expect(parent.subsequentHistoryEntries?.[1]?.signal).toBe(
+          "cert_granted",
+        )
+      }
+    })
+  })
+
+  describe("rehearing signal variants (#246 missing-signal fix)", () => {
+    it("recognizes `reh'g denied` as `rehearing_denied`", () => {
+      const text = "Smith v. Jones, 50 F.3d 1 (1990), reh'g denied."
+      const cits = extractCitations(text)
+      const parent = cits.find((c) => c.type === "case")
+      expect(parent?.type).toBe("case")
+      if (parent?.type === "case") {
+        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe(
+          "rehearing_denied",
+        )
+      }
+    })
+
+    it("recognizes `rehearing denied` (long form) as `rehearing_denied`", () => {
+      const text = "Smith v. Jones, 50 F.3d 1 (1990), rehearing denied."
+      const cits = extractCitations(text)
+      const parent = cits.find((c) => c.type === "case")
+      if (parent?.type === "case") {
+        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe(
+          "rehearing_denied",
+        )
+      }
+    })
+
+    it("recognizes `reh'g granted` as `rehearing_granted`", () => {
+      const text = "Smith v. Jones, 50 F.3d 1 (1990), reh'g granted."
+      const cits = extractCitations(text)
+      const parent = cits.find((c) => c.type === "case")
+      if (parent?.type === "case") {
+        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe(
+          "rehearing_granted",
+        )
+      }
+    })
+
+    it("recognizes `rehearing granted` (long form)", () => {
+      const text = "Smith v. Jones, 50 F.3d 1 (1990), rehearing granted."
+      const cits = extractCitations(text)
+      const parent = cits.find((c) => c.type === "case")
+      if (parent?.type === "case") {
+        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe(
+          "rehearing_granted",
+        )
+      }
+    })
+  })
+
+  describe("regression controls — single-link chains still work", () => {
+    it("`aff'd, X` (single link) still produces one entry", () => {
+      const text =
+        "Smith v. Jones, 100 F.2d 100 (2d Cir. 1990), aff'd, 200 U.S. 1 (1992)."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(2)
+      const parent = cases[0]
+      if (parent.type === "case") {
+        expect(parent.subsequentHistoryEntries?.length).toBe(1)
+        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe("affirmed")
+      }
+    })
+
+    it("`review granted, opinion vacated` (no-paren chain) still works", () => {
+      const text =
+        "People v. Smith, 50 Cal.3d 100 (Cal. 1990), review granted, opinion vacated."
+      const cits = extractCitations(text)
+      const parent = cits.find((c) => c.type === "case")
+      if (parent?.type === "case") {
+        expect(parent.subsequentHistoryEntries?.length).toBe(2)
+        const sigs = parent.subsequentHistoryEntries?.map((e) => e.signal)
+        expect(sigs).toContain("review_granted")
+        expect(sigs).toContain("opinion_vacated")
+      }
+    })
+  })
+})
+
 
