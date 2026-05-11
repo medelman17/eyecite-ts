@@ -304,6 +304,15 @@ export function extractCitations(
     for (const s of secondaries) secondaryToGroup.set(s, primary)
   }
 
+  // Span list for all case-shape tokens. Passed to extractCase so the per-cite
+  // pincite/year/caseName logic can see what's adjacent and avoid scanning
+  // INTO neighbor citations (parallel-cite chains share a trailing year paren
+  // and the case-name backward walk for a parallel cite must stop at the
+  // prior cite's end).
+  const caseTokenSpans = deduplicatedTokens
+    .filter((t) => t.type === "case")
+    .map((t) => ({ cleanStart: t.span.cleanStart, cleanEnd: t.span.cleanEnd }))
+
   // Step 4: Extract citations from deduplicated tokens
   const citations: Citation[] = []
   for (let i = 0; i < deduplicatedTokens.length; i++) {
@@ -320,7 +329,13 @@ export function extractCitations(
         } else if (token.patternId === "shortFormCase") {
           citation = extractShortFormCase(token, transformationMap)
         } else {
-          citation = extractCase(token, transformationMap, cleaned, text)
+          citation = extractCase(
+            token,
+            transformationMap,
+            cleaned,
+            text,
+            caseTokenSpans,
+          )
         }
         break
       case "docket": {

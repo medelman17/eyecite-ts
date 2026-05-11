@@ -177,8 +177,13 @@ const LOOKAHEAD_PAREN_REGEX =
  *  " nn.14-15" footnote suffix is captured when present (#202). Paragraph
  *  forms (`¶ N` / `¶¶ N-M` / `para. N` / `paras. N-M`) are accepted in the
  *  capture; `parsePincite` routes them to the `paragraph` field (#204). */
+// Parallel-cite disambiguation: a real pincite is bounded by end-of-string,
+// sentence punctuation, a paren or bracket close, or whitespace NOT followed
+// by a capital letter (which would start a parallel cite's reporter token,
+// e.g., `, 198 A. 154` or `, 93 S. Ct. 705`). The anchored positive lookahead
+// prevents regex backtracking into shorter digit prefixes.
 const LOOKAHEAD_PINCITE_REGEX =
-  /^(?:\s+at\s+(?:pp?\.\s*)?|,\s*(?:at\s+(?:pp?\.\s*)?)?)(\*?\d+(?:-\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)/d
+  /^(?:\s+at\s+(?:pp?\.\s*)?|,\s*(?:at\s+(?:pp?\.\s*)?)?)(\*?\d+(?:-\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)(?=$|[.,;)(\]]|\s(?![A-Z]))/d
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
@@ -193,8 +198,11 @@ const PAREN_SKIP_REGEX = /[\s,]/
  *
  *  Excludes paragraph forms (`¶ 12` mixed with page numbers is exceedingly
  *  rare and would conflict with the citation core's lookahead boundary). */
+// Parallel-cite disambiguation: tighten the trailing whitespace branch to
+// reject `\s+[A-Z]` (a parallel-cite reporter token). Allow bracket close
+// `]` as a terminator so bracketed parallel pincites still capture.
 const ADDITIONAL_PINCITE_REGEX =
-  /^,\s*(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)(?=\s|$|\(|,|;|\.)/
+  /^,\s*(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)(?=$|[.,;)(\]]|\s(?![A-Z]))/
 
 /** Pincite text that appears between core citation and parentheticals.
  *  Matches: comma-separated page numbers/ranges and optional note refs.
@@ -2031,6 +2039,13 @@ export function extractCase(
   transformationMap: TransformationMap,
   cleanedText?: string,
   originalText?: string,
+  /** Clean-coordinate spans of sibling tokens. Used to:
+   *  - bound the case-name backward walk so a parallel cite's caption is
+   *    not absorbed into this cite's caseName,
+   *  - skip past a contiguous parallel-cite chain (`, 198 A. 154, 35 L.Ed.2d 147`)
+   *    when searching for the shared trailing year parenthetical so each
+   *    cite in the chain gets year/court populated. */
+  siblings?: ReadonlyArray<{ cleanStart: number; cleanEnd: number }>,
 ): FullCaseCitation {
   const { text, span } = token
 
@@ -2144,17 +2159,48 @@ export function extractCase(
     }
   }
 
+  // Parallel-cite chain skip: when this cite is followed by another citation
+  // separated only by parallel-chain junk (commas, whitespace, digit/dash
+  // runs for intervening pincites), the shared trailing parenthetical sits
+  // AFTER the last cite in the chain — e.g., `329 Pa. 256, 198 A. 154 (1938)`
+  // or `410 U.S. 113, 117, 93 S. Ct. 705 (1973)` where the `, 117,` is the
+  // first cite's pincite. Compute the post-chain start position once and
+  // share it between the look-ahead paren scan and `collectParentheticals`
+  // so the trailing year paren is found AND fullSpan extends through it.
+  let postChainStart = span.cleanEnd
+  if (cleanedText && siblings && siblings.length > 0) {
+    const CHAIN_BRIDGE_REGEX = /^[\s,\d\-–—]*$/
+    while (true) {
+      const next = siblings.find(
+        (s) =>
+          s.cleanStart > postChainStart &&
+          CHAIN_BRIDGE_REGEX.test(
+            cleanedText.substring(postChainStart, s.cleanStart),
+          ),
+      )
+      if (!next) break
+      postChainStart = next.cleanEnd
+    }
+  }
+
   // Look ahead in cleaned text for parenthetical after the token
   // Tokenization patterns only capture volume-reporter-page, so parentheticals
   // like "(1989)" or "(9th Cir. 2020)" are not in the token text.
   if (cleanedText && !parentheticalContent) {
-    let afterToken = cleanedText.substring(span.cleanEnd)
+    // The pincite scan below must still operate on the original afterToken
+    // (starting at span.cleanEnd) so `, 117` is parseable as this cite's
+    // pincite; the paren scan uses the post-chain window instead.
+    const afterToken = cleanedText.substring(span.cleanEnd)
+    let parenAfterToken =
+      postChainStart === span.cleanEnd
+        ? afterToken
+        : cleanedText.substring(postChainStart)
     // Consume any leading (U)/[U] marker so the real court paren is found.
-    const unpubMatch = /^\s*(?:\(U\)|\[U\])/.exec(afterToken)
+    const unpubMatch = /^\s*(?:\(U\)|\[U\])/.exec(parenAfterToken)
     if (unpubMatch) {
-      afterToken = afterToken.substring(unpubMatch[0].length)
+      parenAfterToken = parenAfterToken.substring(unpubMatch[0].length)
     }
-    const lookAheadMatch = LOOKAHEAD_PAREN_REGEX.exec(afterToken)
+    const lookAheadMatch = LOOKAHEAD_PAREN_REGEX.exec(parenAfterToken)
     if (lookAheadMatch) {
       parentheticalContent = lookAheadMatch[1]
       // Parse parenthetical using unified parser
@@ -2220,7 +2266,9 @@ export function extractCase(
   let allParens: RawParenthetical[] | undefined
   let collected: CollectedParentheticals | undefined
   if (cleanedText) {
-    collected = collectParentheticals(cleanedText, span.cleanEnd)
+    // Use postChainStart so fullSpan / chained-paren classification can see
+    // the shared trailing paren that sits past a parallel-cite chain.
+    collected = collectParentheticals(cleanedText, postChainStart)
     allParens = collected.parens
     // Skip first paren (already parsed above as court/year)
     const remaining = parentheticalContent ? allParens.slice(1) : allParens
@@ -2381,13 +2429,35 @@ export function extractCase(
     court = "scotus"
   }
 
-  // Phase 6: Extract case name via backward search
+  // Phase 6: Extract case name via backward search.
+  // Bound the lookback by the previous sibling token's end (if any) so the
+  // backward walk for a parallel cite (e.g., the `198 A. 154` half of
+  // `Nixon v. Nixon, 329 Pa. 256, 198 A. 154`) does not absorb the earlier
+  // reporter cite into the case name.
+  let caseNameLookback: number | undefined
+  if (siblings && siblings.length > 0) {
+    const prev = siblings
+      .filter((s) => s.cleanEnd <= span.cleanStart)
+      .reduce<{ cleanEnd: number } | undefined>(
+        (best, s) =>
+          !best || s.cleanEnd > best.cleanEnd ? s : best,
+        undefined,
+      )
+    if (prev) {
+      caseNameLookback = span.cleanStart - prev.cleanEnd
+    }
+  }
   let caseNameResult: ReturnType<typeof extractCaseName> | undefined
   if (cleanedText) {
-    caseNameResult = extractCaseName(cleanedText, span.cleanStart, undefined, {
-      originalText,
-      transformationMap,
-    })
+    caseNameResult = extractCaseName(
+      cleanedText,
+      span.cleanStart,
+      caseNameLookback,
+      {
+        originalText,
+        transformationMap,
+      },
+    )
     if (caseNameResult) {
       caseName = caseNameResult.caseName
 
@@ -2462,6 +2532,39 @@ export function extractCase(
         cleanEnd: caseNameCleanEnd,
         originalStart: caseNameOrig.originalStart,
         originalEnd: caseNameOrig.originalEnd,
+      }
+    }
+  }
+
+  // Parallel-cite fullSpan fallback: when this cite is a secondary parallel
+  // (no case-name extracted because the bounded lookback hits the prior
+  // cite's end) AND there is a close preceding sibling indicating a parallel
+  // chain, still extend fullSpan through the shared trailing paren so
+  // string-citation grouping and downstream span consumers see the full
+  // citation extent. The bare cite's own cleanStart anchors the lower bound.
+  // Cites without a preceding sibling (e.g., a standalone `500 F.2d 123 (2020)`
+  // with no caption) intentionally do not get a fullSpan — that's existing
+  // contract: "no case name → no fullSpan".
+  const hasCloseParallelPrev =
+    caseNameLookback !== undefined && caseNameLookback < 30
+  if (
+    !fullSpan &&
+    hasCloseParallelPrev &&
+    allParens &&
+    allParens.length > 0
+  ) {
+    const lastParen = allParens[allParens.length - 1]
+    if (lastParen.end > span.cleanEnd) {
+      const fullCleanStart = span.cleanStart
+      const fullCleanEnd = lastParen.end
+      fullSpan = {
+        cleanStart: fullCleanStart,
+        cleanEnd: fullCleanEnd,
+        originalStart:
+          transformationMap.cleanToOriginal.get(fullCleanStart) ??
+          fullCleanStart,
+        originalEnd:
+          transformationMap.cleanToOriginal.get(fullCleanEnd) ?? fullCleanEnd,
       }
     }
   }
