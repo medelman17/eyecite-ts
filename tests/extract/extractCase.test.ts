@@ -3081,6 +3081,122 @@ New York first recognized IIED as a cognizable cause of action in Fischer v. Mal
   })
 })
 
+describe("justice-attribution parentheticals (#235)", () => {
+  // Justice-attribution form: `(Brennan, J., dissenting)` and variants.
+  // The parser now extracts structured fields: `disposition` (dissent /
+  // concurrence / mixed / majority / plurality opinion / etc.), `justices[]`
+  // (surnames), and optional `scope` (in_judgment / in_part / from_denial).
+  // Existing `(en banc)` / `(per curiam)` disposition handling is preserved.
+
+  describe("single-justice attribution", () => {
+    it("captures 'Brennan, J., dissenting' as disposition=dissent + justice", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 410 U.S. 113, 130 (1973) (Brennan, J., dissenting).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].disposition).toBe("dissent")
+        expect(cases[0].justices).toEqual(["Brennan"])
+      }
+    })
+
+    it("captures 'Roberts, C.J., concurring' as disposition=concurrence", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 410 U.S. 113 (1973) (Roberts, C.J., concurring).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].disposition).toBe("concurrence")
+        expect(cases[0].justices).toEqual(["Roberts"])
+      }
+    })
+  })
+
+  describe("scope qualifiers", () => {
+    it("captures 'Kennedy, J., concurring in the judgment' with scope=in_judgment", () => {
+      const cits = extractCitations(
+        "Doe v. Roe, 500 U.S. 200, 215 (1991) (Kennedy, J., concurring in the judgment).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].disposition).toBe("concurrence")
+        expect(cases[0].justices).toEqual(["Kennedy"])
+        expect(cases[0].scope).toBe("in_judgment")
+      }
+    })
+
+    it("captures 'Roberts, C.J., concurring in part and dissenting in part' with disposition=mixed", () => {
+      const cits = extractCitations(
+        "United States v. Smith, 600 U.S. 1, 50 (2023) (Roberts, C.J., concurring in part and dissenting in part).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].disposition).toBe("mixed")
+        expect(cases[0].justices).toEqual(["Roberts"])
+        expect(cases[0].scope).toBe("in_part")
+      }
+    })
+
+    it("captures 'Cabranes, J., dissenting from denial of rehearing en banc' with scope=from_denial — no en banc false positive", () => {
+      const cits = extractCitations(
+        "Acme Corp. v. Beta, 100 F.3d 1, 25 (2d Cir. 2020) (Cabranes, J., dissenting from denial of rehearing en banc).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].disposition).toBe("dissent")
+        expect(cases[0].justices).toEqual(["Cabranes"])
+        expect(cases[0].scope).toBe("from_denial")
+      }
+    })
+  })
+
+  describe("non-justice disposition parens", () => {
+    it("captures '(plurality opinion)' as disposition=plurality opinion", () => {
+      const cits = extractCitations("Smith v. Jones, 100 U.S. 1 (1990) (plurality opinion).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].disposition).toBe("plurality opinion")
+      }
+    })
+
+    it("captures '(mem.)' as disposition=mem.", () => {
+      const cits = extractCitations("Smith v. Jones, 100 U.S. 1 (1990) (mem.).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].disposition).toBe("mem.")
+      }
+    })
+  })
+
+  describe("regression — en banc / per curiam still work", () => {
+    it("captures '(en banc)' as disposition=en banc", () => {
+      const cits = extractCitations("Smith v. Jones, 100 U.S. 1 (1990) (en banc).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].disposition).toBe("en banc")
+        expect(cases[0].justices).toBeUndefined()
+      }
+    })
+
+    it("captures '(per curiam)' as disposition=per curiam", () => {
+      const cits = extractCitations("Smith v. Jones, 100 U.S. 1 (1990) (per curiam).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].disposition).toBe("per curiam")
+      }
+    })
+  })
+})
+
 describe("NY Slip Op (U)/[U] unpublished markers (#231)", () => {
   // New York Slip Opinion citations carry a trailing `(U)` (older form) or
   // `[U]` (newer form) marker immediately after the document number to flag

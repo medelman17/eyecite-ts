@@ -394,9 +394,25 @@ export interface FullCaseCitation extends CitationBase {
   /**
    * Disposition or procedural status from parenthetical.
    * Populated by Phase 6 (Complex Parentheticals).
-   * @example "en banc", "per curiam"
+   * @example "en banc", "per curiam", "dissent", "concurrence", "mixed", "plurality opinion", "mem."
    */
   disposition?: string
+
+  /**
+   * Surname(s) of justice(s) attributed to the parenthetical disposition.
+   * Populated for justice-attribution parens (#235) like
+   * `(Brennan, J., dissenting)` → `["Brennan"]` or
+   * `(Brennan and Marshall, JJ., dissenting)` → `["Brennan", "Marshall"]`.
+   */
+  justices?: string[]
+
+  /**
+   * Scope qualifier from a justice-attribution parenthetical (#235).
+   * `in_judgment` — "concurring in the judgment"
+   * `in_part`     — "concurring in part" / "concurring in part and dissenting in part"
+   * `from_denial` — "dissenting from denial of <X>"
+   */
+  scope?: string
 
   /**
    * Court level/jurisdiction inferred from reporter series.
