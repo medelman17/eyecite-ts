@@ -1,5 +1,114 @@
 # eyecite-ts
 
+## 0.15.0
+
+### Minor Changes
+
+- [#279](https://github.com/medelman17/eyecite-ts/pull/279) [`aa8f33c`](https://github.com/medelman17/eyecite-ts/commit/aa8f33c006e03637217787d627fd812d51f42f11) Thanks [@medelman17](https://github.com/medelman17)! - feat: short-form case back-reference party name + resolver disambiguation (#278)
+
+  Bluebook short-forms commonly include a leading back-reference name
+  (`Smith, 500 F.2d at 125`). Previously the tokenizer recognized only the bare
+  `vol reporter at page` form, dropping the disambiguating name. The resolver
+  then matched purely on volume + reporter, so when two earlier full citations
+  shared those values the short-form silently resolved to the wrong antecedent.
+
+  ### Changes
+
+  - **`ShortFormCaseCitation`** gains `partyName?: string` and
+    `partyNameNormalized?: string` mirroring `SupraCitation.partyName`.
+  - **`SHORT_FORM_CASE_PATTERN`** (tokenizer) and the local `shortFormRegex`
+    (extractor) now accept an optional leading `[A-Z][a-zA-Z''\-]+(\s+v\.?\s+|\s+)...,\s+`
+    party-name segment before the volume. Group order shifts:
+    `1 = partyName? | 2 = volume | 3 = reporter | 4 = pincite`.
+  - **`extractShortFormCase`** runs the captured raw party name through
+    `stripSupraPartyPrefix` (#216 helper) so leading citation signals
+    (`See`, `Cf.`, `Compare`, etc.) and sentence-initial connectors (`Then`,
+    `Also`, `In` but not `In re`) are stripped before assignment.
+  - **`resolveShortFormCase`** collects all backward in-scope candidates that
+    match volume + reporter. When `partyNameNormalized` is set, it prefers
+    the candidate whose plaintiff or defendant normalized name overlaps
+    (substring containment in either direction tolerates abbreviation
+    patterns); recency breaks ties. Bare short-forms (no party name) continue
+    to fall back to recency — no regression.
+
+  Disambiguated short-forms get confidence 0.98 (vs. 0.95 for vol+reporter-only
+  matches) because the additional party-name constraint tightens the match.
+
+  ### Tests
+
+  6 new tests under `short-form case party-name back-reference (#278)`:
+
+  - **Regex captures** (4): bare form, `Smith,`, `See Smith,` (signal strip),
+    `Smith v. Jones,`.
+  - **Resolver disambiguation** (2): two cases share vol+reporter →
+    party-named short-form picks the right one; bare short-form falls back to
+    recency.
+
+  Pattern-level tests in `tests/patterns/shortForm.test.ts` were updated to
+  the new group order; one new test confirms the optional partyName group.
+
+### Patch Changes
+
+- [#281](https://github.com/medelman17/eyecite-ts/pull/281) [`0c6e1ff`](https://github.com/medelman17/eyecite-ts/commit/0c6e1ff667bf2ba1ef5772b8d24aca7a2c3d421f) Thanks [@medelman17](https://github.com/medelman17)! - fix: parallel-cite volume mistakenly consumed as pincite + lost year/caseName on parallel chains
+
+  When a primary cite was followed by a comma-separated parallel cite —
+  e.g., `Nixon v. Nixon, 329 Pa. 256, 198 A. 154 (1938)` or Roe's three-reporter
+  `410 U.S. 113, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973)` — the volume of the
+  parallel cite (`198`, `93`, `35`) was greedily matched by
+  `LOOKAHEAD_PINCITE_REGEX` as a pincite for the first cite. Downstream effects:
+
+  - The first cite's trailing year parenthetical was unreachable (hidden behind
+    the parallel cite), leaving `year` undefined.
+  - The case-name backward walk for a parallel cite started at its own position
+    and walked unbounded, scooping the prior reporter cite into its `caseName`
+    (e.g., `Nixon v. Nixon, 329 Pa. 256`).
+
+  ### Fix (two layers)
+
+  **(A) Pincite regex disambiguation.** `LOOKAHEAD_PINCITE_REGEX` and
+  `ADDITIONAL_PINCITE_REGEX` now require the captured pincite to terminate at
+  end-of-string, sentence punctuation, paren/bracket close, or whitespace NOT
+  followed by a capital letter. `, 198 A.` no longer matches (capital `A`
+  starts a parallel reporter); `, 117 (1973)` still does; bracketed pincites
+  `[266 Cal.Rptr. 569, 575]` still terminate cleanly on `]`.
+
+  **(B) Span-aware extraction.** `extractCase` now receives the spans of
+  sibling case-citation tokens and uses them to:
+
+  - Skip past a contiguous parallel-cite chain (separated only by commas,
+    whitespace, and digit/dash runs for intervening pincites) when searching
+    for the shared trailing year parenthetical — both in the look-ahead paren
+    scan and in `collectParentheticals` so `fullSpan` extends through the
+    shared paren.
+  - Bound the case-name backward walk by the prior sibling's end so a parallel
+    cite cannot absorb the preceding reporter cite's text into its caseName.
+  - Populate `fullSpan` on secondary parallel cites (which have no captured
+    caseName) when a close preceding sibling indicates a parallel chain, so
+    string-citation grouping and downstream span consumers see the full
+    citation extent through the shared trailing paren.
+
+  ### Tests
+
+  9 new tests under `parallel-cite pincite disambiguation (regression)` in
+  `tests/extract/extractCase.test.ts`:
+
+  - **Two-reporter parallel** (`329 Pa. 256, 198 A. 154 (1938)`): no false
+    pincite on the first cite; both cites get `year=1938`; the second cite's
+    `caseName` does not leak the first reporter cite.
+  - **Three-reporter parallel** (Roe v. Wade): no false pincites on any of
+    the three cites; all three get `year=1973`.
+  - **Pincite WITH following parallel** (`410 U.S. 113, 117, 93 S. Ct. 705
+(1973)`): the real pincite `117` is captured; no additional false pincite
+    from the parallel volume; the first cite still gets `year=1973`.
+  - **Multi-discrete pincite regression** (`410 U.S. 113, 115, 153 (1973)`):
+    the #247 feature continues to work — `pincite=115`,
+    `additionalPincites=[{page: 153}]`, `year=1973`.
+
+  Full 2346-test suite passes including the existing California bracketed
+  parallel pincite test (`[266 Cal.Rptr. 569, 575]`) and the string-citation
+  grouping integration test that depends on `fullSpan` extending through the
+  shared trailing paren.
+
 ## 0.14.0
 
 ### Minor Changes
