@@ -166,12 +166,18 @@ export function parseDate(dateStr: string): StructuredDate | undefined {
     return { iso: toIsoDate(parsed), parsed }
   }
 
-  // Try numeric US format: 1/15/2020
-  const numericMatch = dateStr.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/)
+  // Try numeric US format: 1/15/2020 (full year) or 10/3/07 (two-digit year,
+  // Louisiana docket-prefix and other regional shorthand; #232). Two-digit
+  // years pivot at 50: 00-50 → 21st century, 51-99 → 20th century.
+  const numericMatch = dateStr.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})\b/)
   if (numericMatch) {
     const month = Number.parseInt(numericMatch[1], 10)
     const day = Number.parseInt(numericMatch[2], 10)
-    const year = Number.parseInt(numericMatch[3], 10)
+    const rawYear = numericMatch[3]
+    let year = Number.parseInt(rawYear, 10)
+    if (rawYear.length === 2) {
+      year = year <= 50 ? 2000 + year : 1900 + year
+    }
     const parsed = { year, month, day }
     return { iso: toIsoDate(parsed), parsed }
   }

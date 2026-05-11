@@ -212,4 +212,65 @@ describe("parseDate", () => {
       })
     })
   })
+
+  /**
+   * Two-digit year support in numeric format (Louisiana docket-prefix
+   * citations and other regional shorthand; #232). Century inferred from
+   * value: 00-50 → 21st century, 51-99 → 20th century. This matches the
+   * common practice in opinion text (LA opinions from 2007 cite as `10/3/07`,
+   * never `10/3/1907`).
+   */
+  describe("two-digit year (#232)", () => {
+    it("parses `10/3/07` as 2007-10-03 (00-50 → 21st century)", () => {
+      const result = parseDate("10/3/07")
+      expect(result).toEqual({
+        iso: "2007-10-03",
+        parsed: { year: 2007, month: 10, day: 3 },
+      })
+    })
+
+    it("parses `2/15/10` as 2010-02-15", () => {
+      const result = parseDate("2/15/10")
+      expect(result).toEqual({
+        iso: "2010-02-15",
+        parsed: { year: 2010, month: 2, day: 15 },
+      })
+    })
+
+    it("parses `6/30/20` as 2020-06-30", () => {
+      const result = parseDate("6/30/20")
+      expect(result).toEqual({
+        iso: "2020-06-30",
+        parsed: { year: 2020, month: 6, day: 30 },
+      })
+    })
+
+    it("parses `1/1/50` as 2050-01-01 (boundary)", () => {
+      expect(parseDate("1/1/50")).toEqual({
+        iso: "2050-01-01",
+        parsed: { year: 2050, month: 1, day: 1 },
+      })
+    })
+
+    it("parses `12/31/51` as 1951-12-31 (51-99 → 20th century)", () => {
+      expect(parseDate("12/31/51")).toEqual({
+        iso: "1951-12-31",
+        parsed: { year: 1951, month: 12, day: 31 },
+      })
+    })
+
+    it("parses `7/4/76` as 1976-07-04", () => {
+      expect(parseDate("7/4/76")).toEqual({
+        iso: "1976-07-04",
+        parsed: { year: 1976, month: 7, day: 4 },
+      })
+    })
+
+    it("still parses 4-digit years (regression)", () => {
+      expect(parseDate("1/15/2020")).toEqual({
+        iso: "2020-01-15",
+        parsed: { year: 2020, month: 1, day: 15 },
+      })
+    })
+  })
 })

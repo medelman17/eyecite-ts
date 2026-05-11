@@ -5375,4 +5375,100 @@ describe("multiple discrete pincites (#247)", () => {
   })
 })
 
+/**
+ * Louisiana date-in-number citations (#232).
+ *
+ * Louisiana practice prepends a docket-style identifier and slash-date
+ * court parenthetical before the reporter citation:
+ *
+ *   Herff Jones, Inc. v. Girouard, 07-393, p. 2 (La. App. 3d Cir. 10/3/07),
+ *     966 So. 2d 1127, 1130.
+ *
+ * Previously the docket-prefix segment bled into the case name on the
+ * trailing `So. 2d` / `So. 3d` citation, producing garbage like
+ * `Herff Jones, Inc. v. Girouard, 07-393, p. 2 (La. App. 3d Cir. 10/3/07)`.
+ *
+ * This fix adds an LA-docket-prefix boundary detector to the backward
+ * case-name scan and transfers the docket paren's court / year / date
+ * metadata into the trailing reporter citation. The slash date `M/D/YY`
+ * (and `M/D/YYYY`) is parsed via the extended `parseDate`.
+ */
+describe("Louisiana date-in-number citations (#232)", () => {
+  it("`Herff Jones, Inc. v. Girouard, 07-393, p. 2 (La. App. 3d Cir. 10/3/07), 966 So. 2d 1127`", () => {
+    const text =
+      "Herff Jones, Inc. v. Girouard, 07-393, p. 2 (La. App. 3d Cir. 10/3/07), 966 So. 2d 1127, 1130."
+    const cits = extractCitations(text)
+    const cases = cits.filter((c) => c.type === "case")
+    const primary = cases.find(
+      (c) => c.type === "case" && c.reporter?.startsWith("So."),
+    )
+    expect(primary).toBeDefined()
+    if (primary?.type === "case") {
+      expect(primary.caseName).toBe("Herff Jones, Inc. v. Girouard")
+      expect(primary.year).toBe(2007)
+      // The default cleaner collapses the reporter-style space after "App."
+      // so the canonical court string is `La. App.3d Cir.` (matches the
+      // reporters-db normalization applied elsewhere in the parser).
+      expect(primary.court).toBe("La. App.3d Cir.")
+      expect(primary.date?.iso).toBe("2007-10-03")
+    }
+  })
+
+  it("`Boudreaux v. Doe, 09-1234 (La. App. 1st Cir. 2/15/10), 100 So. 3d 1`", () => {
+    const text =
+      "Boudreaux v. Doe, 09-1234 (La. App. 1st Cir. 2/15/10), 100 So. 3d 1."
+    const cits = extractCitations(text)
+    const primary = cits
+      .filter((c) => c.type === "case")
+      .find((c) => c.type === "case" && c.reporter?.startsWith("So."))
+    expect(primary).toBeDefined()
+    if (primary?.type === "case") {
+      expect(primary.caseName).toBe("Boudreaux v. Doe")
+      expect(primary.year).toBe(2010)
+      expect(primary.court).toBe("La. App.1st Cir.")
+      expect(primary.date?.iso).toBe("2010-02-15")
+    }
+  })
+
+  it("`State v. Smith, 2020-K-0500 (La. 6/30/20), 295 So. 3d 1`", () => {
+    const text = "State v. Smith, 2020-K-0500 (La. 6/30/20), 295 So. 3d 1."
+    const cits = extractCitations(text)
+    const primary = cits
+      .filter((c) => c.type === "case")
+      .find((c) => c.type === "case" && c.reporter?.startsWith("So."))
+    expect(primary).toBeDefined()
+    if (primary?.type === "case") {
+      expect(primary.caseName).toBe("State v. Smith")
+      expect(primary.year).toBe(2020)
+      expect(primary.court).toBe("La.")
+      expect(primary.date?.iso).toBe("2020-06-30")
+    }
+  })
+
+  describe("regression controls", () => {
+    it("plain `100 So. 3d 1 (La. 2010)` (no docket-prefix) still works", () => {
+      const text = "Smith v. Jones, 100 So. 3d 1 (La. 2010)."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Smith v. Jones")
+        expect(cases[0].year).toBe(2010)
+        expect(cases[0].court).toBe("La.")
+      }
+    })
+
+    it("non-LA citation with month-name date still parses", () => {
+      const text =
+        "Doe v. Roe, 100 F.3d 200, 205 (2d Cir. Jan. 15, 2020)."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      if (cases[0].type === "case") {
+        expect(cases[0].year).toBe(2020)
+        expect(cases[0].date?.iso).toBe("2020-01-15")
+      }
+    })
+  })
+})
+
 
