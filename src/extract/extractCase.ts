@@ -47,17 +47,27 @@ const VALID_SIGNALS = new Set([
   "compare",
   "accord",
   "contra",
+  // Combined `, e.g.` forms (Bluebook Rule 1.3) — must be matched by SIGNAL_PATTERNS
+  // in detectStringCites.ts before the bare-signal forms (#239).
+  "e.g.",
+  "see, e.g.",
+  "see also, e.g.",
+  "but see, e.g.",
+  "cf., e.g.",
+  "but cf., e.g.",
 ])
 
 /**
  * Regex matching any VALID_SIGNALS entry at the start of a string, followed by whitespace.
  * Derived from VALID_SIGNALS to ensure a single source of truth.
  * Multi-word signals are listed first so "See also" matches before "See".
+ * The trailing `,?` accommodates combined `, e.g.` signals (Bluebook Rule 1.3)
+ * whose source-text form has a trailing comma between the signal and citation.
  */
 const SIGNAL_STRIP_REGEX = (() => {
   const sorted = [...VALID_SIGNALS].sort((a, b) => b.length - a.length)
   const alternatives = sorted.map((s) => s.replace(/\s+/g, "\\s+").replace(/\./g, "\\."))
-  return new RegExp(`^(${alternatives.join("|")})\\s+`, "i")
+  return new RegExp(`^(${alternatives.join("|")}),?\\s+`, "i")
 })()
 
 /** Parse a volume string as number when purely numeric, string when hyphenated */
@@ -1614,9 +1624,18 @@ export function extractPartyNames(caseName: string): {
     const signalMatch =
       plaintiff.match(SIGNAL_STRIP_REGEX) ?? plaintiff.match(/^(Also|In(?!\s+re\b))\s+/i)
     if (signalMatch) {
-      const raw = signalMatch[1].toLowerCase().replace(/\.$/, "")
-      if (VALID_SIGNALS.has(raw)) {
-        signal = raw as CitationSignal
+      const lowered = signalMatch[1].toLowerCase()
+      // Combined `, e.g.` signals end with a period that is part of the canonical
+      // form (e.g., "see, e.g."); strip the trailing period only if the lowered
+      // form isn't itself a valid signal (handles "Cf." → "cf" without breaking
+      // "see, e.g." → "see, e.g.").
+      if (VALID_SIGNALS.has(lowered)) {
+        signal = lowered as CitationSignal
+      } else {
+        const stripped = lowered.replace(/\.$/, "")
+        if (VALID_SIGNALS.has(stripped)) {
+          signal = stripped as CitationSignal
+        }
       }
       plaintiff = plaintiff.substring(signalMatch[0].length).trim()
     }

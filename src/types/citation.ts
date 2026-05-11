@@ -43,7 +43,9 @@ export interface Warning {
 
 /**
  * Introductory signal word classification for citation support level.
- * Based on Bluebook signal categories (Rule 1.2).
+ * Based on Bluebook signal categories (Rule 1.2). The `, e.g.` combined
+ * forms (Rule 1.3) carry distinct meaning ("one of many illustrative
+ * authorities") and are tracked separately from the bare signals.
  */
 export type CitationSignal =
   | "see"
@@ -55,6 +57,12 @@ export type CitationSignal =
   | "compare"
   | "accord"
   | "contra"
+  | "e.g."
+  | "see, e.g."
+  | "see also, e.g."
+  | "but see, e.g."
+  | "cf., e.g."
+  | "but cf., e.g."
 
 /**
  * Base fields shared by all citation types.
