@@ -78,39 +78,57 @@ const MONTH_PATTERN =
 const CURRENT_YEAR = new Date().getFullYear()
 
 /** Common US reporters for confidence boost. Exact match to avoid substring false positives.
- *  Shared across extractCase and extractShortForms. */
+ *  Shared across extractCase and extractShortForms.
+ *
+ *  Future editions are pre-registered defensively (#234) so the eventual rollout
+ *  of F.5th / N.E.4th / etc. does not silently regress confidence scores. The
+ *  generalized federal-reporter regex captures these formats; this set ensures
+ *  they earn the +0.3 reporter-match boost out of the box. */
 export const COMMON_REPORTERS: ReadonlySet<string> = new Set([
   "F.",
   "F.2d",
   "F.3d",
   "F.4th",
+  "F.5th",
+  "F.6th",
+  "F.7th",
   "U.S.",
   "S. Ct.",
   "L. Ed.",
   "L. Ed. 2d",
+  "L. Ed. 3d",
   "P.",
   "P.2d",
   "P.3d",
+  "P.4th",
   "A.",
   "A.2d",
   "A.3d",
+  "A.4th",
   "N.E.",
   "N.E.2d",
   "N.E.3d",
+  "N.E.4th",
   "N.W.",
   "N.W.2d",
+  "N.W.3d",
   "S.E.",
   "S.E.2d",
+  "S.E.3d",
   "S.W.",
   "S.W.2d",
   "S.W.3d",
+  "S.W.4th",
   "So.",
   "So. 2d",
   "So. 3d",
+  "So. 4th",
   "F. Supp.",
   "F. Supp. 2d",
   "F. Supp. 3d",
   "F. Supp. 4th",
+  "F. Supp. 5th",
+  "F. Supp. 6th",
   "F. App'x",
 ])
 

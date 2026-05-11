@@ -24,15 +24,21 @@ export interface Pattern {
 export const casePatterns: Pattern[] = [
   {
     id: "federal-reporter",
+    // Edition suffix accepts any ordinal ("2d", "3d", or generic "Nth") so the
+    // pattern survives the eventual rollout of F.5th / F.6th / F.Supp.Nth (#234).
+    // F.Supp.* and F.App'x must come before the generic F.* alternative so the
+    // longer prefixes win during alternation.
     regex:
-      /\b(\d+(?:-\d+)?)\s+(F\.|F\.2d|F\.3d|F\.4th|F\.\s?Supp\.|F\.\s?Supp\.\s?2d|F\.\s?Supp\.\s?3d|F\.\s?Supp\.\s?4th|F\.\s?App'x)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.)/g,
-    description: "Federal Reporter (F., F.2d, F.3d, F.4th, F.Supp., F.App'x, etc.)",
+      /\b(\d+(?:-\d+)?)\s+(F\.\s?Supp\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?|F\.\s?App'x|F\.(?:\d+(?:st|nd|rd|th)|2d|3d)?)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.)/g,
+    description: "Federal Reporter (F., F.2d, F.3d, F.Nth, F.Supp., F.App'x, etc.)",
     type: "case",
   },
   {
     id: "supreme-court",
+    // L.Ed. edition suffix accepts any ordinal so a future L.Ed.3d edition does
+    // not silently fall through to the state-reporter fallback (#234).
     regex:
-      /\b(\d+(?:-\d+)?)\s+(U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?2d)?)\s+(?:\(\d+\s+[A-Z][A-Za-z.]+\)\s+)?(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.)/g,
+      /\b(\d+(?:-\d+)?)\s+(U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?)\s+(?:\(\d+\s+[A-Z][A-Za-z.]+\)\s+)?(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.)/g,
     description:
       "U.S. Supreme Court reporters (with optional nominative reporter parenthetical)",
     type: "case",
