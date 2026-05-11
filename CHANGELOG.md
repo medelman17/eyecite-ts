@@ -1,5 +1,211 @@
 # eyecite-ts
 
+## 0.13.4
+
+### Patch Changes
+
+- [#256](https://github.com/medelman17/eyecite-ts/pull/256) [`6ef1f8e`](https://github.com/medelman17/eyecite-ts/commit/6ef1f8e190d03a3d1dc5705be2296aae44685e91) Thanks [@medelman17](https://github.com/medelman17)! - fix: BIA `Matter of A-B-` hyphenated-initials captions parse (root cause: `&` missing from reporter char class) (#244)
+
+  Issue #244 reported that BIA caption forms like `Matter of A-B-, 27 I&N Dec. 316 (BIA 2018)` extracted with a truncated case name. Investigation showed the hyphenated-initials caption capture was already correct under the existing `PROCEDURAL_PREFIX_REGEX` (the subject character class accepts hyphens). The actual root cause was upstream: the `state-reporter` tokenization regex and the `VOLUME_REPORTER_PAGE_REGEX` parser both excluded `&` from their reporter character classes, so `I&N Dec.` (and the spaced Bluebook variant `I. & N. Dec.`) never produced a citation token. Without a citation token there was no case-name lookback at all.
+
+  Two-character-class fix:
+
+  - `casePatterns.ts` `state-reporter` regex — character class extended from `[A-Za-z.\s\d]` to `[A-Za-z.\s\d&']`. Apostrophe was also missing; admitting it here makes the fallback pattern consistent with the federal-reporter alternation (which already handles `F. App'x`).
+  - `extractCase.ts` `VOLUME_REPORTER_PAGE_REGEX` — same `&` addition.
+
+  Once the reporter tokenizes, the existing prefix-and-subject logic handles every hyphenated-initials form correctly: two-letter (`A-B-`), three-letter (`L-E-A-`, `W-G-R-`), four-letter (`A-R-C-G-`, `M-E-V-G-`, `E-F-H-L-`, `M-R-M-S-`), ALL-CAPS surnames (`THAKKER`, `CRUZ-VALDEZ`), real hyphenated surnames (`Jurado-Delgado`, `Rivera-Valencia`), and non-anonymized forms (`Matter of Garcia`). All 24 verbatim BIA-precedent corpus citations from the immigration research doc parse to the expected `caseName`.
+
+  Adds 17 regression tests covering: 2 reporter-recognition tests for `I&N Dec.` and `I. & N. Dec.` variants; 6 hyphenated-initials caption tests (2/3/4-letter forms across the highest-corpus precedents); 4 non-anonymized BIA caption tests; 1 `In re` form test; 3 regression controls (`U.S.`, `F.3d`, `N.E.2d`) confirming reporters without `&` are unaffected.
+
+- [#262](https://github.com/medelman17/eyecite-ts/pull/262) [`db6f8f4`](https://github.com/medelman17/eyecite-ts/commit/db6f8f4c10d154fcf05a5fe8021a6fb134e93738) Thanks [@medelman17](https://github.com/medelman17)! - fix: California `review denied/granted` and chained-signal history (#238)
+
+  `SIGNAL_TABLE` covered federal `cert. denied/granted` and the standard Bluebook subsequent-history words, but missed California Supreme Court's `review denied` / `review granted` / `opinion vacated` and the CA-specific `disapproved on other grounds` form. After-citation history clauses with these phrases silently dropped.
+
+  Three coordinated changes:
+
+  1. **`HistorySignal` discriminated union** gains 4 California-specific values: `review_denied`, `review_granted`, `opinion_vacated`, `disapproved_other_grounds`.
+  2. **`SIGNAL_TABLE`** gets matching regex entries. The longer `disapproved on other grounds` precedes the bare `disapproved` so alternation prefers the more specific match. `review den.` (abbreviated) and `review denied` both map to `review_denied` via `^review\s+den(?:ied|\.)`.
+  3. **`collectParentheticals` multi-stage chain bug fix.** Found while writing tests: when a second signal arrives without an intervening parenthetical (e.g., `..., review granted, opinion vacated.`), the previous `pendingSignal` was overwritten and lost. The fix flushes `pendingSignal` to `signals` (with `nextParenIndex = -1`) before assigning the new one. This also enables federal chains like `aff'd, cert. denied` (without trailing paren) to capture both links.
+
+  Adds 9 regression tests: 3 `review denied` / `review den.` / `review granted`, 1 `opinion vacated`, 1 `disapproved on other grounds`, 1 multi-stage chain (`review granted, opinion vacated` → 2 entries), and 3 regression controls confirming bare `disapproved`, federal `cert. denied`, and the existing `aff'd` chain are unaffected.
+
+- [#255](https://github.com/medelman17/eyecite-ts/pull/255) [`1fe817e`](https://github.com/medelman17/eyecite-ts/commit/1fe817efd9cf292e36d6468659c521109259353a) Thanks [@medelman17](https://github.com/medelman17)! - fix: recognize combined `, e.g.` signals (Bluebook Rule 1.3) — `see, e.g.`, `but see, e.g.`, etc. (#239)
+
+  `VALID_SIGNALS` and the `SIGNAL_PATTERNS` lookup in `detectStringCites.ts`
+  recognized only the bare introductory signals (`see`, `but see`, `cf`, …),
+  not the combined `, e.g.,` forms. Captions like `See, e.g., Smith v. Jones`
+  silently fell back to the bare `see` signal because the trailing `, e.g.,`
+  between the signal stem and the case name confused the regex anchors.
+
+  Three coordinated changes:
+
+  1. **`CitationSignal` discriminated union** gains five values: `"e.g."`,
+     `"see, e.g."`, `"see also, e.g."`, `"but see, e.g."`, `"cf., e.g."`,
+     `"but cf., e.g."`. Mirrors `VALID_SIGNALS` in `extractCase.ts`.
+  2. **`SIGNAL_PATTERNS` in `detectStringCites.ts`** now lists the combined forms
+     _before_ their bare counterparts so the alternation prefers the longer match.
+     Trailing `,?` accommodates the comma that normally separates the signal from
+     the citation.
+  3. **`SIGNAL_STRIP_REGEX` in `extractCase.ts`** now allows an optional trailing
+     comma (`,?\s+`) so `See also, e.g.,` strips correctly off the plaintiff in
+     `extractPartyNames`. The signal-lookup checks the un-stripped form first
+     (because combined signals end with a real period that belongs in the
+     canonical signal value) before falling back to the period-stripping path
+     that handles `Cf.` → `cf`.
+
+  Adds 5 regression tests covering each combined-signal form plus a non-regression
+  control for bare `see`. The `Compare ... with ...` grouping (a related issue
+  from #239) is structurally different — it requires multi-citation scope
+  linking, not a new signal entry — and is deferred.
+
+- [#258](https://github.com/medelman17/eyecite-ts/pull/258) [`a7c1c48`](https://github.com/medelman17/eyecite-ts/commit/a7c1c48d87e079a91d28657ffb34e3fee96731b2) Thanks [@medelman17](https://github.com/medelman17)! - fix: hyphenated public-domain neutral citations (NM, Ohio, NC, MS) now extract (#233)
+
+  The `casePatterns.state-vendor-neutral` regex was whitespace-separated only. Hyphenated public-domain formats used by New Mexico, Ohio, North Carolina, and Mississippi silently produced zero citations.
+
+  Two new tokenization patterns in `neutralPatterns.ts`:
+
+  - **`state-vendor-neutral-hyphenated`** (3-segment) — `\b(\d{4})-([A-Z][A-Za-z]+)-(\d+)\b/g`. Covers NM (`2010-NMSC-007`, `2012-NMCA-004`, `2015-NMCERT-009`), Ohio (`2024-Ohio-764` — note the mixed-case "Ohio" token), and NC (`2020-NCSC-118`, `2023-NCCOA-450`).
+  - **`state-vendor-neutral-hyphenated-ms`** (4-segment) — `\b(\d{4})-([A-Z]+)-(\d+)-([A-Z]+)\b/g`. Covers Mississippi's `year-caseType-number-appellateTrack` form (`2010-CT-01234-SCT`, `2015-CA-00567-COA`). Listed first in the pattern array so the regex engine prefers the longer match when both could fire.
+
+  `extractNeutral.ts` extended with a Mississippi-aware parse path. The 4-segment form composes the `court` field as `${caseType}-${appellateTrack}` (e.g., `CT-SCT`) so the single `court` field preserves the full sovereign identifier. The 3-segment hyphenated form falls through to a generalized whitespace-or-hyphen separator regex that also covers the existing UT/WI/IL/WL/LEXIS shapes.
+
+  Adds 13 corpus-shaped regression tests in `tests/extract/extractNeutralHyphenated.test.ts`: 3 NM variants, 2 Ohio, 2 NC, 2 MS, and 4 whitespace-separated regression controls (UT, WI, IL, WL) confirming the existing pattern shapes are unaffected.
+
+- [#260](https://github.com/medelman17/eyecite-ts/pull/260) [`31c31ae`](https://github.com/medelman17/eyecite-ts/commit/31c31ae584053a4a6e6fc334696e83e41ffc3df3) Thanks [@medelman17](https://github.com/medelman17)! - fix: multi-word neutral court designations (IL App, OK CIV APP, OK CR) now extract (#230)
+
+  The existing `state-vendor-neutral` court group was `[A-Z]{2}(?:\s+App\.?)?` — only single-word state codes with an optional `App.` suffix. Two real-world formats fell through:
+
+  - **Illinois Rule 23 appellate form** — `2011 IL App (1st) 101234`, `2020 IL App (2d) 190123-U`. The district parenthetical `(1st)/(2d)/(3d)/(4th)/(5th)` was treated as the start of a court parenthetical, so the document number got misbound and the citation silently extracted as zero matches.
+  - **Oklahoma multi-word courts** — `2020 OK CIV APP 67` (Civil Court of Appeals), `2019 OK CR 1` (Court of Criminal Appeals), `2024 OK AG 5` (Attorney General opinions). These surfaced as weak `case` matches with no court/year/documentNumber populated.
+
+  Additionally, Illinois Rule 23 unpublished decisions carry a `-U` suffix on the document number (e.g., `190123-U`). Previously this was not handled at all.
+
+  ### Three coordinated changes
+
+  1. **`state-vendor-neutral` regex** extended with two new alternatives ordered before the existing single-word fallback:
+     ```regex
+     \b(\d{4})\s+(
+       IL\s+App\s+\(\d+(?:st|nd|rd|th|d)\)
+       |OK\s+(?:CIV\s+APP|CR|AG)
+       |[A-Z]{2}(?:\s+App\.?)?
+     )\s+(\d+(?:-U)?)\b
+     ```
+  2. **`extractNeutral.ts`** consumes the `-U` suffix into a new `unpublished` flag and strips it from `documentNumber`.
+  3. **`NeutralCitation` interface** gains an `unpublished?: boolean` field. Only set to `true` for citations with the `-U` suffix; absent or `false` otherwise.
+
+  Adds 15 corpus-shaped regression tests in `tests/extract/extractNeutralMultiWord.test.ts`: 6 IL App district variants (1st/2d/3d/4th/5th plus the `-U` unpublished case), 4 OK forms (CIV APP, CR, AG, plus bare OK as fallback), and 5 regression controls (bare IL, UT, WI, Ohio hyphenated from #233, U.S. App. LEXIS from #228).
+
+- [#253](https://github.com/medelman17/eyecite-ts/pull/253) [`10acd4f`](https://github.com/medelman17/eyecite-ts/commit/10acd4f7098c90eda8a42d78437be125ca66b963) Thanks [@medelman17](https://github.com/medelman17)! - fix: cross-domain procedural prefix expansion — 29 additions from 6-agent research dispatch
+
+  Follow-up to #242. Six parallel research dispatches canvassed federal and
+  state caption forms across the family, probate, bankruptcy, immigration,
+  criminal/habeas, and ex rel./qui tam domains. Adds 29 new procedural-prefix
+  forms appearing in published opinions but missed by the prior regex.
+
+  Domain-by-domain summary:
+
+  - **Family / juvenile** — `In re Welfare of` (MN), `In the Matter of the
+Welfare of` (MN long form), `In re Dependency of` (WA), `In re Termination
+of Parental Rights as to/to/of` (AZ, NV, WI, SC, VT, NE), `In re Paternity
+of` (IN, WI, IL), `In re Parentage of` (CA, IL, WA, NJ), `Care and Protection
+of` (MA bare form).
+  - **Probate (Louisiana)** — `Succession of` (LA civil-law decedent-estate
+    caption — does not use "Estate of"; the bare-form caption misses entirely
+    under the old regex).
+  - **Bankruptcy / state insurance insolvency** — `In re Liquidation of`, `In re
+Rehabilitation of`, `In re Receivership of`, plus the `In the Matter of the
+[X] of` and `Matter of [X] of` long-form variants.
+  - **Immigration / naturalization** — `In re Petition for Naturalization of`,
+    `In re Naturalization of`, `Petition for Naturalization of`.
+  - **Criminal / habeas / extradition** — `In re Extradition of`, `In the Matter
+of the Extradition of`, `In re Application of`, `In the Matter of the
+Application of` (precision upgrade over the existing bare `Application of`).
+  - **Sovereign ex rel. variants** — `People ex rel.` (NY/CA/IL — large corpus),
+    `District of Columbia ex rel.`, `Commonwealth of Puerto Rico ex rel.` (must
+    precede `Commonwealth ex rel.` to avoid sovereign-identity loss), `Government
+of the Virgin Islands ex rel.`.
+
+  All additions follow the longer-first alternation convention so the regex
+  prefers the more specific match (e.g., `In re Welfare of` beats `In re`;
+  `Commonwealth of Puerto Rico ex rel.` beats `Commonwealth ex rel.`). The
+  parallel `proceduralPrefixes` array in `extractPartyNames` mirrors the regex
+  order so `proceduralPrefix` is correctly set on the returned citation.
+
+  Adds 31 corpus-sourced regression tests (29 new prefixes + 4 regression
+  controls including a `People v. Smith` test that verifies `People ex rel.`
+  does not capture criminal adversarial captions). All test inputs are verbatim
+  case captions from published opinions cited in the research docs at
+  `docs/research/2026-05-11-procedural-prefixes-*.md`.
+
+- [#261](https://github.com/medelman17/eyecite-ts/pull/261) [`63fb56d`](https://github.com/medelman17/eyecite-ts/commit/63fb56dc19955b9a7d8619bf3cd12fd9702294bd) Thanks [@medelman17](https://github.com/medelman17)! - test: add 130 real-world citation regression fixtures from Harvard CAP corpus; add `pet_filed` Texas history signal
+
+  Mines verbatim citations from the Harvard CAP corpus (federal F.3d, F.Supp.3d, state appellate reporters) and pins them down as regression fixtures across the patterns landed in recent PRs:
+
+  - 20 Texas writ/pet history (#229) — verified `subsequentHistoryEntries` is populated with a Texas-specific signal
+  - 15 combined-signal `, e.g.` (#239) — `See, e.g.,` (10) + `But see, e.g.,` (5), verified `signal` field
+  - 15 `In re Marriage of` (#242)
+  - 14 `In re Estate of` (existing)
+  - 9 `In re Adoption of` (#253)
+  - 8 `In re Welfare of` (#253)
+  - 8 `In the Interest of` (#242)
+  - 5 `In re Parentage of` (#253)
+  - 1 `In re Termination of Parental Rights of` (#253)
+  - 9 `Succession of` (LA civil-law, #253)
+  - 15 `People ex rel.` (#253)
+  - 8 `Commonwealth ex rel.` (#242)
+  - 3 `d/b/a` slash-alias (#240)
+
+  Real-world inputs surfaced a missed Texas signal: `pet. filed` (petition for review filed but not yet decided — a status, distinct from `pet. ref'd`/`pet. denied`). Added as a new `HistorySignal` value (`pet_filed`) with a matching `SIGNAL_TABLE` entry.
+
+  Fixtures live in `tests/fixtures/real-world-citations-2026-05-11.json` and are exercised by `tests/extract/realWorldCorpusFixtures.test.ts`. Each fixture is a full case-name-plus-citation-plus-year-paren extracted by a Python mining script (`/tmp/mine_fixtures_v2.py`, not committed); the test file imports the JSON and runs each input through `extractCitations`, asserting category-appropriate fields (case-name prefix, signal, subsequentHistory signal classification).
+
+- [#259](https://github.com/medelman17/eyecite-ts/pull/259) [`97fc190`](https://github.com/medelman17/eyecite-ts/commit/97fc190a670895c2ec1a3e07ea697c9cf48ce544) Thanks [@medelman17](https://github.com/medelman17)! - fix: state LEXIS variants (Cal. LEXIS, Tex. App. LEXIS, N.Y. Misc. LEXIS, etc.) now extract (#228)
+
+  The existing `lexis` pattern in `neutralPatterns.ts` was hard-coded for federal courts only — `\b(\d{4})\s+U\.S\.(?:\s+(?:App|Dist)\.)?\s+LEXIS\s+(\d+)\b`. State LEXIS variants (Cal. LEXIS, Tex. App. LEXIS, N.Y. Misc. LEXIS, Ill. App. LEXIS, Fla. LEXIS, Pa. Super. LEXIS, etc.) silently fell through to the broad state-reporter fallback and surfaced as weak `case` matches with no court/year/documentNumber populated.
+
+  Generalized the regex to accept any uppercase-prefixed court abbreviation before LEXIS:
+
+  ```regex
+  \b(\d{4})\s+[A-Z][A-Za-z.\s]+?\s+LEXIS\s+(\d+)\b
+  ```
+
+  The non-greedy `[A-Z][A-Za-z.\s]+?` is bounded by the literal `\s+LEXIS` that follows it, so there's no runaway risk. The downstream `extractNeutral.ts` already parses arbitrary `<court> LEXIS` shapes via the generalized 3-group regex from #233, so no extractor changes were required.
+
+  Adds 13 corpus-shaped regression tests in `tests/extract/extractLexisStateVariants.test.ts`: 2 California (Cal. + Cal. App.), 2 Texas (Tex. + Tex. App.), 2 New York (N.Y. Misc. + N.Y. App. Div.), 1 Illinois (Ill. App.), 3 additional high-corpus jurisdictions (Fla., Ohio, Pa. Super.), and 3 federal regression controls (U.S., U.S. App., U.S. Dist.) confirming the existing tokenizations still pass.
+
+- [#257](https://github.com/medelman17/eyecite-ts/pull/257) [`3d8d6c2`](https://github.com/medelman17/eyecite-ts/commit/3d8d6c22004aaf013affe922270e68d423566a63) Thanks [@medelman17](https://github.com/medelman17)! - fix: Texas writ/petition history inside court parenthetical now captured (#229)
+
+  Texas Greenbook (Tex. R. App. P. 47.7) places writ-of-error and petition history _inside_ the court-and-year parenthetical after a second comma — e.g., `(Tex. App.—Houston [1st Dist.] 2002, writ ref'd n.r.e.)`. This is structurally different from federal-style subsequent history (which appears between parentheticals). The library previously dropped the writ/pet phrase as junk and left the court field polluted with the year and trailing clause.
+
+  Three coordinated changes:
+
+  1. **`HistorySignal` discriminated union** extended with 10 Texas-specific
+     categories: `writ_refused`, `writ_dismissed`, `writ_denied`, `writ_granted`,
+     `no_writ` (pre-Sept. 1997 writ-of-error practice); `pet_refused`,
+     `pet_denied`, `pet_dismissed`, `pet_granted`, `no_pet` (post-Sept. 1997).
+  2. **`SIGNAL_TABLE`** gains 14 new regex entries covering all common Texas
+     writ/pet phrase variants (`writ ref'd n.r.e.`, `writ ref'd w.m.j.`,
+     `writ dism'd w.o.j.`, `no pet. h.`, etc.). Longer disposition modifiers
+     precede the bare forms so alternation prefers the more specific match.
+  3. **`parseParenthetical`** now detects a trailing `,\s*<signal>` clause after
+     the year, strips it from the working content before `stripDateFromCourt`
+     runs (so the court field is correctly bounded), and returns the parsed
+     signal in a new `internalHistory` field. `extractCase` then emits this as
+     the first entry (order 0) in `subsequentHistoryEntries`, with proper
+     `signalSpan` offsets translated through the transformation map.
+
+  The em-dash `—` is converted to `---` by the existing `normalizeDashes`
+  cleaner (it doubles as the blank-page placeholder pattern). Court strings
+  therefore appear as `Tex. App.---Houston [1st Dist.]` rather than with the
+  literal em-dash — that's pre-existing cleaning behavior, not a regression.
+
+  Adds 21 corpus-sourced regression tests: 4 court-extraction tests (em-dash
+
+  - city, em-dash + nested-bracket district), 7 writ-history variant tests,
+    6 petition-history variant tests, 1 end-to-end issue-body input, and 3
+    regression controls (`9th Cir.`, `S.D.N.Y.`, and a between-parens `aff'd`
+    chain) confirming no impact on federal-style parsing.
+
 ## 0.13.3
 
 ### Patch Changes
