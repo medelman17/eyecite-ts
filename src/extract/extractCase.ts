@@ -142,9 +142,11 @@ export const COMMON_REPORTERS: ReadonlySet<string> = new Set([
   "F. App'x",
 ])
 
-/** Matches volume-reporter-page format in citation core, with optional nominative reporter parenthetical */
+/** Matches volume-reporter-page format in citation core, with optional nominative reporter parenthetical.
+ *  Reporter character class includes `&` so the BIA `I&N Dec.` / `I. & N. Dec.`
+ *  variants parse correctly (#244). */
 const VOLUME_REPORTER_PAGE_REGEX =
-  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s']+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})/d
+  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})/d
 
 /** Detects blank page placeholders (3+ underscores or dashes) */
 const BLANK_PAGE_REGEX = /^[_-]{3,}$/

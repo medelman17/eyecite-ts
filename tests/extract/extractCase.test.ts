@@ -3081,6 +3081,217 @@ New York first recognized IIED as a cognizable cause of action in Fischer v. Mal
   })
 })
 
+describe("BIA hyphenated-initials respondent names (#244)", () => {
+  // BIA opinions use a distinctive caption form where the respondent's name is
+  // reduced to hyphenated single-letter initials (e.g., `Matter of A-B-`) for
+  // confidentiality. The proximate cause of #244 is *not* the hyphenated-initials
+  // caption — the existing `PROCEDURAL_PREFIX_REGEX` subject character class
+  // already accepts hyphens — but the BIA reporter `I&N Dec.` (and its variants
+  // `I. & N. Dec.`, `I & N Dec.`) contain an `&`, which is missing from the
+  // state-reporter regex character class. Without that fix, the citation token
+  // never forms and no case-name lookback runs. Corpus examples drawn from
+  // docs/research/2026-05-11-procedural-prefixes-immigration-admin.md §8.
+
+  describe("reporter recognition — I&N Dec. variants", () => {
+    it("extracts 27 I&N Dec. 316 as a case citation (no-space form)", () => {
+      const cits = extractCitations("27 I&N Dec. 316 (BIA 2018)")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].volume).toBe(27)
+        expect(cases[0].page).toBe(316)
+      }
+    })
+
+    it("extracts 28 I. & N. Dec. 307 as a case citation (Bluebook spaced form)", () => {
+      const cits = extractCitations("28 I. & N. Dec. 307 (A.G. 2021)")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].volume).toBe(28)
+        expect(cases[0].page).toBe(307)
+      }
+    })
+  })
+
+  describe("two-letter hyphenated-initials respondents", () => {
+    it("captures 'Matter of A-B-' (Sessions's asylum decision)", () => {
+      const cits = extractCitations(
+        "See Matter of A-B-, 27 I&N Dec. 316 (BIA 2018).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Matter of A-B-")
+        expect(cases[0].proceduralPrefix).toBe("Matter of")
+      }
+    })
+  })
+
+  describe("three-letter hyphenated-initials respondents", () => {
+    it("captures 'Matter of L-E-A-' (family-based asylum)", () => {
+      const cits = extractCitations(
+        "See Matter of L-E-A-, 27 I&N Dec. 581 (A.G. 2019).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Matter of L-E-A-")
+      }
+    })
+
+    it("captures 'Matter of W-G-R-' (PSG class)", () => {
+      const cits = extractCitations(
+        "See Matter of W-G-R-, 26 I&N Dec. 208 (BIA 2014).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Matter of W-G-R-")
+      }
+    })
+  })
+
+  describe("four-letter hyphenated-initials respondents", () => {
+    it("captures 'Matter of A-R-C-G-' (domestic violence asylum precedent)", () => {
+      const cits = extractCitations(
+        "See Matter of A-R-C-G-, 26 I&N Dec. 388 (BIA 2014).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Matter of A-R-C-G-")
+      }
+    })
+
+    it("captures 'Matter of M-E-V-G-' (PSG analysis)", () => {
+      const cits = extractCitations(
+        "See Matter of M-E-V-G-, 26 I&N Dec. 227 (BIA 2014).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Matter of M-E-V-G-")
+      }
+    })
+
+    it("captures 'Matter of E-F-H-L-' (El Salvadoran asylum)", () => {
+      const cits = extractCitations(
+        "See Matter of E-F-H-L-, 26 I&N Dec. 319 (BIA 2014).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Matter of E-F-H-L-")
+      }
+    })
+
+    it("captures 'Matter of M-R-M-S-' (modern PSG)", () => {
+      const cits = extractCitations(
+        "See Matter of M-R-M-S-, 28 I&N Dec. 757 (BIA 2023).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Matter of M-R-M-S-")
+      }
+    })
+  })
+
+  describe("non-anonymized BIA captions", () => {
+    it("captures 'Matter of Garcia' (regular surname)", () => {
+      const cits = extractCitations(
+        "See Matter of Garcia, 25 I&N Dec. 332 (BIA 2010).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Matter of Garcia")
+      }
+    })
+
+    it("captures 'Matter of Jurado-Delgado' (hyphenated real surname)", () => {
+      const cits = extractCitations(
+        "See Matter of Jurado-Delgado, 24 I&N Dec. 29 (BIA 2006).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Matter of Jurado-Delgado")
+      }
+    })
+
+    it("captures 'Matter of THAKKER' (ALL-CAPS surname)", () => {
+      const cits = extractCitations(
+        "See Matter of THAKKER, 28 I&N Dec. 843 (BIA 2024).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Matter of THAKKER")
+      }
+    })
+
+    it("captures 'Matter of CRUZ-VALDEZ' (ALL-CAPS hyphenated)", () => {
+      const cits = extractCitations(
+        "See Matter of CRUZ-VALDEZ, 28 I&N Dec. 326 (A.G. 2021).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Matter of CRUZ-VALDEZ")
+      }
+    })
+  })
+
+  describe("In re form for hyphenated surname", () => {
+    it("captures 'In re Rivera-Valencia' (federal-court re-cite)", () => {
+      const cits = extractCitations(
+        "See In re Rivera-Valencia, 24 I&N Dec. 484 (BIA 2008).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Rivera-Valencia")
+        expect(cases[0].proceduralPrefix).toBe("In re")
+      }
+    })
+  })
+
+  describe("regression controls — other reporters with & still work", () => {
+    // The character-class change to state-reporter must not affect existing
+    // reporters that don't contain `&`. Plus a control with the spaced
+    // Bluebook variant.
+
+    it("regression: '100 U.S. 1' (no &)", () => {
+      const cits = extractCitations("Smith v. Jones, 100 U.S. 1 (1920).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].reporter).toBe("U.S.")
+      }
+    })
+
+    it("regression: '500 F.3d 123' (no &)", () => {
+      const cits = extractCitations("Smith v. Jones, 500 F.3d 123 (2d Cir. 2020).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].reporter).toBe("F.3d")
+      }
+    })
+
+    it("regression: '50 N.E.2d 100' (period+space, no &)", () => {
+      const cits = extractCitations("Smith v. Jones, 50 N.E.2d 100 (1940).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].reporter).toMatch(/N\.\s?E\.\s?2d/)
+      }
+    })
+  })
+})
+
 describe("procedural prefix research expansion (2026-05-11)", () => {
   // Follow-up to #242 — six cross-domain research dispatches (family, probate,
   // bankruptcy, immigration, criminal/habeas, ex rel./qui tam) identified ~29
