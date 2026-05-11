@@ -1139,3 +1139,75 @@ describe("supra party-name signal-leak (#216)", () => {
     })
   })
 })
+
+/**
+ * Paragraph-marker pincites on short-form references (#204). The Id., supra,
+ * and short-form case patterns must accept `¶ 12`, `¶¶ 12-14`, `para. 12`,
+ * `paras. 12-14` after their respective anchors, with and without the `at`
+ * keyword.
+ */
+describe("paragraph-marker pincites on short-forms (#204)", () => {
+  describe("Id.", () => {
+    it("`Id. at ¶ 12` (with `at`)", () => {
+      const text = "Foo v. Bar, 1 F.3d 2 (1990). Id. at ¶ 12."
+      const cits = extractCitations(text)
+      const id = cits.find((c) => c.type === "id")
+      expect(id).toBeDefined()
+      if (id?.type === "id") {
+        expect(id.pinciteInfo?.paragraph).toBe(12)
+      }
+    })
+
+    it("`Id. ¶ 12` (no `at`)", () => {
+      const text = "Foo v. Bar, 1 F.3d 2 (1990). Id. ¶ 12."
+      const cits = extractCitations(text)
+      const id = cits.find((c) => c.type === "id")
+      expect(id).toBeDefined()
+      if (id?.type === "id") {
+        expect(id.pinciteInfo?.paragraph).toBe(12)
+      }
+    })
+
+    it("`Id. ¶¶ 12-14` (range, no `at`)", () => {
+      const text = "Foo v. Bar, 1 F.3d 2 (1990). Id. ¶¶ 12-14."
+      const cits = extractCitations(text)
+      const id = cits.find((c) => c.type === "id")
+      if (id?.type === "id") {
+        expect(id.pinciteInfo?.paragraph).toBe(12)
+        expect(id.pinciteInfo?.endParagraph).toBe(14)
+      }
+    })
+  })
+
+  describe("supra", () => {
+    it("`Smith, supra, ¶ 12`", () => {
+      const text = "Foo v. Bar, 1 F.3d 2 (1990). Smith, supra, ¶ 12."
+      const cits = extractCitations(text)
+      const sup = cits.find((c) => c.type === "supra")
+      expect(sup).toBeDefined()
+      if (sup?.type === "supra") {
+        expect(sup.pinciteInfo?.paragraph).toBe(12)
+      }
+    })
+
+    it("`Smith, supra, at ¶ 12`", () => {
+      const text = "Foo v. Bar, 1 F.3d 2 (1990). Smith, supra, at ¶ 12."
+      const cits = extractCitations(text)
+      const sup = cits.find((c) => c.type === "supra")
+      if (sup?.type === "supra") {
+        expect(sup.pinciteInfo?.paragraph).toBe(12)
+      }
+    })
+
+    it("`Smith, supra, paras. 12-14`", () => {
+      const text =
+        "Foo v. Bar, 1 F.3d 2 (1990). Smith, supra, paras. 12-14."
+      const cits = extractCitations(text)
+      const sup = cits.find((c) => c.type === "supra")
+      if (sup?.type === "supra") {
+        expect(sup.pinciteInfo?.paragraph).toBe(12)
+        expect(sup.pinciteInfo?.endParagraph).toBe(14)
+      }
+    })
+  })
+})
