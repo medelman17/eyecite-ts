@@ -1,5 +1,69 @@
 # eyecite-ts
 
+## 0.13.3
+
+### Patch Changes
+
+- [#249](https://github.com/medelman17/eyecite-ts/pull/249) [`c84494e`](https://github.com/medelman17/eyecite-ts/commit/c84494ee3385c797bded11a2bbed85d12c874054) Thanks [@medelman17](https://github.com/medelman17)! - fix: normalizePartyName strips slash-alias variants `f/k/a`, `n/k/a`, `a/k/a` (#240)
+
+  Case captions commonly use slash-form party-name aliases to indicate prior or alternative names (e.g., `Acme Corp. f/k/a Beta Inc. v. Jones`). The case-name extractor already preserves these in the full caseName via `INTERNAL_QUALIFIER_REGEX`, but `normalizePartyName` only stripped the `d/b/a` slash form and the bare-word `aka`. The forms `f/k/a` (formerly known as), `n/k/a` (now known as), and `a/k/a` (also known as) leaked into `plaintiffNormalized`/`defendantNormalized`, producing canonical-form values like `"acme corp. f/k/a beta"` instead of `"acme"`.
+
+  Combines all four slash-form aliases into a single strip rule so the canonical form is the head-of-name only. Estimated corpus impact: ~96k captions per the cross-jurisdictional parser audit (`docs/research/2026-05-10-citation-style-quirks.md` §M, government-agencies + entity-forms research).
+
+  Adds 4 regression tests covering each alias variant with both `caseName` preservation and `plaintiffNormalized` stripping assertions.
+
+- [#252](https://github.com/medelman17/eyecite-ts/pull/252) [`13a68db`](https://github.com/medelman17/eyecite-ts/commit/13a68db2c17d983778a8c3001f8b5ee24228445b) Thanks [@medelman17](https://github.com/medelman17)! - fix: procedural prefix expansion — Commonwealth ex rel., In the Interest of, Adoption of, etc. (#242)
+
+  `PROCEDURAL_PREFIX_REGEX` and the parallel `proceduralPrefixes` array in
+  `extractPartyNames` recognized only 9 procedural prefixes (`In re`,
+  `Ex parte`, `Matter of`, `Estate of`, etc.). Several common family/probate
+  and state-practice prefixes were missing, causing captions like `In re
+Marriage of Smith` to lose the `Marriage of` segment, `On Petition of
+P.Q.` to lose the leading `On`, and `Adoption of J.K.` / `Conservatorship
+of L.M.` / `Guardianship of N.O.` to fall through to the broad single-party
+  fallback with no `proceduralPrefix` field set.
+
+  Adds 7 prefixes (longer forms ordered before shorter ones so alternation
+  prefers the longer match):
+
+  - `Commonwealth ex rel.` (PA practice)
+  - `In the Interest of` (juvenile / family — handles initials-only parties like A.B., J.K.)
+  - `In re Marriage of` (CA family — must beat `In re`)
+  - `Adoption of`
+  - `Conservatorship of` (CA probate)
+  - `Guardianship of`
+  - `On Petition of` (older form — must beat `Petition of`)
+
+  Adds 10 regression tests covering the 7 new prefixes plus 3 existing-prefix
+  controls (`In re`, `Petition of`, `Estate of`).
+
+- [#251](https://github.com/medelman17/eyecite-ts/pull/251) [`d6982f3`](https://github.com/medelman17/eyecite-ts/commit/d6982f3dafdf588772c38f45abc037cc073d1eb0) Thanks [@medelman17](https://github.com/medelman17)! - fix: generalize federal-reporter pattern and pre-register future editions in COMMON_REPORTERS (#234)
+
+  The `federal-reporter` and `supreme-court` tokenization regexes hard-coded
+  edition suffixes (`F.|F.2d|F.3d|F.4th|F.Supp.*`, `L.Ed.|L.Ed.2d`). The broad
+  `state-reporter` fallback already caught future formats like `F.5th` and
+  `Cal.6th`, so extraction itself did not fail — but the missing entries in
+  `COMMON_REPORTERS` cost the +0.3 reporter-match confidence boost, leaving
+  `100 F.5th 200 (9th Cir. 2025)` at 0.65 confidence vs. 0.95 for `100 F.4th 200`.
+
+  Two changes, both defensive:
+
+  1. **Generalized regex edition suffix**: replace the explicit enumeration with
+     `(?:\d+(?:st|nd|rd|th)|2d|3d)?` so any ordinal — including `F.5th`, `F.10th`,
+     `F.Supp.5th`, `L.Ed.3d` — is captured by the precise federal/Supreme Court
+     patterns rather than falling through to the state-reporter fallback.
+
+  2. **Pre-registered future editions in `COMMON_REPORTERS`**: added the next
+     one-to-two editions for every series already in the set (F.5th–F.7th,
+     F.Supp.5th–6th, P.4th, A.4th, N.E.4th, N.W.3d, S.E.3d, S.W.4th, So.4th,
+     L.Ed.3d) so confidence scoring stays accurate the moment a court adopts
+     them — no emergency patch needed.
+
+  Adds 7 regression tests: 2 assert confidence parity between `F.5th` / `F.6th`
+  and `F.4th`, 2 assert clean extraction of future state-reporter editions
+  (`Cal.6th`, `Cal.7th`) via the broad fallback, and 3 are regression controls
+  for existing editions (`F.4th`, `F.3d`, `F.2d`).
+
 ## 0.13.2
 
 ### Patch Changes
