@@ -3026,4 +3026,100 @@ New York first recognized IIED as a cognizable cause of action in Fischer v. Mal
   })
 })
 
+describe("reporter edition future-proofing (#234)", () => {
+  // The federal-reporter pattern hard-codes editions (F., F.2d, F.3d, F.4th)
+  // and the COMMON_REPORTERS confidence-boost set mirrors that enumeration.
+  // The state-reporter fallback catches future editions in extraction, but the
+  // missing COMMON_REPORTERS entries cost the +0.3 reporter-boost — so F.5th
+  // gets noticeably lower confidence than F.4th for the same surrounding
+  // context. These tests pin both extraction correctness and confidence parity.
+
+  describe("future federal-reporter editions", () => {
+    it("extracts F.5th as a case citation with the same confidence as F.4th", () => {
+      const f5 = extractCitations("Smith v. Jones, 100 F.5th 200 (9th Cir. 2025).")
+      const f4 = extractCitations("Smith v. Jones, 50 F.4th 1234 (9th Cir. 2024).")
+      const f5Cases = f5.filter((c) => c.type === "case")
+      const f4Cases = f4.filter((c) => c.type === "case")
+      expect(f5Cases).toHaveLength(1)
+      expect(f4Cases).toHaveLength(1)
+      if (f5Cases[0].type === "case" && f4Cases[0].type === "case") {
+        expect(f5Cases[0].volume).toBe(100)
+        expect(f5Cases[0].reporter).toBe("F.5th")
+        expect(f5Cases[0].page).toBe(200)
+        expect(f5Cases[0].confidence).toBe(f4Cases[0].confidence)
+      }
+    })
+
+    it("extracts F.6th as a case citation with the same confidence as F.4th", () => {
+      const f6 = extractCitations("Smith v. Jones, 50 F.6th 999 (D.C. Cir. 2030).")
+      const f4 = extractCitations("Smith v. Jones, 50 F.4th 999 (D.C. Cir. 2030).")
+      const f6Cases = f6.filter((c) => c.type === "case")
+      const f4Cases = f4.filter((c) => c.type === "case")
+      expect(f6Cases).toHaveLength(1)
+      expect(f4Cases).toHaveLength(1)
+      if (f6Cases[0].type === "case" && f4Cases[0].type === "case") {
+        expect(f6Cases[0].volume).toBe(50)
+        expect(f6Cases[0].reporter).toBe("F.6th")
+        expect(f6Cases[0].page).toBe(999)
+        expect(f6Cases[0].confidence).toBe(f4Cases[0].confidence)
+      }
+    })
+  })
+
+  describe("future regional-reporter editions", () => {
+    it("extracts Cal.6th as a case citation", () => {
+      const cits = extractCitations("Doe v. Roe, 1 Cal.6th 50 (Cal. 2027).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].volume).toBe(1)
+        expect(cases[0].reporter).toBe("Cal.6th")
+        expect(cases[0].page).toBe(50)
+      }
+    })
+
+    it("extracts Cal.7th as a case citation", () => {
+      const cits = extractCitations("Doe v. Roe, 10 Cal.7th 500 (Cal. 2040).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].volume).toBe(10)
+        expect(cases[0].reporter).toBe("Cal.7th")
+        expect(cases[0].page).toBe(500)
+      }
+    })
+  })
+
+  describe("regression controls — existing editions still work", () => {
+    it("extracts F.4th (existing)", () => {
+      const cits = extractCitations(
+        "Smith v. Jones, 50 F.4th 1234 (D.C. Cir. 2024).",
+      )
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].reporter).toBe("F.4th")
+      }
+    })
+
+    it("extracts F.3d (existing)", () => {
+      const cits = extractCitations("Smith v. Doe, 100 F.3d 200 (2d Cir. 1996).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].reporter).toBe("F.3d")
+      }
+    })
+
+    it("extracts F.2d (existing)", () => {
+      const cits = extractCitations("Smith v. Jones, 500 F.2d 123 (2020).")
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].reporter).toBe("F.2d")
+      }
+    })
+  })
+})
+
 
