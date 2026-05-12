@@ -34,4 +34,34 @@ describe("normalizeReporterSpacing", () => {
     const input = "550 U. S. 544, 127 S. Ct. 1955"
     expect(normalizeReporterSpacing(input)).toBe("550 U.S. 544, 127 S.Ct. 1955")
   })
+
+  describe("three-letter code abbreviations (#284)", () => {
+    it("normalizes fully spaced 'U. S. C.' to 'U.S.C.'", () => {
+      expect(normalizeReporterSpacing("42 U. S. C. § 1983")).toBe("42 U.S.C. § 1983")
+    })
+
+    it("normalizes partially spaced 'U.S. C.' to 'U.S.C.'", () => {
+      expect(normalizeReporterSpacing("42 U.S. C. § 1983")).toBe("42 U.S.C. § 1983")
+    })
+
+    it("normalizes partially spaced 'U. S.C.' to 'U.S.C.'", () => {
+      expect(normalizeReporterSpacing("42 U. S.C. § 1983")).toBe("42 U.S.C. § 1983")
+    })
+
+    it("normalizes fully spaced 'C. F. R.' to 'C.F.R.'", () => {
+      expect(normalizeReporterSpacing("29 C. F. R. § 1604.11")).toBe("29 C.F.R. § 1604.11")
+    })
+
+    it("leaves canonical 'U.S.C.' unchanged", () => {
+      expect(normalizeReporterSpacing("42 U.S.C. § 1983")).toBe("42 U.S.C. § 1983")
+    })
+
+    it("leaves canonical 'C.F.R.' unchanged", () => {
+      expect(normalizeReporterSpacing("29 C.F.R. § 1604.11")).toBe("29 C.F.R. § 1604.11")
+    })
+
+    it("does not intercept 'U. S.' standalone (case cite)", () => {
+      expect(normalizeReporterSpacing("410 U. S. 113")).toBe("410 U.S. 113")
+    })
+  })
 })
