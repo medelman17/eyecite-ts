@@ -79,6 +79,24 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    id: "ill-rev-stat",
+    // Pre-1993 Illinois Revised Statutes (#330): `Ill. Rev. Stat. YYYY, ch. N,
+    // par. N.N(N)`. Modern Illinois opinions still use this form when
+    // referencing the historical version of a statute.
+    //
+    // Tolerance: spaced/no-space (`Ill. Rev. Stat.` / `Ill.Rev.Stat.`),
+    // capitalized/lowercase `[Cc]h.`, singular/plural `pars?.`, optional
+    // commas after `Stat.` and after the chapter number.
+    //
+    // Captures: (1) year-of-edition, (2) chapter (incl. letter suffix `110A`),
+    //   (3) paragraph body (subparagraphs + et seq.).
+    regex:
+      /\bIll\.?\s*Rev\.?\s*Stat\.?,?\s+(\d{4}),?\s+[Cc]h\.\s+(\d+[A-Z]?),?\s+pars?\.\s+(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+    description:
+      "Illinois Revised Statutes (pre-1993): Ill. Rev. Stat. YYYY, ch. N, par. N",
+    type: "statute",
+  },
+  {
     id: "abbreviated-code",
     regex: buildAbbreviatedCodeRegex(),
     description: "Abbreviated state code citations for all US jurisdictions",

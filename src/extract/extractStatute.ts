@@ -21,6 +21,7 @@ import { extractAbbreviated } from "./statutes/extractAbbreviated"
 import { extractCaBareCode } from "./statutes/extractCaBareCode"
 import { extractChapterAct } from "./statutes/extractChapterAct"
 import { extractFederal } from "./statutes/extractFederal"
+import { extractIllRevStat } from "./statutes/extractIllRevStat"
 import { extractNamedCode } from "./statutes/extractNamedCode"
 import { extractProse } from "./statutes/extractProse"
 
@@ -116,6 +117,8 @@ export function extractStatute(
       return extractNamedCode(token, transformationMap)
     case "chapter-act":
       return extractChapterAct(token, transformationMap)
+    case "ill-rev-stat":
+      return extractIllRevStat(token, transformationMap)
     default:
       // unknown patterns use legacy parser
       return extractLegacy(token, transformationMap)
