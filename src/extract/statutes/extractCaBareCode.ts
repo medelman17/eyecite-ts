@@ -29,24 +29,17 @@ export function extractCaBareCode(
   transformationMap: TransformationMap,
 ): StatuteCitation {
   const { text, span } = token
-  const match = CA_BARE_CODE_RE.exec(text)
-
-  let rawCodeText: string
-  let rawBody: string
-
-  if (match) {
-    rawCodeText = match[1].trim()
-    rawBody = match[2]
-  } else {
-    rawCodeText = text
-    rawBody = ""
-  }
+  // The tokenizer's closed-alternation regex guarantees a match here; the
+  // extractor's regex is structurally equivalent to that tokenizer pattern,
+  // so `match` is always non-null for tokens routed to this extractor.
+  const match = CA_BARE_CODE_RE.exec(text)!
+  const rawCodeText = match[1].trim()
+  const rawBody = match[2]
 
   // Normalize back to canonical bare-code form ("Pen. Code", "Code Civ. Proc.").
-  // Falls back to the raw matched text if the canonical lookup misses, which
-  // should not happen for tokens that survived the tokenizer's closed
-  // alternation but is safe as a defense.
-  const code = findCaBareCode(rawCodeText) ?? rawCodeText
+  // `findCaBareCode` is guaranteed to hit because the tokenizer only emits
+  // tokens whose code text matched one of the canonical alternations.
+  const code = findCaBareCode(rawCodeText)!
 
   const { section, subsection, hasEtSeq } = parseBody(rawBody)
 

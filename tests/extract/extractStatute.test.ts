@@ -379,6 +379,18 @@ describe("extractStatute", () => {
       }
     })
 
+    it("extracts `Pen. Code § 187(a)` with subsection (span branch)", () => {
+      const cits = extractCitations("Charged under Pen. Code § 187(a) for murder.")
+      expect(cits).toHaveLength(1)
+      if (cits[0].type === "statute") {
+        expect(cits[0].code).toBe("Pen. Code")
+        expect(cits[0].section).toBe("187")
+        expect(cits[0].subsection).toBe("(a)")
+        expect(cits[0].spans?.subsection).toBeDefined()
+        expect(cits[0].jurisdiction).toBe("CA")
+      }
+    })
+
     it("does not regress fully-qualified `Cal. Penal Code § 148`", () => {
       // The fully-qualified form continues to go through extractNamedCode and
       // produces its own `code` shape ("Penal"), so the bare-code extractor
