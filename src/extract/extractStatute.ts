@@ -18,6 +18,7 @@ import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
 import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 import { extractAbbreviated } from "./statutes/extractAbbreviated"
+import { extractCaBareCode } from "./statutes/extractCaBareCode"
 import { extractChapterAct } from "./statutes/extractChapterAct"
 import { extractFederal } from "./statutes/extractFederal"
 import { extractNamedCode } from "./statutes/extractNamedCode"
@@ -108,6 +109,8 @@ export function extractStatute(
       return extractProse(token, transformationMap)
     case "abbreviated-code":
       return extractAbbreviated(token, transformationMap)
+    case "ca-bare-code":
+      return extractCaBareCode(token, transformationMap)
     case "named-code":
     case "mass-chapter":
       return extractNamedCode(token, transformationMap)

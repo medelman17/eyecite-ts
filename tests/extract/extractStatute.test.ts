@@ -308,6 +308,100 @@ describe("extractStatute", () => {
     })
   })
 
+  describe("California bare codes (#296)", () => {
+    it("extracts `Pen. Code § 148`", () => {
+      const cits = extractCitations("Defendant violated Pen. Code § 148.")
+      expect(cits).toHaveLength(1)
+      if (cits[0].type === "statute") {
+        expect(cits[0].code).toBe("Pen. Code")
+        expect(cits[0].section).toBe("148")
+        expect(cits[0].jurisdiction).toBe("CA")
+      }
+    })
+
+    it("extracts `Code Civ. Proc., § 1021.5` (comma + leading 'Code')", () => {
+      const cits = extractCitations("Plaintiff seeks attorney fees under Code Civ. Proc., § 1021.5.")
+      expect(cits).toHaveLength(1)
+      if (cits[0].type === "statute") {
+        expect(cits[0].code).toBe("Code Civ. Proc.")
+        expect(cits[0].section).toBe("1021.5")
+        expect(cits[0].jurisdiction).toBe("CA")
+      }
+    })
+
+    it("extracts `Veh. Code § 23550.5` (decimal section)", () => {
+      const cits = extractCitations("Veh. Code § 23550.5 governs.")
+      expect(cits).toHaveLength(1)
+      if (cits[0].type === "statute") {
+        expect(cits[0].code).toBe("Veh. Code")
+        expect(cits[0].section).toBe("23550.5")
+        expect(cits[0].jurisdiction).toBe("CA")
+      }
+    })
+
+    it("extracts `Bus. & Prof. Code § 17200` (ampersand)", () => {
+      const cits = extractCitations("She brought a Bus. & Prof. Code § 17200 claim.")
+      expect(cits).toHaveLength(1)
+      if (cits[0].type === "statute") {
+        expect(cits[0].code).toBe("Bus. & Prof. Code")
+        expect(cits[0].section).toBe("17200")
+        expect(cits[0].jurisdiction).toBe("CA")
+      }
+    })
+
+    it("extracts `Welf. & Inst. Code § 5150` (multi-ampersand)", () => {
+      const cits = extractCitations("Welf. & Inst. Code § 5150 authorizes detention.")
+      expect(cits).toHaveLength(1)
+      if (cits[0].type === "statute") {
+        expect(cits[0].code).toBe("Welf. & Inst. Code")
+        expect(cits[0].section).toBe("5150")
+        expect(cits[0].jurisdiction).toBe("CA")
+      }
+    })
+
+    it("extracts `Health & Safety Code § 11350`", () => {
+      const cits = extractCitations("Health & Safety Code § 11350 controls.")
+      expect(cits).toHaveLength(1)
+      if (cits[0].type === "statute") {
+        expect(cits[0].code).toBe("Health & Safety Code")
+        expect(cits[0].section).toBe("11350")
+        expect(cits[0].jurisdiction).toBe("CA")
+      }
+    })
+
+    it("extracts `Civ. Code § 1714` (single-word code)", () => {
+      const cits = extractCitations("Civ. Code § 1714 codifies the duty of care.")
+      expect(cits).toHaveLength(1)
+      if (cits[0].type === "statute") {
+        expect(cits[0].code).toBe("Civ. Code")
+        expect(cits[0].section).toBe("1714")
+        expect(cits[0].jurisdiction).toBe("CA")
+      }
+    })
+
+    it("does not regress fully-qualified `Cal. Penal Code § 148`", () => {
+      // The fully-qualified form continues to go through extractNamedCode and
+      // produces its own `code` shape ("Penal"), so the bare-code extractor
+      // should not also fire.
+      const cits = extractCitations("violates Cal. Penal Code § 148.")
+      expect(cits).toHaveLength(1)
+      if (cits[0].type === "statute") {
+        expect(cits[0].code).toBe("Penal")
+        expect(cits[0].jurisdiction).toBe("CA")
+      }
+    })
+
+    it("does not regress federal USC citation", () => {
+      const cits = extractCitations("Plaintiff sued under 42 U.S.C. § 1983.")
+      expect(cits).toHaveLength(1)
+      if (cits[0].type === "statute") {
+        expect(cits[0].code).toBe("U.S.C.")
+        expect(cits[0].section).toBe("1983")
+        expect(cits[0].jurisdiction).toBe("US")
+      }
+    })
+  })
+
   describe("year-of-edition parenthetical (#285)", () => {
     it("attaches year to USC citation with year paren", () => {
       const citations = extractCitations("42 U.S.C. § 1983 (1976)")

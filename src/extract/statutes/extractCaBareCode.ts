@@ -1,0 +1,102 @@
+/**
+ * California Bare-Code Statute Extraction (#296)
+ *
+ * Parses tokenized citations to California codes that lack the `Cal.`
+ * jurisdiction prefix — `Pen. Code § 148`, `Code Civ. Proc., § 1021.5`,
+ * `Bus. & Prof. Code § 17200`. The fully-qualified form (`Cal. Penal
+ * Code § 148`) is handled by `extractNamedCode`; this extractor
+ * recognizes the bare form via the closed alternation defined in
+ * `src/data/caBareCodes.ts`.
+ *
+ * All matches produce `jurisdiction: "CA"`.
+ *
+ * @module extract/statutes/extractCaBareCode
+ */
+
+import { findCaBareCode } from "@/data/caBareCodes"
+import type { Token } from "@/tokenize"
+import type { StatuteCitation } from "@/types/citation"
+import type { StatuteComponentSpans } from "@/types/componentSpans"
+import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
+import { parseBody } from "./parseBody"
+
+/** Match shape: <bare code name> [,] § <body>. Indices flag enables span computation. */
+const CA_BARE_CODE_RE =
+  /^(.+?)\s*,?\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/d
+
+export function extractCaBareCode(
+  token: Token,
+  transformationMap: TransformationMap,
+): StatuteCitation {
+  const { text, span } = token
+  const match = CA_BARE_CODE_RE.exec(text)
+
+  let rawCodeText: string
+  let rawBody: string
+
+  if (match) {
+    rawCodeText = match[1].trim()
+    rawBody = match[2]
+  } else {
+    rawCodeText = text
+    rawBody = ""
+  }
+
+  // Normalize back to canonical bare-code form ("Pen. Code", "Code Civ. Proc.").
+  // Falls back to the raw matched text if the canonical lookup misses, which
+  // should not happen for tokens that survived the tokenizer's closed
+  // alternation but is safe as a defense.
+  const code = findCaBareCode(rawCodeText) ?? rawCodeText
+
+  const { section, subsection, hasEtSeq } = parseBody(rawBody)
+
+  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
+
+  let spans: StatuteComponentSpans | undefined
+  if (match?.indices) {
+    spans = {}
+    if (match.indices[1])
+      spans.code = spanFromGroupIndex(span.cleanStart, match.indices[1], transformationMap)
+    if (match.indices[2] && section) {
+      const bodyStart = match.indices[2][0]
+      const sectionSpanLen = section.replace(/[.,;:]\s*$/, "").length
+      spans.section = spanFromGroupIndex(
+        span.cleanStart,
+        [bodyStart, bodyStart + sectionSpanLen],
+        transformationMap,
+      )
+      if (subsection) {
+        const subStart = bodyStart + section.length
+        spans.subsection = spanFromGroupIndex(
+          span.cleanStart,
+          [subStart, subStart + subsection.length],
+          transformationMap,
+        )
+      }
+    }
+  }
+
+  // Confidence: bare-code matches come from a closed alternation, so the
+  // jurisdiction inference is reliable. Match the existing named-code
+  // baseline (0.95 when a known code resolves) and bump for subsection.
+  let confidence = 0.95
+  if (subsection) confidence += 0.05
+  confidence = Math.min(confidence, 1.0)
+
+  return {
+    type: "statute",
+    text,
+    span: { cleanStart: span.cleanStart, cleanEnd: span.cleanEnd, originalStart, originalEnd },
+    confidence,
+    matchedText: text,
+    processTimeMs: 0,
+    patternsChecked: 1,
+    code,
+    section,
+    subsection,
+    pincite: subsection,
+    jurisdiction: "CA",
+    hasEtSeq: hasEtSeq || undefined,
+    spans,
+  }
+}
