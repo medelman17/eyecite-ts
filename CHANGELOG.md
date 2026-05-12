@@ -1,5 +1,429 @@
 # eyecite-ts
 
+## 0.15.3
+
+### Patch Changes
+
+- [#312](https://github.com/medelman17/eyecite-ts/pull/312) [`d4ce47e`](https://github.com/medelman17/eyecite-ts/commit/d4ce47ecba5fc281576693ac551b2af4360a7733) Thanks [@medelman17](https://github.com/medelman17)! - fix: supra/short-form `partyName` captures multi-word names with `&` and corporate suffixes (#301)
+
+  The supra and short-form case-cite patterns truncated `partyName` to
+  the last token when the name contained `&` or trailing corporate
+  suffixes after a comma. `Walker & Horwich, supra` captured only
+  `"Horwich"`; `Thorn Americas, Inc., supra` captured only `"Inc."`.
+  Surfaced as 50+ partyName findings in the 200-opinion modern-era
+  sweep with direct impact on #278's resolver disambiguation.
+
+  ### Root cause
+
+  `SUPRA_PATTERN` and `SHORT_FORM_CASE_PATTERN` in
+  `src/patterns/shortForm.ts` (and the duplicate parser regexes in
+  `src/extract/extractShortForms.ts`) allowed only `\s+v\.?\s+` and
+  plain `\s+` between capitalized words in the party-name capture. So:
+
+  - `Walker & Horwich`: `&` is neither whitespace nor `v.`. The regex
+    captured `Walker` then failed to find `, supra` immediately
+    after — backtracked and re-matched starting at `Horwich`.
+  - `Thorn Americas, Inc.`: `,` is not a continuation character. The
+    regex captured `Thorn Americas` then failed to find `, supra` (the
+    next token is `, Inc.`) — backtracked and re-matched starting at
+    `Inc.`.
+
+  ### Fix
+
+  Added two continuation alternatives to the party-name capture group
+  in both `SUPRA_PATTERN` and `SHORT_FORM_CASE_PATTERN`, and to the
+  mirror regexes in `extractShortForms.ts`:
+
+  - `\s+&\s+` — ampersand-joined parties
+  - `,\s+` — comma continuation for corporate suffixes / multi-clause
+    party names
+
+  Both require a capital-letter follow-on, so the lowercase `supra`
+  terminator is unaffected.
+
+  ### Intentionally out of scope
+
+  - **`In re X, supra` preserving the prefix.** The issue's third
+    example wants `In re Bluetooth, supra` → `partyName: "In re
+Bluetooth"`, but the resolver's BKTree indexes full-cite party
+    names with `In re` stripped (per existing #216 / #21 convention).
+    Adding the prefix here would break supra-to-fullcite resolution.
+    The existing pinned regression at `extractShortForms.test.ts:1150`
+    (`In re Smith, supra` → `partyName: 'Smith'`) reflects that
+    convention. Fixing this requires resolver-side normalization
+    (matching with prefix-equivalence) — a separate, larger change.
+  - **Bare back-reference resolution.** Cases like `Strawn v. Farmers
+Ins. Co. of Oregon, supra` where the source only writes
+    `Oregon, supra` cannot be fixed by pattern changes — only the
+    literal token text is available to the regex. The resolver must
+    walk back to the prior full citation to recover the full caption.
+
+  ### Tests
+
+  5 new tests under `multi-word party name capture (#301)` in
+  `tests/extract/extractShortForms.test.ts`:
+
+  - `Thorn Americas, Inc., supra` → `partyName: "Thorn Americas, Inc."`
+  - `Walker & Horwich, supra` → `partyName: "Walker & Horwich"`
+  - `In re Foo, supra` → `partyName: "Foo"` (pins the resolver-aware
+    In-re-stripping behavior; calls out the scope decision in the
+    test comment)
+  - Regression: single-word `Smith, supra` → `partyName: "Smith"`
+  - Regression: `Smith v. Jones, supra` → `partyName: "Smith v. Jones"`
+
+  Full 2411-test suite passes; no regressions.
+
+- [#314](https://github.com/medelman17/eyecite-ts/pull/314) [`09ed456`](https://github.com/medelman17/eyecite-ts/commit/09ed45621333ea8166b1722c3753704b2d0c0833) Thanks [@medelman17](https://github.com/medelman17)! - fix: hard-reject `<day> <Month> <year>` phantom citations like `8 April 1988` (#302)
+
+  The state-reporter tokenizer's broad `<volume> <Word> <page>` pattern
+  was capturing date-shaped prose as phantom case citations:
+  `8 April 1988` became `volume=8, reporter="April", page=1988`. The
+  existing false-positive filter could catch these but only when callers
+  opted into `filterFalsePositives: true`; without the opt-in, the
+  phantoms flooded downstream consumers.
+
+  ### Fix
+
+  Added a **hard-reject** pre-pass to `applyFalsePositiveFilters` that
+  unconditionally drops citations matching the date-shape pattern,
+  regardless of the caller's `filterFalsePositives` flag. The check
+  fires when:
+
+  1. `reporter` is one of the 12 English month names, AND
+  2. `volume` is a plausible day-of-month (1–31), AND
+  3. `page` is a plausible report year (1700 to current year + 5)
+
+  All three conditions must hold; any single legitimate-shaped value
+  keeps the citation in the pipeline (where the standard soft-flag pass
+  can still flag it). This narrow shape exists explicitly to avoid
+  collateral damage on cases where one component is a legitimate value.
+
+  ### Why hard-reject (rather than soft-flag by default)
+
+  Soft-flagging would still emit the phantom citation with a low
+  confidence and a warning, but the citation would still appear in the
+  result array — and most downstream consumers treat the array as
+  "these are the citations." There is no policy under which `<day>
+<Month> <year>` should be reported as a citation, so removing it is
+  correct under every caller policy.
+
+  ### Tests
+
+  - 6 new unit tests in `tests/extract/filterFalsePositives.test.ts`
+    under `month-name date misparse hard-reject (#302)`: covers
+    representative day/month/year shapes for each of the 12 months and
+    the two non-rejection boundaries (volume > 31, year < 1700).
+  - 4 new integration tests in `tests/integration/falsePositives.test.ts`
+    exercising the full pipeline: `On 8 April 1988`, `On 15 May 2010`
+    produce 0 citations; `100 F.3d 200` and `42 U.S.C. § 1983` baselines
+    still extract.
+
+  Full 2421-test suite passes; no regressions.
+
+- [#315](https://github.com/medelman17/eyecite-ts/pull/315) [`db86c00`](https://github.com/medelman17/eyecite-ts/commit/db86c0026ec5b32dc4308f3d6c83b48af83cba2a) Thanks [@medelman17](https://github.com/medelman17)! - feat: capture trailing parentheticals on `Id.`, `supra`, and short-form case citations (#303)
+
+  `Id. at 770 (Marsh)`, `Id. at 770 (citation omitted)`,
+  `Smith, supra, at 200 (holding that ...)`, and
+  `100 F.3d at 770 (citations omitted)` previously dropped the trailing
+  parenthetical content silently. The short-form extractors now capture
+  the parenthetical text on a new `parenthetical?: string` field,
+  mirroring how `extractCase` handles trailing parens on full citations.
+
+  Surfaced as 80+ findings in the 200-opinion modern-era sweep — the
+  third-largest field-issue bucket after caseName and court.
+
+  ### Fix
+
+  Added a lightweight `extractTrailingParenthetical(cleanedText, cleanEnd)`
+  helper in `src/extract/extractShortForms.ts`. It scans the cleaned text
+  starting at the citation's `span.cleanEnd` for `^[\s,]*\(([^()]*)\)` and
+  returns the inner text. Wired into all three short-form extractors:
+
+  - `extractId(token, transformationMap, cleanedText)` — already received
+    `cleanedText` for context validation (#216); reuse it.
+  - `extractSupra` — new third parameter.
+  - `extractShortFormCase` — new third parameter.
+
+  `extractCitations` now passes `cleaned` to all three call sites.
+
+  ### Fields added
+
+  - `IdCitation.parenthetical?: string`
+  - `SupraCitation.parenthetical?: string`
+  - `ShortFormCaseCitation.parenthetical?: string`
+
+  The captured value is the raw text between the parens. Consumers can
+  post-classify it as a short-form identifier (`Marsh`), drop-citation
+  marker (`citation omitted`), or explanatory holding by inspecting the
+  content — the lightweight extractor intentionally doesn't classify, since
+  short-form parens are rarely chained and classification adds value
+  mostly on full case cites.
+
+  ### Scope notes
+
+  - **Single paren only.** The extractor captures the first `(...)` that
+    immediately follows the citation. Chained parens on short-form cites
+    are rare and not in scope.
+  - **No `parentheticals[]` array.** The full-cite `parentheticals`
+    array with structured `Parenthetical` objects (including signal-word
+    classification, span, and kind) remains case-cite-only. Adding it to
+    short-forms would require porting the full `collectParentheticals`
+    pipeline, which is heavier than the gap this PR addresses.
+  - **No new `shortFormIdentifier` / `dropCitation` kinds.** The issue
+    suggested adding these to `ParentheticalType`, but with the raw
+    `parenthetical: string` field consumers can do their own classification
+    cheaply; adding union variants would expand the public type without
+    much practical benefit.
+
+  ### Tests
+
+  6 new tests under `trailing parenthetical capture on short-form cites
+(#303)` in `tests/extract/extractShortForms.test.ts`:
+
+  - `Id. at 770 (Marsh)` → `parenthetical: "Marsh"`
+  - `Id. at 770 (citation omitted)` → `parenthetical: "citation omitted"`
+  - `Id. at 100` (no paren) → no `parenthetical` field
+  - `Smith, supra, at 200 (holding ...)` → `parenthetical: "holding that the rule applies"`
+  - `Smith, supra, at 460` (no paren) → no `parenthetical` field
+  - `100 F.3d at 770 (citations omitted)` → `parenthetical: "citations omitted"`
+
+  Full 2427-test suite passes; no regressions.
+
+- [#316](https://github.com/medelman17/eyecite-ts/pull/316) [`9cebd56`](https://github.com/medelman17/eyecite-ts/commit/9cebd56f64a7841fea18dab04cbf7fc5f8fc4dbd) Thanks [@medelman17](https://github.com/medelman17)! - fix: don't set `signal` on citations introduced by lowercase prose (#304)
+
+  `Contra plaintiff's argument, Bolling v. Sharpe, 347 U.S. 497 (1954)`
+  and similar forms (`Accord between parties, ...`,
+  `Compare the rule from ...`) populated `signal: "contra"` / `"accord"` /
+  `"compare"` on the extracted citation even though those words were
+  used as ordinary English prepositions, not Bluebook signal phrases.
+
+  ### Root cause
+
+  Two independent paths set `signal`:
+
+  1. **`extractPartyNames`** in `extractCase.ts` runs `SIGNAL_STRIP_REGEX`
+     on the captured plaintiff. When `extractCaseName` over-captured
+     sentence prose (e.g., `Contra plaintiff's argument, Bolling`), the
+     leading word looked like a signal and got stripped — but the
+     remainder of the plaintiff (`plaintiff's argument, Bolling`) was
+     plain English, not a case-name.
+
+  2. **`detectLeadingSignals`** in `detectStringCites.ts` scans the gap
+     text before a citation for any signal occurrence. For text like
+     `Contra plaintiff's argument, [cite]`, it finds `Contra` as the
+     only match in the gap and accepts it without verifying that the
+     intervening text is case-name-shaped.
+
+  ### Fix
+
+  Both paths now require the post-signal text to begin with a capital
+  letter — a heuristic that distinguishes a real signal-introduced
+  citation context (capital-letter case-name following the signal) from
+  sentence prose (lowercase word following the signal):
+
+  - `extractPartyNames`: wrap the existing signal-strip block in a
+    guard that only applies the strip when the remainder of the
+    plaintiff begins with a capital letter. False-positive prose
+    remainders keep the signal unset.
+  - `detectLeadingSignals`: after selecting the best signal match,
+    inspect `gapText.substring(best.end)` and skip the assignment when
+    the first non-whitespace, non-comma character is lowercase.
+
+  Multi-word signals (`see also`, `but see`, `see, e.g.`) are already
+  captured as complete units by `SIGNAL_PATTERNS`, so the guard does
+  not interfere with valid signal forms — only sentence-internal
+  English words that happen to coincide with signal spellings.
+
+  ### Tests
+
+  5 new tests under `false-positive signal rejection (#304)` in
+  `tests/extract/extractCase.test.ts`:
+
+  - `Contra plaintiff's argument, Smith v. Jones, ...` → `signal: undefined`
+  - `Accord between parties, Smith v. Jones, ...` → `signal: undefined`
+  - `Compare the rule from Smith v. Jones, ...` → `signal: undefined`
+  - Regression: `Contra Smith v. Jones, ...` → `signal: "contra"` (real
+    signal with capital-letter case-name follow-on)
+  - Regression: `See Smith v. Jones, ...` → `signal: "see"`
+
+  Full 2432-test suite passes; no regressions.
+
+- [#317](https://github.com/medelman17/eyecite-ts/pull/317) [`4860c99`](https://github.com/medelman17/eyecite-ts/commit/4860c998fdd50d7a46563f0b8885bb4386d0fd39) Thanks [@medelman17](https://github.com/medelman17)! - fix: tolerate `Id.` / `Ibid.` punctuation variants — `Id .`, `Ibid .`, `Id, at N` (#305)
+
+  OCR'd PDFs and older typesetting routinely produce `Id .` (with a
+  space before the period) and the analogous `Ibid .`; some opinions
+  also write `Id, at p. 1483` as a typo for `Id., at p. 1483`. All three
+  variants were silently dropped by the tokenizer. Surfaced as 30+
+  misses in the 200-opinion modern-era sweep.
+
+  ### Fix
+
+  Updated both the tokenizer patterns (`src/patterns/shortForm.ts`) and
+  the parser regex in `extractShortForms.ts`:
+
+  - `[Ii]d\.` → `[Ii]d\s*\.` — optional whitespace before the period
+    (`Id .`, `Ibid .`).
+  - Comma-instead-of-period typo: `[Ii]d\s*,(?=\s+at\s)` — guarded by a
+    lookahead so bare `Id,` in prose (`"She showed her Id, but..."`) is
+    not misread as a citation.
+  - Same `\s*\.` allowance for `[Ii]bid`.
+
+  The parser regex group layout shifted to expose both punctuation forms
+  separately for confidence scoring:
+
+  - Group 2 = `.` (canonical form)
+  - Group 3 = `,` (typo form)
+  - Group 4 = optional post-period comma (canonical-only)
+  - Group 5 = pincite
+
+  Typo-comma form gets a `0.7` confidence cap (down from `0.9` for the
+  post-period comma variant), reflecting that `Id, at N` is almost
+  always a typo rather than a stylistic choice.
+
+  ### Scope notes
+
+  - **`Id. sec. 185b`** (section-instead-of-page pincite) tokenizes as
+    bare `Id.` with no pincite, matching previous behavior. The issue
+    suggested adding a structured `pinciteKind: "section"` field —
+    that's a public-type addition rather than a tokenization fix and is
+    out of scope for this PR.
+
+  ### Tests
+
+  7 new tests under `Id./Ibid. punctuation tolerance (#305)` in
+  `tests/extract/extractShortForms.test.ts`:
+
+  - `Id . at 326` → `pincite: 326`
+  - `Ibid .` tokenizes
+  - `Id, at p. 1483` → `pincite: 1483`, confidence < 0.95
+  - `Id . at p. 1192` → `pincite: 1192`
+  - `She showed her Id, but ...` → no match (prose guard works)
+  - Regression: canonical `Id. at 326` → `pincite: 326`, `confidence: 1.0`
+  - Regression: canonical `Ibid.` tokenizes
+
+  Full 2439-test suite passes; no regressions.
+
+- [#318](https://github.com/medelman17/eyecite-ts/pull/318) [`409b6e4`](https://github.com/medelman17/eyecite-ts/commit/409b6e49a548a117a5f430f25962e6a409c6dbf1) Thanks [@medelman17](https://github.com/medelman17)! - feat: recognize bracketed `[supra]` forms — Connecticut style (#306)
+
+  Connecticut Supreme/Appellate opinions enclose `supra` in square
+  brackets when the supra reference is nested inside a string-cite or
+  quotation: `State v. Jarzbek, [supra, 705]`, `State v. Jarzbek,
+[supra]`, `[supra at 78-82]`. None of these tokenized — all returned
+  `[]`. Surfaced by the 200-opinion modern-era sweep as a systematic
+  recall gap for Connecticut citation extraction.
+
+  ### Fix
+
+  Added a new tokenizer pattern `BRACKETED_SUPRA_PATTERN` to
+  `src/patterns/shortForm.ts`:
+
+  ```regex
+  (?:\b([A-Z]...)\s*,?\s+)?\[supra(?:(?:,\s+|\s+at\s+(?:pp?\.\s*)?)(\d+(?:[-–—]\d+)?))?\]
+  ```
+
+  Captures:
+
+  - Group 1: party name (optional — undefined for the bare standalone
+    `[supra at N]` form)
+  - Group 2: pincite (optional, accepts both Connecticut's `, N` form
+    and the canonical `at N` form, plus range `N-M`)
+
+  The bracket-comma pincite shape `[supra, 705]` deliberately accepts
+  no `at` before the page — that's the Connecticut convention.
+
+  `extractSupra` adds a fast-path branch that recognizes bracketed
+  token text (via `text.includes("[supra")`) and parses it through the
+  new regex. Falls through to the canonical `partySupraRegex` for
+  non-bracketed forms — zero impact on existing supra extraction.
+
+  ### Tests
+
+  4 new tests under `bracketed [supra] forms (#306)` in
+  `tests/extract/extractShortForms.test.ts`:
+
+  - `State v. Jarzbek, [supra, 705]` → partyName + pincite
+  - `State v. Jarzbek, [supra]` → partyName, no pincite
+  - `[supra at 78-82]` → no partyName, pincite 78 (range start)
+  - Regression: `Smith, supra, at 100` continues to work
+
+  Updated the pattern-count test in `tests/patterns/shortForm.test.ts`
+  from "all five patterns" → "all six patterns".
+
+  Full 2448-test suite passes; no regressions.
+
+- [#319](https://github.com/medelman17/eyecite-ts/pull/319) [`bddb55f`](https://github.com/medelman17/eyecite-ts/commit/bddb55f8b7240e0c1ef7e16e586810e334677b96) Thanks [@medelman17](https://github.com/medelman17)! - fix: `, fn. 3` California footnote variant + neutral-cite paragraph pincites (#311 partial)
+
+  #311 surfaces four independent pincite-extraction gaps. This PR
+  addresses two of them; the other two are deferred (see scope notes).
+
+  ### Fixed in this PR
+
+  **Sub-bug 3 — `, fn. 3` California footnote variant.**
+  `Smith v. Jones, 45 Cal.3d 744, 768, fn. 3` previously captured
+  `pincite: 768` but dropped the footnote reference. The canonical
+  `768 n.3` form already captured the footnote — only the
+  California-Style-Manual-style `, fn. 3` variant (comma instead of
+  whitespace separator, `fn.` instead of `n.`) missed.
+
+  Extended:
+
+  - `LOOKAHEAD_PINCITE_REGEX` (case-cite lookahead in `extractCase.ts`):
+    footnote-suffix separator accepts `\s+` or `,\s+`; alternation
+    includes `fn` / `fns` alongside `n` / `nn` / `note`.
+  - `PINCITE_PARSE_REGEX` (structured pincite parser in `pincite.ts`):
+    same comma-or-space separator + `fn`/`fns` alternation.
+
+  `Smith v. Jones, 45 Cal.3d 744, 768, fn. 3` → `pincite: 768, footnote: 3`.
+  `, fns. 3-5` multi-footnote ranges also captured.
+
+  **Sub-bug 4 — neutral-cite paragraph pincites.**
+  `State v. Flores, 2015-NMCA-072, ¶ 2` previously captured the neutral
+  cite but `pincite` and `pinciteInfo` were both undefined. State
+  appellate practice universally uses paragraph numbering (`¶ N`) instead
+  of page numbers on neutral cites; missing them was a systematic recall
+  floor.
+
+  Extended `NEUTRAL_PINCITE_LOOKAHEAD` in `extractNeutral.ts` to accept
+  the paragraph alternatives `¶¶? \d+(?:-\d+)?` / `paras?\.? \d+(?:-\d+)?`
+  already used by the case-cite lookahead (#204). Also added a fallback
+  in the extractor: `pincite = pinciteInfo?.page ?? pinciteInfo?.paragraph`
+  so the top-level numeric `pincite` field reflects the paragraph number
+  when no page is available.
+
+  `2015-NMCA-072, ¶ 2` → `pincite: 2`, `pinciteInfo: { paragraph: 2 }`.
+  `2015-NMCA-072, ¶¶ 14-16` → `pincite: 14`, `pinciteInfo: { paragraph:
+14, endParagraph: 16, isRange: true }`.
+
+  ### Intentionally deferred (separate follow-up PRs)
+
+  **Sub-bug 1 — page ranges in citation core (`109 N.E. 875-877`).** The
+  state-reporter tokenizer regex requires a single digit run for the
+  page, so `875-877` overflows the page slot and the citation isn't
+  extracted at all. Fixing requires changing the tokenizer's page
+  capture (`\d+` → `\d+(?:-\d+)?`) AND threading range parsing through
+  the downstream pipeline. Larger, riskier change.
+
+  **Sub-bug 2 — CSM `pp. 238, 233` multi-page list.** `462 U.S. at pp.
+238, 233` captures only the first pincite. The existing
+  `ADDITIONAL_PINCITE_REGEX` (added in #247 for `113, 115, 153` chains)
+  doesn't fire on the `pp.`-prefixed short-form path. Requires
+  identifying the additional-pincite entry point on short-form cites
+  and extending it.
+
+  ### Tests
+
+  - 2 new tests in `tests/extract/pincite.test.ts`: California footnote
+    variants `768, fn. 3` and `768, fns. 3-5`.
+  - 3 new tests in `tests/extract/extractCase.test.ts` under
+    `California \`, fn. 3\` footnote pincite variant (#311)`: case-cite
+    integration + multi-footnote + regression baseline.
+  - 3 new tests in `tests/extract/extractNeutralHyphenated.test.ts`
+    under `paragraph pincite on neutral cites (#311)`: single
+    paragraph, paragraph range, regression baseline for database
+    cites.
+
+  Full 2456-test suite passes; no regressions.
+
 ## 0.15.2
 
 ### Patch Changes
