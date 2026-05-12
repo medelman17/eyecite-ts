@@ -563,6 +563,24 @@ describe("extractShortForms", () => {
       // 0.7 reserved for the typo `Id,` form).
       expect(citation.confidence).toBe(0.9)
     })
+
+    it("extractId penalizes mid-sentence `Id.` context (existing #182 behavior)", () => {
+      // Pin the mid-sentence-context penalty path — `Id.` preceded by a
+      // lowercase word in a sentence (e.g., "The Id. card") gets confidence
+      // capped at 0.4. The cleanedText parameter exercises the context
+      // validation branch.
+      const cleanedText = "He showed Id. at the gate."
+      const idStart = cleanedText.indexOf("Id.")
+      const token: Token = {
+        text: "Id. at the",
+        span: { cleanStart: idStart, cleanEnd: idStart + 10 },
+        type: "case",
+        patternId: "id",
+      }
+      const citation = extractId(token, createIdentityMap(), cleanedText)
+      // Lowercase prose word before Id. → not a citation context → 0.4 cap
+      expect(citation.confidence).toBeLessThanOrEqual(0.4)
+    })
   })
 
   describe("supra with note number and pincite", () => {
