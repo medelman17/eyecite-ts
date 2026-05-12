@@ -449,6 +449,13 @@ const INTERNAL_QUALIFIER_REGEX = /\b(?:d\/?b\/?a|a\/?k\/?a|f\/?k\/?a|n\/?k\/?a)\
  */
 function isLikelyPartyName(name: string): boolean {
   const words = name.split(/\s+/)
+  // Reject names whose first word is a sentence-initial transition word
+  // (`Invoking Younger`, `Citing Pederson`, `Under People`). These pass
+  // the all-capitalized-words check below because every word starts capital,
+  // but the first word is prose, not a party name. (#323)
+  const firstWord = words[0] ?? ""
+  const firstWordClean = firstWord.toLowerCase().replace(/[.,']+$/, "")
+  if (SENTENCE_INITIAL_WORDS.has(firstWordClean)) return false
   for (const word of words) {
     if (!word) continue
     // Standalone ampersand is ubiquitous in corporate captions
@@ -470,6 +477,12 @@ function isLikelyPartyName(name: string): boolean {
  * Capitalized words that are never proper names — only uppercase because they're
  * sentence-initial. Prevents the firstWordIsProperName guard from treating
  * "This landmark decision..." or "Those cases..." as party-name-anchored text.
+ *
+ * Includes citation-introducing transition words (#323): `Under`, `Invoking`,
+ * `Citing`, `Following`, `Unlike`, `Whereas`, `Pursuant`, `Applying`. These
+ * appear at the start of sentences that introduce a citation and get
+ * incorrectly captured as part of the plaintiff name by V_CASE_NAME_REGEX's
+ * greedy lookback.
  */
 const SENTENCE_INITIAL_WORDS = new Set([
   "this",
@@ -484,6 +497,15 @@ const SENTENCE_INITIAL_WORDS = new Set([
   "her",
   "their",
   "our",
+  // Citation-introducing transition words (#323)
+  "under",
+  "invoking",
+  "citing",
+  "following",
+  "unlike",
+  "whereas",
+  "pursuant",
+  "applying",
 ])
 
 /**
@@ -1048,8 +1070,14 @@ const ID_BOUNDARY_REGEX = /\bId\.\s+/g
 const PAREN_SIGNAL_BOUNDARY_REGEX =
   /\(\s*(?:quoting|citing|cited\s+in|quoted\s+in|accord|discussing|noting|explaining|describing|recognizing|applying|rejecting|adopting|requiring|overruling|overruled\s+by|abrogated\s+by)(?:,\s*e\.g\.,?)?\s+/gi
 
-/** Sentence boundary: closing paren or period, followed by space + uppercase letter. */
-const SENTENCE_BOUNDARY_REGEX = /[.)]\s+(?=[A-Z])/g
+/** Sentence boundary: closing paren or period, followed by space + uppercase
+ *  letter or open-paren. The `(` lookahead handles parenthesized citations
+ *  inside running prose — `... discretion. (Burquet v. Brumbaugh, ...)` —
+ *  where the citation envelope opens with `(` immediately after the
+ *  sentence-ending period. Without it, the case-name backward walk crosses
+ *  the boundary and absorbs the entire preceding sentence into the
+ *  plaintiff field. #323 */
+const SENTENCE_BOUNDARY_REGEX = /[.)]\s+(?=[A-Z(])/g
 
 /** Louisiana docket-prefix boundary (#232). Matches the Louisiana citation
  *  shape `NN-NNNN (La. ... M/D/YY)` or `YYYY-K-NNNN (La. ... M/D/YY)` that
