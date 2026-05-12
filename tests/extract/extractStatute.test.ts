@@ -959,4 +959,71 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("em-dash subdivision in paragraph numbers (#333)", () => {
+    it("extracts Ill. Rev. Stat. paragraph with in-word em-dash subdivision", () => {
+      const cites = extractCitations(
+        "violates Ill. Rev. Stat. 1983, ch. 110, par. 13—214(a).",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(110)
+        expect(cites[0].section).toBe("13-214")
+        expect(cites[0].subsection).toBe("(a)")
+        expect(cites[0].year).toBe(1983)
+      }
+    })
+
+    it("extracts equivalent output for em-dash and hyphen variants", () => {
+      const emDash = extractCitations(
+        "Ill. Rev. Stat. 1983, ch. 110, par. 13—214(a).",
+      ).filter((c) => c.type === "statute")
+      const hyphen = extractCitations(
+        "Ill. Rev. Stat. 1983, ch. 110, par. 13-214(a).",
+      ).filter((c) => c.type === "statute")
+      expect(emDash).toHaveLength(1)
+      expect(hyphen).toHaveLength(1)
+      if (emDash[0]?.type === "statute" && hyphen[0]?.type === "statute") {
+        expect(emDash[0].section).toBe(hyphen[0].section)
+        expect(emDash[0].subsection).toBe(hyphen[0].subsection)
+        expect(emDash[0].title).toBe(hyphen[0].title)
+      }
+    })
+
+    it("extracts multi-paragraph em-dash form (first paragraph only)", () => {
+      const cites = extractCitations(
+        "See Ill. Rev. Stat. 1987, ch. 85, pars. 8—102, 8—103.",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(85)
+        expect(cites[0].section).toBe("8-102")
+      }
+    })
+
+    it("regression: blank-page em-dash still tokenizes as case with `---`", () => {
+      const cites = extractCitations("See Jones v. Doe, 500 F.4th — (2024).").filter(
+        (c) => c.type === "case",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "case") {
+        expect(cites[0].matchedText).toContain("---")
+      }
+    })
+
+    it("originalStart/originalEnd map back to the em-dash position in the source", () => {
+      const text = "violates Ill. Rev. Stat. 1983, ch. 110, par. 13—214(a)."
+      const cites = extractCitations(text).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        const slice = text.slice(cites[0].span.originalStart, cites[0].span.originalEnd)
+        // Source still contains em-dash; matchedText is the cleaned hyphen form.
+        expect(slice).toContain("—")
+        expect(cites[0].matchedText).toContain("13-214")
+        // Em-dash → hyphen is length-preserving, so clean/original spans match.
+        expect(cites[0].span.originalStart).toBe(cites[0].span.cleanStart)
+        expect(cites[0].span.originalEnd).toBe(cites[0].span.cleanEnd)
+      }
+    })
+  })
 })

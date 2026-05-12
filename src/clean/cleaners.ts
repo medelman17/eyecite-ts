@@ -113,13 +113,31 @@ export function removeOcrArtifacts(text: string): string {
 /**
  * Normalize Unicode dashes to ASCII equivalents.
  *
- * En-dash (U+2013) → single hyphen (used in page ranges like 105–107).
- * Em-dash (U+2014) → triple hyphen (used as blank page placeholder in citations
- * like "500 F.4th — (2024)", matching the existing `-{3,}` blank page pattern).
+ * En-dash (U+2013) maps to a single hyphen (page ranges like 105–107).
+ *
+ * Em-dash (U+2014) is context-aware: between word characters (Illinois
+ * Revised Statutes paragraph subdivisions like `par. 13—214`,
+ * docket-number separators like `No. 84—C—4508`, page-range pincites
+ * like `875—877`) it maps to a single hyphen; standalone (the
+ * `500 F.4th — (2024)` blank-page placeholder) it maps to triple
+ * hyphen so the existing `-{3,}` blank-page pattern still matches.
+ *
+ * The in-word substitution runs first with zero-width
+ * lookbehind/lookahead so adjacent em-dashes (`84—C—4508`) are both
+ * rewritten in one pass and don't fall through to the blank-page rule
+ * (#333).
  *
  * @example
  * normalizeDashes("500 F.2d 123, 125–130")  // en-dash in range
  * // => "500 F.2d 123, 125-130"
+ *
+ * @example
+ * normalizeDashes("par. 13—214(a)")  // in-word em-dash (#333)
+ * // => "par. 13-214(a)"
+ *
+ * @example
+ * normalizeDashes("No. 84—C—4508")  // docket separator (#333)
+ * // => "No. 84-C-4508"
  *
  * @example
  * normalizeDashes("500 F.4th — (2024)")  // em-dash blank page
@@ -127,7 +145,8 @@ export function removeOcrArtifacts(text: string): string {
  */
 export function normalizeDashes(text: string): string {
   return text
-    .replace(/[\u2014\u2015]/g, "---") // em-dash, horizontal bar → triple hyphen
+    .replace(/(?<=\w)[\u2014\u2015](?=\w)/g, "-") // in-word em-dash \u2192 hyphen (#333)
+    .replace(/[\u2014\u2015]/g, "---") // standalone em-dash, horizontal bar → triple hyphen
     .replace(/[\u2010\u2012\u2013]/g, "-") // hyphen, figure dash, en-dash → hyphen
 }
 

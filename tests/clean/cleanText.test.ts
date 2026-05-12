@@ -282,6 +282,34 @@ describe("normalizeDashes (issue #54)", () => {
   it("converts figure dash (U+2012) to ASCII hyphen", () => {
     expect(normalizeDashes("105\u2012107")).toBe("105-107")
   })
+
+  // #333 \u2014 in-word em-dash \u2192 single hyphen (Illinois Revised Statutes
+  // paragraph subdivisions, docket-number separators, page-range pincites)
+  it("converts in-word em-dash between digits to a single hyphen", () => {
+    expect(normalizeDashes("par. 13\u2014214(a)")).toBe("par. 13-214(a)")
+  })
+
+  it("converts in-word em-dash in page range to a single hyphen", () => {
+    expect(normalizeDashes("at 875\u2014877")).toBe("at 875-877")
+  })
+
+  it("converts adjacent em-dashes in docket separators (one pass)", () => {
+    expect(normalizeDashes("No. 84\u2014C\u20144508")).toBe("No. 84-C-4508")
+  })
+
+  it("preserves standalone em-dash (blank-page placeholder) as triple hyphen", () => {
+    expect(normalizeDashes("500 F.4th \u2014 (2024)")).toBe("500 F.4th --- (2024)")
+  })
+
+  it("mixed input: in-word em-dash hyphenated, standalone preserved", () => {
+    expect(
+      normalizeDashes("par. 13\u2014214 and 500 F.4th \u2014 (2024)"),
+    ).toBe("par. 13-214 and 500 F.4th --- (2024)")
+  })
+
+  it("in-word horizontal bar (U+2015) also converts to hyphen", () => {
+    expect(normalizeDashes("13\u2015214")).toBe("13-214")
+  })
 })
 
 describe("normalizeWhitespace — Unicode whitespace (issue #11)", () => {
