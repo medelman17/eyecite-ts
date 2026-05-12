@@ -116,15 +116,20 @@ export function extractId(
   //     so bare `Id,` in prose ("his Id, but ...") is not misread.
   //
   // Group layout: 1=initial char ("I"/"i"), 2=`.` when canonical form,
-  // 3=`,` when typo form (mutually exclusive with 2), 4=optional post-period
-  // comma (canonical-only), 5=pincite.
+  // 3=`,` when typo form (mutually exclusive with 2), 4=connector before
+  // pincite (`, ` Connecticut-style, `,? at`, or `,? (?=¶)`), 5=pincite.
+  //
+  // Connector alternation accepts three forms (#353):
+  //   a) `, <pincite>` — Connecticut comma-pincite (`Id., 253`)
+  //   b) `[, ]?at <pincite>` — Bluebook at-form, optional leading comma
+  //   c) `[, ]?(?=¶|para)` — paragraph marker
   //
   // Pincite accepts optional "*" prefix for star-pagination (#191), an optional
   // trailing footnote suffix " n.14" / " nn.14-15" (#202), an optional
   // `p.` / `pp.` prefix for CSM form (`Id. at p. 125`; see #236), and
   // `¶` / `¶¶` / `para.` / `paras.` paragraph markers (#204). When the
   // pincite is a paragraph form, `at` is optional (`Id. ¶ 12`).
-  const idRegex = /([Ii])(?:d|bid)\s*(?:(\.)|(,)(?=\s+at\s))(,?)\s*(?:(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
+  const idRegex = /([Ii])(?:d|bid)\s*(?:(\.)|(,)(?=\s+at\s))(?:(,\s+|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
   const match = idRegex.exec(text)
 
   if (!match) {
@@ -132,10 +137,14 @@ export function extractId(
   }
 
   const firstChar = match[1]
-  // Non-standard punctuation: either a typo comma instead of period (group 3)
-  // or a post-period comma (group 4). Both lower confidence.
+  // Non-standard punctuation signals:
+  //   - `isTypoComma`: comma replacing the period (`Id, at 1483`) — lower confidence
+  //   - `hasComma`: post-period comma (`Id., at 253` or `Id., 253`) — slightly
+  //     lower confidence than canonical. Connector capture (group 4) starts
+  //     with `,` for both the post-period-comma-at form and the Connecticut
+  //     comma-pincite form.
   const isTypoComma = match[3] === ","
-  const hasComma = isTypoComma || match[4] === ","
+  const hasComma = isTypoComma || match[4]?.startsWith(",") === true
   const pinciteInfo: PinciteInfo | undefined = match[5]
     ? (parsePincite(match[5]) ?? undefined)
     : undefined
@@ -259,8 +268,11 @@ export function extractSupra(
   // range end / `p.` / `pp.` prefix for CSM form (#236), an optional trailing
   // footnote suffix (#202), and `¶` / `¶¶` / `para.` / `paras.` paragraph
   // markers (#204). When the pincite is a paragraph form, `at` is optional.
+  // Connector before pincite accepts the Connecticut comma-pincite form
+  // (`Smith, supra, 522`) alongside the Bluebook `, at` and paragraph
+  // forms (#353).
   const partySupraRegex =
-    /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
+    /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:(?:,\s+|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
   const partyMatch = bracketedMatch ? null : partySupraRegex.exec(text)
 
   // Fallback: standalone supra — "supra note N", "supra at N", "supra § N".

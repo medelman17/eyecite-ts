@@ -29,12 +29,12 @@ import type { Pattern } from "./casePatterns"
  *  `paras.` paragraph markers (#204). When the pincite is a paragraph form,
  *  `at` is optional — `Id. ¶ 12` and `Id. at ¶ 12` both match. */
 export const ID_PATTERN: RegExp =
-  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]d(?:\s*\.|\s*,(?=\s+at\s))(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
+  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]d(?:\s*\.|\s*,(?=\s+at\s))(?:(?:,\s+|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
 
 /** Ibid. with optional pincite (less common variant). Paragraph forms (#204)
  *  follow the same convention as Id. Optional space before the period (#305). */
 export const IBID_PATTERN: RegExp =
-  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]bid\s*\.(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
+  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]bid\s*\.(?:(?:,\s+|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
 
 /**
  * Supra with party name and optional pincite.
@@ -59,7 +59,7 @@ export const IBID_PATTERN: RegExp =
  * paragraph form, `at` is optional.
  */
 export const SUPRA_PATTERN: RegExp =
-  /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
+  /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:(?:,\s+|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
 
 /**
  * Standalone supra without party name (common in footnotes).
