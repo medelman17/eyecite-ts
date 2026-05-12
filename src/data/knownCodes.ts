@@ -848,6 +848,22 @@ for (const entry of abbreviatedCodes) {
 }
 
 /**
+ * Stripped-form index — pattern with all dots and whitespace removed.
+ * Used by `findAbbreviatedCode` to resolve OCR/spacing variants like
+ * `AR.S.`, `ARS`, `A. R.S.` to the canonical `A.R.S.` entry (#348).
+ */
+const _byStrippedPattern = new Map<string, CodeEntry>()
+for (const entry of abbreviatedCodes) {
+  for (const pattern of entry.patterns) {
+    const stripped = pattern.toLowerCase().replace(/[.\s]/g, "")
+    if (stripped.length === 0) continue
+    // Last-write-wins; abbreviated arrays are ordered longest-first within an
+    // entry, so the SHORTEST (canonical) form for a given stripped key wins.
+    _byStrippedPattern.set(stripped, entry)
+  }
+}
+
+/**
  * Find a CodeEntry by an abbreviated text token.
  *
  * Lookup order:
@@ -870,7 +886,15 @@ export function findAbbreviatedCode(abbrevText: string): CodeEntry | undefined {
   const exact = _byPattern.get(lower)
   if (exact) return exact
 
-  // 2. Prefix fallback — find the longest pattern that is a prefix of abbrevText
+  // 2. Stripped-form match — OCR variants like `AR.S.`, `ARS`, `A. R.S.`
+  //    all collapse to `ars` and resolve to the canonical `A.R.S.` entry. #348
+  const stripped = lower.replace(/[.\s]/g, "")
+  if (stripped.length > 0) {
+    const strippedHit = _byStrippedPattern.get(stripped)
+    if (strippedHit) return strippedHit
+  }
+
+  // 3. Prefix fallback — find the longest pattern that is a prefix of abbrevText
   let bestMatch: CodeEntry | undefined
   let bestLen = 0
   for (const [pattern, entry] of _byPattern) {

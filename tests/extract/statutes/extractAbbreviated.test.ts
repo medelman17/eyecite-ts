@@ -182,4 +182,63 @@ describe("extractAbbreviated", () => {
       expect(c.confidence).toBeLessThanOrEqual(0.4)
     })
   })
+
+  describe("Arizona A.R.S. format variants (#348)", () => {
+    it("canonical `A.R.S. § 25-331(E)` extracts with subsection", () => {
+      const c = extractAbbreviated(makeToken("A.R.S. § 25-331(E)"), map)
+      expect(c.jurisdiction).toBe("AZ")
+      expect(c.code).toBe("A.R.S.")
+      expect(c.section).toBe("25-331")
+      expect(c.subsection).toBe("(E)")
+    })
+
+    it("word `section` (lowercase) — `A.R.S. section 14-2804(A)`", () => {
+      const c = extractAbbreviated(makeToken("A.R.S. section 14-2804(A)"), map)
+      expect(c.jurisdiction).toBe("AZ")
+      expect(c.code).toBe("A.R.S.")
+      expect(c.section).toBe("14-2804")
+      expect(c.subsection).toBe("(A)")
+    })
+
+    it("word `Section` (capital S) — `A.R.S. Section 22-318`", () => {
+      const c = extractAbbreviated(makeToken("A.R.S. Section 22-318"), map)
+      expect(c.jurisdiction).toBe("AZ")
+      expect(c.code).toBe("A.R.S.")
+      expect(c.section).toBe("22-318")
+    })
+
+    it("no-dots variant `ARS § 35-213` normalizes code to `A.R.S.`", () => {
+      const c = extractAbbreviated(makeToken("ARS § 35-213"), map)
+      expect(c.jurisdiction).toBe("AZ")
+      expect(c.code).toBe("A.R.S.")
+      expect(c.section).toBe("35-213")
+    })
+
+    it("extra-space variant `A. R.S. § 36-1002.02` normalizes code to `A.R.S.`", () => {
+      const c = extractAbbreviated(makeToken("A. R.S. § 36-1002.02"), map)
+      expect(c.jurisdiction).toBe("AZ")
+      expect(c.code).toBe("A.R.S.")
+      expect(c.section).toBe("36-1002.02")
+    })
+
+    it("OCR variant `AR.S. § 35-213` normalizes code to `A.R.S.`", () => {
+      const c = extractAbbreviated(makeToken("AR.S. § 35-213"), map)
+      expect(c.jurisdiction).toBe("AZ")
+      expect(c.code).toBe("A.R.S.")
+      expect(c.section).toBe("35-213")
+    })
+
+    it("regression: Bluebook full form `Ariz. Rev. Stat.` preserved (not over-normalized)", () => {
+      const c = extractAbbreviated(makeToken("Ariz. Rev. Stat. § 14-1234"), map)
+      expect(c.jurisdiction).toBe("AZ")
+      expect(c.code).toBe("Ariz. Rev. Stat.")
+      expect(c.section).toBe("14-1234")
+    })
+
+    it("regression: Bluebook annotated form `Ariz. Rev. Stat. Ann.` preserved", () => {
+      const c = extractAbbreviated(makeToken("Ariz. Rev. Stat. Ann. § 14-1234"), map)
+      expect(c.jurisdiction).toBe("AZ")
+      expect(c.code).toBe("Ariz. Rev. Stat. Ann.")
+    })
+  })
 })

@@ -74,7 +74,11 @@ export function buildAbbreviatedCodeRegex(): RegExp {
     // Section body: digits prefix, then alphanumeric/colon/slash/hyphen OR
     // period-followed-by-alphanumeric (lookahead). Period guard prevents
     // sentence-ending punctuation from being absorbed into the section.
-    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*§?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9]))*(?:\\([^)]*\\))*(?:\\s*et\\s+seq\\.?)?)`,
+    //
+    // Section connector: `§`, `§§`, or the spelled-out word `section(s)` /
+    // `Section(s)` (#348). Arizona and several other state corpora cite as
+    // `A.R.S. section 14-2804(A)` interchangeably with `A.R.S. § 14-2804(A)`.
+    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*(?:§§?|[Ss]ections?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9]))*(?:\\([^)]*\\))*(?:\\s*et\\s+seq\\.?)?)`,
     "g",
   )
 }
@@ -188,10 +192,13 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     regexFragment: "Alaska\\s+Stat\\.?(?:\\s+Ann\\.?)?|A\\.?S\\.?",
   },
   // ── Arizona ───────────────────────────────────────────────────────────────
+  // A.R.S. fragment admits inter-letter spaces (`A. R.S.`, OCR `AR.S.`) and
+  // no-dots (`ARS`) — see #348. The extractor normalizes all variants to the
+  // canonical `A.R.S.` via the stripped-form fallback in `findAbbreviatedCode`.
   {
     jurisdiction: "AZ",
     abbreviations: ["Ariz. Rev. Stat. Ann.", "Ariz. Rev. Stat.", "A.R.S."],
-    regexFragment: "Ariz\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|A\\.?R\\.?S\\.?",
+    regexFragment: "Ariz\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|A\\.?\\s*R\\.?\\s*S\\.?",
   },
   // ── Arkansas ──────────────────────────────────────────────────────────────
   {
