@@ -32,6 +32,18 @@ export const IBID_PATTERN: RegExp =
  * Supra with party name and optional pincite.
  * Pattern: word(s), supra [note N] [, at page]
  * Captures: (1) party name, (2) note number (if any), (3) pincite
+ *
+ * Party-name capture (#301): continuation accepts `\s+v\.?\s+` (v.),
+ * `\s+&\s+` (ampersand-joined parties — `Walker & Horwich, supra`),
+ * `,\s+` (corporate-suffix continuation — `Thorn Americas, Inc., supra`),
+ * and plain whitespace (multi-word names). Each continuation requires a
+ * capital-letter follow-on, so `, supra` (lowercase `s`) still terminates
+ * the name. NOTE: `In re` prefix is NOT included here — the resolver's
+ * BKTree matches full-cite party names that don't carry the prefix
+ * (#216 / #21), so a supra with `In re X` won't match a full cite
+ * indexed as `X`. Handling that gap requires resolver-side normalization,
+ * which is intentionally out of scope for #301.
+ *
  * Pincite accepts optional "*" prefix for star-pagination (#191), an optional
  * range end (#236), an optional trailing footnote suffix (#202), an optional
  * `p.` / `pp.` prefix for California Style Manual form (#236), and `¶` /
@@ -39,7 +51,7 @@ export const IBID_PATTERN: RegExp =
  * paragraph form, `at` is optional.
  */
 export const SUPRA_PATTERN: RegExp =
-  /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
+  /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
 
 /**
  * Standalone supra without party name (common in footnotes).
@@ -74,7 +86,7 @@ export const STANDALONE_SUPRA_PATTERN: RegExp =
  *   4: pincite
  */
 export const SHORT_FORM_CASE_PATTERN: RegExp =
-  /\b(?:([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*),\s+)?(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)\b/g
+  /\b(?:([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*),\s+)?(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)\b/g
 
 /** All short-form patterns for tokenization */
 export const SHORT_FORM_PATTERNS: readonly RegExp[] = [

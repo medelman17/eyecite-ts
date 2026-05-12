@@ -204,6 +204,65 @@ describe("extractShortForms", () => {
       expect(citation.pincite).toBe(250)
     })
 
+    describe("multi-word party name capture (#301)", () => {
+      it("captures `Thorn Americas, Inc., supra` (corporate suffix after comma)", () => {
+        const text =
+          "We followed Sprague v. Thorn Americas, Inc., 542 So. 2d 1242. Thorn Americas, Inc., supra, at 1245."
+        const cites = extractCitations(text)
+        const supra = cites.find((c) => c.type === "supra")
+        expect(supra?.type).toBe("supra")
+        if (supra?.type === "supra") {
+          expect(supra.partyName).toBe("Thorn Americas, Inc.")
+        }
+      })
+
+      it("captures `Walker & Horwich, supra` (ampersand-joined parties)", () => {
+        const text = "See Walker & Horwich, 39 Cal.4th 660. Walker & Horwich, supra, at 670."
+        const cites = extractCitations(text)
+        const supra = cites.find((c) => c.type === "supra")
+        expect(supra?.type).toBe("supra")
+        if (supra?.type === "supra") {
+          expect(supra.partyName).toBe("Walker & Horwich")
+        }
+      })
+
+      // `In re X, supra` partyName is intentionally captured WITHOUT the
+      // `In re` prefix here — the resolver's BKTree indexes full-cite
+      // party names with `In re` stripped (#216), so preserving the prefix
+      // on the supra side would break supra-to-fullcite resolution.
+      // Handling that mismatch requires resolver-side normalization which
+      // is out of scope for #301.
+      it("`In re Foo, supra` strips `In re` to match resolver index (#216)", () => {
+        const text = "In re Foo Litig., 100 F.3d 200. In re Foo, supra, at 205."
+        const cites = extractCitations(text)
+        const supra = cites.find((c) => c.type === "supra")
+        expect(supra?.type).toBe("supra")
+        if (supra?.type === "supra") {
+          expect(supra.partyName).toBe("Foo")
+        }
+      })
+
+      it("regression: single-word `Smith, supra` still works", () => {
+        const text = "See Smith v. Doe, 100 F.3d 200. Smith, supra."
+        const cites = extractCitations(text)
+        const supra = cites.find((c) => c.type === "supra")
+        expect(supra?.type).toBe("supra")
+        if (supra?.type === "supra") {
+          expect(supra.partyName).toBe("Smith")
+        }
+      })
+
+      it("regression: `Smith v. Jones, supra` still captures both parties", () => {
+        const text = "See Smith v. Jones, 100 F.3d 200. Smith v. Jones, supra."
+        const cites = extractCitations(text)
+        const supra = cites.find((c) => c.type === "supra")
+        expect(supra?.type).toBe("supra")
+        if (supra?.type === "supra") {
+          expect(supra.partyName).toBe("Smith v. Jones")
+        }
+      })
+    })
+
     it("should translate positions with offset transformation map", () => {
       const token: Token = {
         text: "Smith, supra, at 460",
