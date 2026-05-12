@@ -359,13 +359,17 @@ const LEADING_WORD_REGEX = /^([a-z]+)\b/i
  *
  *  The trailing alternation accepts either a comma (Bluebook form:
  *  `Smith v. Jones, 50 Cal.3d 100 (Cal. 1990)`) or a year paren (California
- *  Style Manual year-first form: `Smith v. Jones (1990) 50 Cal.3d 100`). The
- *  optional `(\d{4})` capture surfaces the year so the CSM form doesn't drop
- *  it on the floor — there is no trailing court parenthetical from which to
- *  recover the year later. The `d` flag enables `match.indices` so the
- *  caller can compute a year span. See #19. */
+ *  Style Manual year-first form: `Smith v. Jones (2d Cir. 2005) 396 F.3d 96`
+ *  / `Smith v. Jones (1990) 50 Cal.3d 100`). The CSM paren may carry an
+ *  optional court abbreviation before the year — `(2d Cir. 2005)`,
+ *  `(N.Y. 1991)` — which the caller routes to `precedingDocketMeta.court`.
+ *  The court text must contain a period so loose forms like `(March 1991)`
+ *  don't get misread as courts (Bluebook T7 court abbreviations all contain
+ *  at least one period). Capture group 3 = court (optional), 4 = year.
+ *  The `d` flag enables `match.indices` so the caller can compute a year
+ *  span. See #19, #293. */
 const V_CASE_NAME_REGEX =
-  /([A-Z][A-Za-z0-9\s.,'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9\s.,'&()/-]+?)\s*(?:,|\((\d{4})\))\s*$/d
+  /([A-Z][A-Za-z0-9\s.,'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9\s.,'&()/-]+?)\s*(?:,|\((?:([^)]*?\.[^)]*?)\s+)?(\d{4})\))\s*$/d
 
 /** Procedural prefix case name format.
  *  Longer prefixes listed first so the alternation prefers the longer match
@@ -374,11 +378,13 @@ const V_CASE_NAME_REGEX =
  *  beats `Commonwealth ex rel.`). See #193, #242, and the six 2026-05-11
  *  procedural-prefix research dispatches in `docs/research/`.
  *
- *  The trailing alternation matches either `,` (Bluebook) or `(YYYY)` (CSM
- *  year-first form, #19). Year is captured as group 3; the `d` flag enables
- *  `match.indices` so the caller can compute a year span. */
+ *  The trailing alternation matches either `,` (Bluebook) or
+ *  `((<court>)? <year>)` (CSM year-first form, #19 / #293). Captures:
+ *    1: prefix word, 2: party body, 3: court (optional), 4: year.
+ *  The court text must contain a period so loose forms like `(March 1991)`
+ *  don't get misread as courts. The `d` flag enables `match.indices`. */
 const PROCEDURAL_PREFIX_REGEX =
-  /\b(In\s+the\s+Matter\s+of\s+the\s+Liquidation\s+of|In\s+the\s+Matter\s+of\s+the\s+Rehabilitation\s+of|In\s+the\s+Matter\s+of\s+the\s+Receivership\s+of|In\s+the\s+Matter\s+of\s+the\s+Extradition\s+of|In\s+the\s+Matter\s+of\s+the\s+Application\s+of|In\s+the\s+Matter\s+of\s+the\s+Welfare\s+of|In\s+the\s+Matter\s+of|In\s+re\s+Petition\s+for\s+Naturalization\s+of|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+as\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+of|In\s+re\s+Marriage\s+of|In\s+re\s+Liquidation\s+of|In\s+re\s+Rehabilitation\s+of|In\s+re\s+Receivership\s+of|In\s+re\s+Naturalization\s+of|In\s+re\s+Extradition\s+of|In\s+re\s+Application\s+of|In\s+re\s+Welfare\s+of|In\s+re\s+Dependency\s+of|In\s+re\s+Paternity\s+of|In\s+re\s+Parentage\s+of|In\s+re\s+Conservatorship\s+of|In\s+re\s+Guardianship\s+of|In\s+re\s+Adoption\s+of|In\s+the\s+Interest\s+of|Matter\s+of\s+Liquidation\s+of|Matter\s+of\s+Rehabilitation\s+of|Commonwealth\s+of\s+Puerto\s+Rico\s+ex\s+rel\.|Government\s+of\s+the\s+Virgin\s+Islands\s+ex\s+rel\.|Commonwealth\s+ex\s+rel\.|Petition\s+for\s+Naturalization\s+of|People\s+ex\s+rel\.|District\s+of\s+Columbia\s+ex\s+rel\.|Conservatorship\s+of\s+the\s+Person\s+and\s+Estate\s+of|Conservatorship\s+of\s+the\s+Person\s+of|Conservatorship\s+of\s+the\s+Estate\s+of|Inquiry\s+Concerning\s+Judge|Appeal\s+of|Care\s+and\s+Protection\s+of|Succession\s+of|In re|Ex parte|Matter of|Estate of|State ex rel\.|United States ex rel\.|Application of|On Petition of|Petition of|Adoption of|Conservatorship of|Guardianship of)\s+([A-Za-z0-9\s.,'&()/-]+?)\s*(?:,|\((\d{4})\))\s*$/id
+  /\b(In\s+the\s+Matter\s+of\s+the\s+Liquidation\s+of|In\s+the\s+Matter\s+of\s+the\s+Rehabilitation\s+of|In\s+the\s+Matter\s+of\s+the\s+Receivership\s+of|In\s+the\s+Matter\s+of\s+the\s+Extradition\s+of|In\s+the\s+Matter\s+of\s+the\s+Application\s+of|In\s+the\s+Matter\s+of\s+the\s+Welfare\s+of|In\s+the\s+Matter\s+of|In\s+re\s+Petition\s+for\s+Naturalization\s+of|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+as\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+of|In\s+re\s+Marriage\s+of|In\s+re\s+Liquidation\s+of|In\s+re\s+Rehabilitation\s+of|In\s+re\s+Receivership\s+of|In\s+re\s+Naturalization\s+of|In\s+re\s+Extradition\s+of|In\s+re\s+Application\s+of|In\s+re\s+Welfare\s+of|In\s+re\s+Dependency\s+of|In\s+re\s+Paternity\s+of|In\s+re\s+Parentage\s+of|In\s+re\s+Conservatorship\s+of|In\s+re\s+Guardianship\s+of|In\s+re\s+Adoption\s+of|In\s+the\s+Interest\s+of|Matter\s+of\s+Liquidation\s+of|Matter\s+of\s+Rehabilitation\s+of|Commonwealth\s+of\s+Puerto\s+Rico\s+ex\s+rel\.|Government\s+of\s+the\s+Virgin\s+Islands\s+ex\s+rel\.|Commonwealth\s+ex\s+rel\.|Petition\s+for\s+Naturalization\s+of|People\s+ex\s+rel\.|District\s+of\s+Columbia\s+ex\s+rel\.|Conservatorship\s+of\s+the\s+Person\s+and\s+Estate\s+of|Conservatorship\s+of\s+the\s+Person\s+of|Conservatorship\s+of\s+the\s+Estate\s+of|Inquiry\s+Concerning\s+Judge|Appeal\s+of|Care\s+and\s+Protection\s+of|Succession\s+of|In re|Ex parte|Matter of|Estate of|State ex rel\.|United States ex rel\.|Application of|On Petition of|Petition of|Adoption of|Conservatorship of|Guardianship of)\s+([A-Za-z0-9\s.,'&()/-]+?)\s*(?:,|\((?:([^)]*?\.[^)]*?)\s+)?(\d{4})\))\s*$/id
 
 /**
  * Lowercase words that legitimately appear in legal party names.
@@ -1287,16 +1293,31 @@ export function extractCaseName(
 
       const caseName = `${plaintiff} v. ${defendantText}`
       const nameStart = adjustedSearchStart + vMatch.index + trimOffset
-      // vMatch[3] holds the year captured by the CSM year-first tail
-      // (`Smith v. Jones (1990)` — #19). Bluebook form leaves it undefined.
-      // vMatch.indices[3] (enabled by the `d` flag) gives the position within
-      // precedingText; translate to cleanedText coordinates.
-      const year = vMatch[3] ? Number.parseInt(vMatch[3], 10) : undefined
+      // vMatch[3] = optional court text from the CSM year-first paren
+      // (`Smith v. Jones (2d Cir. 2005)` — #293); vMatch[4] = the year
+      // (`Smith v. Jones (1990)` — #19). Bluebook form leaves both undefined.
+      // vMatch.indices[4] (enabled by `d` flag) gives the year position;
+      // translate to cleanedText coordinates.
+      const courtFromCsm = vMatch[3]?.trim()
+      const year = vMatch[4] ? Number.parseInt(vMatch[4], 10) : undefined
       let yearStart: number | undefined
       let yearEnd: number | undefined
-      if (year !== undefined && vMatch.indices?.[3]) {
-        yearStart = adjustedSearchStart + vMatch.indices[3][0]
-        yearEnd = adjustedSearchStart + vMatch.indices[3][1]
+      if (year !== undefined && vMatch.indices?.[4]) {
+        yearStart = adjustedSearchStart + vMatch.indices[4][0]
+        yearEnd = adjustedSearchStart + vMatch.indices[4][1]
+      }
+      // CSM `(court year)` form (#293): synthesize a precedingDocketMeta so
+      // the existing consumer at extractCase line ~2502 propagates court,
+      // year, and date onto the citation. Skip when only year is present
+      // (year-only handled by the dedicated `year`/`yearStart`/`yearEnd`
+      // fields above).
+      let csmDocketMeta = precedingDocketMeta
+      if (!csmDocketMeta && courtFromCsm && year !== undefined && vMatch[4]) {
+        csmDocketMeta = {
+          court: courtFromCsm,
+          year,
+          date: { iso: vMatch[4], parsed: { year } },
+        }
       }
       return {
         caseName,
@@ -1304,7 +1325,7 @@ export function extractCaseName(
         year,
         yearStart,
         yearEnd,
-        precedingDocketMeta,
+        precedingDocketMeta: csmDocketMeta,
       }
     }
   }
@@ -1316,14 +1337,24 @@ export function extractCaseName(
     if (!procMatch[0].includes(";")) {
       const caseName = `${procMatch[1]} ${procMatch[2].trim()}`
       const nameStart = adjustedSearchStart + procMatch.index
-      // procMatch[3] holds the year captured by the CSM year-first tail
-      // (`In re K.F. (2009)` — #19). Bluebook form leaves it undefined.
-      const year = procMatch[3] ? Number.parseInt(procMatch[3], 10) : undefined
+      // procMatch[3] = optional court text from the CSM year-first paren
+      // (`In re Cellphone (9th Cir. 2014)` — #293); procMatch[4] = the year
+      // (`In re K.F. (2009)` — #19). Bluebook form leaves both undefined.
+      const courtFromCsm = procMatch[3]?.trim()
+      const year = procMatch[4] ? Number.parseInt(procMatch[4], 10) : undefined
       let yearStart: number | undefined
       let yearEnd: number | undefined
-      if (year !== undefined && procMatch.indices?.[3]) {
-        yearStart = adjustedSearchStart + procMatch.indices[3][0]
-        yearEnd = adjustedSearchStart + procMatch.indices[3][1]
+      if (year !== undefined && procMatch.indices?.[4]) {
+        yearStart = adjustedSearchStart + procMatch.indices[4][0]
+        yearEnd = adjustedSearchStart + procMatch.indices[4][1]
+      }
+      let csmDocketMeta = precedingDocketMeta
+      if (!csmDocketMeta && courtFromCsm && year !== undefined && procMatch[4]) {
+        csmDocketMeta = {
+          court: courtFromCsm,
+          year,
+          date: { iso: procMatch[4], parsed: { year } },
+        }
       }
       return {
         caseName,
@@ -1331,7 +1362,7 @@ export function extractCaseName(
         year,
         yearStart,
         yearEnd,
-        precedingDocketMeta,
+        precedingDocketMeta: csmDocketMeta,
       }
     }
   }

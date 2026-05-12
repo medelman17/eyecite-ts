@@ -4933,6 +4933,71 @@ describe("California year-first citation format (#19)", () => {
     })
   })
 
+  describe("CSM year-first with court (#293)", () => {
+    it("extracts court from `(11th Cir. 1991)` in v. form", () => {
+      const text =
+        "Camden I Condominium Assn. v. Dunkle (11th Cir. 1991) 946 F.2d 768, 774."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("Camden I Condominium Assn. v. Dunkle")
+        expect(cases[0].court).toBe("11th Cir.")
+        expect(cases[0].year).toBe(1991)
+        expect(cases[0].pincite).toBe(774)
+      }
+    })
+
+    it("extracts court from `(2d Cir. 2005)` in v. form", () => {
+      const text =
+        "Wal-Mart Stores, Inc. v. Visa U.S.A., Inc. (2d Cir. 2005) 396 F.3d 96, 103."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].court).toBe("2d Cir.")
+        expect(cases[0].year).toBe(2005)
+      }
+    })
+
+    it("extracts court from `(9th Cir. 2014)` in procedural-prefix form", () => {
+      const text =
+        "See In re Cellphone Termination Fee Cases (9th Cir. 2014) 731 F.3d 968."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re Cellphone Termination Fee Cases")
+        expect(cases[0].court).toBe("9th Cir.")
+        expect(cases[0].year).toBe(2014)
+      }
+    })
+
+    it("year-only CSM `(2013)` still works (no court, no regression)", () => {
+      const text = "Cf. People v. Rivas (2013) 214 Cal.App.4th 1410, 1430."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("People v. Rivas")
+        expect(cases[0].year).toBe(2013)
+        expect(cases[0].court).toBeUndefined()
+      }
+    })
+
+    it("year-only CSM with procedural prefix `In re K.F. (2009)` still works", () => {
+      const text = "See In re K.F. (2009) 173 Cal.App.4th 655 for the standard."
+      const cits = extractCitations(text)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(1)
+      if (cases[0].type === "case") {
+        expect(cases[0].caseName).toBe("In re K.F.")
+        expect(cases[0].year).toBe(2009)
+        expect(cases[0].court).toBeUndefined()
+      }
+    })
+  })
+
   describe("regression controls — Bluebook form still works", () => {
     it("`Smith v. Jones, 50 Cal.3d 100 (Cal. 1990)` still parses court+year", () => {
       const text = "Smith v. Jones, 50 Cal.3d 100 (Cal. 1990) held that..."
