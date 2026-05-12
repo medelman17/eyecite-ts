@@ -308,6 +308,84 @@ describe("extractStatute", () => {
     })
   })
 
+  describe("year-of-edition parenthetical (#285)", () => {
+    it("attaches year to USC citation with year paren", () => {
+      const citations = extractCitations("42 U.S.C. § 1983 (1976)")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].section).toBe("1983")
+        expect(citations[0].year).toBe(1976)
+        expect(citations[0].publisher).toBeUndefined()
+      }
+    })
+
+    it("attaches year + publisher to USC with (West YYYY)", () => {
+      const citations = extractCitations("28 U.S.C. § 1331 (West 2018)")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].section).toBe("1331")
+        expect(citations[0].year).toBe(2018)
+        expect(citations[0].publisher).toBe("West")
+      }
+    })
+
+    it("attaches year to abbreviated-code (HRS) with subsection + year paren", () => {
+      const citations = extractCitations("Petitioner must show prejudice. HRS § 91-14(a) (1985).")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].code).toBe("HRS")
+        expect(citations[0].section).toBe("91-14")
+        expect(citations[0].subsection).toBe("(a)")
+        expect(citations[0].year).toBe(1985)
+      }
+    })
+
+    it("attaches year to abbreviated-code without subsection", () => {
+      const citations = extractCitations("HRS § 91-14 (1985)")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].section).toBe("91-14")
+        expect(citations[0].subsection).toBeUndefined()
+        expect(citations[0].year).toBe(1985)
+      }
+    })
+
+    it("does not confuse subsection (a) with a year paren", () => {
+      const citations = extractCitations("42 U.S.C. § 1983(a)(2)")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].subsection).toBe("(a)(2)")
+        expect(citations[0].year).toBeUndefined()
+      }
+    })
+
+    it("leaves year undefined when no trailing paren present", () => {
+      const citations = extractCitations("42 U.S.C. § 1983")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].year).toBeUndefined()
+        expect(citations[0].publisher).toBeUndefined()
+      }
+    })
+
+    it("only attaches year to the immediately-preceding cite in a string", () => {
+      const citations = extractCitations(
+        "Plaintiff invokes 42 U.S.C. § 1983; 28 U.S.C. § 1331 (West 2018).",
+      )
+      const statutes = citations.filter((c) => c.type === "statute")
+      expect(statutes).toHaveLength(2)
+      if (statutes[0].type === "statute") {
+        expect(statutes[0].section).toBe("1983")
+        expect(statutes[0].year).toBeUndefined()
+      }
+      if (statutes[1].type === "statute") {
+        expect(statutes[1].section).toBe("1331")
+        expect(statutes[1].year).toBe(2018)
+        expect(statutes[1].publisher).toBe("West")
+      }
+    })
+  })
+
   describe("metadata fields", () => {
     it("should include all required CitationBase fields", () => {
       const token: Token = {
