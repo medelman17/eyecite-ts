@@ -1216,6 +1216,70 @@ describe("star-pagination pincite (#191)", () => {
       })
     })
   })
+
+  describe("spelled-out `at page` / `at pages` pincite prefix (#344)", () => {
+    it("classifies `281 Ala. at page 322` as short-form case (was misclassified as journal)", () => {
+      const cits = extractCitations("See 281 Ala. at page 322 for the rule.")
+      const sf = cits.find((c) => c.type === "shortFormCase")
+      expect(sf).toBeDefined()
+      if (sf?.type === "shortFormCase") {
+        expect(sf.volume).toBe(281)
+        expect(sf.reporter).toBe("Ala.")
+        expect(sf.pincite).toBe(322)
+      }
+      // No journal misclassification on this input
+      expect(cits.some((c) => c.type === "journal")).toBe(false)
+    })
+
+    it("classifies `38 Ala.App. at page 186` as short-form case", () => {
+      const cits = extractCitations("See 38 Ala.App. at page 186.")
+      const sf = cits.find((c) => c.type === "shortFormCase")
+      expect(sf).toBeDefined()
+      if (sf?.type === "shortFormCase") {
+        expect(sf.volume).toBe(38)
+        expect(sf.reporter).toBe("Ala.App.")
+        expect(sf.pincite).toBe(186)
+      }
+    })
+
+    it("classifies plural `261 Ala. at pages 494` as short-form case", () => {
+      const cits = extractCitations("See 261 Ala. at pages 494.")
+      const sf = cits.find((c) => c.type === "shortFormCase")
+      expect(sf).toBeDefined()
+      if (sf?.type === "shortFormCase") {
+        expect(sf.volume).toBe(261)
+        expect(sf.reporter).toBe("Ala.")
+        expect(sf.pincite).toBe(494)
+      }
+    })
+
+    it("captures first pincite in `at pages 261 and 262` list (multi-pincite list out of scope)", () => {
+      const cits = extractCitations("See 252 Ala. at pages 261 and 262.")
+      const sf = cits.find((c) => c.type === "shortFormCase")
+      expect(sf).toBeDefined()
+      if (sf?.type === "shortFormCase") {
+        expect(sf.pincite).toBe(261)
+      }
+    })
+
+    it("regression: abbreviated `at 322` still works", () => {
+      const cits = extractCitations("See 281 Ala. at 322 for the rule.")
+      const sf = cits.find((c) => c.type === "shortFormCase")
+      expect(sf).toBeDefined()
+      if (sf?.type === "shortFormCase") {
+        expect(sf.pincite).toBe(322)
+      }
+    })
+
+    it("regression: CSM `at p. 717` still works", () => {
+      const cits = extractCitations("See 18 Cal.4th at p. 717.")
+      const sf = cits.find((c) => c.type === "shortFormCase")
+      expect(sf).toBeDefined()
+      if (sf?.type === "shortFormCase") {
+        expect(sf.pincite).toBe(717)
+      }
+    })
+  })
 })
 
 /**

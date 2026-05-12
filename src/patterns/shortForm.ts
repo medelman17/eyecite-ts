@@ -106,9 +106,15 @@ export const BRACKETED_SUPRA_PATTERN: RegExp =
  *   2: volume
  *   3: reporter
  *   4: pincite
+ *
+ * Pincite prefix also tolerates the spelled-out `page` / `pages` form
+ * (`281 Ala. at page 322`, `38 Ala.App. at pages 186`) common in Alabama
+ * appellate writing (#344). Without this, the input slipped past the
+ * short-form-case pattern and was misclassified as a journal citation by
+ * a later pattern.
  */
 export const SHORT_FORM_CASE_PATTERN: RegExp =
-  /\b(?:([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*),\s+)?(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)\b/g
+  /\b(?:([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*),\s+)?(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*|pages?\s+)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)\b/g
 
 /** All short-form patterns for tokenization */
 export const SHORT_FORM_PATTERNS: readonly RegExp[] = [
