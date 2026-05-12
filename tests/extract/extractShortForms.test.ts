@@ -1695,3 +1695,99 @@ describe("trailing parenthetical capture on short-form cites (#303)", () => {
     })
   })
 })
+
+describe("Connecticut comma-pincite for Id./Ibid./supra (#353)", () => {
+  it("extracts pincite from `Id., 6`", () => {
+    const text = "See Smith v. Jones, 100 Conn. 1, 5 (1980). Id., 6."
+    const cites = extractCitations(text)
+    const id = cites.find((c) => c.type === "id")
+    expect(id?.type).toBe("id")
+    if (id?.type === "id") {
+      expect(id.pincite).toBe(6)
+    }
+  })
+
+  it("extracts pincite from `Id., 14-15` (range)", () => {
+    const text = "See Smith v. Jones, 100 Conn. 1, 5 (1980). Id., 14-15."
+    const cites = extractCitations(text)
+    const id = cites.find((c) => c.type === "id")
+    expect(id?.type).toBe("id")
+    if (id?.type === "id") {
+      expect(id.pincite).toBe(14)
+      expect(id.pinciteInfo?.endPage).toBe(15)
+      expect(id.pinciteInfo?.isRange).toBe(true)
+    }
+  })
+
+  it("captures first pincite from `Id., 380, 383` (multi-page list out of scope)", () => {
+    const text = "See Smith v. Jones, 100 Conn. 1, 5 (1980). Id., 380, 383."
+    const cites = extractCitations(text)
+    const id = cites.find((c) => c.type === "id")
+    expect(id?.type).toBe("id")
+    if (id?.type === "id") {
+      expect(id.pincite).toBe(380)
+    }
+  })
+
+  it("extracts pincite from `Smith, supra, 522`", () => {
+    const text = "We followed Smith v. Jones, 100 Conn. 1, 5 (1980). Smith, supra, 522."
+    const cites = extractCitations(text)
+    const supra = cites.find((c) => c.type === "supra")
+    expect(supra?.type).toBe("supra")
+    if (supra?.type === "supra") {
+      expect(supra.pincite).toBe(522)
+    }
+  })
+
+  it("extracts pincite from `Ibid., 250`", () => {
+    const text = "See Smith v. Jones, 100 Conn. 1, 5 (1980). Ibid., 250."
+    const cites = extractCitations(text)
+    const id = cites.find((c) => c.type === "id")
+    expect(id?.type).toBe("id")
+    if (id?.type === "id") {
+      expect(id.pincite).toBe(250)
+    }
+  })
+
+  it("regression: `Id. at 822` (Bluebook form) — full confidence", () => {
+    const text = "See Smith, 100 Conn. 1 (1980). Id. at 822."
+    const cites = extractCitations(text)
+    const id = cites.find((c) => c.type === "id")
+    expect(id?.type).toBe("id")
+    if (id?.type === "id") {
+      expect(id.pincite).toBe(822)
+      expect(id.confidence).toBe(1.0)
+    }
+  })
+
+  it("regression: `Smith, supra, at 822` (Bluebook form)", () => {
+    const text = "We cited Smith, 100 F.3d 1. Smith, supra, at 822."
+    const cites = extractCitations(text)
+    const supra = cites.find((c) => c.type === "supra")
+    expect(supra?.type).toBe("supra")
+    if (supra?.type === "supra") {
+      expect(supra.pincite).toBe(822)
+    }
+  })
+
+  it("regression: `Id., at 253` (post-period comma) still works", () => {
+    const text = "See Smith, 100 F.3d 1. Id., at 253."
+    const cites = extractCitations(text)
+    const id = cites.find((c) => c.type === "id")
+    expect(id?.type).toBe("id")
+    if (id?.type === "id") {
+      expect(id.pincite).toBe(253)
+    }
+  })
+
+  it("regression: `Id, at 1483` (typo comma instead of period) still works", () => {
+    const text = "See Smith, 100 F.3d 1. Id, at 1483."
+    const cites = extractCitations(text)
+    const id = cites.find((c) => c.type === "id")
+    expect(id?.type).toBe("id")
+    if (id?.type === "id") {
+      expect(id.pincite).toBe(1483)
+      expect(id.confidence).toBeLessThanOrEqual(0.7)
+    }
+  })
+})
