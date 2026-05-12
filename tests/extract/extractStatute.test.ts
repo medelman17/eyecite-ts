@@ -757,4 +757,58 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("named-code does not absorb intervening prose (#328)", () => {
+    it("rejects prose between two `California` occurrences", () => {
+      // The named-code tokenizer previously matched the first `California`
+      // and absorbed lowercase prose words ("for solicitation, acceptance ...")
+      // up to the second `California` and the `§` because the code-name
+      // body accepted `[A-Za-z]`. With the title-case-only fix, the regex
+      // now skips the first `California` and matches at the second one.
+      const text =
+        "He was convicted in California for solicitation, acceptance or referral of fraudulent insurance claims, in violation of California Penal Code § 549."
+      const cites = extractCitations(text).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].matchedText).toBe("California Penal Code § 549")
+        expect(cites[0].code).toBe("Penal")
+        expect(cites[0].section).toBe("549")
+        // matchedText must equal the slice from span coordinates
+        const span = cites[0].span
+        expect(text.slice(span.originalStart, span.originalEnd)).toBe(
+          cites[0].matchedText,
+        )
+      }
+    })
+
+    it("regression: `Md. Code Ann., Crim. Law § 3-202` (comma inside code name)", () => {
+      const cites = extractCitations("See Md. Code Ann., Crim. Law § 3-202.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites.length).toBeGreaterThanOrEqual(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("3-202")
+      }
+    })
+
+    it("regression: `Md. Code, Ins. § 27-101` (comma + abbrev)", () => {
+      const cites = extractCitations("Cf. Md. Code, Ins. § 27-101.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites.length).toBeGreaterThanOrEqual(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("27-101")
+      }
+    })
+
+    it("regression: `Tex. Civ. Prac. & Rem. Code Ann. § 17.42` (ampersand + multi-word)", () => {
+      const cites = extractCitations("See Tex. Civ. Prac. & Rem. Code Ann. § 17.42.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites.length).toBeGreaterThanOrEqual(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("17.42")
+      }
+    })
+  })
 })
