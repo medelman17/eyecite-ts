@@ -520,6 +520,49 @@ describe("extractShortForms", () => {
       const id = cites.find((c) => c.type === "id")
       expect(id?.type).toBe("id")
     })
+
+    // Direct extractId calls to pin the new regex group indices (group 5 =
+    // pincite after the typo / canonical-comma renumbering; #305).
+
+    it("extractId direct call on `Id, at p. 1483` (typo path)", () => {
+      const token: Token = {
+        text: "Id, at p. 1483",
+        span: { cleanStart: 0, cleanEnd: 14 },
+        type: "case",
+        patternId: "id",
+      }
+      const citation = extractId(token, createIdentityMap())
+      expect(citation.type).toBe("id")
+      expect(citation.pincite).toBe(1483)
+      expect(citation.confidence).toBeLessThanOrEqual(0.7)
+    })
+
+    it("extractId direct call on `Id .` (space-before-period, no pincite)", () => {
+      const token: Token = {
+        text: "Id .",
+        span: { cleanStart: 0, cleanEnd: 4 },
+        type: "case",
+        patternId: "id",
+      }
+      const citation = extractId(token, createIdentityMap())
+      expect(citation.type).toBe("id")
+      expect(citation.pincite).toBeUndefined()
+    })
+
+    it("extractId direct call on canonical `Id., at 100` exercises post-period comma path", () => {
+      const token: Token = {
+        text: "Id., at 100",
+        span: { cleanStart: 0, cleanEnd: 11 },
+        type: "case",
+        patternId: "id",
+      }
+      const citation = extractId(token, createIdentityMap())
+      expect(citation.type).toBe("id")
+      expect(citation.pincite).toBe(100)
+      // Post-period comma reduces confidence to 0.9 (not the more-aggressive
+      // 0.7 reserved for the typo `Id,` form).
+      expect(citation.confidence).toBe(0.9)
+    })
   })
 
   describe("supra with note number and pincite", () => {
