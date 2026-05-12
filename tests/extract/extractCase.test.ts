@@ -5777,4 +5777,72 @@ describe("California `, fn. 3` footnote pincite variant (#311)", () => {
   })
 })
 
+describe("plaintiff field over-capture — transition words + sentence-paren boundary (#323)", () => {
+  it("strips `Invoking` transition word from plaintiff", () => {
+    const cases = extractCitations(
+      "Invoking Younger v. Harris, 401 U.S. 37 (1971), the court abstained.",
+    ).filter((c) => c.type === "case")
+    if (cases[0]?.type === "case") {
+      expect(cases[0].plaintiff).toBe("Younger")
+      expect(cases[0].defendant).toBe("Harris")
+    }
+  })
+
+  it("strips `Citing` transition word from plaintiff", () => {
+    const cases = extractCitations(
+      "Citing Pederson v. Smith, 219 Va. 1061 (1979).",
+    ).filter((c) => c.type === "case")
+    if (cases[0]?.type === "case") {
+      expect(cases[0].plaintiff).toBe("Pederson")
+    }
+  })
+
+  it("strips `Unlike` transition word from plaintiff", () => {
+    const cases = extractCitations(
+      "Unlike State v. Q.D., 97 Hawai'i 71 (2001), the present case is different.",
+    ).filter((c) => c.type === "case")
+    if (cases[0]?.type === "case") {
+      expect(cases[0].plaintiff).toBe("State")
+    }
+  })
+
+  it("strips `Under` transition word from plaintiff", () => {
+    const cases = extractCitations(
+      "Under People v. Smith, 498 Mich. 358 (2016) the court ruled.",
+    ).filter((c) => c.type === "case")
+    if (cases[0]?.type === "case") {
+      expect(cases[0].plaintiff).toBe("People")
+    }
+  })
+
+  it("stops case-name walk at `. (` sentence-paren boundary (catastrophic case)", () => {
+    const cases = extractCitations(
+      "The court abused its discretion. (Burquet v. Brumbaugh, 223 Cal.App.4th 1140.)",
+    ).filter((c) => c.type === "case")
+    if (cases[0]?.type === "case") {
+      expect(cases[0].plaintiff).toBe("Burquet")
+      expect(cases[0].defendant).toBe("Brumbaugh")
+    }
+  })
+
+  it("regression: `See, e.g., Ivanhoe Irrigation District v. McCracken` keeps full plaintiff", () => {
+    const cases = extractCitations(
+      "See, e.g., Ivanhoe Irrigation District v. McCracken, 357 U.S. 275 (1958).",
+    ).filter((c) => c.type === "case")
+    if (cases[0]?.type === "case") {
+      expect(cases[0].plaintiff).toBe("Ivanhoe Irrigation District")
+      expect(cases[0].signal).toBe("see, e.g.")
+    }
+  })
+
+  it("regression: `In re Smith` still treats `In re` as part of name", () => {
+    const cases = extractCitations("In re Smith, 100 F.3d 1 (2020).").filter(
+      (c) => c.type === "case",
+    )
+    if (cases[0]?.type === "case") {
+      expect(cases[0].caseName).toBe("In re Smith")
+    }
+  })
+})
+
 
