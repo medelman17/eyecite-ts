@@ -121,10 +121,30 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     regexFragment: "Utah\\s+Code(?:\\s+Ann\\.?)?|U\\.?C\\.?A\\.?",
   },
   // ── Colorado ───────────────────────────────────────────────────────────────
+  // Colorado has two compilations: pre-1973 (`C.R.S. 1963`) and modern
+  // (`C.R.S.` / `C.R.S. 1973`). The year suffix is part of the code name,
+  // not an edition parenthetical — without absorbing it into the
+  // abbreviation capture the section body would swallow the year (`C.R.S.
+  // 1963 § 148-21-34` → section="1963"; #352). The optional `\s+19\d{2}`
+  // tail attaches `1963` / `1973` / etc. to the code, and the canonical
+  // year-suffixed forms are added to the abbreviations array so
+  // `findAbbreviatedCode` resolves them via exact match.
   {
     jurisdiction: "CO",
-    abbreviations: ["Colo. Rev. Stat. Ann.", "Colo. Rev. Stat.", "C.R.S.", "CRS"],
-    regexFragment: "Colo\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|C\\.?R\\.?S\\.?",
+    abbreviations: [
+      "Colorado Revised Statutes Annotated",
+      "Colo. Rev. Stat. Ann.",
+      "Colorado Revised Statutes 1963",
+      "Colorado Revised Statutes 1973",
+      "Colorado Revised Statutes",
+      "Colo. Rev. Stat.",
+      "C.R.S. 1963",
+      "C.R.S. 1973",
+      "C.R.S.",
+      "CRS",
+    ],
+    regexFragment:
+      "Colo(?:rado)?\\.?\\s+Rev(?:ised)?\\.?\\s+Stat(?:utes)?\\.?(?:\\s+Ann(?:otated)?\\.?)?(?:\\s+19\\d{2})?|C\\.?R\\.?S\\.?(?:\\s+19\\d{2})?",
   },
   // ── Washington ─────────────────────────────────────────────────────────────
   {

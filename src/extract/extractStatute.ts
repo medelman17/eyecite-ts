@@ -21,6 +21,7 @@ import { extractAbbreviated } from "./statutes/extractAbbreviated"
 import { extractAlaCode1940 } from "./statutes/extractAlaCode1940"
 import { extractCaBareCode } from "./statutes/extractCaBareCode"
 import { extractChapterAct } from "./statutes/extractChapterAct"
+import { extractColoradoProse } from "./statutes/extractColoradoProse"
 import { extractFederal } from "./statutes/extractFederal"
 import { extractIllRevStat } from "./statutes/extractIllRevStat"
 import { extractNamedCode } from "./statutes/extractNamedCode"
@@ -124,6 +125,8 @@ export function extractStatute(
     case "ala-title-trailer":
     case "ala-tit-bare":
       return extractAlaCode1940(token, transformationMap)
+    case "colorado-prose":
+      return extractColoradoProse(token, transformationMap)
     default:
       // unknown patterns use legacy parser
       return extractLegacy(token, transformationMap)

@@ -1123,4 +1123,100 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Colorado pre-1973 and year-edition variants (#352)", () => {
+    it("inline `C.R.S. 1963 § 148-21-34` preserves edition in code, section is correct", () => {
+      const cites = extractCitations("Per C.R.S. 1963 § 148-21-34.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("C.R.S. 1963")
+        expect(cites[0].section).toBe("148-21-34")
+        expect(cites[0].jurisdiction).toBe("CO")
+      }
+    })
+
+    it("inline `C.R.S. 1973 § 13-25-126` works for modern edition variant", () => {
+      const cites = extractCitations("Per C.R.S. 1973 § 13-25-126.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("C.R.S. 1973")
+        expect(cites[0].section).toBe("13-25-126")
+      }
+    })
+
+    it("prose form `Section 148-21-34, Colorado Revised Statutes 1963`", () => {
+      const cites = extractCitations(
+        "violates Section 148-21-34, Colorado Revised Statutes 1963.",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Colorado Revised Statutes 1963")
+        expect(cites[0].section).toBe("148-21-34")
+        expect(cites[0].jurisdiction).toBe("CO")
+      }
+    })
+
+    it("prose form with `(YYYY Supp.)` trailing parenthetical", () => {
+      const cites = extractCitations(
+        "Section 148-11-22, Colorado Revised Statutes 1963 (1965 Supp.).",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Colorado Revised Statutes 1963")
+        expect(cites[0].section).toBe("148-11-22")
+        expect(cites[0].year).toBe(1965)
+        expect(cites[0].editionLabel).toBe("Supp.")
+      }
+    })
+
+    it("prose form with subsection: `Section 82-4-8(8)(f), Colo. Rev. Stat. 1963`", () => {
+      const cites = extractCitations(
+        "Per Section 82-4-8(8)(f), Colo. Rev. Stat. 1963.",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Colo. Rev. Stat. 1963")
+        expect(cites[0].section).toBe("82-4-8")
+        expect(cites[0].subsection).toBe("(8)(f)")
+      }
+    })
+
+    it("regression: modern `C.R.S. § 13-25-126` continues to work (no year)", () => {
+      const cites = extractCitations("under C.R.S. § 13-25-126.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("C.R.S.")
+        expect(cites[0].section).toBe("13-25-126")
+      }
+    })
+
+    it("regression: modern `C.R.S. § 13-25-126 (1973)` keeps 1973 in trailing year-parenthetical", () => {
+      const cites = extractCitations("under C.R.S. § 13-25-126 (1973).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("C.R.S.")
+        expect(cites[0].section).toBe("13-25-126")
+        expect(cites[0].year).toBe(1973)
+      }
+    })
+
+    it("regression: federal `42 U.S.C. § 1983 (1976)` unaffected", () => {
+      const cites = extractCitations("42 U.S.C. § 1983 (1976).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("1983")
+        expect(cites[0].year).toBe(1976)
+      }
+    })
+  })
 })

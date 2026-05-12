@@ -103,6 +103,27 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Pre-1973 Colorado Revised Statutes (prose form): `Section 148-21-34,
+    // Colorado Revised Statutes 1963` / `Section 13-25-126, Colo. Rev. Stat.
+    // 1973`. Pre-1973 Colorado used a chapter-article-section numbering
+    // scheme that surfaces here as the section body (`148-21-34`). The
+    // section comes BEFORE the code name — opposite of the canonical
+    // `<code> § <section>` shape — so this needs its own pattern.
+    //
+    // Listed BEFORE `abbreviated-code` so the prose-form container wins span
+    // dedup over the abbreviated-code match (which would otherwise consume
+    // the trailing `Colorado Revised Statutes 1963` and treat `1963` as the
+    // section, producing a duplicate citation). #352
+    //
+    // Captures: (1) section body, (2) optional edition year (1963/1973).
+    id: "colorado-prose",
+    regex:
+      /\b[Ss]ection\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+Colo(?:rado)?\.?\s+Rev(?:ised)?\.?\s+Stat(?:utes)?\.?(?:\s+Ann(?:otated)?\.?)?(?:\s+(19\d{2}))?/g,
+    description:
+      'Pre-1973 Colorado prose form: "Section 148-21-34, Colorado Revised Statutes 1963" — #352',
+    type: "statute",
+  },
+  {
     id: "abbreviated-code",
     regex: buildAbbreviatedCodeRegex(),
     description: "Abbreviated state code citations for all US jurisdictions",
