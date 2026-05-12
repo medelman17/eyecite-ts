@@ -811,4 +811,81 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Illinois Revised Statutes (pre-1993) (#330)", () => {
+    it("extracts `Ill. Rev. Stat. 1985, ch. 40, par. 504(a)`", () => {
+      const cites = extractCitations(
+        "violates Ill. Rev. Stat. 1985, ch. 40, par. 504(a).",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Ill. Rev. Stat.")
+        expect(cites[0].title).toBe(40)
+        expect(cites[0].section).toBe("504")
+        expect(cites[0].subsection).toBe("(a)")
+        expect(cites[0].year).toBe(1985)
+        expect(cites[0].jurisdiction).toBe("IL")
+      }
+    })
+
+    it("extracts no-space + capitalized `Ill.Rev.Stat. 1985, Ch. 127, par. 780.04`", () => {
+      const cites = extractCitations("Ill.Rev.Stat. 1985, Ch. 127, par. 780.04.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Ill. Rev. Stat.")
+        expect(cites[0].title).toBe(127)
+        expect(cites[0].section).toBe("780.04")
+        expect(cites[0].year).toBe(1985)
+      }
+    })
+
+    it("extracts plural `pars.` and matches only the first paragraph", () => {
+      const cites = extractCitations(
+        "See Ill. Rev. Stat. 1987, ch. 85, pars. 8-102, 8-103.",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(85)
+        expect(cites[0].section).toBe("8-102")
+      }
+    })
+
+    it("extracts letter-suffix chapter `110A`", () => {
+      const cites = extractCitations("Ill. Rev. Stat. 1975, ch. 110A, par. 504.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        // title is the numeric prefix (110); the full "110A" is in matchedText
+        expect(cites[0].title).toBe(110)
+        expect(cites[0].matchedText).toContain("110A")
+        expect(cites[0].year).toBe(1975)
+      }
+    })
+
+    it("extracts with stray comma + `et seq.`", () => {
+      const cites = extractCitations(
+        "Ill.Rev.Stat., 1983, Ch. 37, par. 439.1 et seq.",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(37)
+        expect(cites[0].section).toBe("439.1")
+        expect(cites[0].hasEtSeq).toBe(true)
+      }
+    })
+
+    it("regression: modern `735 ILCS 5/2-1001` still routes through chapter-act", () => {
+      const cites = extractCitations("735 ILCS 5/2-1001 governs.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(735)
+        expect(cites[0].section).toBe("2-1001")
+      }
+    })
+  })
 })
