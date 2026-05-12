@@ -1,5 +1,316 @@
 # eyecite-ts
 
+## 0.15.2
+
+### Patch Changes
+
+- [#291](https://github.com/medelman17/eyecite-ts/pull/291) [`c03cb76`](https://github.com/medelman17/eyecite-ts/commit/c03cb76acc7796d07c9ffec2e85da365c54056f7) Thanks [@medelman17](https://github.com/medelman17)! - fix: propagate `caseName` from primary to parallel-cite secondaries (#282)
+
+  For parallel reporter citations like `Roe v. Wade, 410 U.S. 113, 93 S. Ct. 705,
+35 L. Ed. 2d 147 (1973)`, only the primary cite carried the shared caption;
+  the secondaries had `caseName === undefined` even though they refer to the
+  same case. The disambiguation fix in #281 prevented secondaries from leaking
+  the prior reporter cite into their own caseName — this PR fills in the
+  correct caption rather than `undefined`.
+
+  ### Root cause
+
+  `detectParallelCitations` already populates the shared `groupId` on every
+  cite in a group and the `parallelCitations` array on the primary, but no
+  pass propagates the caption metadata. The per-cite case-name scanner only
+  runs for cites that have a directly preceding caption — by construction
+  only the first cite in the group does.
+
+  ### Fix
+
+  Added `inheritParallelCaseName` (modeled on the existing
+  `inheritSubsequentHistoryCaseName` pass for #224 history-chain children).
+  Runs at "Step 4.6" in `extractCitations`, immediately after the
+  subsequent-history inheritance pass so a primary that inherited from a
+  history chain root still flows that caption to its parallels.
+
+  Joins on `groupId`, takes the first cite per group that has a `caseName`
+  (the primary by construction), and copies `caseName`, `plaintiff`,
+  `defendant`, `plaintiffNormalized`, `defendantNormalized`, and
+  `proceduralPrefix` onto every other cite in the same group. Does not
+  overwrite an existing `caseName` on a secondary (defensive — shouldn't
+  happen, but pinned by test). Does not touch `spans` or `fullSpan` — the
+  secondary's own citation core is unchanged.
+
+  ### Tests
+
+  4 new tests under `Parallel Citation caseName Propagation (#282)` in
+  `tests/integration/fullPipeline.test.ts`:
+
+  - Roe v. Wade (3 reporters) — all 3 cites carry `Roe v. Wade` + `Roe` / `Wade`
+  - Nixon v. Nixon (2 reporters)
+  - People v. Smith (California bracketed parallel: `(2001) 24 Cal.4th 849
+[102 Cal.Rptr.2d 731]`)
+  - Single non-parallel cite — baseline that propagation doesn't touch
+    cites without a `groupId`
+
+  Full 2372-test suite passes; no regressions.
+
+- [#297](https://github.com/medelman17/eyecite-ts/pull/297) [`5b68534`](https://github.com/medelman17/eyecite-ts/commit/5b685345d6422d7856406f9d8e22162eaa724ff4) Thanks [@medelman17](https://github.com/medelman17)! - feat: extract year (and optional publisher) from trailing parenthetical on statute citations (#285)
+
+  A statute citation followed by `(YYYY)` or `(Publisher YYYY)` —
+  `HRS § 91-14(a) (1985)`, `42 U.S.C. § 1983 (1976)`,
+  `28 U.S.C. § 1331 (West 2018)` — now carries the year-of-edition (and
+  publisher when present) on the `StatuteCitation` object.
+
+  ### Why
+
+  Code editions matter for statutory interpretation: a 2010 edition of NMSA
+  § 38-3-3 may codify a different version than the 2020 edition. Without
+  `year`, downstream consumers can't distinguish citations to different
+  editions of the same section or render the citation in canonical
+  Bluebook form. Surfaced as the second-largest finding bucket
+  (79 instances) in the 200-opinion spectrum sweep behind #281.
+
+  ### Fix
+
+  Added a new post-pass `attachStatuteYearParen` in
+  `src/extract/extractCitations.ts` (Step 4.65, immediately after the
+  `#282` parallel-caseName inheritance pass). For each statute citation,
+  it scans the cleaned text starting at `span.cleanEnd` for an optional
+  year-of-edition parenthetical:
+
+  ```
+  ^\s*(?:,\s*(?:at\s+)?\d+(?:-\d+)?\s*)?\(\s*([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)?)?\s*(\d{4})\s*\)
+  ```
+
+  The body is anchored on `\d{4}` so a trailing subsection paren like
+  `(a)` or `(1)` is never confused for a year. An optional capitalized
+  publisher word (`West`, `Lexis`, `Lexis Nexis`) is captured before the
+  year.
+
+  The new fields `year?: number` and `publisher?: string` were added to
+  the `StatuteCitation` interface in `src/types/citation.ts`. Behavior is
+  purely additive — citations without a trailing year paren still have
+  `year === undefined` (no regressions).
+
+  ### Scope notes
+
+  - **`NMSA 1978, § 38-3-3 (2010)`** — the leading `1978` of `NMSA 1978`
+    is currently misparsed by the named-code tokenizer (it claims `1978`
+    as the section). That's a separate tokenizer bug; this PR does not
+    fix it. The year-paren post-pass would still apply once the
+    tokenizer correctly identifies the citation core.
+  - **`8 CCAR 28 (07-22-05)`** — tribal court reporter not yet in any
+    tokenizer pattern; out of scope.
+  - The matchedText and span are intentionally **not** extended to
+    include the trailing paren — only the metadata fields are populated.
+    Consumers that need full extent can pair with `fullSpan` once that
+    field is generalized to statutes.
+
+  ### Tests
+
+  7 new tests under `year-of-edition parenthetical (#285)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - `42 U.S.C. § 1983 (1976)` → `year: 1976`
+  - `28 U.S.C. § 1331 (West 2018)` → `year: 2018`, `publisher: "West"`
+  - `HRS § 91-14(a) (1985)` → `subsection: "(a)"`, `year: 1985`
+  - `HRS § 91-14 (1985)` (no subsection) → `year: 1985`
+  - `42 U.S.C. § 1983(a)(2)` (subsection only) → no year (defensive)
+  - `42 U.S.C. § 1983` (no paren) → no year (regression baseline)
+  - String-cite `§ 1983; § 1331 (West 2018)` — year attaches only to
+    the second cite (the one the paren directly follows)
+
+  Full 2379-test suite passes; no regressions.
+
+- [#298](https://github.com/medelman17/eyecite-ts/pull/298) [`ebcfb82`](https://github.com/medelman17/eyecite-ts/commit/ebcfb82f59854aa3cc3968543702cf067462fc66) Thanks [@medelman17](https://github.com/medelman17)! - fix: extract court from CSM year-first parenthetical `(court year)` (#293)
+
+  California Style Manual citations place the court+year parenthetical
+  **before** the volume-reporter-page rather than after:
+  `Camden I Condominium Assn. v. Dunkle (11th Cir. 1991) 946 F.2d 768`.
+  The existing year-first machinery (#19) captured the year but dropped
+  the court — `court` ended up `undefined` even though `(11th Cir. ...)`
+  explicitly states it.
+
+  Surfaced by a 200-opinion modern-era sweep as the **largest** field-
+  extraction gap (195 instances) — California opinions are the largest
+  single-jurisdiction body of US case law and use CSM almost universally,
+  so federal cites within California opinions show this pattern dozens of
+  times per opinion.
+
+  ### Fix
+
+  Two pieces:
+
+  1. `V_CASE_NAME_REGEX` and `PROCEDURAL_PREFIX_REGEX` now accept an
+     optional court prefix inside the CSM trailing paren:
+     `\((?:([^)]*?\.[^)]*?)\s+)?(\d{4})\)`. The court text must contain
+     a period so loose forms like `(March 1991)` aren't mis-attributed as
+     courts — Bluebook T7 court abbreviations all contain at least one
+     period. Group 3 = court (optional), group 4 = year.
+  2. Both consumer sites build a `precedingDocketMeta` payload when both
+     court and year are captured. The existing Louisiana-docket meta
+     handler at the consumer end (`extractCase.ts` line ~2502) already
+     propagates `precedingDocketMeta.court` onto the citation as
+     fallback when no trailing court paren is present.
+
+  Year-only CSM (`In re K.F. (2009)`) continues to work via the dedicated
+  `year`/`yearStart`/`yearEnd` fields — unchanged for that path. Trailing-
+  paren form still wins when both forms are present (defensive — extremely
+  rare in practice).
+
+  ### Tests
+
+  5 new tests under `CSM year-first with court (#293)` in
+  `tests/extract/extractCase.test.ts`:
+
+  - `(11th Cir. 1991)` in v. form — court="11th Cir.", year=1991
+  - `(2d Cir. 2005)` in v. form
+  - `(9th Cir. 2014)` in procedural-prefix form
+  - Year-only `(2013)` — court undefined, no regression
+  - Year-only procedural prefix `In re K.F. (2009)` — court undefined,
+    no regression
+
+  Full 2384-test suite passes; no regressions.
+
+- [#299](https://github.com/medelman17/eyecite-ts/pull/299) [`6f379c6`](https://github.com/medelman17/eyecite-ts/commit/6f379c66c629d86c1bbe3d8bc62f3957d396f056) Thanks [@medelman17](https://github.com/medelman17)! - fix: route WL/LEXIS to `database`, recover real court from trailing paren on neutral cites (#294)
+
+  Westlaw and Lexis database cites — `2001 WL 1077846`,
+  `2014 WL 1924465 (Tex. App. May 8, 2014)`, `2021 U.S. App. LEXIS 12345`
+  — were storing the database identifier in the `court` field
+  (`court: "WL"`, `court: "U.S. App. LEXIS"`). Downstream consumers
+  treating `court` as a court abbreviation got back a static database tag.
+  For the form `2014 WL 1924465 (Tex. App. May 8, 2014)` the _real_
+  court (`Tex. App.`) was in the trailing paren and dropped entirely.
+
+  ### Type changes (additive but field-shape-breaking for WL/LEXIS)
+
+  `NeutralCitation` now has two new optional fields:
+
+  - `database?: string` — for vendor-database identifiers (`WL`, `LEXIS` /
+    `U.S. LEXIS` / `Fed. App. LEXIS`, `BL`).
+  - `date?: StructuredDate` — for the parsed decision date recovered from
+    a trailing `(court date)` parenthetical.
+
+  `court` is now `string | undefined` (was `string`). For Westlaw/Lexis
+  cites this field is now `undefined` instead of `"WL"`/`"LEXIS"` — any
+  consumer that compared `c.court === "WL"` needs to check `c.database`
+  instead. Real jurisdictional neutral cites (`2008-Ohio-4571`,
+  `2013 IL 112116`) still populate `court` and leave `database` undefined.
+
+  ### Fix
+
+  In `src/extract/extractNeutral.ts`:
+
+  - New helper `isDatabaseIdentifier(s)` returns true for `WL`, `BL`, or
+    any string containing a `LEXIS` word boundary.
+  - After the existing year/court/documentNumber parse, if the captured
+    middle segment is a database identifier, move it to `database` and
+    set `court = undefined` (also clears `spans.court` since the database
+    tag's position is meaningless as a court span).
+  - When `database` is set, a new lookahead pattern
+    `NEUTRAL_PAREN_LOOKAHEAD` scans the cleaned text after the citation
+    core for an optional `(court date)` parenthetical (allowing an
+    intervening `, at *N` pincite). The captured paren is passed to
+    the existing `parseParenthetical` helper from `extractCase`, which
+    produces a `{ court, date }` result wired onto the citation.
+
+  ### Scope notes (intentionally NOT addressed here)
+
+  - The pincite-as-volume bug on neutral/Id. citation paths in string-cite
+    chains (`2008-Ohio-4571, 894 N.E.2d ...` → pincite=894 from the next
+    cite's volume) is the same architectural shape as #281 and deserves
+    its own PR — that fix requires plumbing sibling-span data into
+    `extractNeutral` / `extractId`.
+
+  ### Tests
+
+  5 new tests under `database identifier routing + trailing court paren
+(#294)` in `tests/extract/extractNeutralHyphenated.test.ts`:
+
+  - WL cite with trailing `(N.D. Cal. Sept. 4, 2001)` paren
+  - U.S. LEXIS cite with trailing `(1st Cir. Aug. 30, 2001)` paren
+  - Bare WL cite (no paren) — `database: "WL"`, `court: undefined`
+  - WL cite with full date in trailing paren — `date.iso: "2014-05-08"`
+  - Real jurisdictional `Ohio`/`IL` neutrals — still populate `court`,
+    not `database`
+
+  Migrated 17 existing test/fixture assertions from `court: "WL"` /
+  `court: "U.S. App. LEXIS"` to `database` (covers state LEXIS variants
+  in `extractLexisStateVariants.test.ts`, `extractOthers.test.ts`,
+  `componentSpans.others.test.ts`, `fullPipeline.test.ts`, and the
+  golden/expanded/thorny corpus JSON fixtures).
+
+  Full 2389-test suite passes; no regressions.
+
+- [#300](https://github.com/medelman17/eyecite-ts/pull/300) [`70e1dc5`](https://github.com/medelman17/eyecite-ts/commit/70e1dc531c9d9d1484b5fc5ea7c77d5328b1d840) Thanks [@medelman17](https://github.com/medelman17)! - feat: extract California bare-code statute citations (`Pen. Code § 148`, `Code Civ. Proc., § 1021.5`) (#296)
+
+  California opinions and single-jurisdiction California briefs cite
+  bare-code forms ~10× as often as the fully-qualified `Cal. Penal Code §
+148`. The existing `named-code` pattern required a `Cal.` jurisdiction
+  prefix, so common forms like `Pen. Code § 148`, `Code Civ. Proc., §
+1021.5`, `Bus. & Prof. Code § 17200`, and `Welf. & Inst. Code § 5150`
+  were silently dropped (returned `[]`).
+
+  Surfaced by the 200-opinion modern-era sweep as the **largest** miss
+  category — 633 statute misses across 200 opinions, concentrated in
+  California opinions which dominate any modern US case-law corpus.
+
+  ### Fix
+
+  New closed-set tokenizer pattern + dedicated extractor:
+
+  - `src/data/caBareCodes.ts` — 28-entry closed alternation of California
+    bare-code abbreviations (`Pen. Code`, `Civ. Code`, `Code Civ. Proc.`,
+    `Code Crim. Proc.`, `Veh. Code`, `Gov. Code`, `Bus. & Prof. Code`,
+    `Welf. & Inst. Code`, `Health & Safety Code`, `Fam. Code`, `Lab. Code`,
+    `Pub. Util. Code`, `Pub. Cont. Code`, `Pub. Resources Code`,
+    `Unemp. Ins. Code`, `Educ. Code`, `Evid. Code`, `Elec. Code`,
+    `Corp. Code`, `Prob. Code`, `Ins. Code`, `Fish & Game Code`,
+    `Food & Agric. Code`, `Harb. & Nav. Code`, `Mil. & Vet. Code`,
+    `Rev. & Tax. Code`, `Sts. & Hy. Code`, `Water Code`). Periods and
+    whitespace are flexible in the regex fragments. Alternation is sorted
+    longest-first so PEG-style ordered choice picks the most specific
+    match (`Code Civ. Proc.` beats `Civ. Code`).
+  - `src/patterns/statutePatterns.ts` — new `ca-bare-code` Pattern entry.
+  - `src/extract/statutes/extractCaBareCode.ts` — dedicated extractor that
+    normalizes the matched code text back to its canonical form via
+    `findCaBareCode` and always sets `jurisdiction: "CA"`.
+  - `src/extract/extractStatute.ts` — new dispatch case routes
+    `ca-bare-code` tokens to the new extractor.
+
+  The closed-alternation approach (rather than making the `named-code`
+  jurisdiction prefix optional) avoids over-matching: phrases like
+  "Insurance Law applies" in non-citation prose stay unmatched because
+  "Insurance Law" is not in the closed list. The section-body regex
+  reuses the period-guarded shape from #283 so trailing sentence
+  punctuation is not absorbed.
+
+  ### Scope notes (deferred follow-ups)
+
+  - **New York bare laws** (`Labor Law § 240(1)`, `Insurance Law`,
+    `Penal Law`, `Education Law`, etc.) — same fix shape, separate PR.
+  - **Connecticut `General Statutes`** standalone form.
+  - **Pennsylvania bare** (`Pa. C.S. §`, `P.S. §`).
+  - **Texas bare-code** forms.
+  - **IRC prose forms** (`Section 130(c) of the Code`, `Internal Revenue
+Code Section 130(c)`).
+  - **Per-document statute context** — link bare references back to an
+    opinion's earlier fully-qualified citation (analogous to short-form
+    case resolution from #216 / #278).
+
+  ### Tests
+
+  9 new tests under `California bare codes (#296)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - `Pen. Code § 148`, `Civ. Code § 1714` — single-word codes
+  - `Code Civ. Proc., § 1021.5` — leading "Code" + comma separator
+  - `Veh. Code § 23550.5` — decimal section number
+  - `Bus. & Prof. Code § 17200`, `Welf. & Inst. Code § 5150`,
+    `Health & Safety Code § 11350` — ampersand variants
+  - Regression baselines: fully-qualified `Cal. Penal Code § 148` still
+    parses via the existing `named-code` extractor (returns
+    `code: "Penal"`); federal `42 U.S.C. § 1983` unchanged
+
+  Full 2399-test suite passes; no regressions.
+
 ## 0.15.1
 
 ### Patch Changes
