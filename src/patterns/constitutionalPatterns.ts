@@ -37,12 +37,17 @@ export const constitutionalPatterns: Pattern[] = [
   },
   {
     id: "state-constitution",
+    // Separator between state abbrev and `Const.` uses `(?:\.\s*|\s+)`:
+    // accepts canonical `Pa. Const.`, abbreviated no-space `Pa.Const.`
+    // (#329), and bare-space `Pa Const.`. The `.` branch requires a dot
+    // (forces a separator), so `PaConst.` does not match — avoids false
+    // positives from words that happen to start with a state stem.
     regex: new RegExp(
-      String.raw`\b(?:Ala|Alaska|Ariz|Ark|Cal(?:if)?|Colo|Conn|Del|Fla|Ga|Haw|Idaho|Ill|Ind|Iowa|Kan|Ky|La|Me|Md|Mass|Mich|Minn|Miss|Mo|Mont|Neb|Nev|N\.?\s*H|N\.?\s*J|N\.?\s*M|N\.?\s*Y|N\.?\s*C|N\.?\s*D|Ohio|Okla|Or(?:e)?|Pa|R\.?\s*I|S\.?\s*C|S\.?\s*D|Tenn|Tex|Utah|Vt|W\.?\s*Va|Va|Wash|Wis|Wyo)\.?\s+Const\.?,?\s+${BODY_TAIL}`,
+      String.raw`\b(?:Ala|Alaska|Ariz|Ark|Cal(?:if)?|Colo|Conn|Del|Fla|Ga|Haw|Idaho|Ill|Ind|Iowa|Kan|Ky|La|Me|Md|Mass|Mich|Minn|Miss|Mo|Mont|Neb|Nev|N\.?\s*H|N\.?\s*J|N\.?\s*M|N\.?\s*Y|N\.?\s*C|N\.?\s*D|Ohio|Okla|Or(?:e)?|Pa|R\.?\s*I|S\.?\s*C|S\.?\s*D|Tenn|Tex|Utah|Vt|W\.?\s*Va|Va|Wash|Wis|Wyo)(?:\.\s*|\s+)Const\.?,?\s+${BODY_TAIL}`,
       "gi",
     ),
     description:
-      'State constitution citations (e.g., "Cal. Const. art. I, § 7", "N.Y. Const. art. VI, § 20")',
+      'State constitution citations (e.g., "Cal. Const. art. I, § 7", "N.Y. Const. art. VI, § 20", "Pa.Const. art. VIII, § 4")',
     type: "constitutional",
   },
   {

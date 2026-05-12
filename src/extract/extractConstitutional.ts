@@ -121,8 +121,16 @@ const STATE_ABBREV_TO_CODE: Record<string, string> = {
 
 const IS_AMENDMENT_RE = /amend|amdt/i
 
-/** Regex to extract the state abbreviation prefix from state-constitution tokens */
-const STATE_PREFIX_RE = /^([A-Za-z]+(?:\.\s*[A-Za-z]+)?(?:\.\s*[A-Za-z]+)?)\.?\s+Const/i
+/**
+ * Regex to extract the state abbreviation prefix from state-constitution tokens.
+ *
+ * Trailing `\.?\s*Const` (rather than `\.?\s+Const`) accepts both the
+ * canonical spaced form (`Pa. Const.`) and the abbreviated no-space form
+ * (`Pa.Const.`, `N.Y.Const.`) introduced in #329. The greedy `[A-Za-z]+`
+ * still backtracks correctly so the prefix capture stops at the state
+ * abbreviation rather than swallowing `Const`.
+ */
+const STATE_PREFIX_RE = /^([A-Za-z]+(?:\.\s*[A-Za-z]+)?(?:\.\s*[A-Za-z]+)?)\.?\s*Const/i
 
 /**
  * Resolve state abbreviation from token text to 2-letter code.
