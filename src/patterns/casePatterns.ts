@@ -55,10 +55,18 @@ export const casePatterns: Pattern[] = [
     // reporter body rejects ` at ` so `18 Cal.4th at p. 717` (CSM short-form,
     // #236) doesn't absorb `at p.` into the reporter; the short-form pattern
     // handles it instead.
+    //
+    // ` R.\s+\d` guard (#332): Illinois Supreme Court Rules cite as
+    // `177 Ill. 2d R. 234` (volume + reporter + `R. ruleNum`), which the lazy
+    // reporter capture used to absorb as `Ill. 2d R.` with `page=234`,
+    // emitting a phantom case citation. The lookahead stops the lazy match
+    // before it consumes ` R.` when a digit follows — leaving the input
+    // untokenized rather than misclassified. A typed rule citation is out
+    // of scope; the goal here is to suppress the false positive.
     regex:
-      /\b(\d+(?:-\d+)?)\s+([A-Z](?:(?! L\.[JQR\s])(?!\s+vs?\.\s)(?!\s+at\s)[A-Za-z.\d\s&'])+?)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.|\[|\])/g,
+      /\b(\d+(?:-\d+)?)\s+([A-Z](?:(?! L\.[JQR\s])(?! R\.\s+\d)(?!\s+vs?\.\s)(?!\s+at\s)[A-Za-z.\d\s&'])+?)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|,|;|\.|\[|\])/g,
     description:
-      'State reporters (broad pattern allowing multi-word reporters with & and \', excludes journal patterns with " L.J/Q/Rev", phantom matches across " v. "/" vs. ", and CSM " at " short-form boundaries, validated against reporters-db in Phase 3)',
+      'State reporters (broad pattern allowing multi-word reporters with & and \', excludes journal patterns with " L.J/Q/Rev", phantom matches across " v. "/" vs. ", CSM " at " short-form boundaries, and Illinois " R. N" rule-marker boundaries, validated against reporters-db in Phase 3)',
     type: "case",
   },
 ]
