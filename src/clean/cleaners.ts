@@ -72,9 +72,7 @@ export function collapseSpaces(text: string): string {
  * // => "Smith v. Doe, 500 F.2d 123"
  */
 export function normalizeWhitespace(text: string): string {
-  return text
-    .replace(/[\t\n\r\u00A0\u2000-\u200A\u202F\u205F\u3000]+/g, " ")
-    .replace(/ {2,}/g, " ")
+  return text.replace(/[\t\n\r\u00A0\u2000-\u200A\u202F\u205F\u3000]+/g, " ").replace(/ {2,}/g, " ")
 }
 
 /**
@@ -189,6 +187,12 @@ export function normalizeReporterSpacing(text: string): string {
   // then apply a general ordinal-suffix rule. This avoids affecting non-reporter
   // abbreviations like "L. Rev." or "L. J." in journal citations.
   let result = text
+
+  // Three-letter code abbreviations (U.S.C., C.F.R.) — must run BEFORE the
+  // two-letter rules below so the full 3-letter shape collapses in one pass
+  // regardless of spacing pattern (`U. S. C.` / `U.S. C.` / `U. S.C.`). #284
+  result = result.replace(/\bU\.\s*S\.\s*C\./g, "U.S.C.")
+  result = result.replace(/\bC\.\s*F\.\s*R\./g, "C.F.R.")
 
   // Specific reporter abbreviation collapses
   result = result.replace(/\bU\.\s+S\./g, "U.S.")

@@ -257,6 +257,57 @@ describe("extractStatute", () => {
     })
   })
 
+  describe("spaced code abbreviations (#284)", () => {
+    it("should extract fully-spaced U.S.C. statute", () => {
+      const citations = extractCitations("Plaintiff sued under 42 U. S. C. § 1983.")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].title).toBe(42)
+        expect(citations[0].code).toBe("U.S.C.")
+        expect(citations[0].section).toBe("1983")
+      }
+    })
+
+    it("should extract spaced U.S.C. with subsection", () => {
+      const citations = extractCitations("29 U. S. C. § 158(a)(3)")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].title).toBe(29)
+        expect(citations[0].code).toBe("U.S.C.")
+        expect(citations[0].section).toBe("158")
+        expect(citations[0].subsection).toBe("(a)(3)")
+      }
+    })
+
+    it("should extract partially-spaced 'U.S. C.' form", () => {
+      const citations = extractCitations("42 U.S. C. § 1983")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].code).toBe("U.S.C.")
+        expect(citations[0].section).toBe("1983")
+      }
+    })
+
+    it("should extract fully-spaced C.F.R. regulation", () => {
+      const citations = extractCitations("29 C. F. R. § 1604.11")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].title).toBe(29)
+        expect(citations[0].code).toBe("C.F.R.")
+        expect(citations[0].section).toBe("1604.11")
+      }
+    })
+
+    it("should not regress canonical compact form", () => {
+      const citations = extractCitations("28 U.S.C. § 1983")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].code).toBe("U.S.C.")
+        expect(citations[0].section).toBe("1983")
+      }
+    })
+  })
+
   describe("metadata fields", () => {
     it("should include all required CitationBase fields", () => {
       const token: Token = {
