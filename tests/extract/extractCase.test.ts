@@ -5743,4 +5743,38 @@ describe("parallel-cite pincite disambiguation (regression)", () => {
   })
 })
 
+describe("California `, fn. 3` footnote pincite variant (#311)", () => {
+  it("captures `45 Cal.3d 744, 768, fn. 3` footnote", () => {
+    const cases = extractCitations(
+      "Smith v. Jones, 45 Cal.3d 744, 768, fn. 3 (1988).",
+    ).filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0]?.type === "case") {
+      expect(cases[0].pincite).toBe(768)
+      expect(cases[0].pinciteInfo?.footnote).toBe(3)
+    }
+  })
+
+  it("captures `, fns. 3-5` multi-footnote range", () => {
+    const cases = extractCitations(
+      "Smith v. Jones, 45 Cal.3d 744, 768, fns. 3-5 (1988).",
+    ).filter((c) => c.type === "case")
+    if (cases[0]?.type === "case") {
+      expect(cases[0].pincite).toBe(768)
+      expect(cases[0].pinciteInfo?.footnote).toBe(3)
+      expect(cases[0].pinciteInfo?.footnoteEnd).toBe(5)
+    }
+  })
+
+  it("regression: canonical `768 n.3` form still works", () => {
+    const cases = extractCitations(
+      "Smith v. Jones, 45 Cal.3d 744, 768 n.3 (1988).",
+    ).filter((c) => c.type === "case")
+    if (cases[0]?.type === "case") {
+      expect(cases[0].pincite).toBe(768)
+      expect(cases[0].pinciteInfo?.footnote).toBe(3)
+    }
+  })
+})
+
 

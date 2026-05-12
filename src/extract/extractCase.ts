@@ -182,8 +182,13 @@ const LOOKAHEAD_PAREN_REGEX =
 // by a capital letter (which would start a parallel cite's reporter token,
 // e.g., `, 198 A. 154` or `, 93 S. Ct. 705`). The anchored positive lookahead
 // prevents regex backtracking into shorter digit prefixes.
+//
+// Footnote suffix (#311): the suffix-bearing forms `n.3`, `note 3` accept
+// either `\s+` (the original `768 n.3` form) or `,\s+` (the California
+// `768, fn. 3` form). `fn` / `fns` are added to the alternation alongside
+// `n` / `nn` / `note`.
 const LOOKAHEAD_PINCITE_REGEX =
-  /^(?:\s+at\s+(?:pp?\.\s*)?|,\s*(?:at\s+(?:pp?\.\s*)?)?)(\*?\d+(?:-\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)(?=$|[.,;)(\]]|\s(?![A-Z]))/d
+  /^(?:\s+at\s+(?:pp?\.\s*)?|,\s*(?:at\s+(?:pp?\.\s*)?)?)(\*?\d+(?:-\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)(?=$|[.,;)(\]]|\s(?![A-Z]))/d
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g

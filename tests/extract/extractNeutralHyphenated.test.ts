@@ -192,4 +192,31 @@ describe("hyphenated neutral citations (#233)", () => {
       expect(neutrals[1].database).toBeUndefined()
     })
   })
+
+  describe("paragraph pincite on neutral cites (#311)", () => {
+    it("captures `2015-NMCA-072, ¶ 2` paragraph pincite", () => {
+      const cits = extractCitations("State v. Flores, 2015-NMCA-072, ¶ 2")
+      const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
+      expect(neutrals).toHaveLength(1)
+      expect(neutrals[0].pincite).toBe(2)
+      expect(neutrals[0].pinciteInfo?.paragraph).toBe(2)
+    })
+
+    it("captures `, ¶¶ 14-16` paragraph range pincite", () => {
+      const cits = extractCitations("See 2015-NMCA-072, ¶¶ 14-16")
+      const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
+      expect(neutrals).toHaveLength(1)
+      expect(neutrals[0].pincite).toBe(14)
+      expect(neutrals[0].pinciteInfo?.paragraph).toBe(14)
+      expect(neutrals[0].pinciteInfo?.endParagraph).toBe(16)
+      expect(neutrals[0].pinciteInfo?.isRange).toBe(true)
+    })
+
+    it("regression: page-style pincite `, at *3` still works on database cites", () => {
+      const cits = extractCitations("2020 WL 123456, at *3")
+      const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
+      expect(neutrals).toHaveLength(1)
+      expect(neutrals[0].pincite).toBe(3)
+    })
+  })
 })

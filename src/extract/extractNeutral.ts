@@ -19,9 +19,13 @@ import { parsePincite, type PinciteInfo } from "./pincite"
  *  ", at *3" (comma + "at" keyword) and " at *3" (whitespace + "at") forms,
  *  with optional "*" prefix for star-pagination on both ends of a range
  *  (#191, #203 — "*3-*5" is common on Westlaw/Lexis/NY Slip Op), and an
- *  optional trailing " n.14" / " nn.14-15" footnote suffix (#202). */
+ *  optional trailing " n.14" / " nn.14-15" footnote suffix (#202). Also
+ *  accepts paragraph-marker pincites `, ¶ N` / `, ¶¶ N-M` / `, paras. N-M`
+ *  for state neutral-cite forms like `2015-NMCA-072, ¶ 2` where the
+ *  paragraph numbering is the canonical pinpoint format (#311). When the
+ *  pincite is a paragraph form, `at` is optional. */
 const NEUTRAL_PINCITE_LOOKAHEAD =
-  /^(?:\s+at\s+|,\s*(?:at\s+)?)(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)/d
+  /^(?:\s+at\s+|,\s*(?:at\s+(?:pp?\.\s*)?)?)(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)/d
 
 /** Trailing `(court date)` parenthetical lookahead for database cites.
  *  Allows optional intervening pincite (`, at *3`) per #191. The body
@@ -148,7 +152,11 @@ export function extractNeutral(
     const laMatch = NEUTRAL_PINCITE_LOOKAHEAD.exec(afterToken)
     if (laMatch) {
       pinciteInfo = parsePincite(laMatch[1]) ?? undefined
-      pincite = pinciteInfo?.page
+      // Neutral cites in state appellate practice use paragraph pinpoints
+      // (`2015-NMCA-072, ¶ 2`) rather than page numbers. Fall back to the
+      // paragraph number when no page is set so the top-level `pincite`
+      // field reflects the pinpoint regardless of form. #311
+      pincite = pinciteInfo?.page ?? pinciteInfo?.paragraph
       // Component span for pincite (#210). Indices are relative to afterToken,
       // which starts at span.cleanEnd in cleanedText.
       if (laMatch.indices?.[1]) {
