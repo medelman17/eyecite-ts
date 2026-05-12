@@ -19,8 +19,13 @@ import { parseBody } from "./parseBody"
 
 // Section body: period only allowed when followed by alphanumeric so a
 // trailing sentence period is never captured (#283).
+// Section connector mirrors the tokenizer pattern: `§`, `§§`, or the
+// spelled-out word `section(s)` / `Section(s)` (#348). Without this, the
+// lazy abbreviation capture would absorb the word `section` and break
+// `findAbbreviatedCode` lookups (e.g., `Arkansas Code Annotated section
+// 11-9-102` would emit abbrevText="Arkansas Code Annotated section").
 const ABBREVIATED_RE =
-  /^(?:(\d+)\s+)?(.+?)\s*§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/d
+  /^(?:(\d+)\s+)?(.+?)\s*(?:§§?|[Ss]ections?)?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/d
 
 export function extractAbbreviated(
   token: Token,

@@ -201,10 +201,26 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     regexFragment: "Ariz\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|A\\.?\\s*R\\.?\\s*S\\.?",
   },
   // ── Arkansas ──────────────────────────────────────────────────────────────
+  // Modern Arkansas Code Annotated (post-1987). Fragment accepts both the
+  // abbreviated `Ann.` form and the spelled-out `Annotated` form (#349).
   {
     jurisdiction: "AR",
-    abbreviations: ["Ark. Code Ann.", "Arkansas Code", "A.C.A."],
-    regexFragment: "Ark(?:ansas)?\\.?\\s+Code(?:\\s+Ann\\.?)?|A\\.?C\\.?A\\.?",
+    abbreviations: [
+      "Arkansas Code Annotated",
+      "Ark. Code Ann.",
+      "Arkansas Code",
+      "A.C.A.",
+    ],
+    regexFragment:
+      "Ark(?:ansas)?\\.?\\s+Code(?:\\s+Ann(?:otated)?\\.?)?|A\\.?C\\.?A\\.?",
+  },
+  // Pre-1987 Arkansas Statutes Annotated. Modern Arkansas opinions still cite
+  // this when referencing pre-1987 statutory text (#349).
+  {
+    jurisdiction: "AR",
+    abbreviations: ["Arkansas Statutes Annotated", "Ark. Stat. Ann.", "Ark. Stat."],
+    regexFragment:
+      "Ark(?:ansas)?\\.?\\s+Stat(?:utes)?\\.?(?:\\s+Ann(?:otated)?\\.?)?",
   },
   // ── Connecticut ───────────────────────────────────────────────────────────
   {

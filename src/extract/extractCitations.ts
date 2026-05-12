@@ -653,31 +653,49 @@ function inheritSubsequentHistoryCaseName(citations: Citation[]): void {
  * Closes #282.
  */
 /**
- * Statute year-of-edition parenthetical regex (#285).
+ * Statute year-of-edition parenthetical regex (#285 + #349).
  *
  * Matches a parenthetical that follows a statute citation core. Anchored at
  * the start of the lookahead text (we substring from `span.cleanEnd`) and
- * allows whitespace, an optional comma + whitespace, and an optional ", at
- * <pincite>" intervening text. The parenthetical body is `(Publisher? YYYY)`:
- * a 4-digit year, optionally preceded by a capitalized publisher word
- * (`West`, `Lexis`, `Lexis Nexis`, etc.). Subsection parens like `(a)` and
- * `(1)` don't match — the body must end in a 4-digit run.
+ * allows whitespace, an optional comma + whitespace, and an optional
+ * `, at <pincite>` intervening text. The parenthetical body is one of:
+ *
+ *   - `(YYYY)`                  — bare year
+ *   - `(Publisher YYYY)`        — publisher-first (`(West 2018)`,
+ *                                  `(Lexis Nexis 2019)`)
+ *   - `(Label. YYYY)`           — edition-label-first (`(Repl. 1996)`,
+ *                                  `(Supp. 1985)`, `(Cum. Supp. 1985)`)
+ *   - `(YYYY Label.)`           — year-first edition label (`(1969 Supp.)`,
+ *                                  `(1985 Cum. Supp.)`)
+ *
+ * Subsection parens like `(a)` and `(1)` don't match — the body must contain
+ * a 4-digit year. The pre/post token (group 1 / group 3) admits a trailing
+ * `.` and an optional second capitalized word so `Cum. Supp.` and
+ * `Lexis Nexis` both flow through the same regex.
  */
 const STATUTE_YEAR_PAREN_REGEX =
-  /^\s*(?:,\s*(?:at\s+)?\d+(?:-\d+)?\s*)?\(\s*([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)?)?\s*(\d{4})\s*\)/
+  /^\s*(?:,\s*(?:at\s+)?\d+(?:-\d+)?\s*)?\(\s*([A-Z][A-Za-z]+\.?(?:\s+[A-Z][A-Za-z]+\.?)?)?\s*(\d{4})\s*([A-Z][A-Za-z]+\.?(?:\s+[A-Z][A-Za-z]+\.?)?)?\s*\)/
 
 /**
- * Attach `year` (and optional `publisher`) to statute citations whose
- * citation core is immediately followed by a year-of-edition parenthetical.
+ * Edition-label set — captured tokens that should populate `editionLabel`
+ * rather than `publisher`. `Repl.` = replacement volume, `Supp.` = supplement,
+ * `Cum. Supp.` = cumulative supplement. #349
+ */
+const EDITION_LABEL_REGEX = /^(?:Repl|Supp|Cum\.?\s*Supp)\.?$/i
+
+/**
+ * Attach `year` (and optional `publisher` / `editionLabel`) to statute
+ * citations whose citation core is immediately followed by a year-of-edition
+ * parenthetical.
  *
- * `HRS § 91-14(a) (1985)`, `42 U.S.C. § 1983 (1976)`, and
- * `28 U.S.C. § 1331 (West 2018)` are all common code-edition forms. The
- * tokenizer captures only the citation core; this post-pass scans forward
- * from `span.cleanEnd` for an optional `\s*\((?:Publisher\s+)?YYYY\)`. The
- * regex deliberately requires a literal 4-digit run inside the parens so a
- * trailing subsection paren (`(a)`, `(1)`) is never confused for a year.
+ * `HRS § 91-14(a) (1985)`, `42 U.S.C. § 1983 (1976)`,
+ * `28 U.S.C. § 1331 (West 2018)`, and `Ark. Code Ann. § 11-9-514(a)(1)
+ * (Repl. 1996)` are all common code-edition forms. The tokenizer captures
+ * only the citation core; this post-pass scans forward from `span.cleanEnd`
+ * for the year-paren and routes the non-year token to `publisher` or
+ * `editionLabel` depending on whether it's a replacement/supplement marker.
  *
- * Closes #285.
+ * Closes #285. Extended for `Repl.` / `Supp.` / `Cum. Supp.` in #349.
  */
 function attachStatuteYearParen(citations: Citation[], cleaned: string): void {
   for (const cite of citations) {
@@ -686,9 +704,19 @@ function attachStatuteYearParen(citations: Citation[], cleaned: string): void {
     const after = cleaned.slice(cite.span.cleanEnd)
     const match = STATUTE_YEAR_PAREN_REGEX.exec(after)
     if (!match) continue
-    const [, publisher, yearStr] = match
+    const [, prefixToken, yearStr, suffixToken] = match
     cite.year = Number.parseInt(yearStr, 10)
-    if (publisher) cite.publisher = publisher
+    // Route the non-year token: edition label vs publisher. Either slot may
+    // carry it (publisher conventionally precedes the year; edition labels
+    // appear on either side).
+    const token = prefixToken ?? suffixToken
+    if (!token) continue
+    if (EDITION_LABEL_REGEX.test(token)) {
+      // Normalize spacing inside `Cum. Supp.` to a single space.
+      cite.editionLabel = token.replace(/\s+/g, " ").trim()
+    } else {
+      cite.publisher = token
+    }
   }
 }
 
