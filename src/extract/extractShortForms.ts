@@ -405,9 +405,10 @@ export function extractShortFormCase(
   //   4: pincite
   // Party-name capture mirrors SHORT_FORM_CASE_PATTERN: `v.` / `&` / `,`
   // continuations (#301). `In re` prefix intentionally omitted (see
-  // partySupraRegex above for rationale).
+  // partySupraRegex above for rationale). Pincite-prefix alternation also
+  // accepts spelled-out `page` / `pages` (#344).
   const shortFormRegex =
-    /(?:([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*),\s+)?(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)/d
+    /(?:([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*),\s+)?(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*|pages?\s+)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)/d
   const match = shortFormRegex.exec(text)
 
   if (!match) {
