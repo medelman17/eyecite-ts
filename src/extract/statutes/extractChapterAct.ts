@@ -13,8 +13,17 @@ import type { StatuteComponentSpans } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 import { parseBody } from "./parseBody"
 
-/** Parse chapter-act token: chapter + ILCS + act/section */
-const CHAPTER_ACT_RE = /^(\d+)\s+(?:ILCS|Ill\.?\s*Comp\.?\s*Stat\.?)\s*(?:Ann\.?\s+)?(\d+)\/(.+)$/d
+/**
+ * Parse chapter-act token: chapter + ILCS + act/section.
+ *
+ * Section body uses the period-followed-by-alphanumeric guard from #283:
+ * a trailing sentence period is not absorbed (`5 ILCS 100/1-1.` → `1-1`,
+ * not `1-1.`; #331). The body must mirror the tokenizer regex in
+ * `statutePatterns.ts` so that the extractor's anchored re-match consumes
+ * the same span the tokenizer captured.
+ */
+const CHAPTER_ACT_RE =
+  /^(\d+)\s+(?:ILCS|Ill\.?\s*Comp\.?\s*Stat\.?)\s*(?:Ann\.?\s+)?(\d+)\/(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/d
 
 export function extractChapterAct(
   token: Token,
