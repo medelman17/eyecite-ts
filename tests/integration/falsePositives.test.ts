@@ -61,4 +61,30 @@ describe("false positive filtering (integration)", () => {
       expect(citations.every((c) => c.confidence > 0.1)).toBe(true)
     })
   })
+
+  describe("month-name date misparse hard-reject (#302)", () => {
+    // These are unconditional removals — they fire whether or not the caller
+    // passed `filterFalsePositives: true`, because `<day> <Month> <year>`
+    // sequences are never legitimate citations.
+
+    it("rejects `On 8 April 1988`", () => {
+      const citations = extractCitations("The court held a hearing on 8 April 1988.")
+      expect(citations).toHaveLength(0)
+    })
+
+    it("rejects `On 15 May 2010`", () => {
+      const citations = extractCitations("On 15 May 2010, the parties met.")
+      expect(citations).toHaveLength(0)
+    })
+
+    it("regression: `100 F.3d 200` still extracts", () => {
+      const citations = extractCitations("See Smith v. Jones, 100 F.3d 200 (9th Cir. 2020).")
+      expect(citations.length).toBeGreaterThan(0)
+    })
+
+    it("regression: `42 U.S.C. § 1983` still extracts", () => {
+      const citations = extractCitations("42 U.S.C. § 1983")
+      expect(citations.length).toBeGreaterThan(0)
+    })
+  })
 })

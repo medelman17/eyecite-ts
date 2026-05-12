@@ -273,4 +273,74 @@ describe("applyFalsePositiveFilters", () => {
       expect(result[0].confidence).toBe(0.8)
     })
   })
+
+  describe("month-name date misparse hard-reject (#302)", () => {
+    function makeDateMisparse(
+      day: number,
+      monthName: string,
+      year: number,
+    ): FullCaseCitation {
+      const span: Span = { cleanStart: 0, cleanEnd: 12, originalStart: 0, originalEnd: 12 }
+      return {
+        type: "case",
+        text: `${day} ${monthName} ${year}`,
+        span,
+        confidence: 0.6,
+        matchedText: `${day} ${monthName} ${year}`,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: day,
+        reporter: monthName,
+        page: year,
+      }
+    }
+
+    it("removes `8 April 1988` in penalize mode (hard reject)", () => {
+      const cite = makeDateMisparse(8, "April", 1988)
+      const result = applyFalsePositiveFilters([cite], false)
+      expect(result).toHaveLength(0)
+    })
+
+    it("removes `15 May 2010` in penalize mode (hard reject)", () => {
+      const cite = makeDateMisparse(15, "May", 2010)
+      const result = applyFalsePositiveFilters([cite], false)
+      expect(result).toHaveLength(0)
+    })
+
+    it("removes all 12 month names with plausible day/year shape", () => {
+      const months = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
+      ]
+      for (const m of months) {
+        const cite = makeDateMisparse(10, m, 2000)
+        const result = applyFalsePositiveFilters([cite], false)
+        expect(result).toHaveLength(0)
+      }
+    })
+
+    it("removes also in remove mode", () => {
+      const cite = makeDateMisparse(8, "April", 1988)
+      const result = applyFalsePositiveFilters([cite], true)
+      expect(result).toHaveLength(0)
+    })
+
+    it("does NOT reject when volume > 31 (not a day-of-month)", () => {
+      // Real citation: `100 April 1988` is not a date misparse — `April` is
+      // still bogus as a reporter but the day-shape doesn't fit, so the
+      // hard-reject pass leaves it for the standard filter.
+      const cite = makeDateMisparse(100, "April", 1988)
+      const result = applyFalsePositiveFilters([cite], false)
+      expect(result).toHaveLength(1)
+    })
+
+    it("does NOT reject when page < 1700 (not a plausible year)", () => {
+      const cite = makeDateMisparse(8, "April", 200)
+      const result = applyFalsePositiveFilters([cite], false)
+      // Survives the hard-reject (not date-shaped), gets soft-flagged by
+      // the standard filter (still a fake reporter).
+      expect(result).toHaveLength(1)
+    })
+
+  })
 })
