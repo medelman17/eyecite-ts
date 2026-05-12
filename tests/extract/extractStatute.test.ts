@@ -1026,4 +1026,101 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Code of Alabama 1940 — pre-1975 statutes (#343)", () => {
+    it("extracts Code-prefix form: `Code 1940, T. 15, § 389`", () => {
+      const cites = extractCitations("violates Code 1940, T. 15, § 389.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(15)
+        expect(cites[0].section).toBe("389")
+        expect(cites[0].code).toBe("Code of Alabama 1940")
+        expect(cites[0].year).toBe(1940)
+        expect(cites[0].jurisdiction).toBe("AL")
+      }
+    })
+
+    it("extracts Title-first with Code trailer + recompiledYear: `Title 26, Section 214, Code of Alabama 1940, as Recompiled 1958`", () => {
+      const cites = extractCitations(
+        "Per Title 26, Section 214, Code of Alabama 1940, as Recompiled 1958.",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(26)
+        expect(cites[0].section).toBe("214")
+        expect(cites[0].year).toBe(1940)
+        expect(cites[0].recompiledYear).toBe(1958)
+      }
+    })
+
+    it("extracts Title-first with comma before year: `Title 7, Section 273, Code of Alabama, 1940`", () => {
+      const cites = extractCitations("Per Title 7, Section 273, Code of Alabama, 1940.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(7)
+        expect(cites[0].section).toBe("273")
+        expect(cites[0].year).toBe(1940)
+        expect(cites[0].recompiledYear).toBeUndefined()
+      }
+    })
+
+    it("extracts Title-first with abbreviated Code trailer: `Title 7, § 21, Code 1940`", () => {
+      const cites = extractCitations("Per Title 7, § 21, Code 1940.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(7)
+        expect(cites[0].section).toBe("21")
+        expect(cites[0].year).toBe(1940)
+      }
+    })
+
+    it("extracts Title-first, §-after-title, trailing Code: `Title 43, § 30, Code 1940`", () => {
+      const cites = extractCitations("violates Title 43, § 30, Code 1940.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(43)
+        expect(cites[0].section).toBe("30")
+      }
+    })
+
+    it("extracts abbreviated bare form: `Tit. 52, § 361`", () => {
+      const cites = extractCitations("See Tit. 52, § 361.").filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(52)
+        expect(cites[0].section).toBe("361")
+        expect(cites[0].code).toBe("Code of Alabama 1940")
+        expect(cites[0].jurisdiction).toBe("AL")
+        // No Code trailer, so year is undefined
+        expect(cites[0].year).toBeUndefined()
+      }
+    })
+
+    it("does NOT match bare `Title 7, § 508` (no Alabama context signal)", () => {
+      // The spelled-out `Title N, § N` form without any Code clause is
+      // intentionally not matched — bare `Title 18, § 1001`-style strings
+      // would false-positive on USC and other federal codes. Deferred.
+      const cites = extractCitations("Title 7, § 508.").filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(0)
+    })
+
+    it("regression: modern `Ala. Code § 6-2-39` continues to route through the abbreviated extractor", () => {
+      const cites = extractCitations("Ala. Code § 6-2-39.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("6-2-39")
+        expect(cites[0].jurisdiction).toBe("AL")
+      }
+    })
+  })
 })
