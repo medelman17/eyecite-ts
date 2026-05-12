@@ -1,5 +1,324 @@
 # eyecite-ts
 
+## 0.15.6
+
+### Patch Changes
+
+- [#354](https://github.com/medelman17/eyecite-ts/pull/354) [`0058673`](https://github.com/medelman17/eyecite-ts/commit/00586739288a123e752cedd5a1c6214f66d08043) Thanks [@medelman17](https://github.com/medelman17)! - fix: Arizona A.R.S. accepts word `section`, spacing/OCR variants, and normalizes `code` (#348)
+
+  Arizona statutes appear in many forms across published opinions —
+  `A.R.S. § 25-331`, `A.R.S. section 14-2804(A)`, `ARS § 35-213`,
+  `A. R.S. § 36-1002.02`, `AR.S. § 35-213`. The tokenizer recognized
+  only the canonical fully-dotted-with-`§` form, and even the partially
+  matching variants (`ARS`, `AR.S.`) emitted with `code` reflecting the
+  raw match instead of the canonical `A.R.S.`. A 42-opinion Arizona
+  sample showed 20+ statute misses on these variants alone.
+
+  ### Fix
+
+  Three coordinated surface-level changes:
+
+  1. **`src/data/stateStatutes.ts`** — the abbreviated-code section
+     connector accepts the spelled-out word `section(s)` /
+     `Section(s)` alongside `§` / `§§`:
+
+     ```
+     …\\s*(?:§§?|[Ss]ections?)?\\s*…
+     ```
+
+     This is a universal change benefiting all abbreviated-code
+     jurisdictions; Arizona is the immediate driver per #348.
+
+  2. **`src/data/stateStatutes.ts`** — the Arizona `regexFragment`
+     admits inter-letter whitespace so spacing/OCR variants tokenize:
+
+     ```
+     A\\.?\\s*R\\.?\\s*S\\.?     (was: A\\.?R\\.?S\\.?)
+     ```
+
+     `A. R.S.`, `AR.S.`, `ARS` all match.
+
+  3. **`src/data/knownCodes.ts` + `src/extract/statutes/extractAbbreviated.ts`**
+     — added a stripped-form fallback to `findAbbreviatedCode` (matches
+     on dots+spaces removed) and a normalization step in the extractor.
+     When the raw match doesn't appear in `entry.patterns` verbatim
+     (i.e., it's an OCR/spacing variant), `code` is set to the canonical
+     short abbreviation (`A.R.S.`). Exact-match inputs are left
+     unchanged, so `Ariz. Rev. Stat. § 14-1234` continues to emit
+     `code: "Ariz. Rev. Stat."` (no regression for Bluebook full forms).
+
+  ### Scope
+
+  - **Multi-section ranges** (`A.R.S. §§ 23-941 through 23-952`) are
+    intentionally deferred — they require either a `sectionRange` field
+    or producing multiple citations from one match, neither of which
+    is a tight regex change.
+  - **Bare-section context propagation** (`§ 36-3706` resolving to
+    A.R.S. via earlier context) is tracked separately under the
+    general per-document statute context proposal.
+
+  ### Tests
+
+  8 new tests under `Arizona A.R.S. format variants (#348)` in
+  `tests/extract/statutes/extractAbbreviated.test.ts`:
+
+  - Canonical with subsection: `A.R.S. § 25-331(E)`
+  - Word `section` lowercase: `A.R.S. section 14-2804(A)`
+  - Word `Section` capital: `A.R.S. Section 22-318`
+  - No-dots variant: `ARS § 35-213` → code normalized to `A.R.S.`
+  - Extra-space variant: `A. R.S. § 36-1002.02` → code normalized
+  - OCR variant: `AR.S. § 35-213` → code normalized
+  - Regression: `Ariz. Rev. Stat. § 14-1234` → code preserved as-is
+  - Regression: `Ariz. Rev. Stat. Ann. § 14-1234` → code preserved as-is
+
+  Full 2535-test suite passes; no regressions.
+
+  ### Related
+
+  Surfaced by 42-opinion Arizona sample. Same family as #12 (state
+  bare-statute forms), #330 (pre-1993 Illinois Revised Statutes), #343
+  (Code of Alabama 1940) — each state's most common statute family has
+  its own abbreviation/spacing/subdivision quirks that have to be
+  covered explicitly.
+
+- [#357](https://github.com/medelman17/eyecite-ts/pull/357) [`b907d20`](https://github.com/medelman17/eyecite-ts/commit/b907d209db2de161f9416b2078230b896d86c2fc) Thanks [@medelman17](https://github.com/medelman17)! - fix: Arkansas Code Annotated + `(Repl. YYYY)` / `(YYYY Supp.)` edition parentheticals (#349)
+
+  Arkansas's primary statute code is **Arkansas Code Annotated** (post-1987)
+  or **Arkansas Statutes Annotated** (pre-1987). Three failures combined
+  to drop almost every Arkansas statute citation in a 50-opinion sample
+  (20+ misses):
+
+  1. The spelled-out `Arkansas Code Annotated` form wasn't accepted
+     (the regex required `Ann.` rather than `Annotated`).
+  2. `Ark. Stat. Ann.` (the pre-1987 code) had no entry at all.
+  3. `(Repl. YYYY)`, `(YYYY Supp.)`, `(Cum. Supp. YYYY)` edition
+     parentheticals were dropped even when the citation tokenized —
+     the existing year-paren regex (#285) only recognized
+     `(Publisher? YYYY)`-shaped bodies.
+
+  ### Fix
+
+  Four coordinated changes:
+
+  1. **`src/data/stateStatutes.ts`** — extended the Arkansas Code
+     Annotated entry to accept the spelled-out `Annotated` form
+     (`Ann(?:otated)?\.?`); added `"Arkansas Code Annotated"` to the
+     abbreviations array.
+
+  2. **`src/data/stateStatutes.ts`** — added a second Arkansas entry
+     for the pre-1987 **Arkansas Statutes Annotated** code family
+     (`Ark. Stat. Ann.`, `Ark. Stat.`, `Arkansas Statutes Annotated`).
+
+  3. **`src/extract/extractCitations.ts`** — extended
+     `STATUTE_YEAR_PAREN_REGEX` so the parenthetical body accepts a
+     trailing dot on the publisher/label word (`Repl.`, `Supp.`,
+     `Cum. Supp.`) and a year-first variant (`(1969 Supp.)`,
+     `(1985 Cum. Supp.)`). `attachStatuteYearParen` routes the
+     non-year token to the new `editionLabel` field when it matches
+     `Repl. | Supp. | Cum. Supp.` (case-insensitive); otherwise the
+     token continues to populate `publisher` as before.
+
+  4. **`src/types/citation.ts`** — added an optional
+     `editionLabel?: string` field to `StatuteCitation`. Distinct from
+     `publisher` (West/Lexis) — captures replacement/supplement
+     volume markers. Non-breaking additive change.
+
+  ### Side fix
+
+  `src/extract/statutes/extractAbbreviated.ts` — mirrored the
+  tokenizer's word-`section` tolerance from #348 in the internal
+  `ABBREVIATED_RE`, so the abbreviation capture no longer absorbs the
+  word `section` when it appears between the code name and the section
+  body. Without this, `Arkansas Code Annotated section 11-9-102` would
+  produce `abbrevText="Arkansas Code Annotated section"` and fall
+  through to canonical-form normalization.
+
+  ### Tests
+
+  7 new tests under `Arkansas Code Annotated + edition parenthetical
+(#349)` in `tests/extract/statutes/extractAbbreviated.test.ts`:
+
+  - `Ark. Code Ann. § 11-9-514(a)(1) (Repl. 1996)` → all fields
+    populated, `editionLabel: "Repl."`
+  - `Arkansas Code Annotated § 16-89-111(e)(1) (1987)` — spelled-out
+    form, bare year (no edition label)
+  - `Arkansas Code Annotated section 11-9-102(5)(A)(i) (Repl. 1996)` —
+    spelled-out + word `section`, code preserved verbatim
+  - `Ark. Stat. Ann. § 41-1201 (Repl. 1964)` — pre-1987 code
+  - `(1969 Supp.)` year-first edition label
+  - Regression: `(West 2018)` continues to populate `publisher`
+  - Regression: bare `(1976)` continues to populate `year` only
+
+  Full 2542-test suite passes; no regressions.
+
+  ### Scope
+
+  Bare-section context propagation (`§ 41-1201` resolving to
+  `Ark. Stat. Ann.` via earlier-in-document context) is tracked
+  separately under the general per-document statute context proposal.
+
+- [#361](https://github.com/medelman17/eyecite-ts/pull/361) [`3949d57`](https://github.com/medelman17/eyecite-ts/commit/3949d57166440662230b462dd7941ef7146f9468) Thanks [@medelman17](https://github.com/medelman17)! - fix: Colorado `C.R.S. 1963` / `C.R.S. 1973` year-edition and prose form (#352)
+
+  Colorado has two compilations: pre-1973 (`C.R.S. 1963`) and post-1973
+  (`C.R.S.` / `C.R.S. 1973`). The year suffix is part of the **code
+  name**, distinguishing the edition — not an edition parenthetical and
+  not a section number. Three failures combined to mis-parse every
+  pre-1973 Colorado statute reference in a 38-opinion sample:
+
+  1. **Year suffix consumed as section number**: `C.R.S. 1963 §
+148-21-34` extracted `section: "1963"` (the year), dropping the
+     real section number `148-21-34` entirely.
+  2. **Code name truncated**: `code` was reported as `C.R.S.` rather
+     than `C.R.S. 1963`, losing the edition information.
+  3. **Prose form not extracted**: `Section 148-21-34, Colorado Revised
+Statutes 1963` (the dominant pre-1973 form, with section BEFORE
+     the code name) produced no citation.
+
+  ### Fix
+
+  Two coordinated changes:
+
+  1. **`src/data/stateStatutes.ts`** — extended the Colorado regex
+     fragment with an optional `\s+19\d{2}` tail that absorbs `1963` /
+     `1973` into the abbreviation capture. Added the canonical
+     year-suffixed forms (`C.R.S. 1963`, `C.R.S. 1973`, `Colorado
+Revised Statutes 1963`, `Colorado Revised Statutes 1973`) and the
+     spelled-out base form (`Colorado Revised Statutes`,
+     `Colorado Revised Statutes Annotated`) to the abbreviations array.
+     With this `findAbbreviatedCode` resolves the year-suffixed forms
+     via exact match and `code` is preserved verbatim.
+
+  2. **New `colorado-prose` tokenizer pattern + `extractColoradoProse`
+     extractor** — handles the section-first prose form
+     `Section 148-21-34, Colorado Revised Statutes 1963`. The pattern
+     is listed BEFORE `abbreviated-code` in `statutePatterns.ts` so
+     it wins span dedup over the abbreviated-code match (which would
+     otherwise still consume the trailing `Colorado Revised Statutes
+1963` and emit a duplicate citation with `section: "1963"`).
+
+  ### Scope notes
+
+  - **Chapter-article-section structured fields** (pre-1973 Colorado's
+    `148-21-34` = chapter 148, article 21, section 34) are deferred —
+    the full section body is preserved in `section`, and consumers can
+    split it themselves. Surfacing `chapter` / `article` as typed fields
+    would require new optional fields on `StatuteCitation`.
+  - **`Article 18 of Chapter 148, Colorado Revised Statutes 1963`**
+    (article-of-chapter prose form) is deferred — separate pattern
+    shape from the section-first form covered here.
+  - **Colorado session laws** (`Colo. Sess. Laws YYYY, ch. NNN, § N`)
+    are a separate citation family entirely and tracked separately.
+
+  ### Tests
+
+  8 new tests under `Colorado pre-1973 and year-edition variants (#352)`
+  in `tests/extract/extractStatute.test.ts`:
+
+  - Inline `C.R.S. 1963 § 148-21-34` — code preserved with year suffix
+  - Inline `C.R.S. 1973 § 13-25-126` — modern edition variant
+  - Prose `Section 148-21-34, Colorado Revised Statutes 1963`
+  - Prose + `(1965 Supp.)` trailing parenthetical → year + editionLabel
+  - Prose with subsection: `Section 82-4-8(8)(f), Colo. Rev. Stat. 1963`
+  - Regression: modern `C.R.S. § 13-25-126` (no year suffix) unchanged
+  - Regression: `C.R.S. § 13-25-126 (1973)` — trailing year parenthetical
+    continues to populate `year`
+  - Regression: federal `42 U.S.C. § 1983 (1976)` unaffected
+
+  Full 2551-test suite passes; no regressions.
+
+  ### Related
+
+  Surfaced by 38-opinion Colorado sweep. Companion to #348 (Arizona),
+  #349 (Arkansas), #330 (Illinois pre-1993), #343 (Alabama 1940) — each
+  state's pre-modern statute code has distinct conventions not in the
+  default abbreviated-code pattern.
+
+- [#362](https://github.com/medelman17/eyecite-ts/pull/362) [`011c17a`](https://github.com/medelman17/eyecite-ts/commit/011c17a215c906a0b5a677aef999a7d034b393cd) Thanks [@medelman17](https://github.com/medelman17)! - fix: Connecticut comma-pincite for Id./Ibid./supra back-references (#353)
+
+  Connecticut courts use a distinctive citation style where the page
+  follows a comma rather than the Bluebook `at`:
+
+  ```
+  Id., 822          (vs. Bluebook `Id. at 822`)
+  Smith, supra, 522 (vs. Bluebook `Smith, supra, at 822`)
+  Ibid., 250
+  ```
+
+  This convention is mandated by Connecticut Practice Book Rule 67-11
+  and the Connecticut Style Manual. In a 28-opinion Connecticut sample,
+  56 pincites were silently dropped because the existing `Id.`/`Ibid.`/
+  `supra` patterns required the word `at` (or a paragraph marker)
+  between the back-reference and the page.
+
+  ### Fix
+
+  Extended the pincite-connector alternation in `ID_PATTERN`,
+  `IBID_PATTERN`, and `SUPRA_PATTERN` (`src/patterns/shortForm.ts`) and
+  the corresponding `idRegex` / `partySupraRegex` in
+  `src/extract/extractShortForms.ts` from
+
+  ```
+  (,?)\s*(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))
+  ```
+
+  to
+
+  ```
+  (?:,\s+|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))
+  ```
+
+  The new `,\s+` branch requires a literal comma, so it doesn't conflict
+  with the existing typo-guard at the head of the pattern
+  (`Id, at` is still only matched by `Id\s*,(?=\s+at\s)`).
+
+  Group numbering in the extractor changed: the previous group 4
+  (optional post-period comma) became group 4 (connector capture). The
+  extractor now detects the "post-period comma" signal via
+  `match[4]?.startsWith(",")` to preserve the existing confidence
+  penalty for non-canonical forms.
+
+  ### Confidence policy
+
+  - `Id. at 822` (canonical Bluebook) → confidence 1.0 unchanged
+  - `Id., 822` (Connecticut comma-pincite) → confidence 0.9 (regional
+    convention; not a typo, but non-Bluebook)
+  - `Id., at 253` (period-then-comma, Bluebook-tolerant) → confidence
+    0.9 unchanged
+  - `Id, at 1483` (typo: comma instead of period) → confidence 0.7
+    unchanged
+
+  ### Scope
+
+  The bracketed-reporter `supra, [24 Conn. App.] 554` and the
+  section-comment-page `supra, § 2.09, comment 3, p. 375` forms are
+  more complex pincite shapes and are deferred. Multi-page lists
+  (`Id., 380, 383`) capture the first pincite only — same as existing
+  hyphen-range behavior.
+
+  ### Tests
+
+  9 new tests under `Connecticut comma-pincite for Id./Ibid./supra
+(#353)` in `tests/extract/extractShortForms.test.ts`:
+
+  - `Id., 6` → pincite=6
+  - `Id., 14-15` → pincite=14, endPage=15, isRange=true
+  - `Id., 380, 383` → first pincite captured (list scope deferred)
+  - `Smith, supra, 522` → pincite=522
+  - `Ibid., 250` → pincite=250
+  - Regression: `Id. at 822` → confidence=1.0
+  - Regression: `Smith, supra, at 822`
+  - Regression: `Id., at 253` (post-period comma)
+  - Regression: `Id, at 1483` (typo comma) — confidence ≤ 0.7
+
+  Full 2560-test suite passes; no regressions.
+
+  ### Related
+
+  Surfaced by 28-opinion Connecticut sweep. Same family as #305 (Id./
+  Ibid. punctuation variants), #281 / #247 (pincite forms), #344
+  (short-form `at page N` word). Each is a pincite-prefix tolerance fix
+  for back-reference shapes outside strict Bluebook.
+
 ## 0.15.5
 
 ### Patch Changes
