@@ -54,6 +54,25 @@ describe("parsePincite", () => {
     })
   })
 
+  it("parses California `, fn. 3` footnote variant (#311)", () => {
+    expect(parsePincite("768, fn. 3")).toEqual({
+      page: 768,
+      footnote: 3,
+      isRange: false,
+      raw: "768, fn. 3",
+    })
+  })
+
+  it("parses `, fns. 3-5` multi-footnote variant (#311)", () => {
+    expect(parsePincite("768, fns. 3-5")).toEqual({
+      page: 768,
+      footnote: 3,
+      footnoteEnd: 5,
+      isRange: false,
+      raw: "768, fns. 3-5",
+    })
+  })
+
   it("parses a range with footnote", () => {
     expect(parsePincite("570-75 n.3")).toEqual({
       page: 570,
