@@ -1,5 +1,135 @@
 # eyecite-ts
 
+## 0.15.5
+
+### Patch Changes
+
+- [#347](https://github.com/medelman17/eyecite-ts/pull/347) [`418595e`](https://github.com/medelman17/eyecite-ts/commit/418595e61902e60236ad9f0824997426a8a6faad) Thanks [@medelman17](https://github.com/medelman17)! - feat: extract pre-1975 Alabama Code (`Code of Alabama 1940`) citations (#343)
+
+  Alabama used a distinct Title/Section statutory format before adopting
+  the modern `Ala. Code § N-NN-N` form. Pre-1975 statutes — and continuing
+  back-references to them in modern opinions — use forms like
+  `Code 1940, T. 15, § 389` or `Title 26, Section 214, Code of Alabama
+1940, as Recompiled 1958`. None of these tokenized — surfaced as the
+  dominant statute miss pattern in a 50-opinion Alabama sample (15+
+  misses).
+
+  ### Fix
+
+  Three tokenizer patterns in `src/patterns/statutePatterns.ts`, one
+  dedicated extractor at `src/extract/statutes/extractAlaCode1940.ts`:
+
+  - **`ala-code-prefix`** — `Code 1940, T. NN, § NNN` / `Code of Alabama
+1940, T. NN, § NNN` (Code-first form; year hardcoded to 1940)
+  - **`ala-title-trailer`** — `Title NN, Section NNN, Code of Alabama
+1940[, as Recompiled YYYY]` (Title-first, requires Code trailer)
+  - **`ala-tit-bare`** — `Tit. NN, § NNN[, Code 1940...]` (abbreviated
+    `Tit.` form, optional Code trailer)
+
+  Each pattern routes to `extractAlaCode1940`, which emits a
+  `StatuteCitation` with `code: "Code of Alabama 1940"`, `jurisdiction:
+"AL"`, the parsed `title`, `section`, `subsection`, and optionally
+  `year` (edition year, e.g. 1940) and `recompiledYear` (1958 when the
+  recompilation clause is present).
+
+  `recompiledYear?: number` is a new optional field on `StatuteCitation`
+  — additive change, no breaking API impact. Distinct from `year` (the
+  original edition year).
+
+  ### Scope notes
+
+  - **Bare `Title 7, § 508` form (no Code clause, spelled-out `Title`)**
+    is intentionally NOT matched. The spelled-out form without an
+    Alabama-specific signal would false-positive on bare USC-style
+    `Title 18, § 1001` prose. The `Tit.` abbreviation is recognized
+    bare because the abbreviation is itself an Alabama-distinctive
+    signal (USC opinions spell out `Title`). A future enhancement
+    could pick up bare spelled-out `Title N, § N` when a contextual
+    jurisdiction marker is present.
+
+  - **Multi-section lists** (`Title 52, Sections 486 and 487, ...`)
+    match the first section only; the `, 487` is left for downstream.
+    Same shape as the existing multi-paragraph match on Illinois ILRS.
+
+  ### Tests
+
+  8 new tests under `Code of Alabama 1940 — pre-1975 statutes (#343)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - Code-prefix: `Code 1940, T. 15, § 389`
+  - Title-first w/ recompiledYear: `Title 26, Section 214, Code of
+Alabama 1940, as Recompiled 1958`
+  - Title-first w/ comma-before-year: `Title 7, Section 273, Code of
+Alabama, 1940`
+  - Title-first w/ abbreviated trailer: `Title 7, § 21, Code 1940`
+  - Title-first w/ §-then-trailer: `Title 43, § 30, Code 1940`
+  - Abbreviated bare: `Tit. 52, § 361`
+  - Negative: bare `Title 7, § 508` does not match (USC false-positive
+    guard)
+  - Regression: modern `Ala. Code § 6-2-39` still extracts
+
+  Full 2521-test suite passes; no regressions.
+
+  ### Related
+
+  Surfaced by 50-opinion Alabama sample. Companion to #330 (pre-1993
+  Illinois Revised Statutes) — both are pre-modern state code formats
+  that remain in active citation.
+
+- [#345](https://github.com/medelman17/eyecite-ts/pull/345) [`74642c0`](https://github.com/medelman17/eyecite-ts/commit/74642c0a18fbee0271e964106e8d16208212f30c) Thanks [@medelman17](https://github.com/medelman17)! - fix: short-form case pincite accepts spelled-out `at page` / `at pages` (#344)
+
+  Short-form back-references using the full word `at page NNN` (rather
+  than the abbreviated `at NNN` or CSM `at p. NNN`) were tokenized as
+  `journal` citations instead of `shortFormCase`:
+
+  ```
+  "281 Ala. at page 322" → type: "journal"     (was; should be shortFormCase)
+  "38 Ala.App. at page 186" → type: "journal"   (was; should be shortFormCase)
+  ```
+
+  This is an Alabama-style writing convention but appears in other state
+  corpora as well. Downstream consumers filtering for `shortFormCase`
+  missed the citations entirely; the short-form resolver couldn't link
+  them to their full-cite antecedents.
+
+  ### Fix
+
+  Extended the pincite-prefix alternation in both the tokenizer pattern
+  and the extractor's anchored re-match regex from `(?:pp?\.\s*)?` to
+  `(?:pp?\.\s*|pages?\s+)?`:
+
+  - `src/patterns/shortForm.ts` — `SHORT_FORM_CASE_PATTERN`
+  - `src/extract/extractShortForms.ts` — internal `shortFormRegex`
+
+  Both forms (`page`, `pages`) are now accepted before the digit pincite.
+
+  ### Scope
+
+  Multi-pincite lists (`at pages 261 and 262`) capture the first pincite
+  only; the `and 262` is left for the surrounding text. Same as existing
+  behavior on hyphen-range pincites. A separate multi-pincite extension
+  (beyond `#247`) could pick up the second endpoint as a follow-up.
+
+  The same prefix tolerance for `Id. at page` / `Ibid. at page` is
+  explicitly out of scope — the issue points to a separate tracking
+  ticket for those.
+
+  ### Tests
+
+  6 new tests under `spelled-out at page / at pages pincite prefix
+(#344)` in `tests/extract/extractShortForms.test.ts`:
+
+  - `281 Ala. at page 322` → shortFormCase, `pincite: 322`, no journal
+    misclassification
+  - `38 Ala.App. at page 186` → shortFormCase, `pincite: 186`
+  - `261 Ala. at pages 494` → shortFormCase, `pincite: 494`
+  - `252 Ala. at pages 261 and 262` → first pincite captured (list scope
+    out of scope)
+  - Regression: abbreviated `at 322` still works
+  - Regression: CSM `at p. 717` still works
+
+  Full 2516-test suite passes; no regressions.
+
 ## 0.15.4
 
 ### Patch Changes
