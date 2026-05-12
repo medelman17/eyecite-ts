@@ -661,6 +661,54 @@ describe("Full Pipeline Integration Tests", () => {
     })
   })
 
+  describe("Parallel Citation caseName Propagation (#282)", () => {
+    it("propagates caseName to all parallel secondaries (3-reporter Roe)", () => {
+      const text = "Roe v. Wade, 410 U.S. 113, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973)."
+      const cites = extractCitations(text).filter((c) => c.type === "case")
+      expect(cites).toHaveLength(3)
+      for (const c of cites) {
+        if (c.type === "case") {
+          expect(c.caseName).toBe("Roe v. Wade")
+          expect(c.plaintiff).toBe("Roe")
+          expect(c.defendant).toBe("Wade")
+        }
+      }
+    })
+
+    it("propagates caseName on 2-reporter Pennsylvania parallel", () => {
+      const text = "Nixon v. Nixon, 329 Pa. 256, 198 A. 154 (1938)."
+      const cites = extractCitations(text).filter((c) => c.type === "case")
+      expect(cites).toHaveLength(2)
+      for (const c of cites) {
+        if (c.type === "case") {
+          expect(c.caseName).toBe("Nixon v. Nixon")
+        }
+      }
+    })
+
+    it("propagates caseName on California bracketed parallel", () => {
+      const text = "People v. Smith (2001) 24 Cal.4th 849 [102 Cal.Rptr.2d 731]."
+      const cites = extractCitations(text).filter((c) => c.type === "case")
+      expect(cites).toHaveLength(2)
+      for (const c of cites) {
+        if (c.type === "case") {
+          expect(c.caseName).toBe("People v. Smith")
+        }
+      }
+    })
+
+    it("does not affect single non-parallel citation", () => {
+      const text = "Smith v. Jones, 500 F.2d 100 (1974)."
+      const cites = extractCitations(text).filter((c) => c.type === "case")
+      expect(cites).toHaveLength(1)
+      if (cites[0].type === "case") {
+        expect(cites[0].caseName).toBe("Smith v. Jones")
+        // No groupId since it's not parallel
+        expect(cites[0].groupId).toBeUndefined()
+      }
+    })
+  })
+
   describe("Issue #154: no zero-length spans from HTML with long tags", () => {
     it("produces non-zero original spans for citations inside long HTML attributes", () => {
       const html =

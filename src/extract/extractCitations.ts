@@ -429,6 +429,14 @@ export function extractCitations(
   // and produces a nonsense caseName.
   inheritSubsequentHistoryCaseName(citations)
 
+  // Step 4.6: Propagate caseName from the primary onto each parallel-cite
+  // secondary (#282). Detection in step 4 sets the shared `groupId` and
+  // populates `parallelCitations` on the primary; this pass fills in the
+  // shared caption fields on secondaries that have no caseName of their own.
+  // Runs AFTER 4.55 so a primary that inherited from a history chain root
+  // still propagates that inherited caption to its parallels.
+  inheritParallelCaseName(citations)
+
   // Step 4.75: Detect string citation groups (semicolon-separated)
   detectStringCitations(citations, cleaned)
 
@@ -619,5 +627,49 @@ function inheritSubsequentHistoryCaseName(citations: Citation[]): void {
         originalEnd: child.fullSpan.originalEnd,
       }
     }
+  }
+}
+
+/**
+ * Propagate caseName fields from the primary onto each parallel-cite secondary.
+ *
+ * A parallel-citation group (`Roe v. Wade, 410 U.S. 113, 93 S. Ct. 705, 35 L. Ed. 2d 147
+ * (1973)`) shares one caption across multiple reporter citations. Step 4 in the main
+ * pipeline assigns the shared `groupId` to every cite in the group and populates
+ * `parallelCitations` on the primary, but only the primary's per-cite case-name
+ * extraction captures `Roe v. Wade` — secondaries land with `caseName === undefined`.
+ *
+ * The primary in a group is the cite that has a non-undefined `caseName` (it appears
+ * first in document order and so is the only one the backward case-name scan can anchor
+ * on without breaking the parallel-cite disambiguation from #281). This pass joins on
+ * `groupId`, takes the first cite per group that has a `caseName`, and copies the
+ * shared caption fields onto every other cite in the same group.
+ *
+ * Closes #282.
+ */
+function inheritParallelCaseName(citations: Citation[]): void {
+  const primaryByGroup = new Map<string, number>()
+  for (let i = 0; i < citations.length; i++) {
+    const c = citations[i]
+    if (c.type !== "case") continue
+    if (!c.groupId || !c.caseName) continue
+    if (!primaryByGroup.has(c.groupId)) primaryByGroup.set(c.groupId, i)
+  }
+
+  for (const secondary of citations) {
+    if (secondary.type !== "case") continue
+    if (!secondary.groupId) continue
+    if (secondary.caseName) continue
+    const primaryIdx = primaryByGroup.get(secondary.groupId)
+    if (primaryIdx === undefined) continue
+    const primary = citations[primaryIdx]
+    if (!primary || primary.type !== "case") continue
+
+    secondary.caseName = primary.caseName
+    secondary.plaintiff = primary.plaintiff
+    secondary.defendant = primary.defendant
+    secondary.plaintiffNormalized = primary.plaintiffNormalized
+    secondary.defendantNormalized = primary.defendantNormalized
+    secondary.proceduralPrefix = primary.proceduralPrefix
   }
 }
