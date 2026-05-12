@@ -1,5 +1,142 @@
 # eyecite-ts
 
+## 0.15.1
+
+### Patch Changes
+
+- [#286](https://github.com/medelman17/eyecite-ts/pull/286) [`0ea9a01`](https://github.com/medelman17/eyecite-ts/commit/0ea9a01a95a9e2b5b56a56d17e22c576f3df98f7) Thanks [@medelman17](https://github.com/medelman17)! - fix: statute `section` field no longer absorbs the sentence-ending period (#283)
+
+  When a statute citation was the last token of a sentence — `17 P.S. § 91.`,
+  `Ariz. Rev. Stat. Ann. § 16-141.`, `N.Y. Election Law § 131.`, `M.G.L. c. 93A, § 2.`
+  — the section-body regex greedily consumed the trailing period, producing
+  `section: "91."` / `"16-141."` / `"131."` / `"2."`. The contamination also
+  extended into `matchedText`, breaking exact-match equality, deduplication
+  against canonical statute references, and offset-based annotation.
+
+  ### Root cause
+
+  Three tokenizer regexes used a section-body character class that included
+  `.` directly (`[A-Za-z0-9.:/-]*` and `[\w./-]+`):
+
+  - `abbreviated-code` in `src/data/stateStatutes.ts` (most states)
+  - `named-code` in `src/patterns/statutePatterns.ts` (NY/CA/TX/MD/VA/AL)
+  - `mass-chapter` in `src/patterns/statutePatterns.ts` (MA)
+
+  USC and CFR patterns were unaffected because their classes already
+  excluded `.` (CFR uses the safer `\d+(?:\.\d+)?[A-Za-z0-9-]*` shape).
+
+  ### Fix
+
+  Replaced the period-permissive class with a guarded alternation:
+
+  ```
+  (?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*
+  ```
+
+  A period is only consumed when followed by an alphanumeric character
+  (positive lookahead). Internal decimals (`226.5`, `17.46`, `1.5(a)`) and
+  hyphenated sections (`16-141`, `39-13-101`) are preserved unchanged;
+  a terminal period followed by end-of-string or whitespace is left for the
+  sentence to keep. Same fix applied to `ABBREVIATED_RE` in
+  `extractAbbreviated.ts` as defense in depth at the secondary parser.
+
+  ### Tests
+
+  7 new tests under `sentence-ending period boundary (#283)` in
+  `tests/extract/extractStatute.test.ts` covering the four pattern families,
+  internal-decimal preservation, and mid-sentence regression baselines. Full
+  2353-test suite passes with no regressions.
+
+- [#289](https://github.com/medelman17/eyecite-ts/pull/289) [`3a4a600`](https://github.com/medelman17/eyecite-ts/commit/3a4a6006a31a659c7af7e1a233491fd10f3a61cd) Thanks [@medelman17](https://github.com/medelman17)! - fix: spaced statute code abbreviations (`42 U. S. C.`, `29 C. F. R.`) now extract correctly (#284)
+
+  Historical and OCR'd legal text — pre-1990 Supreme Court opinions, scanned PACER
+  PDFs, Harvard CAP corpus — writes federal code abbreviations with spaces
+  between the letters: `42 U. S. C. § 1973`, `29 C. F. R. § 1604.11`. The
+  clean-pipeline normalization handled 2-letter case-cite abbreviations
+  (`U.S.`, `S.Ct.`, `L.Ed.`, `F.Supp.`) but had no rules for the 3-letter
+  code abbreviations, so spaced statute citations were silently dropped by
+  the tokenizer.
+
+  ### Root cause
+
+  `normalizeReporterSpacing` in `src/clean/cleaners.ts` had only 2-letter
+  rules. For `42 U. S. C. § 1983` the existing `U. S. → U.S.` rule fired
+  but left a dangling `C.`: `42 U.S. C. § 1983`. The statute tokenizer
+  expects the literal `U.S.C.` shape and could not match the
+  partially-normalized form, so the citation was dropped entirely (no
+  fallback, no signal that a citation existed).
+
+  ### Fix
+
+  Added two targeted rules placed _before_ the existing 2-letter ones so
+  the full 3-letter shape collapses in one pass on every spacing variant:
+
+  ```
+  \bU\.\s*S\.\s*C\.  →  U.S.C.
+  \bC\.\s*F\.\s*R\.  →  C.F.R.
+  ```
+
+  `\s*` (zero or more, not `\s+`) so the rules also act as idempotent
+  canonicalizers on already-compact input and on partial forms like
+  `U.S. C.` and `U. S.C.`. The lookahead bound is implicit — the trailing
+  `C.` / `R.` literal prevents `U. S.` (case-cite) from being intercepted.
+
+  ### Tests
+
+  - 7 new tests under `three-letter code abbreviations (#284)` in
+    `tests/clean/reporterSpacing.test.ts`: fully-spaced, partially-spaced
+    (both directions), canonical idempotency, and a non-interception check
+    for `410 U. S. 113` case cites.
+  - 5 new tests under `spaced code abbreviations (#284)` in
+    `tests/extract/extractStatute.test.ts`: end-to-end extraction through
+    the full `extractCitations` pipeline, including subsection capture
+    (`29 U. S. C. § 158(a)(3)`).
+
+  Full 2365-test suite passes; no regressions.
+
+- [#290](https://github.com/medelman17/eyecite-ts/pull/290) [`96806ca`](https://github.com/medelman17/eyecite-ts/commit/96806ca519b7b948a6b4b1ef7defb8af011dc3aa) Thanks [@medelman17](https://github.com/medelman17)! - fix: add `Vil.` and `Enters.` to case-name abbreviation set (#288)
+
+  `extractCitations` truncated `caseName` when a party name contained `Vil.`
+  (the NY-court single-L variant of Bluebook `Vill.` for "Village"). The
+  case-name scanback treated the `.` as a sentence terminator and restarted
+  the case-name candidate after it — captions like
+  `Bristol Harbour Vil. Assn., Inc.` (NY 4th Dep't) and
+  `Smithtown Vil. Bd.` truncated to `"Assn., Inc."` and `"Bd."`
+  respectively. The Bluebook double-L `Vill.` was already in the
+  abbreviation set and worked correctly, confirming a missing-variant gap
+  rather than a structural scanback issue.
+
+  ### Fix
+
+  Added two entries to `CASE_NAME_ABBREVS` in `src/extract/extractCase.ts`:
+
+  - **`vil`** — Bluebook T6 `Vill.` variant used by NY Reporter / Slip
+    Opinion captions, especially 4th Dep't. Placed alongside the existing
+    state-practice gap `"tp"` (NJ alternative to `Twp.` for "Township"),
+    with the same comment-block style.
+  - **`enters`** — Bluebook T6 plural of `Enter.` (Enterprises). Surfaced
+    by the same issue's first repro case (`Fields Enters. Inc. v. Bristol
+Harbour Vil. Assn., Inc.`) — once the `Vil.` gap was fixed, the
+    scanback still truncated at the `Enters.` boundary, revealing a
+    separate but identically-shaped missing-stem gap. Placed next to the
+    existing singular `"enter"`.
+
+  No regex changes; both additions are single-stem entries in the existing
+  set.
+
+  ### Tests
+
+  Three new tests in `tests/extract/extractCase.test.ts` under the
+  existing `case name boundary bugs` block:
+
+  - `#288: handles Vil. in Bristol Harbour Vil. Assn., Inc. (4th Dep't)`
+    — full caption with both `Enters.` and `Vil.` abbreviations.
+  - `#288: handles Smithtown Vil. Bd.` — `Vil.` in isolation.
+  - `#288: regression — Bluebook Vill. still works` — guards against
+    accidental change to the canonical double-L form.
+
+  Full 2368-test suite passes; no regressions.
+
 ## 0.15.0
 
 ### Minor Changes
