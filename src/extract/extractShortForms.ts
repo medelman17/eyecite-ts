@@ -189,12 +189,18 @@ export function extractSupra(token: Token, transformationMap: TransformationMap)
   const { text, span } = token
 
   // Try party-name pattern first: "Smith, supra [note N] [, at page]".
+  // Party-name capture mirrors SUPRA_PATTERN in src/patterns/shortForm.ts:
+  // `v.` / `&` / `,` continuations (#301) so multi-word names like
+  // `Thorn Americas, Inc.` and `Walker & Horwich` capture the whole
+  // caption rather than just the last word. `In re` prefix is NOT included
+  // — the resolver's BKTree indexes full cites without the prefix (#216 /
+  // #21), and adding it here would break supra resolution for `In re X`.
   // Pincite accepts optional "*" prefix for star-pagination (#191), an optional
   // range end / `p.` / `pp.` prefix for CSM form (#236), an optional trailing
   // footnote suffix (#202), and `¶` / `¶¶` / `para.` / `paras.` paragraph
   // markers (#204). When the pincite is a paragraph form, `at` is optional.
   const partySupraRegex =
-    /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
+    /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
   const partyMatch = partySupraRegex.exec(text)
 
   // Fallback: standalone supra — "supra note N", "supra at N", "supra § N".
@@ -324,8 +330,11 @@ export function extractShortFormCase(
   //   2: volume
   //   3: reporter
   //   4: pincite
+  // Party-name capture mirrors SHORT_FORM_CASE_PATTERN: `v.` / `&` / `,`
+  // continuations (#301). `In re` prefix intentionally omitted (see
+  // partySupraRegex above for rationale).
   const shortFormRegex =
-    /(?:([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*),\s+)?(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)/d
+    /(?:([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*),\s+)?(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)/d
   const match = shortFormRegex.exec(text)
 
   if (!match) {
