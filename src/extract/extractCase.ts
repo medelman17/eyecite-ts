@@ -594,6 +594,7 @@ const CASE_NAME_ABBREVS: ReadonlySet<string> = new Set([
   "emp",
   "eng",
   "enter",
+  "enters", // Enters. (Enterprises, plural of Bluebook T6 "Enter.") — common in NY/4th Dep't captions ("Fields Enters. Inc."). #288 surfaced this gap.
   "ent",
   "equal",
   "equip",
@@ -898,10 +899,14 @@ const CASE_NAME_ABBREVS: ReadonlySet<string> = new Set([
   // Used in real case captions across multiple jurisdictions:
   //   - "Tp." (NJ alternative to Bluebook "Twp." Township) —
   //     "Parsippany-Troy Hills Tp. Council", "Bernards Tp. v. ..."
+  //   - "Vil." (NY single-L variant of Bluebook "Vill." Village) — #288
+  //     NY Reporter / Slip Opinion captions, esp. 4th Dep't:
+  //     "Bristol Harbour Vil. Assn., Inc.", "Smithtown Vil. Bd."
   //   - "Tax'n" (Taxation) — "Dep't of Tax'n v. ..."
   //   - "Enf't" (Enforcement) — "Drug Enf't Admin. v. ..."
   //   - "Rts." (Rights) — "Human Rts. Watch v. ...", "Civ. Rts. Div."
   "tp",
+  "vil",
   "taxn",
   "enft",
   "rts",

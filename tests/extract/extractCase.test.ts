@@ -2263,6 +2263,39 @@ describe("nominative reporter support (#49, #16)", () => {
         expect(cite.caseName).toContain("Nw. Austin Mun. Util. Dist.")
       }
     })
+
+    // ── Issue #288: Vil. (NY single-L Village variant) ──
+
+    it("#288: handles Vil. in Bristol Harbour Vil. Assn., Inc. (4th Dep't)", () => {
+      const text =
+        "See Fields Enters. Inc. v. Bristol Harbour Vil. Assn., Inc., 2023 N.Y. Slip Op. 03165 (4th Dep't 2023)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe(
+          "Fields Enters. Inc. v. Bristol Harbour Vil. Assn., Inc.",
+        )
+      }
+    })
+
+    it("#288: handles Smithtown Vil. Bd.", () => {
+      const text =
+        "See Williams Mfg. Co. v. Smithtown Vil. Bd., 100 N.Y.2d 1 (2003)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Williams Mfg. Co. v. Smithtown Vil. Bd.")
+      }
+    })
+
+    it("#288: regression — Bluebook Vill. still works", () => {
+      const text = "See Smithtown Vill. Bd. v. Smith, 100 N.Y.2d 1 (2003)."
+      const [cite] = extractCitations(text)
+      expect(cite.type).toBe("case")
+      if (cite.type === "case") {
+        expect(cite.caseName).toBe("Smithtown Vill. Bd. v. Smith")
+      }
+    })
   })
 })
 
