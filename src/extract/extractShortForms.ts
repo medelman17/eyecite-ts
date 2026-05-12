@@ -108,12 +108,23 @@ export function extractId(
 
   // Parse Id. with optional pincite.
   // Pattern: Id. or Ibid. with optional comma + "at [page]" (handles "Id., at 5").
+  //
+  // Punctuation tolerance (#305):
+  //   - Optional whitespace before the period — `Id . at 326`, `Ibid .`
+  //     (OCR + older typesetting).
+  //   - Comma instead of period — `Id, at 1483` — guarded by `(?=\s+at\s)`
+  //     so bare `Id,` in prose ("his Id, but ...") is not misread.
+  //
+  // Group layout: 1=initial char ("I"/"i"), 2=`.` when canonical form,
+  // 3=`,` when typo form (mutually exclusive with 2), 4=optional post-period
+  // comma (canonical-only), 5=pincite.
+  //
   // Pincite accepts optional "*" prefix for star-pagination (#191), an optional
   // trailing footnote suffix " n.14" / " nn.14-15" (#202), an optional
   // `p.` / `pp.` prefix for CSM form (`Id. at p. 125`; see #236), and
   // `¶` / `¶¶` / `para.` / `paras.` paragraph markers (#204). When the
   // pincite is a paragraph form, `at` is optional (`Id. ¶ 12`).
-  const idRegex = /([Ii])(?:d|bid)(\.)(,?)\s*(?:(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
+  const idRegex = /([Ii])(?:d|bid)\s*(?:(\.)|(,)(?=\s+at\s))(,?)\s*(?:(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
   const match = idRegex.exec(text)
 
   if (!match) {
@@ -121,17 +132,20 @@ export function extractId(
   }
 
   const firstChar = match[1]
-  const hasComma = match[3] === ","
-  const pinciteInfo: PinciteInfo | undefined = match[4]
-    ? (parsePincite(match[4]) ?? undefined)
+  // Non-standard punctuation: either a typo comma instead of period (group 3)
+  // or a post-period comma (group 4). Both lower confidence.
+  const isTypoComma = match[3] === ","
+  const hasComma = isTypoComma || match[4] === ","
+  const pinciteInfo: PinciteInfo | undefined = match[5]
+    ? (parsePincite(match[5]) ?? undefined)
     : undefined
   const pincite = pinciteInfo?.page
 
   // Component span for pincite (#210)
   let spans: IdComponentSpans | undefined
-  if (match[4] && match.indices?.[4]) {
+  if (match[5] && match.indices?.[5]) {
     spans = {
-      pincite: spanFromGroupIndex(span.cleanStart, match.indices[4], transformationMap),
+      pincite: spanFromGroupIndex(span.cleanStart, match.indices[5], transformationMap),
     }
   }
 
@@ -140,6 +154,7 @@ export function extractId(
   const isLowercase = firstChar === "i"
   if (isLowercase) confidence = 0.85 // Lowercase id. is non-standard
   if (hasComma) confidence = Math.min(confidence, 0.9) // Comma variant (Id., at N)
+  if (isTypoComma) confidence = Math.min(confidence, 0.7) // `Id, at N` typo (#305)
 
   // Context validation: check whether Id. appears in a citation context.
   // Real Id. citations follow sentence-ending punctuation, semicolons,

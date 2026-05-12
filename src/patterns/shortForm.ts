@@ -14,6 +14,14 @@ import type { Pattern } from "./casePatterns"
 
 /** Id. with optional pincite: "Id." or "Id. at 253" or "Id., at 253" or
  *  "Id. ¶ 12" (#204).
+ *
+ *  Punctuation tolerance (#305):
+ *   - Optional space before the period — `Id .` / `Ibid .` (OCR + older
+ *     typesetting).
+ *   - Comma instead of period — `Id, at 1483` — only when immediately
+ *     followed by `at` so bare `Id,` in prose ("his Id, but...") is not
+ *     misread as a citation.
+ *
  *  Pincite captures an optional "*" prefix for star-pagination (NY Slip Op,
  *  Westlaw, Lexis; see #191), an optional trailing " n.14" / " nn.14-15"
  *  footnote suffix (see #202), an optional `p.` / `pp.` prefix for
@@ -21,12 +29,12 @@ import type { Pattern } from "./casePatterns"
  *  `paras.` paragraph markers (#204). When the pincite is a paragraph form,
  *  `at` is optional — `Id. ¶ 12` and `Id. at ¶ 12` both match. */
 export const ID_PATTERN: RegExp =
-  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]d\.(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
+  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]d(?:\s*\.|\s*,(?=\s+at\s))(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
 
 /** Ibid. with optional pincite (less common variant). Paragraph forms (#204)
- *  follow the same convention as Id. */
+ *  follow the same convention as Id. Optional space before the period (#305). */
 export const IBID_PATTERN: RegExp =
-  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]bid\.(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
+  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]bid\s*\.(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
 
 /**
  * Supra with party name and optional pincite.

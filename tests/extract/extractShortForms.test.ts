@@ -455,6 +455,134 @@ describe("extractShortForms", () => {
     })
   })
 
+  describe("Id./Ibid. punctuation tolerance (#305)", () => {
+    it("tokenizes `Id . at 326` (space before period, OCR artifact)", () => {
+      const cites = extractCitations("See Smith, 100 U.S. 1 (1990). Id . at 326.")
+      const id = cites.find((c) => c.type === "id")
+      expect(id?.type).toBe("id")
+      if (id?.type === "id") {
+        expect(id.pincite).toBe(326)
+      }
+    })
+
+    it("tokenizes `Ibid .` (space before period)", () => {
+      const cites = extractCitations("See Smith, 100 U.S. 1 (1990). Ibid .")
+      const id = cites.find((c) => c.type === "id")
+      expect(id?.type).toBe("id")
+    })
+
+    it("tokenizes `Id, at p. 1483` (comma instead of period — typo)", () => {
+      const cites = extractCitations(
+        "See Smith, 100 U.S. 1 (1990). Id, at p. 1483.",
+      )
+      const id = cites.find((c) => c.type === "id")
+      expect(id?.type).toBe("id")
+      if (id?.type === "id") {
+        expect(id.pincite).toBe(1483)
+        // Typo form gets reduced confidence
+        expect(id.confidence).toBeLessThan(0.95)
+      }
+    })
+
+    it("tokenizes `Id . at p. 1192` (space before period + CSM p. prefix)", () => {
+      const cites = extractCitations(
+        "See Smith, 100 U.S. 1 (1990). Id . at p. 1192.",
+      )
+      const id = cites.find((c) => c.type === "id")
+      expect(id?.type).toBe("id")
+      if (id?.type === "id") {
+        expect(id.pincite).toBe(1192)
+      }
+    })
+
+    it("does NOT match bare `Id,` in prose (no `at` follows)", () => {
+      // `Id` appearing as a word in sentence prose, followed by comma but
+      // not by `at` — should not match the typo form.
+      const cites = extractCitations(
+        "She showed her Id, but the guard waved her through.",
+      )
+      const id = cites.find((c) => c.type === "id")
+      expect(id).toBeUndefined()
+    })
+
+    it("regression: canonical `Id. at 326` still works", () => {
+      const cites = extractCitations("See Smith, 100 U.S. 1 (1990). Id. at 326.")
+      const id = cites.find((c) => c.type === "id")
+      expect(id?.type).toBe("id")
+      if (id?.type === "id") {
+        expect(id.pincite).toBe(326)
+        expect(id.confidence).toBe(1.0)
+      }
+    })
+
+    it("regression: canonical `Ibid.` still works", () => {
+      const cites = extractCitations("See Smith, 100 U.S. 1 (1990). Ibid.")
+      const id = cites.find((c) => c.type === "id")
+      expect(id?.type).toBe("id")
+    })
+
+    // Direct extractId calls to pin the new regex group indices (group 5 =
+    // pincite after the typo / canonical-comma renumbering; #305).
+
+    it("extractId direct call on `Id, at p. 1483` (typo path)", () => {
+      const token: Token = {
+        text: "Id, at p. 1483",
+        span: { cleanStart: 0, cleanEnd: 14 },
+        type: "case",
+        patternId: "id",
+      }
+      const citation = extractId(token, createIdentityMap())
+      expect(citation.type).toBe("id")
+      expect(citation.pincite).toBe(1483)
+      expect(citation.confidence).toBeLessThanOrEqual(0.7)
+    })
+
+    it("extractId direct call on `Id .` (space-before-period, no pincite)", () => {
+      const token: Token = {
+        text: "Id .",
+        span: { cleanStart: 0, cleanEnd: 4 },
+        type: "case",
+        patternId: "id",
+      }
+      const citation = extractId(token, createIdentityMap())
+      expect(citation.type).toBe("id")
+      expect(citation.pincite).toBeUndefined()
+    })
+
+    it("extractId direct call on canonical `Id., at 100` exercises post-period comma path", () => {
+      const token: Token = {
+        text: "Id., at 100",
+        span: { cleanStart: 0, cleanEnd: 11 },
+        type: "case",
+        patternId: "id",
+      }
+      const citation = extractId(token, createIdentityMap())
+      expect(citation.type).toBe("id")
+      expect(citation.pincite).toBe(100)
+      // Post-period comma reduces confidence to 0.9 (not the more-aggressive
+      // 0.7 reserved for the typo `Id,` form).
+      expect(citation.confidence).toBe(0.9)
+    })
+
+    it("extractId penalizes mid-sentence `Id.` context (existing #182 behavior)", () => {
+      // Pin the mid-sentence-context penalty path — `Id.` preceded by a
+      // lowercase word in a sentence (e.g., "The Id. card") gets confidence
+      // capped at 0.4. The cleanedText parameter exercises the context
+      // validation branch.
+      const cleanedText = "He showed Id. at the gate."
+      const idStart = cleanedText.indexOf("Id.")
+      const token: Token = {
+        text: "Id. at the",
+        span: { cleanStart: idStart, cleanEnd: idStart + 10 },
+        type: "case",
+        patternId: "id",
+      }
+      const citation = extractId(token, createIdentityMap(), cleanedText)
+      // Lowercase prose word before Id. → not a citation context → 0.4 cap
+      expect(citation.confidence).toBeLessThanOrEqual(0.4)
+    })
+  })
+
   describe("supra with note number and pincite", () => {
     it("should extract pincite from 'Smith, supra note 5, at 130'", () => {
       const token: Token = {
