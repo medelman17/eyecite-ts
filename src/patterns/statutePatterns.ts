@@ -11,6 +11,7 @@
  * - Illinois: chapter-act (ILCS chapter/act/section format)
  */
 
+import { buildCaBareCodeRegex } from "@/data/caBareCodes"
 import { buildAbbreviatedCodeRegex } from "@/data/stateStatutes"
 import type { Pattern } from "./casePatterns"
 
@@ -73,6 +74,13 @@ export const statutePatterns: Pattern[] = [
     id: "abbreviated-code",
     regex: buildAbbreviatedCodeRegex(),
     description: "Abbreviated state code citations for all US jurisdictions",
+    type: "statute",
+  },
+  {
+    id: "ca-bare-code",
+    regex: buildCaBareCodeRegex(),
+    description:
+      'California bare-code citations (#296) — `Pen. Code § 148`, `Code Civ. Proc., § 1021.5`, `Bus. & Prof. Code § 17200` (no "Cal." prefix; common in single-jurisdiction California practice).',
     type: "statute",
   },
 ]
