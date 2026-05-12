@@ -488,6 +488,15 @@ export interface StatuteCitation extends CitationBase {
    * (the original edition year, e.g. 1940). #343
    */
   recompiledYear?: number
+  /**
+   * Edition-volume label for codes that distinguish replacement and
+   * supplement volumes from the main code edition (`(Repl. 1996)`,
+   * `(1969 Supp.)`, `(Cum. Supp. 1985)`). The `year` field carries the
+   * year; `editionLabel` carries the normalized label
+   * (`"Repl."` / `"Supp."` / `"Cum. Supp."`). Common in Arkansas,
+   * Mississippi, Tennessee, and other state codes. #349
+   */
+  editionLabel?: string
 
   /** Precise text positions for each parsed component of this citation. */
   spans?: StatuteComponentSpans

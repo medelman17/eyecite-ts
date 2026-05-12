@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { extractCitations } from "@/extract/extractCitations"
 import { extractAbbreviated } from "@/extract/statutes/extractAbbreviated"
 import type { Token } from "@/tokenize"
 import { createIdentityMap } from "../../helpers/transformationMap"
@@ -239,6 +240,100 @@ describe("extractAbbreviated", () => {
       const c = extractAbbreviated(makeToken("Ariz. Rev. Stat. Ann. § 14-1234"), map)
       expect(c.jurisdiction).toBe("AZ")
       expect(c.code).toBe("Ariz. Rev. Stat. Ann.")
+    })
+  })
+
+  describe("Arkansas Code Annotated + edition parenthetical (#349)", () => {
+    // The edition-parenthetical post-pass runs in `extractCitations`, not in
+    // `extractAbbreviated`, so these tests use `extractCitations` end-to-end.
+    it("`Ark. Code Ann. § 11-9-514(a)(1) (Repl. 1996)` → year + editionLabel", () => {
+      const cs = extractCitations(
+        "violates Ark. Code Ann. § 11-9-514(a)(1) (Repl. 1996).",
+      ).filter((x) => x.type === "statute")
+      expect(cs).toHaveLength(1)
+      if (cs[0]?.type === "statute") {
+        expect(cs[0].code).toBe("Ark. Code Ann.")
+        expect(cs[0].section).toBe("11-9-514")
+        expect(cs[0].subsection).toBe("(a)(1)")
+        expect(cs[0].year).toBe(1996)
+        expect(cs[0].editionLabel).toBe("Repl.")
+        expect(cs[0].jurisdiction).toBe("AR")
+      }
+    })
+
+    it("`Arkansas Code Annotated § 16-89-111(e)(1) (1987)` (spelled-out form)", () => {
+      const cs = extractCitations(
+        "Per Arkansas Code Annotated § 16-89-111(e)(1) (1987).",
+      ).filter((x) => x.type === "statute")
+      expect(cs).toHaveLength(1)
+      if (cs[0]?.type === "statute") {
+        expect(cs[0].code).toBe("Arkansas Code Annotated")
+        expect(cs[0].year).toBe(1987)
+        expect(cs[0].editionLabel).toBeUndefined()
+      }
+    })
+
+    it("`Arkansas Code Annotated section ...` (spelled-out + word section)", () => {
+      const cs = extractCitations(
+        "see Arkansas Code Annotated section 11-9-102(5)(A)(i) (Repl. 1996).",
+      ).filter((x) => x.type === "statute")
+      expect(cs).toHaveLength(1)
+      if (cs[0]?.type === "statute") {
+        expect(cs[0].code).toBe("Arkansas Code Annotated")
+        expect(cs[0].section).toBe("11-9-102")
+        expect(cs[0].subsection).toBe("(5)(A)(i)")
+        expect(cs[0].year).toBe(1996)
+        expect(cs[0].editionLabel).toBe("Repl.")
+      }
+    })
+
+    it("`Ark. Stat. Ann. § 41-1201 (Repl. 1964)` (pre-1987 form)", () => {
+      const cs = extractCitations("under Ark. Stat. Ann. § 41-1201 (Repl. 1964).").filter(
+        (x) => x.type === "statute",
+      )
+      expect(cs).toHaveLength(1)
+      if (cs[0]?.type === "statute") {
+        expect(cs[0].code).toBe("Ark. Stat. Ann.")
+        expect(cs[0].section).toBe("41-1201")
+        expect(cs[0].year).toBe(1964)
+        expect(cs[0].editionLabel).toBe("Repl.")
+        expect(cs[0].jurisdiction).toBe("AR")
+      }
+    })
+
+    it("`(1969 Supp.)` year-first edition label", () => {
+      const cs = extractCitations("Ark. Stat. Ann. § 80-1304 (1969 Supp.).").filter(
+        (x) => x.type === "statute",
+      )
+      expect(cs).toHaveLength(1)
+      if (cs[0]?.type === "statute") {
+        expect(cs[0].year).toBe(1969)
+        expect(cs[0].editionLabel).toBe("Supp.")
+      }
+    })
+
+    it("regression: `(West 2018)` publisher still populates `publisher`, not `editionLabel`", () => {
+      const cs = extractCitations("28 U.S.C. § 1331 (West 2018).").filter(
+        (x) => x.type === "statute",
+      )
+      expect(cs).toHaveLength(1)
+      if (cs[0]?.type === "statute") {
+        expect(cs[0].year).toBe(2018)
+        expect(cs[0].publisher).toBe("West")
+        expect(cs[0].editionLabel).toBeUndefined()
+      }
+    })
+
+    it("regression: bare `(1976)` year still works", () => {
+      const cs = extractCitations("42 U.S.C. § 1983 (1976).").filter(
+        (x) => x.type === "statute",
+      )
+      expect(cs).toHaveLength(1)
+      if (cs[0]?.type === "statute") {
+        expect(cs[0].year).toBe(1976)
+        expect(cs[0].publisher).toBeUndefined()
+        expect(cs[0].editionLabel).toBeUndefined()
+      }
     })
   })
 })
