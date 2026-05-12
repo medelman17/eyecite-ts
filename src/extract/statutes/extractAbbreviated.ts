@@ -17,8 +17,10 @@ import type { StatuteComponentSpans } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 import { parseBody } from "./parseBody"
 
+// Section body: period only allowed when followed by alphanumeric so a
+// trailing sentence period is never captured (#283).
 const ABBREVIATED_RE =
-  /^(?:(\d+)\s+)?(.+?)\s*§?\s*(\d+[A-Za-z0-9.:/-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/d
+  /^(?:(\d+)\s+)?(.+?)\s*§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/d
 
 export function extractAbbreviated(
   token: Token,
@@ -51,8 +53,10 @@ export function extractAbbreviated(
   let spans: StatuteComponentSpans | undefined
   if (match?.indices) {
     spans = {}
-    if (match.indices[1]) spans.title = spanFromGroupIndex(span.cleanStart, match.indices[1], transformationMap)
-    if (match.indices[2]) spans.code = spanFromGroupIndex(span.cleanStart, match.indices[2], transformationMap)
+    if (match.indices[1])
+      spans.title = spanFromGroupIndex(span.cleanStart, match.indices[1], transformationMap)
+    if (match.indices[2])
+      spans.code = spanFromGroupIndex(span.cleanStart, match.indices[2], transformationMap)
     if (match.indices[3] && section) {
       const bodyStart = match.indices[3][0]
       // Use section without trailing sentence punctuation for span boundary.

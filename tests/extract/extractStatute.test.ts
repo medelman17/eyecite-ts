@@ -194,6 +194,69 @@ describe("extractStatute", () => {
     })
   })
 
+  describe("sentence-ending period boundary (#283)", () => {
+    it("should strip trailing sentence period from abbreviated-code section", () => {
+      const citations = extractCitations("The defendant violated 17 P.S. § 91. The court agreed.")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].section).toBe("91")
+        expect(citations[0].matchedText).toBe("17 P.S. § 91")
+      }
+    })
+
+    it("should strip trailing period from hyphenated state section", () => {
+      const citations = extractCitations(
+        "Failure to comply violates Ariz. Rev. Stat. Ann. § 16-141.",
+      )
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].section).toBe("16-141")
+      }
+    })
+
+    it("should strip trailing period from named-code section", () => {
+      const citations = extractCitations("See N. Y. Election Law § 131.")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].section).toBe("131")
+      }
+    })
+
+    it("should strip trailing period from mass-chapter section", () => {
+      const citations = extractCitations("Plaintiffs invoke M.G.L. c. 93A, § 2.")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].section).toBe("2")
+      }
+    })
+
+    it("should preserve internal decimal period followed by digits", () => {
+      const citations = extractCitations("Cal. Civ. Code § 1.5(a). The plaintiff disagreed.")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].section).toBe("1.5")
+        expect(citations[0].subsection).toBe("(a)")
+      }
+    })
+
+    it("should not regress mid-sentence sections (no trailing period)", () => {
+      const citations = extractCitations("17 P.S. § 91 governs the action.")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].section).toBe("91")
+      }
+    })
+
+    it("should not regress decimal section without trailing period", () => {
+      const citations = extractCitations("12 C.F.R. § 226.5(b) controls.")
+      expect(citations).toHaveLength(1)
+      if (citations[0].type === "statute") {
+        expect(citations[0].section).toBe("226.5")
+        expect(citations[0].subsection).toBe("(b)")
+      }
+    })
+  })
+
   describe("metadata fields", () => {
     it("should include all required CitationBase fields", () => {
       const token: Token = {
