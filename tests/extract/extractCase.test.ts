@@ -5894,4 +5894,67 @@ describe("`v` punctuation fidelity in caseName (#326)", () => {
   })
 })
 
+describe("Illinois rule-marker boundary in state-reporter pattern (#332)", () => {
+  it("suppresses phantom case citation for `177 Ill. 2d R. 234`", () => {
+    const cases = extractCitations("Per 177 Ill. 2d R. 234, the rule provides.").filter(
+      (c) => c.type === "case",
+    )
+    expect(cases).toHaveLength(0)
+  })
+
+  it("suppresses phantom case citation for normalized `Ill.2d R.` form", () => {
+    const cases = extractCitations("See 177 Ill.2d R. 234.").filter((c) => c.type === "case")
+    expect(cases).toHaveLength(0)
+  })
+
+  it("suppresses phantom even with trailing parenthetical year", () => {
+    const cases = extractCitations("See 177 Ill. 2d R. 431 (1997).").filter(
+      (c) => c.type === "case",
+    )
+    expect(cases).toHaveLength(0)
+  })
+
+  it("suppresses phantom for older `Ill. R. N` form", () => {
+    const cases = extractCitations("Pre-2d edition: 100 Ill. R. 5.").filter(
+      (c) => c.type === "case",
+    )
+    expect(cases).toHaveLength(0)
+  })
+
+  it("regression: real `177 Ill. 2d 1` still extracts as a case", () => {
+    const cases = extractCitations("Smith v. Jones, 177 Ill. 2d 1 (1997).").filter(
+      (c) => c.type === "case",
+    )
+    expect(cases).toHaveLength(1)
+    if (cases[0]?.type === "case") {
+      expect(cases[0].volume).toBe(177)
+      expect(cases[0].reporter).toBe("Ill.2d")
+      expect(cases[0].page).toBe(1)
+    }
+  })
+
+  it("mixed text: rule citation suppressed, real case preserved", () => {
+    const cases = extractCitations(
+      "She cited 177 Ill. 2d R. 137 and Doe v. Roe, 234 Ill. 2d 5.",
+    ).filter((c) => c.type === "case")
+    expect(cases).toHaveLength(1)
+    if (cases[0]?.type === "case") {
+      expect(cases[0].volume).toBe(234)
+      expect(cases[0].page).toBe(5)
+    }
+  })
+
+  it("regression: `Ill. App.` reporter unaffected", () => {
+    const cases = extractCitations("123 Ill. App. 3d 456 (1984)").filter(
+      (c) => c.type === "case",
+    )
+    expect(cases).toHaveLength(1)
+    if (cases[0]?.type === "case") {
+      expect(cases[0].volume).toBe(123)
+      // Reporter is post-normalization (`Ill. App. 3d` → `Ill. App.3d`)
+      expect(cases[0].reporter).toBe("Ill. App.3d")
+      expect(cases[0].page).toBe(456)
+    }
+  })
+})
 
