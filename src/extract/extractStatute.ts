@@ -23,6 +23,7 @@ import { extractCaBareCode } from "./statutes/extractCaBareCode"
 import { extractChapterAct } from "./statutes/extractChapterAct"
 import { extractColoradoProse } from "./statutes/extractColoradoProse"
 import { extractFederal } from "./statutes/extractFederal"
+import { extractFloridaStatute } from "./statutes/extractFloridaStatute"
 import { extractIllRevStat } from "./statutes/extractIllRevStat"
 import { extractNamedCode } from "./statutes/extractNamedCode"
 import { extractProse } from "./statutes/extractProse"
@@ -127,6 +128,9 @@ export function extractStatute(
       return extractAlaCode1940(token, transformationMap)
     case "colorado-prose":
       return extractColoradoProse(token, transformationMap)
+    case "florida-postfix":
+    case "florida-prefix-spelled":
+      return extractFloridaStatute(token, transformationMap)
     default:
       // unknown patterns use legacy parser
       return extractLegacy(token, transformationMap)

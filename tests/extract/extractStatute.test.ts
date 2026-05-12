@@ -1219,4 +1219,86 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Florida postfix + spelled-out-prefix statute forms (#356)", () => {
+    it("postfix word-section: `section 812.035(7), Florida Statutes`", () => {
+      const cites = extractCitations(
+        "violates section 812.035(7), Florida Statutes.",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Fla. Stat.")
+        expect(cites[0].section).toBe("812.035")
+        expect(cites[0].subsection).toBe("(7)")
+        expect(cites[0].jurisdiction).toBe("FL")
+      }
+    })
+
+    it("postfix §-section: `§83.15, Florida Statutes`", () => {
+      const cites = extractCitations("under §83.15, Florida Statutes.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Fla. Stat.")
+        expect(cites[0].section).toBe("83.15")
+      }
+    })
+
+    it("postfix §-section with `Fla. Stat.`: `§120.68, Fla. Stat.`", () => {
+      const cites = extractCitations("under §120.68, Fla. Stat.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Fla. Stat.")
+        expect(cites[0].section).toBe("120.68")
+      }
+    })
+
+    it("spelled-out singular prefix: `Florida Statute 679.504(3)`", () => {
+      const cites = extractCitations("Florida Statute 679.504(3) governs.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Fla. Stat.")
+        expect(cites[0].section).toBe("679.504")
+        expect(cites[0].subsection).toBe("(3)")
+      }
+    })
+
+    it("spelled-out plural prefix + §: `Florida Statutes §73.071(3)(b)`", () => {
+      const cites = extractCitations("under Florida Statutes §73.071(3)(b).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Fla. Stat.")
+        expect(cites[0].section).toBe("73.071")
+        expect(cites[0].subsection).toBe("(3)(b)")
+      }
+    })
+
+    it("regression: canonical Bluebook `Fla. Stat. § 812.035(7)` unaffected", () => {
+      const cites = extractCitations("Fla. Stat. § 812.035(7).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Fla. Stat.")
+        expect(cites[0].section).toBe("812.035")
+      }
+    })
+
+    it("regression: `F.S. § 812.035` abbreviated form unaffected", () => {
+      const cites = extractCitations("F.S. § 812.035 governs.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("FL")
+      }
+    })
+  })
 })
