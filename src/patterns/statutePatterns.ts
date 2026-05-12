@@ -43,10 +43,18 @@ export const statutePatterns: Pattern[] = [
     id: "named-code",
     // Matches: [State abbrev]. [Code/Law Name] § [section]
     // Captures: (1) jurisdiction prefix, (2) code name text, (3) section+subsections+et seq
+    //
+    // Code-name body (#328): each word must be capitalized — real code names
+    // are title-case sequences like `Penal Code`, `Civ. Prac. & Rem. Code Ann.`,
+    // `Insurance Law`. The previous broad `[A-Za-z.&',\s]+?` accepted lowercase
+    // prose, so when the input had a stray earlier `California` followed by
+    // sentence prose then `California Penal Code § 549`, the regex absorbed
+    // the entire intervening clause into the code-name span.
+    //
     // Section body: period only allowed when followed by alphanumeric, so a
     // trailing sentence period is not absorbed (#283).
     regex:
-      /\b(N\.?\s*Y\.?|Cal(?:ifornia)?\.?|Tex(?:as)?\.?|Md\.?|(?<!W\.?\s?)Va\.?|Ala(?:bama)?\.?)\s+((?:[A-Za-z.&',\s]+?))\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(N\.?\s*Y\.?|Cal(?:ifornia)?\.?|Tex(?:as)?\.?|Md\.?|(?<!W\.?\s?)Va\.?|Ala(?:bama)?\.?)\s+([A-Z][A-Za-z.&']*(?:(?:\s+|,\s+)(?:&|[A-Z][A-Za-z.&']*))*)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
     description:
       "Named-code state citations (NY, CA, TX, MD, VA, AL) with jurisdiction prefix + code name + §",
     type: "statute",
