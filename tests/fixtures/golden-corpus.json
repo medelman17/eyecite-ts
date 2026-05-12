@@ -325,7 +325,7 @@
         {
           "type": "neutral",
           "year": 2020,
-          "court": "WL",
+          "database": "WL",
           "documentNumber": "123456",
           "confidence": 1.0
         }

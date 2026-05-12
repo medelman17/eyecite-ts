@@ -136,7 +136,60 @@ describe("hyphenated neutral citations (#233)", () => {
       const cits = extractCitations("In re X, 2020 WL 123456.")
       const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
       expect(neutrals).toHaveLength(1)
-      expect(neutrals[0].court).toBe("WL")
+      // WL is a database identifier, not a court (#294)
+      expect(neutrals[0].database).toBe("WL")
+      expect(neutrals[0].court).toBeUndefined()
+    })
+  })
+
+  describe("database identifier routing + trailing court paren (#294)", () => {
+    it("routes WL to database and recovers court+date from trailing paren", () => {
+      const cits = extractCitations(
+        "See Smith, 2001 WL 1077846 (N.D. Cal. Sept. 4, 2001).",
+      )
+      const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
+      expect(neutrals).toHaveLength(1)
+      expect(neutrals[0].database).toBe("WL")
+      expect(neutrals[0].court).toBe("N.D. Cal.")
+      expect(neutrals[0].year).toBe(2001)
+      expect(neutrals[0].date?.iso).toBe("2001-09-04")
+    })
+
+    it("routes LEXIS variants to database and recovers trailing court", () => {
+      const cits = extractCitations("2001 U.S. LEXIS 456 (1st Cir. Aug. 30, 2001)")
+      const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
+      expect(neutrals).toHaveLength(1)
+      expect(neutrals[0].database).toBe("U.S. LEXIS")
+      expect(neutrals[0].court).toBe("1st Cir.")
+      expect(neutrals[0].date?.iso).toBe("2001-08-30")
+    })
+
+    it("bare WL cite (no paren) — database set, court undefined, no date", () => {
+      const cits = extractCitations("See Smith, 2001 WL 1077846.")
+      const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
+      expect(neutrals).toHaveLength(1)
+      expect(neutrals[0].database).toBe("WL")
+      expect(neutrals[0].court).toBeUndefined()
+      expect(neutrals[0].date).toBeUndefined()
+    })
+
+    it("Tex. App. with full date in paren", () => {
+      const cits = extractCitations("2014 WL 1924465 (Tex. App. May 8, 2014)")
+      const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
+      expect(neutrals).toHaveLength(1)
+      expect(neutrals[0].database).toBe("WL")
+      expect(neutrals[0].court).toBe("Tex. App.")
+      expect(neutrals[0].date?.iso).toBe("2014-05-08")
+    })
+
+    it("real jurisdictional neutrals (Ohio, IL) stay in court, not database", () => {
+      const cits = extractCitations("State v. X, 2008-Ohio-4571. And People v. Y, 2013 IL 112116.")
+      const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
+      expect(neutrals).toHaveLength(2)
+      expect(neutrals[0].court).toBe("Ohio")
+      expect(neutrals[0].database).toBeUndefined()
+      expect(neutrals[1].court).toBe("IL")
+      expect(neutrals[1].database).toBeUndefined()
     })
   })
 })

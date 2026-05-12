@@ -11,6 +11,8 @@ import type { Token } from "@/tokenize"
 import type { NeutralCitation } from "@/types/citation"
 import type { NeutralComponentSpans } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
+import type { StructuredDate } from "./dates"
+import { parseParenthetical } from "./extractCase"
 import { parsePincite, type PinciteInfo } from "./pincite"
 
 /** Matches a trailing pincite on a neutral citation. Accepts both
@@ -20,6 +22,20 @@ import { parsePincite, type PinciteInfo } from "./pincite"
  *  optional trailing " n.14" / " nn.14-15" footnote suffix (#202). */
 const NEUTRAL_PINCITE_LOOKAHEAD =
   /^(?:\s+at\s+|,\s*(?:at\s+)?)(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)/d
+
+/** Trailing `(court date)` parenthetical lookahead for database cites.
+ *  Allows optional intervening pincite (`, at *3`) per #191. The body
+ *  is anything inside one set of parens. Parsing is delegated to
+ *  `parseParenthetical`. #294 */
+const NEUTRAL_PAREN_LOOKAHEAD =
+  /^(?:\s*,?\s*(?:at\s+)?\*?\d+(?:[-–—]\*?\d+)?)?\s*\(([^)]+)\)/
+
+/** Identifies whether a captured "court" string is actually a database
+ *  identifier (WL/LEXIS/BL) rather than a real jurisdictional code. #294 */
+function isDatabaseIdentifier(s: string): boolean {
+  if (s === "WL" || s === "BL") return true
+  return /\bLEXIS\b/.test(s)
+}
 
 /**
  * Extracts neutral citation metadata from a tokenized citation.
@@ -146,6 +162,41 @@ export function extractNeutral(
     }
   }
 
+  // Database vs. real-court routing (#294). Tokenizer captures "WL" or
+  // "U.S. LEXIS" as the middle segment, which lands here as `court`. These
+  // are vendor-database identifiers, not courts — route them to `database`
+  // and leave `court` undefined so downstream consumers don't treat the
+  // database tag as a court abbreviation.
+  let database: string | undefined
+  let courtOut: string | undefined = court
+  if (isDatabaseIdentifier(court)) {
+    database = court
+    courtOut = undefined
+    // The mistakenly-captured "court" span is meaningless for a database tag.
+    if (spans) spans.court = undefined
+  }
+
+  // Trailing `(court date)` parenthetical lookahead (#294). For database
+  // cites the trailing paren is the only place the real court appears —
+  // `2001 WL 1077846 (N.D. Cal. Sept. 4, 2001)`. Reuses parseParenthetical
+  // so the same court/date parser that handles case-cite parens applies.
+  let date: StructuredDate | undefined
+  if (cleanedText && database) {
+    const afterToken = cleanedText.substring(span.cleanEnd)
+    const parenMatch = NEUTRAL_PAREN_LOOKAHEAD.exec(afterToken)
+    if (parenMatch) {
+      const parsed = parseParenthetical(parenMatch[1])
+      if (parsed.court) courtOut = parsed.court
+      if (parsed.date) {
+        date = parsed.date
+        // Prefer the more-precise date.parsed.year over the cite's
+        // documentary year if the trailing paren disambiguates it. The
+        // tokenizer's year (e.g., 2001 in "2001 WL ...") is always the
+        // citation year and typically matches the paren — leave year alone.
+      }
+    }
+  }
+
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
@@ -166,11 +217,13 @@ export function extractNeutral(
     processTimeMs: 0,
     patternsChecked: 1,
     year,
-    court,
+    court: courtOut,
+    ...(database ? { database } : {}),
     documentNumber,
     ...(unpublished ? { unpublished: true } : {}),
     pincite,
     pinciteInfo,
+    ...(date ? { date } : {}),
     spans,
   }
 }
