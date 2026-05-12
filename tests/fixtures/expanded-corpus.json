@@ -983,7 +983,7 @@
         {
           "type": "neutral",
           "year": 2024,
-          "court": "WL",
+          "database": "WL",
           "documentNumber": "567890"
         }
       ]
@@ -997,7 +997,7 @@
         {
           "type": "neutral",
           "year": 2023,
-          "court": "WL",
+          "database": "WL",
           "documentNumber": "1234567"
         }
       ]
@@ -1977,7 +1977,7 @@
         {
           "type": "neutral",
           "year": 2013,
-          "court": "WL",
+          "database": "WL",
           "documentNumber": "5492428"
         }
       ]

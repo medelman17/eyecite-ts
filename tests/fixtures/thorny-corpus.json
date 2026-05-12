@@ -492,7 +492,7 @@
         {
           "type": "neutral",
           "year": 2023,
-          "court": "WL",
+          "database": "WL",
           "documentNumber": "123456"
         }
       ]
@@ -1487,7 +1487,7 @@
         {
           "type": "neutral",
           "year": 2021,
-          "court": "WL",
+          "database": "WL",
           "documentNumber": "5492428"
         },
         {

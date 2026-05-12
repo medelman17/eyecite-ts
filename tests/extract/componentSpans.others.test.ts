@@ -16,7 +16,8 @@ describe("Component Spans — Neutral", () => {
     if (c?.type !== "neutral") return
 
     expectSpan(text, c.spans?.year, "2020")
-    expectSpan(text, c.spans?.court, "WL")
+    // WL is a database identifier — court span is now cleared (#294)
+    expect(c.spans?.court).toBeUndefined()
     expectSpan(text, c.spans?.documentNumber, "123456")
   })
 })

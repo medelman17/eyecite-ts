@@ -530,8 +530,19 @@ export interface NeutralCitation extends CitationBase {
   type: "neutral"
   /** Year of decision */
   year: number
-  /** Court identifier (e.g., "WL", "U.S. LEXIS") */
-  court: string
+  /**
+   * Court identifier extracted from a real jurisdictional neutral cite
+   * (`Ohio`, `IL`, `NM`) or recovered from a trailing `(court date)`
+   * parenthetical on a database cite (`N.D. Cal.`, `Tex. App.`). Database
+   * identifiers (`WL`, `LEXIS`) live in `database`, NOT here. #294
+   */
+  court?: string
+  /**
+   * Database identifier for vendor-database cites that have no inherent
+   * court value: `WL` (Westlaw), `LEXIS` / `U.S. LEXIS` / `Fed. App. LEXIS`,
+   * `BL` (Bloomberg Law). Set instead of `court` for these forms. #294
+   */
+  database?: string
   /** Document number */
   documentNumber: string
   /**
@@ -544,6 +555,11 @@ export interface NeutralCitation extends CitationBase {
   pincite?: number
   /** Structured pincite information (page, range, footnote, star-pagination). */
   pinciteInfo?: import("../extract/pincite").PinciteInfo
+  /**
+   * Decision date recovered from a trailing `(court date)` parenthetical on
+   * a database cite, e.g. `2014 WL 1924465 (Tex. App. May 8, 2014)`. #294
+   */
+  date?: import("../extract/dates").StructuredDate
 
   /** Precise text positions for each parsed component of this citation. */
   spans?: NeutralComponentSpans

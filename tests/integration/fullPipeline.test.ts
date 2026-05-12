@@ -231,7 +231,9 @@ describe("Full Pipeline Integration Tests", () => {
 
       if (neutral && neutral.type === "neutral") {
         expect(neutral.year).toBe(2020)
-        expect(neutral.court).toContain("WL")
+        // WL is a database identifier, not a court (#294)
+        expect(neutral.database).toBe("WL")
+        expect(neutral.court).toBeUndefined()
         expect(neutral.documentNumber).toBe("123456")
         expect(neutral.confidence).toBe(1.0) // Neutral citations have max confidence
       }

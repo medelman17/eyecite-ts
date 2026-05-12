@@ -82,7 +82,9 @@ describe("Other extraction functions", () => {
 
       expect(citation.type).toBe("neutral")
       expect(citation.year).toBe(2020)
-      expect(citation.court).toBe("WL")
+      // WL is a database identifier, not a court (#294)
+      expect(citation.database).toBe("WL")
+      expect(citation.court).toBeUndefined()
       expect(citation.documentNumber).toBe("123456")
       expect(citation.confidence).toBe(1.0)
     })
@@ -99,7 +101,9 @@ describe("Other extraction functions", () => {
       const citation = extractNeutral(token, transformationMap)
 
       expect(citation.year).toBe(2020)
-      expect(citation.court).toBe("U.S. LEXIS")
+      // LEXIS is a database identifier, not a court (#294)
+      expect(citation.database).toBe("U.S. LEXIS")
+      expect(citation.court).toBeUndefined()
       expect(citation.documentNumber).toBe("456")
     })
 
