@@ -564,6 +564,52 @@ describe("extractShortForms", () => {
       expect(citation.confidence).toBe(0.9)
     })
 
+    describe("bracketed `[supra]` forms (#306)", () => {
+      it("extracts `State v. Jarzbek, [supra, 705]` (Connecticut style)", () => {
+        const cites = extractCitations(
+          "As stated in State v. Jarzbek, [supra, 705], the rule applies.",
+        )
+        const supra = cites.find((c) => c.type === "supra")
+        expect(supra?.type).toBe("supra")
+        if (supra?.type === "supra") {
+          expect(supra.partyName).toBe("State v. Jarzbek")
+          expect(supra.pincite).toBe(705)
+        }
+      })
+
+      it("extracts `State v. Jarzbek, [supra]` (no pincite)", () => {
+        const cites = extractCitations("State v. Jarzbek, [supra], the parties argued.")
+        const supra = cites.find((c) => c.type === "supra")
+        expect(supra?.type).toBe("supra")
+        if (supra?.type === "supra") {
+          expect(supra.partyName).toBe("State v. Jarzbek")
+          expect(supra.pincite).toBeUndefined()
+        }
+      })
+
+      it("extracts standalone `[supra at 78-82]` (range pincite)", () => {
+        const cites = extractCitations(
+          "The court applied [supra at 78-82] in its analysis.",
+        )
+        const supra = cites.find((c) => c.type === "supra")
+        expect(supra?.type).toBe("supra")
+        if (supra?.type === "supra") {
+          expect(supra.partyName).toBeUndefined()
+          expect(supra.pincite).toBe(78) // start of range
+        }
+      })
+
+      it("regression: canonical `Smith, supra, at 100` still works", () => {
+        const cites = extractCitations("See Smith, supra, at 100.")
+        const supra = cites.find((c) => c.type === "supra")
+        expect(supra?.type).toBe("supra")
+        if (supra?.type === "supra") {
+          expect(supra.partyName).toBe("Smith")
+          expect(supra.pincite).toBe(100)
+        }
+      })
+    })
+
     it("extractId penalizes mid-sentence `Id.` context (existing #182 behavior)", () => {
       // Pin the mid-sentence-context penalty path — `Id.` preceded by a
       // lowercase word in a sentence (e.g., "The Id. card") gets confidence
