@@ -325,6 +325,23 @@ export function detectLeadingSignals(citations: Citation[], cleanedText: string)
       }
     }
 
+    // Reject signals followed by lowercase prose (#304). `Contra plaintiff's
+    // argument, Smith v. Jones, ...` matches `Contra` as a signal, but the
+    // following `plaintiff's` is prose, not a citation-introducer context.
+    // Real Bluebook signals are followed by a case-name (capital-letter-led),
+    // a comma+capital, or directly by the citation core. Multi-word signal
+    // forms (`see also`, `but see`, `see, e.g.`) are already captured as
+    // complete units by SIGNAL_PATTERNS, so the post-signal text should
+    // always begin with case-name context.
+    const afterSignal = gapText.substring(best.end).replace(/^[\s,]+/, "")
+    if (afterSignal.length > 0) {
+      const firstChar = afterSignal[0]
+      // Lowercase next char → signal is part of sentence prose, not a
+      // citation introducer. Reject. (Digits start citation tokens like
+      // `id.`/short-form, but those are already consumed before this gap.)
+      if (firstChar >= "a" && firstChar <= "z") continue
+    }
+
     setSignal(c, best.signal)
   }
 }

@@ -1989,20 +1989,33 @@ export function extractPartyNames(caseName: string): {
     const signalMatch =
       plaintiff.match(SIGNAL_STRIP_REGEX) ?? plaintiff.match(/^(Also|In(?!\s+re\b))\s+/i)
     if (signalMatch) {
-      const lowered = signalMatch[1].toLowerCase()
-      // Combined `, e.g.` signals end with a period that is part of the canonical
-      // form (e.g., "see, e.g."); strip the trailing period only if the lowered
-      // form isn't itself a valid signal (handles "Cf." → "cf" without breaking
-      // "see, e.g." → "see, e.g.").
-      if (VALID_SIGNALS.has(lowered)) {
-        signal = lowered as CitationSignal
-      } else {
-        const stripped = lowered.replace(/\.$/, "")
-        if (VALID_SIGNALS.has(stripped)) {
-          signal = stripped as CitationSignal
+      // Guard against false-positive signal capture from over-greedy
+      // case-name extraction (#304). When the V_CASE_NAME_REGEX captures
+      // sentence prose like `Contra plaintiff's argument, Bolling v. Sharpe`,
+      // the leading `Contra` looks like a Bluebook signal — but the next
+      // token is lowercase prose, not a capitalized party name. Only strip
+      // the signal when the remainder after stripping starts with a capital
+      // letter (real case-name context) so we don't manufacture phantom
+      // signals from sentence-internal English.
+      const remainderAfterStrip = plaintiff.substring(signalMatch[0].length).trimStart()
+      const firstChar = remainderAfterStrip[0] ?? ""
+      const remainderIsCaseNameLike = firstChar >= "A" && firstChar <= "Z"
+      if (remainderIsCaseNameLike) {
+        const lowered = signalMatch[1].toLowerCase()
+        // Combined `, e.g.` signals end with a period that is part of the canonical
+        // form (e.g., "see, e.g."); strip the trailing period only if the lowered
+        // form isn't itself a valid signal (handles "Cf." → "cf" without breaking
+        // "see, e.g." → "see, e.g.").
+        if (VALID_SIGNALS.has(lowered)) {
+          signal = lowered as CitationSignal
+        } else {
+          const stripped = lowered.replace(/\.$/, "")
+          if (VALID_SIGNALS.has(stripped)) {
+            signal = stripped as CitationSignal
+          }
         }
+        plaintiff = plaintiff.substring(signalMatch[0].length).trim()
       }
-      plaintiff = plaintiff.substring(signalMatch[0].length).trim()
     }
 
     return {

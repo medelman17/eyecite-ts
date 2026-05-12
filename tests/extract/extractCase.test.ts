@@ -819,6 +819,64 @@ describe("case name extraction (Phase 6)", () => {
       }
     })
 
+    describe("false-positive signal rejection (#304)", () => {
+      // The case-name scan over-captures sentence prose that begins with a
+      // word that happens to be a Bluebook signal (`Contra`, `Accord`,
+      // `Compare`, `See`). Without a guard, the signal-stripping step in
+      // extractPartyNames produces a phantom signal on the citation.
+
+      it("`Contra plaintiff's argument, Smith v. Jones, ...` → no signal", () => {
+        const citations = extractCitations(
+          "Contra plaintiff's argument, Smith v. Jones, 100 U.S. 1 (1990) is on point.",
+        )
+        const cite = citations.find((c) => c.type === "case")
+        expect(cite?.type).toBe("case")
+        if (cite?.type === "case") {
+          expect(cite.signal).toBeUndefined()
+        }
+      })
+
+      it("`Accord between parties, Smith v. Jones, ...` → no signal", () => {
+        const citations = extractCitations(
+          "Accord between the parties, Smith v. Jones, 100 U.S. 1 (1990).",
+        )
+        const cite = citations.find((c) => c.type === "case")
+        expect(cite?.type).toBe("case")
+        if (cite?.type === "case") {
+          expect(cite.signal).toBeUndefined()
+        }
+      })
+
+      it("`Compare the rule from Smith v. Jones, ...` → no signal", () => {
+        const citations = extractCitations(
+          "Compare the rule from Smith v. Jones, 100 U.S. 1 (1990) with the dissent.",
+        )
+        const cite = citations.find((c) => c.type === "case")
+        expect(cite?.type).toBe("case")
+        if (cite?.type === "case") {
+          expect(cite.signal).toBeUndefined()
+        }
+      })
+
+      it("regression: `Contra Smith v. Jones, ...` (real signal) → contra", () => {
+        const citations = extractCitations("Contra Smith v. Jones, 100 U.S. 1 (1990).")
+        const cite = citations.find((c) => c.type === "case")
+        expect(cite?.type).toBe("case")
+        if (cite?.type === "case") {
+          expect(cite.signal).toBe("contra")
+        }
+      })
+
+      it("regression: `See Smith v. Jones, ...` still captures see", () => {
+        const citations = extractCitations("See Smith v. Jones, 100 U.S. 1 (1990).")
+        const cite = citations.find((c) => c.type === "case")
+        expect(cite?.type).toBe("case")
+        if (cite?.type === "case") {
+          expect(cite.signal).toBe("see")
+        }
+      })
+    })
+
     it("preserves party names with numbers", () => {
       const citations = extractCitations(
         "Doe No. 2 v. Smith, 500 F.2d 123 (2020).",
