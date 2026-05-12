@@ -1324,7 +1324,15 @@ export function extractCaseName(
         }
       }
 
-      const caseName = `${plaintiff} v. ${defendantText}`
+      // Preserve the source's `v` punctuation form in `caseName`. New York
+      // courts use `v` (no period); federal/most state courts use `v.`. The
+      // existing V_CASE_NAME_REGEX accepts both via `v(?:s)?\.?` — extract
+      // whichever form actually appears in the matched text so the
+      // assembled caseName is faithful to the source. #326
+      const sepMatch = /\bvs?\.?(?=\s)/.exec(vMatch[0])
+      const sep = sepMatch?.[0] ?? "v."
+
+      const caseName = `${plaintiff} ${sep} ${defendantText}`
       const nameStart = adjustedSearchStart + vMatch.index + trimOffset
       // vMatch[3] = optional court text from the CSM year-first paren
       // (`Smith v. Jones (2d Cir. 2005)` — #293); vMatch[4] = the year
@@ -1971,10 +1979,10 @@ export function extractPartyNames(caseName: string): {
       const subject = match[2]
 
       // Check if there's a "v." after the prefix (adversarial case)
-      if (/\s+v\.?\s+/i.test(subject)) {
+      if (/\s+vs?\.?\s+/i.test(subject)) {
         // Adversarial case with procedural-looking plaintiff (e.g., "Estate of X v. Y")
         // Split on "v."
-        const vMatch = /^(.+?)\s+v\.?\s+(.+)$/i.exec(caseName)
+        const vMatch = /^(.+?)\s+vs?\.?\s+(.+)$/i.exec(caseName)
         if (vMatch) {
           const plaintiff = vMatch[1].trim()
           const defendant = vMatch[2].trim()
@@ -1997,7 +2005,7 @@ export function extractPartyNames(caseName: string): {
   }
 
   // Split on "v." for adversarial cases
-  const vRegex = /^(.+?)\s+v\.?\s+(.+)$/i
+  const vRegex = /^(.+?)\s+vs?\.?\s+(.+)$/i
   const vMatch = vRegex.exec(caseName)
   if (vMatch) {
     let plaintiff = vMatch[1].trim()
@@ -2677,13 +2685,18 @@ export function extractCase(
     // visible to consumers even though it's stripped off the `defendant` field.
     if (plaintiff && defendant) {
       const adminSuffix = adminParenthetical ? ` (${adminParenthetical})` : ""
-      const rebuiltName = `${plaintiff} v. ${defendant}${adminSuffix}`
+      // Preserve the source's `v` punctuation form when rebuilding (#326).
+      // The existing caseName already carries the right separator (set by
+      // extractCaseName / V_CASE_NAME_REGEX); detect it and reuse.
+      const existingSepMatch = caseName ? /\s+(vs?\.?)\s+/.exec(caseName) : null
+      const rebuildSep = existingSepMatch?.[1] ?? "v."
+      const rebuiltName = `${plaintiff} ${rebuildSep} ${defendant}${adminSuffix}`
       if (rebuiltName !== caseName && fullSpan && cleanedText) {
         caseName = rebuiltName
 
         // Advance fullSpan.cleanStart to where the plaintiff actually starts
         const prefixRegion = cleanedText.substring(fullSpan.cleanStart, span.cleanStart)
-        const vSep = /\s+v\.?\s+/i.exec(prefixRegion)
+        const vSep = /\s+vs?\.?\s+/i.exec(prefixRegion)
         if (vSep) {
           const beforeV = prefixRegion.substring(0, vSep.index)
           const pIdx = beforeV.lastIndexOf(plaintiff)
@@ -2719,7 +2732,7 @@ export function extractCase(
     if (plaintiff && caseNameResult && cleanedText) {
       const nameAnchor = fullSpan?.cleanStart ?? caseNameResult.nameStart
       const searchRegion = cleanedText.substring(nameAnchor, span.cleanStart)
-      const vSepMatch = /\s+v\.?\s+/i.exec(searchRegion)
+      const vSepMatch = /\s+vs?\.?\s+/i.exec(searchRegion)
       if (vSepMatch) {
         // Plaintiff: search only in the region before "v."
         const plaintiffRegion = searchRegion.substring(0, vSepMatch.index)

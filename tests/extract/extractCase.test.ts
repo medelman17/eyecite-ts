@@ -5845,4 +5845,53 @@ describe("plaintiff field over-capture — transition words + sentence-paren bou
   })
 })
 
+describe("`v` punctuation fidelity in caseName (#326)", () => {
+  it("preserves NY-style `v` (no period) in caseName", () => {
+    const cases = extractCitations("Rocovich v Consolidated Edison Co., 78 N.Y.2d 509").filter(
+      (c) => c.type === "case",
+    )
+    if (cases[0]?.type === "case") {
+      expect(cases[0].caseName).toBe("Rocovich v Consolidated Edison Co.")
+    }
+  })
+
+  it("preserves NY-style `v` on second example", () => {
+    const cases = extractCitations(
+      "Romano v Hotel Carlyle Owners Corp., 19 N.Y.2d 1",
+    ).filter((c) => c.type === "case")
+    if (cases[0]?.type === "case") {
+      expect(cases[0].caseName).toBe("Romano v Hotel Carlyle Owners Corp.")
+    }
+  })
+
+  it("regression: federal `v.` (with period) still preserved", () => {
+    const cases = extractCitations("Smith v. Jones, 100 F.3d 1 (1990)").filter(
+      (c) => c.type === "case",
+    )
+    if (cases[0]?.type === "case") {
+      expect(cases[0].caseName).toBe("Smith v. Jones")
+    }
+  })
+
+  it("regression: `vs.` variant preserved in caseName", () => {
+    const cases = extractCitations("Smith vs. Jones, 500 F.2d 123 (2020)").filter(
+      (c) => c.type === "case",
+    )
+    if (cases[0]?.type === "case") {
+      expect(cases[0].plaintiff).toBe("Smith")
+      expect(cases[0].defendant).toBe("Jones")
+      expect(cases[0].caseName).toBe("Smith vs. Jones")
+    }
+  })
+
+  it("regression: `In re K.F.` (no v at all) unchanged", () => {
+    const cases = extractCitations("In re K.F., 173 Cal.App.4th 655 (2009).").filter(
+      (c) => c.type === "case",
+    )
+    if (cases[0]?.type === "case") {
+      expect(cases[0].caseName).toBe("In re K.F.")
+    }
+  })
+})
+
 
