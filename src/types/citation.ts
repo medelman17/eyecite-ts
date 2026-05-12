@@ -482,6 +482,12 @@ export interface StatuteCitation extends CitationBase {
    * `(Publisher YYYY)` parentheticals alongside `year`. #285
    */
   publisher?: string
+  /**
+   * Recompilation year for codes that were re-issued without renumbering
+   * (`Code of Alabama 1940, as Recompiled 1958`). Distinct from `year`
+   * (the original edition year, e.g. 1940). #343
+   */
+  recompiledYear?: number
 
   /** Precise text positions for each parsed component of this citation. */
   spans?: StatuteComponentSpans

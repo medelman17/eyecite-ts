@@ -115,4 +115,45 @@ export const statutePatterns: Pattern[] = [
       'California bare-code citations (#296) — `Pen. Code § 148`, `Code Civ. Proc., § 1021.5`, `Bus. & Prof. Code § 17200` (no "Cal." prefix; common in single-jurisdiction California practice).',
     type: "statute",
   },
+  {
+    // Pre-1975 Alabama Code (Code-prefix form): `Code 1940, T. 15, § 389`.
+    // The leading `Code [of Alabama,] 1940` is an unambiguous Alabama signal,
+    // so the title body uses `T.` / `Tit.` / `Title` interchangeably. The
+    // section uses the period-followed-by-alphanumeric guard from #283.
+    // Captures: (1) chapter (title), (2) section body. Year is hardcoded to
+    // 1940 in the extractor (the prefix asserts 1940). #343
+    id: "ala-code-prefix",
+    regex:
+      /\bCode(?:\s+of\s+Alabama)?,?\s+1940,?\s+T(?:itle|it)?\.\s+(\d+),?\s+§\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
+    description:
+      'Alabama Code 1940 (Code-prefix form, pre-1975): "Code 1940, T. 15, § 389" / "Code of Alabama 1940, T. NN, § NNN" — #343',
+    type: "statute",
+  },
+  {
+    // Pre-1975 Alabama Code (Title-first with mandatory Code trailer):
+    // `Title 26, Section 214, Code of Alabama 1940, as Recompiled 1958`.
+    // Requires the trailing `Code [of Alabama] YYYY` clause so the spelled-out
+    // `Title NN` form doesn't false-positive on bare prose like USC's
+    // `Title 18, § 1001`. Captures: (1) title, (2) section, (3) edition year,
+    // (4) optional recompilation year.
+    id: "ala-title-trailer",
+    regex:
+      /\bTitle\s+(\d+),?\s+(?:§|Sec(?:tion)?s?\.?)\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+Code(?:\s+of\s+Alabama)?,?\s+(\d{4})(?:,?\s+(?:as\s+)?[Rr]ecompiled\s+(\d{4}))?/g,
+    description:
+      'Alabama Code (Title-first with Code trailer): "Title 26, Section 214, Code of Alabama 1940, as Recompiled 1958" — #343',
+    type: "statute",
+  },
+  {
+    // Pre-1975 Alabama Code (abbreviated bare form): `Tit. 52, § 361`.
+    // The `Tit.` abbreviation is itself an Alabama signal — USC and other
+    // federal codes spell out `Title` instead. Optional Code trailer captures
+    // year and recompilation when present. Captures: (1) title, (2) section,
+    // (3) optional edition year, (4) optional recompilation year.
+    id: "ala-tit-bare",
+    regex:
+      /\bTit\.\s+(\d+),?\s+§\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)(?:,?\s+Code(?:\s+of\s+Alabama)?,?\s+(\d{4})(?:,?\s+(?:as\s+)?[Rr]ecompiled\s+(\d{4}))?)?/g,
+    description:
+      'Alabama Code (abbreviated `Tit.` form): "Tit. 52, § 361" — #343',
+    type: "statute",
+  },
 ]
