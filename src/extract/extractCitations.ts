@@ -437,6 +437,11 @@ export function extractCitations(
   // still propagates that inherited caption to its parallels.
   inheritParallelCaseName(citations)
 
+  // Step 4.65: Attach year-of-edition / publisher from a trailing parenthetical
+  // to statute citations (#285). E.g. `HRS § 91-14(a) (1985)` →  year=1985;
+  // `28 U.S.C. § 1331 (West 2018)` → publisher="West", year=2018.
+  attachStatuteYearParen(citations, cleaned)
+
   // Step 4.75: Detect string citation groups (semicolon-separated)
   detectStringCitations(citations, cleaned)
 
@@ -647,6 +652,46 @@ function inheritSubsequentHistoryCaseName(citations: Citation[]): void {
  *
  * Closes #282.
  */
+/**
+ * Statute year-of-edition parenthetical regex (#285).
+ *
+ * Matches a parenthetical that follows a statute citation core. Anchored at
+ * the start of the lookahead text (we substring from `span.cleanEnd`) and
+ * allows whitespace, an optional comma + whitespace, and an optional ", at
+ * <pincite>" intervening text. The parenthetical body is `(Publisher? YYYY)`:
+ * a 4-digit year, optionally preceded by a capitalized publisher word
+ * (`West`, `Lexis`, `Lexis Nexis`, etc.). Subsection parens like `(a)` and
+ * `(1)` don't match — the body must end in a 4-digit run.
+ */
+const STATUTE_YEAR_PAREN_REGEX =
+  /^\s*(?:,\s*(?:at\s+)?\d+(?:-\d+)?\s*)?\(\s*([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)?)?\s*(\d{4})\s*\)/
+
+/**
+ * Attach `year` (and optional `publisher`) to statute citations whose
+ * citation core is immediately followed by a year-of-edition parenthetical.
+ *
+ * `HRS § 91-14(a) (1985)`, `42 U.S.C. § 1983 (1976)`, and
+ * `28 U.S.C. § 1331 (West 2018)` are all common code-edition forms. The
+ * tokenizer captures only the citation core; this post-pass scans forward
+ * from `span.cleanEnd` for an optional `\s*\((?:Publisher\s+)?YYYY\)`. The
+ * regex deliberately requires a literal 4-digit run inside the parens so a
+ * trailing subsection paren (`(a)`, `(1)`) is never confused for a year.
+ *
+ * Closes #285.
+ */
+function attachStatuteYearParen(citations: Citation[], cleaned: string): void {
+  for (const cite of citations) {
+    if (cite.type !== "statute") continue
+    if (cite.year !== undefined) continue
+    const after = cleaned.slice(cite.span.cleanEnd)
+    const match = STATUTE_YEAR_PAREN_REGEX.exec(after)
+    if (!match) continue
+    const [, publisher, yearStr] = match
+    cite.year = Number.parseInt(yearStr, 10)
+    if (publisher) cite.publisher = publisher
+  }
+}
+
 function inheritParallelCaseName(citations: Citation[]): void {
   const primaryByGroup = new Map<string, number>()
   for (let i = 0; i < citations.length; i++) {

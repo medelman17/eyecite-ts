@@ -471,6 +471,17 @@ export interface StatuteCitation extends CitationBase {
   pincite?: string
   /** True when "et seq." follows the citation */
   hasEtSeq?: boolean
+  /**
+   * Year of the code edition cited, captured from a trailing parenthetical
+   * (`HRS § 91-14(a) (1985)`, `42 U.S.C. § 1983 (1976)`,
+   * `28 U.S.C. § 1331 (West 2018)`). #285
+   */
+  year?: number
+  /**
+   * Publisher of an annotated code edition (`West`, `Lexis`), captured from
+   * `(Publisher YYYY)` parentheticals alongside `year`. #285
+   */
+  publisher?: string
 
   /** Precise text positions for each parsed component of this citation. */
   spans?: StatuteComponentSpans
