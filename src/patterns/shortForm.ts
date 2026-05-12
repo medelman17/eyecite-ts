@@ -74,6 +74,20 @@ export const STANDALONE_SUPRA_PATTERN: RegExp =
   /(?:^|(?<=\s)|(?<=[;.]))supra(?:\s+note\s+(\d+)(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?|\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)|\s+(?:§+|Part|p\.)\s*\S+)/g
 
 /**
+ * Bracketed supra forms (#306) — `[supra]`, `[supra, 705]`, `[supra at 78-82]`,
+ * and `State v. Jarzbek, [supra, 705]`. Connecticut Supreme/Appellate use
+ * brackets around the supra token when it appears inside a string-cite or
+ * quotation. The comma-pincite form `[supra, 705]` accepts NO `at` before
+ * the page — that's the Connecticut convention.
+ *
+ * Captures: (1) party name (optional; undefined for bare standalone form),
+ *   (2) pincite (optional, accepts comma-form `, N` or `at N` shape with
+ *   optional range `N-M`).
+ */
+export const BRACKETED_SUPRA_PATTERN: RegExp =
+  /(?:\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+)?\[supra(?:(?:,\s+|\s+at\s+(?:pp?\.\s*)?)(\d+(?:[-–—]\d+)?))?\]/g
+
+/**
  * Short-form case: [Party,] volume reporter [,] at page
  * Pattern: optional Party name, then number space abbreviation [, ] at space number.
  * Simplified detection; full parsing in extraction layer.
@@ -100,6 +114,7 @@ export const SHORT_FORM_CASE_PATTERN: RegExp =
 export const SHORT_FORM_PATTERNS: readonly RegExp[] = [
   ID_PATTERN,
   IBID_PATTERN,
+  BRACKETED_SUPRA_PATTERN,
   SUPRA_PATTERN,
   STANDALONE_SUPRA_PATTERN,
   SHORT_FORM_CASE_PATTERN,
@@ -118,6 +133,13 @@ export const shortFormPatterns: Pattern[] = [
     regex: IBID_PATTERN,
     description: 'Ibid. citations (e.g., "Ibid." or "Ibid. at 125")',
     type: "case", // Will be typed as 'id' in extraction layer
+  },
+  {
+    id: "supra",
+    regex: BRACKETED_SUPRA_PATTERN,
+    description:
+      'Bracketed supra citations (e.g., "State v. Jarzbek, [supra, 705]" — Connecticut style; #306)',
+    type: "case", // Will be typed as 'supra' in extraction layer
   },
   {
     id: "supra",

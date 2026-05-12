@@ -239,6 +239,15 @@ export function extractSupra(
 ): SupraCitation {
   const { text, span } = token
 
+  // Bracketed supra (#306): `State v. Jarzbek, [supra, 705]` /
+  // `[supra at 78-82]`. Connecticut Supreme/Appellate convention. The
+  // comma-pincite shape `[supra, 705]` accepts no `at` before the page.
+  // When the token text matches this shape, parse it via the bracketed
+  // regex; otherwise fall through to the canonical partySupraRegex.
+  const bracketedSupraRegex =
+    /(?:\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+)?\[supra(?:(?:,\s+|\s+at\s+(?:pp?\.\s*)?)(\d+(?:[-–—]\d+)?))?\]/d
+  const bracketedMatch = text.includes("[supra") ? bracketedSupraRegex.exec(text) : null
+
   // Try party-name pattern first: "Smith, supra [note N] [, at page]".
   // Party-name capture mirrors SUPRA_PATTERN in src/patterns/shortForm.ts:
   // `v.` / `&` / `,` continuations (#301) so multi-word names like
@@ -252,14 +261,14 @@ export function extractSupra(
   // markers (#204). When the pincite is a paragraph form, `at` is optional.
   const partySupraRegex =
     /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
-  const partyMatch = partySupraRegex.exec(text)
+  const partyMatch = bracketedMatch ? null : partySupraRegex.exec(text)
 
   // Fallback: standalone supra — "supra note N", "supra at N", "supra § N".
   // The `at` page accepts the same `p.` / `pp.` prefix and range form (#236)
   // plus paragraph markers (#204).
   const standaloneRegex =
     /supra(?:\s+note\s+(\d+)(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?|\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
-  const match = partyMatch || standaloneRegex.exec(text)
+  const match = bracketedMatch || partyMatch || standaloneRegex.exec(text)
 
   if (!match) {
     throw new Error(`Failed to parse supra citation: ${text}`)
@@ -270,7 +279,15 @@ export function extractSupra(
   let confidence: number
   let pinciteGroupIdx: number | undefined
 
-  if (partyMatch) {
+  if (bracketedMatch) {
+    // Bracketed form (#306): group 1 = optional party, group 2 = optional pincite.
+    partyName = bracketedMatch[1] ? stripSupraPartyPrefix(bracketedMatch[1]) : undefined
+    pinciteInfo = bracketedMatch[2]
+      ? (parsePincite(bracketedMatch[2]) ?? undefined)
+      : undefined
+    confidence = partyName ? 0.9 : 0.8
+    if (bracketedMatch[2]) pinciteGroupIdx = 2
+  } else if (partyMatch) {
     partyName = stripSupraPartyPrefix(partyMatch[1])
     pinciteInfo = partyMatch[3]
       ? (parsePincite(partyMatch[3]) ?? undefined)
