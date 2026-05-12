@@ -124,6 +124,42 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Florida postfix form: `section 812.035(7), Florida Statutes` or
+    // `§83.15, Florida Statutes`. The code name appears AFTER the section
+    // — canonical Florida court style since at least the 1970s. Listed
+    // BEFORE `abbreviated-code` so the container-shape wins span dedup
+    // (otherwise the trailing `Florida Statutes` could tokenize as a
+    // separate abbreviated-code match). #356
+    //
+    // Captures: (1) section body.
+    id: "florida-postfix",
+    // Use a lookbehind boundary (`(?<![A-Za-z])`) instead of `\b` so the
+    // pattern can start at `§` — `\b` requires a word/non-word transition
+    // and `§` is a non-word char, so `\b` fails when `§` is the first char.
+    // No trailing `\b` because `Fla. Stat.` ends with `.` (non-word) and
+    // `\b` wouldn't anchor at end-of-string. The closed alternation
+    // (`Florida Statutes | Fla. Stat.`) is specific enough on its own.
+    regex:
+      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+(?:Florida\s+Statutes|Fla\.\s*Stat\.)/g,
+    description:
+      'Florida postfix statute form: "section 812.035(7), Florida Statutes" / "§83.15, Florida Statutes" — #356',
+    type: "statute",
+  },
+  {
+    // Florida spelled-out-prefix form: `Florida Statute 679.504(3)` or
+    // `Florida Statutes §73.071(3)(b)`. Spelled-out (singular or plural)
+    // code name with optional `§` connector — distinct from the canonical
+    // Bluebook `Fla. Stat. §` prefix handled by `abbreviated-code`.
+    //
+    // Captures: (1) section body.
+    id: "florida-prefix-spelled",
+    regex:
+      /\bFlorida\s+Statutes?\s*§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
+    description:
+      'Florida spelled-out prefix form: "Florida Statute 679.504(3)" / "Florida Statutes §73.071" — #356',
+    type: "statute",
+  },
+  {
     id: "abbreviated-code",
     regex: buildAbbreviatedCodeRegex(),
     description: "Abbreviated state code citations for all US jurisdictions",
