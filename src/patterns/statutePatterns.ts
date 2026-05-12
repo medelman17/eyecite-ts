@@ -103,6 +103,19 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Revised Laws of Hawaii — pre-1955 Hawaii statutory compilations
+    // (`RLH 1935 § 2545`, `RLH 1945 § 7186`, `RLH 1955 § 7186`). Modern
+    // Hawaii opinions still cite RLH when discussing pre-1955 statutory
+    // history. The `RLH` token is distinctively Hawaii-only. #359
+    //
+    // Captures: (1) edition year, (2) section body.
+    id: "rlh",
+    regex:
+      /\bRLH\s+(\d{4})\s+§\s+(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+    description: 'Revised Laws of Hawaii (pre-1955): "RLH 1935 § 2545" — #359',
+    type: "statute",
+  },
+  {
     // Pre-1973 Colorado Revised Statutes (prose form): `Section 148-21-34,
     // Colorado Revised Statutes 1963` / `Section 13-25-126, Colo. Rev. Stat.
     // 1973`. Pre-1973 Colorado used a chapter-article-section numbering
