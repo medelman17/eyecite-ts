@@ -5,15 +5,15 @@
 
 export interface StateStatuteEntry {
   /** Two-letter jurisdiction code (e.g., "AK", "AZ") */
-  jurisdiction: string;
+  jurisdiction: string
   /** All recognized abbreviation forms — used for lookup by findAbbreviatedCode */
-  abbreviations: string[];
+  abbreviations: string[]
   /**
    * Regex fragment for tokenizer alternation. If omitted, auto-generated
    * from abbreviations via escapeForRegex. Provide explicitly when the
    * pattern needs optional components (e.g., "Stat(?:utes)?").
    */
-  regexFragment?: string;
+  regexFragment?: string
 }
 
 /**
@@ -39,7 +39,7 @@ export function escapeForRegex(abbreviation: string): string {
       .replace(/\.$/g, "\\.?")
       // Remaining spaces → flexible whitespace
       .replace(/ +/g, "\\s+")
-  );
+  )
 }
 
 /**
@@ -53,27 +53,30 @@ export function escapeForRegex(abbreviation: string): string {
  * Fragments are sorted longest-first for PEG-style ordered choice.
  */
 export function buildAbbreviatedCodeRegex(): RegExp {
-  const allFragments: string[] = [];
+  const allFragments: string[] = []
 
   for (const entry of stateStatuteEntries) {
     if (entry.regexFragment) {
-      allFragments.push(entry.regexFragment);
+      allFragments.push(entry.regexFragment)
     } else {
       for (const abbrev of entry.abbreviations) {
-        allFragments.push(escapeForRegex(abbrev));
+        allFragments.push(escapeForRegex(abbrev))
       }
     }
   }
 
   // Sort longest-first so more specific patterns match before shorter ones
-  allFragments.sort((a, b) => b.length - a.length);
+  allFragments.sort((a, b) => b.length - a.length)
 
-  const alternation = allFragments.join("|");
+  const alternation = allFragments.join("|")
 
   return new RegExp(
-    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*§?\\s*(\\d+[A-Za-z0-9.:/-]*(?:\\([^)]*\\))*(?:\\s*et\\s+seq\\.?)?)`,
+    // Section body: digits prefix, then alphanumeric/colon/slash/hyphen OR
+    // period-followed-by-alphanumeric (lookahead). Period guard prevents
+    // sentence-ending punctuation from being absorbed into the section.
+    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*§?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9]))*(?:\\([^)]*\\))*(?:\\s*et\\s+seq\\.?)?)`,
     "g",
-  );
+  )
 }
 
 /**
@@ -129,7 +132,8 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
   {
     jurisdiction: "NC",
     abbreviations: ["N.C. Gen. Stat. Ann.", "N.C. Gen. Stat.", "N.C.G.S.", "NCGS", "G.S.", "GS"],
-    regexFragment: "N\\.?C\\.?\\s*Gen\\.?\\s*Stat\\.?(?:\\s+Ann\\.?)?|N\\.?C\\.?G\\.?S\\.?|G\\.?S\\.?",
+    regexFragment:
+      "N\\.?C\\.?\\s*Gen\\.?\\s*Stat\\.?(?:\\s+Ann\\.?)?|N\\.?C\\.?G\\.?S\\.?|G\\.?S\\.?",
   },
   // ── Georgia ────────────────────────────────────────────────────────────────
   {
@@ -162,7 +166,8 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
       "I.C.",
       "IC",
     ],
-    regexFragment: "Burns\\s+Ind\\.?\\s+Code(?:\\s+Ann\\.?)?|Ind(?:iana)?\\.?\\s+Code(?:\\s+Ann\\.?)?|I\\.?C\\.?",
+    regexFragment:
+      "Burns\\s+Ind\\.?\\s+Code(?:\\s+Ann\\.?)?|Ind(?:iana)?\\.?\\s+Code(?:\\s+Ann\\.?)?|I\\.?C\\.?",
   },
   // ── New Jersey ─────────────────────────────────────────────────────────────
   {
@@ -240,7 +245,8 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
   {
     jurisdiction: "LA",
     abbreviations: ["La. Rev. Stat. Ann.", "La. R.S.", "LSA-R.S."],
-    regexFragment: "La\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|La\\.?\\s+R\\.?S\\.?|LSA-R\\.?S\\.?",
+    regexFragment:
+      "La\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|La\\.?\\s+R\\.?S\\.?|LSA-R\\.?S\\.?",
   },
   // ── Maine ─────────────────────────────────────────────────────────────────
   {
@@ -362,4 +368,4 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     abbreviations: ["Wyo. Stat. Ann.", "Wyo. Stat.", "W.S."],
     regexFragment: "Wyo\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|W\\.?S\\.?",
   },
-];
+]
