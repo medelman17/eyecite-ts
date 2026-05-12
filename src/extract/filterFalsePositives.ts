@@ -120,6 +120,57 @@ const REPORTER_BLOCKLIST_WORDS: ReadonlySet<string> = new Set([
   "argued",
 ])
 
+/**
+ * Month names matched as `reporter` on date-shaped sequences like `8 April 1988`
+ * (day-first European-style dates) where the state-reporter tokenizer's broad
+ * `<volume> <Word> <page>` pattern captures the day, month name, and year as a
+ * phantom case citation. #302
+ */
+const MONTH_NAMES: ReadonlySet<string> = new Set([
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
+])
+
+/** Earliest plausible year for a citation's reporting date. Anything below this
+ *  is almost certainly a false positive (most likely a date misparse). */
+const MIN_PLAUSIBLE_REPORT_YEAR = 1700
+/** Latest plausible year — current year plus a small buffer for not-yet-reported
+ *  cases / advance sheets. */
+const MAX_PLAUSIBLE_REPORT_YEAR = new Date().getFullYear() + 5
+/** Maximum day-of-month for the date-shape filter. */
+const MAX_DAY_OF_MONTH = 31
+
+/**
+ * Date misparse: `<day> <Month> <year>` matched as case citation (#302).
+ *
+ * The state-reporter regex captures `8 April 1988` as
+ * `volume=8, reporter="April", page=1988`. Real reporters never use month names,
+ * so any cite whose reporter is a month name AND whose volume/page shape look
+ * like day+year is a false positive — rejected unconditionally regardless of
+ * the caller's `filterFalsePositives` opt-in.
+ */
+function isMonthNameDateMisparse(citation: Citation): boolean {
+  if (citation.type !== "case" && citation.type !== "shortFormCase") return false
+  const c = citation as FullCaseCitation | ShortFormCaseCitation
+  if (!c.reporter) return false
+  if (!MONTH_NAMES.has(c.reporter.toLowerCase().trim())) return false
+  const vol = typeof c.volume === "number" ? c.volume : Number.parseInt(String(c.volume), 10)
+  if (Number.isNaN(vol) || vol < 1 || vol > MAX_DAY_OF_MONTH) return false
+  const page = typeof c.page === "number" ? c.page : Number.parseInt(String(c.page), 10)
+  if (Number.isNaN(page)) return false
+  return page >= MIN_PLAUSIBLE_REPORT_YEAR && page <= MAX_PLAUSIBLE_REPORT_YEAR
+}
+
 /** Maximum length for a reporter string without periods.
  *  Real period-less reporters (e.g., "Cal", "Wis", "Mass") are short.
  *  Prose false positives ("Court dismissed the complaint...") are long.
@@ -312,11 +363,17 @@ function collectFalsePositiveReasons(citation: Citation): string[] {
  * @returns Filtered array (same reference if remove=false, new array if remove=true and items removed)
  */
 export function applyFalsePositiveFilters(citations: Citation[], remove: boolean): Citation[] {
+  // Hard-reject pass: unconditionally drop unambiguous garbage like
+  // `<day> <Month> <year>` date misparses (#302). These are never legitimate
+  // citations under any policy, so they should not survive even when the
+  // caller asked for soft-flag mode.
+  const hardFiltered = citations.filter((c) => !isMonthNameDateMisparse(c))
+
   if (remove) {
-    return citations.filter((c) => !isFalsePositive(c))
+    return hardFiltered.filter((c) => !isFalsePositive(c))
   }
 
-  for (const citation of citations) {
+  for (const citation of hardFiltered) {
     // Skip if already penalized (idempotency guard)
     if (citation.confidence === FLAGGED_CONFIDENCE && citation.warnings?.length) continue
 
@@ -332,5 +389,5 @@ export function applyFalsePositiveFilters(citations: Citation[], remove: boolean
     }
   }
 
-  return citations
+  return hardFiltered
 }
