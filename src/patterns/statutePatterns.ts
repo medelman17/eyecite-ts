@@ -73,8 +73,14 @@ export const statutePatterns: Pattern[] = [
     id: "chapter-act",
     // IL: "735 ILCS 5/2-1001" or "735 Ill. Comp. Stat. 5/2-1001"
     // Captures: (1) chapter, (2) act, (3) section+subsections+et seq
+    //
+    // Section body: digits then alphanumeric/colon/slash/hyphen OR
+    // period-followed-by-alphanumeric (lookahead). The period guard
+    // prevents sentence-ending punctuation from being absorbed into
+    // the section field (`5 ILCS 100/1-1.` → section "1-1", not "1-1.";
+    // #283 / #331).
     regex:
-      /\b(\d+)\s+(?:ILCS|Ill\.?\s*Comp\.?\s*Stat\.?)\s*(?:Ann\.?\s+)?(\d+)\/([^\s(]+(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s+(?:ILCS|Ill\.?\s*Comp\.?\s*Stat\.?)\s*(?:Ann\.?\s+)?(\d+)\/(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
     description: 'Illinois Compiled Statutes chapter-act citations (e.g., "735 ILCS 5/2-1001")',
     type: "statute",
   },

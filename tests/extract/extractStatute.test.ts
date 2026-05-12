@@ -888,4 +888,75 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("ILCS trailing-period absorption (#331)", () => {
+    it("strips trailing sentence period: `5 ILCS 100/1-1.`", () => {
+      const cites = extractCitations("See 5 ILCS 100/1-1.").filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(5)
+        expect(cites[0].code).toBe("100")
+        expect(cites[0].section).toBe("1-1")
+        expect(cites[0].matchedText).toBe("5 ILCS 100/1-1")
+        expect(cites[0].jurisdiction).toBe("IL")
+      }
+    })
+
+    it("strips trailing period from bare-numeric section: `225 ILCS 60/22.`", () => {
+      const cites = extractCitations("See 225 ILCS 60/22.").filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(225)
+        expect(cites[0].code).toBe("60")
+        expect(cites[0].section).toBe("22")
+      }
+    })
+
+    it("strips trailing period from hyphenated section: `735 ILCS 5/2-1001.`", () => {
+      const cites = extractCitations("See 735 ILCS 5/2-1001.").filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(735)
+        expect(cites[0].code).toBe("5")
+        expect(cites[0].section).toBe("2-1001")
+      }
+    })
+
+    it("preserves subsection while stripping sentence period: `750 ILCS 36/305(b).`", () => {
+      const cites = extractCitations("See 750 ILCS 36/305(b).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(750)
+        expect(cites[0].code).toBe("36")
+        expect(cites[0].section).toBe("305")
+        expect(cites[0].subsection).toBe("(b)")
+      }
+    })
+
+    it("captures et seq. without absorbing sentence period: `820 ILCS 405/1100 et seq.`", () => {
+      const cites = extractCitations("See 820 ILCS 405/1100 et seq.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(820)
+        expect(cites[0].code).toBe("405")
+        expect(cites[0].section).toBe("1100")
+        expect(cites[0].hasEtSeq).toBe(true)
+      }
+    })
+
+    it("retains internal period inside decimal section: `5 ILCS 100/1-1.5`", () => {
+      const cites = extractCitations("See 5 ILCS 100/1-1.5 governs.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(5)
+        expect(cites[0].section).toBe("1-1.5")
+      }
+    })
+  })
 })
