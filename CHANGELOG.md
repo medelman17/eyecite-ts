@@ -1,5 +1,452 @@
 # eyecite-ts
 
+## 0.15.4
+
+### Patch Changes
+
+- [#334](https://github.com/medelman17/eyecite-ts/pull/334) [`b0e97df`](https://github.com/medelman17/eyecite-ts/commit/b0e97df8bf94e369a4e2b131ef58f9575dbb936a) Thanks [@medelman17](https://github.com/medelman17)! - fix: plaintiff field no longer absorbs leading transition words or preceding sentences (#323)
+
+  `Invoking Younger v. Harris, 401 U.S. 37 (1971)` populated
+  `plaintiff: "Invoking Younger"` instead of `"Younger"`. Same pattern
+  for `Citing`, `Under`, `Unlike`, `Following`, and similar sentence-
+  initial transition words. A more catastrophic shape — parenthesized
+  citations after a sentence-ending period like `... discretion.
+(Burquet v. Brumbaugh, 223 Cal.App.4th 1140.)` — captured the entire
+  preceding sentence into `plaintiff` because the case-name backward
+  walk crossed both the period and the open-paren.
+
+  ### Fix
+
+  Two targeted changes in `src/extract/extractCase.ts`:
+
+  1. **Transition-word rejection in `isLikelyPartyName`.** Added
+     citation-introducing transition words to `SENTENCE_INITIAL_WORDS`
+     (`under`, `invoking`, `citing`, `following`, `unlike`, `whereas`,
+     `pursuant`, `applying`) and updated `isLikelyPartyName` to reject
+     a candidate whose first word is in that set. These words pass the
+     all-capitalized-words check (every word starts with a capital
+     letter) but are sentence-prose, not party names. With the new
+     guard, the downstream trim loop strips the transition word and
+     the actual party name (the next capitalized word) is preserved.
+
+  2. **`. (` sentence boundary detection.** Extended
+     `SENTENCE_BOUNDARY_REGEX` from `/[.)]\s+(?=[A-Z])/g` to
+     `/[.)]\s+(?=[A-Z(])/g` so the case-name walk stops at the open
+     paren when a citation envelope opens immediately after a sentence-
+     ending period. Without it, the walk crosses the boundary and
+     absorbs the entire preceding sentence.
+
+  ### Tests
+
+  7 new tests under `plaintiff field over-capture — transition words +
+sentence-paren boundary (#323)` in `tests/extract/extractCase.test.ts`:
+
+  - `Invoking Younger v. Harris` → `plaintiff: "Younger"`
+  - `Citing Pederson v. Smith` → `plaintiff: "Pederson"`
+  - `Unlike State v. Q.D.` → `plaintiff: "State"`
+  - `Under People v. Smith` → `plaintiff: "People"`
+  - Catastrophic: `... discretion. (Burquet v. Brumbaugh, ...)` →
+    `plaintiff: "Burquet"`
+  - Regression: `See, e.g., Ivanhoe Irrigation District v. McCracken` →
+    `plaintiff: "Ivanhoe Irrigation District"`, `signal: "see, e.g."`
+  - Regression: `In re Smith` → `caseName: "In re Smith"` (prefix
+    preserved)
+
+  Full 2463-test suite passes; no regressions.
+
+- [#336](https://github.com/medelman17/eyecite-ts/pull/336) [`39b709e`](https://github.com/medelman17/eyecite-ts/commit/39b709e3cf794b3364705d8d4eb0828ed96a1cee) Thanks [@medelman17](https://github.com/medelman17)! - fix: preserve `v` punctuation fidelity in `caseName` — NY-style `v` (no period) and `vs.` variant (#326)
+
+  `Rocovich v Consolidated Edison Co., 78 N.Y.2d 509` previously produced
+  `caseName: "Rocovich v. Consolidated Edison Co."` — the extractor was
+  silently adding a period to the NY-court `v` separator. The same
+  happened to `Romano v Hotel Carlyle Owners Corp.`. New York courts use
+  `v` without a period as the canonical form; rewriting it as `v.` breaks
+  round-trip fidelity and NY court records search compatibility.
+
+  ### Fix
+
+  Two changes in `src/extract/extractCase.ts`:
+
+  1. **`extractCaseName` (`v.` capture site, line 1335)** — replaced the
+     hardcoded `${plaintiff} v. ${defendantText}` with a captured
+     separator from the regex match:
+
+     ```
+     const sepMatch = /\bvs?\.?(?=\s)/.exec(vMatch[0])
+     const sep = sepMatch?.[0] ?? "v."
+     ```
+
+     The matched separator (`v`, `v.`, `vs`, or `vs.`) is whichever form
+     appeared in the source.
+
+  2. **`extractCase`'s caseName rebuild site (line ~2688)** — when
+     `extractPartyNames` modifies the plaintiff (signal-strip, transition-
+     word-strip, etc.), the rebuilt caseName now preserves whichever `v`
+     form was already in the existing caseName, detected via
+     `/\s+(vs?\.?)\s+/.exec(caseName)`.
+
+  ### Companion fix — internal `vRegex` consistency
+
+  The `extractPartyNames` internal regex for splitting plaintiff/defendant
+  on `v` (`/\s+v\.?\s+/i`) didn't accept the `vs?` variant. Before #326,
+  the case-name rebuild always normalized to `v.`, so the inconsistency
+  was masked. With `vs.` and `v` now preserved in `caseName`, the
+  internal regex needed updating to match the same alternation
+  (`/\s+vs?\.?\s+/i`). Applied to all five internal regex sites in the
+  file. Without this, `Smith vs. Jones, 500 F.2d 123` would extract
+  `caseName: "Smith vs. Jones"` correctly but leave `plaintiff` and
+  `defendant` undefined.
+
+  ### Tests
+
+  5 new tests under `\`v\` punctuation fidelity in caseName (#326)`in`tests/extract/extractCase.test.ts`:
+
+  - `Rocovich v Consolidated Edison Co.` → NY `v` preserved
+  - `Romano v Hotel Carlyle Owners Corp.` → NY `v` preserved
+  - `Smith v. Jones` → federal `v.` preserved
+  - `Smith vs. Jones` → `vs.` preserved; plaintiff/defendant captured
+  - `In re K.F.` → no `v` at all, unchanged
+
+  Full 2468-test suite passes; no regressions.
+
+- [#337](https://github.com/medelman17/eyecite-ts/pull/337) [`d8650d3`](https://github.com/medelman17/eyecite-ts/commit/d8650d37f40e81a1824082ee369a8d29229dd574) Thanks [@medelman17](https://github.com/medelman17)! - fix: named-code statute tokenizer no longer absorbs intervening prose into `matchedText` (#328)
+
+  When a sentence contained a stray earlier jurisdictional prefix
+  (`California`) followed by lowercase prose and then a real citation
+  (`California Penal Code § 549`), the named-code tokenizer matched the
+  **first** `California` and absorbed the entire intervening clause into
+  the `code` field and `matchedText`:
+
+  ```
+  matchedText: "California for solicitation, acceptance or referral of
+                fraudulent insurance claims, in violation of California
+                Penal Code § 549"
+  ```
+
+  This violated the `matchedText.length === span.originalEnd -
+span.originalStart` invariant and broke annotation, highlighting, and
+  round-trip operations.
+
+  ### Root cause
+
+  The code-name capture group in the `named-code` tokenizer pattern
+  (`src/patterns/statutePatterns.ts`) was `[A-Za-z.&',\s]+?` — accepting
+  both upper- and lowercase letters. Real code names are title-case
+  (`Penal Code`, `Civ. Prac. & Rem. Code Ann.`, `Insurance Law`) but the
+  permissive class let prose like `for solicitation, acceptance ...`
+  flow through. The lazy quantifier kept extending until it found
+  `\s*§§?\s*\d+`, which happened only at the SECOND `California`.
+
+  ### Fix
+
+  Changed the code-name capture from `[A-Za-z.&',\s]+?` to:
+
+  ```
+  [A-Z][A-Za-z.&']*(?:(?:\s+|,\s+)(?:&|[A-Z][A-Za-z.&']*))*
+  ```
+
+  - Must start with a capital letter
+  - Each subsequent word is also capital-letter-led (or a standalone `&`)
+  - Separator between words is either whitespace or `,\s+` so Maryland's
+    `Code Ann., Crim. Law` and `Code, Ins.` shapes still parse
+
+  The lowercase prose words `for`, `or`, `of`, `in`, `to` no longer
+  match — the regex skips the first `California` and lands on the
+  real citation context.
+
+  ### Tests
+
+  4 new tests under `named-code does not absorb intervening prose (#328)`
+  in `tests/extract/extractStatute.test.ts`:
+
+  - Catastrophic case: `California ... in violation of California Penal Code
+§ 549` → `matchedText: "California Penal Code § 549"` (no prose),
+    plus span-invariant check
+  - Regression: `Md. Code Ann., Crim. Law § 3-202` (comma inside name)
+  - Regression: `Md. Code, Ins. § 27-101` (comma + abbrev)
+  - Regression: `Tex. Civ. Prac. & Rem. Code Ann. § 17.42` (ampersand +
+    multi-word)
+
+  Full 2472-test suite passes; no regressions.
+
+- [#342](https://github.com/medelman17/eyecite-ts/pull/342) [`7ae7786`](https://github.com/medelman17/eyecite-ts/commit/7ae77869779284e6154ea37e4a0bf994cdc0a401) Thanks [@medelman17](https://github.com/medelman17)! - fix: state constitution prefix preserved on no-space `Pa.Const.` form (#329)
+
+  When a state constitutional citation used the abbreviated form with no
+  space between the state prefix and `Const.` — `Pa.Const. art. VIII, § 4`,
+  `Cal.Const. art. I, § 6`, `N.Y.Const. art. III` — the `state-constitution`
+  tokenizer pattern required a whitespace separator and didn't match. The
+  input fell through to `bare-constitution`, producing `matchedText: "Const.
+art. VIII, § 4"` with `jurisdiction: undefined`. The jurisdictional
+  attribution was silently dropped, even though it was present in the source.
+
+  ### Fix
+
+  Two surface-level updates:
+
+  1. **Pattern** (`src/patterns/constitutionalPatterns.ts`): the separator
+     between the state abbreviation and `Const.` is now `(?:\.\s*|\s+)` —
+     either `.` followed by 0+ whitespace, OR 1+ whitespace. Both forms
+     require a separator, so `PaConst.` (no `.` and no space) still does
+     not match, preventing word-glue false positives from any word
+     starting with a state-abbreviation stem.
+
+  2. **Extractor** (`src/extract/extractConstitutional.ts`):
+     `STATE_PREFIX_RE` now uses `\.?\s*Const` instead of `\.?\s+Const`,
+     so the prefix is captured from `Pa.Const.` and `N.Y.Const.` the same
+     way as from `Pa. Const.` / `N.Y. Const.`. `resolveStateJurisdiction`
+     already strips spaces and dots before lookup, so jurisdiction
+     resolution is unchanged downstream.
+
+  ### Tests
+
+  7 new tests:
+
+  `tests/patterns/constitutionalPatterns.test.ts` (4):
+
+  - `Pa.Const. art. VIII, § 4` matches state-constitution
+  - `Cal.Const. art. I, § 6` matches state-constitution
+  - `N.Y.Const. art. III` (multi-part) matches state-constitution
+  - `PaConst.` (no separator at all) does NOT match — false-positive guard
+
+  `tests/extract/extractConstitutional.test.ts` (3):
+
+  - `Pa.Const.` → `jurisdiction: "PA"`, `article: 8`, `section: "4"`
+  - `Cal.Const.` → `jurisdiction: "CA"`
+  - `N.Y.Const.` → `jurisdiction: "NY"`, `article: 3`
+
+  Full 2510-test suite passes; existing spaced and `U.S. Const.` forms
+  unchanged.
+
+  ### Related
+
+  Surfaced by a 200-opinion modern sweep. Other constitutional-citation
+  coverage gaps (bare `Eighth Amendment` prose form, populated `document`
+  field on the output) are tracked as separate issues.
+
+- [#338](https://github.com/medelman17/eyecite-ts/pull/338) [`65ee122`](https://github.com/medelman17/eyecite-ts/commit/65ee12254d16623fe93ce25170144990332c5930) Thanks [@medelman17](https://github.com/medelman17)! - feat: extract pre-1993 Illinois Revised Statutes (`Ill. Rev. Stat. YYYY, ch. N, par. N`) (#330)
+
+  Illinois used a distinct statutory citation format before adopting
+  Illinois Compiled Statutes (ILCS) in 1993. Pre-1993 forms continue
+  to appear in modern Illinois opinions when referencing the historical
+  version of a statute: `Ill. Rev. Stat. 1985, ch. 40, par. 504(a)`.
+  None of these tokenized — surfaced as the dominant statute miss
+  pattern in a 16-opinion Illinois sample (20+ misses).
+
+  ### Fix
+
+  New `ill-rev-stat` pattern in `src/patterns/statutePatterns.ts` and
+  dedicated `extractIllRevStat` extractor at
+  `src/extract/statutes/extractIllRevStat.ts`.
+
+  Tokenizer regex:
+
+  ```
+  \bIll\.?\s*Rev\.?\s*Stat\.?,?\s+(\d{4}),?\s+[Cc]h\.\s+(\d+[A-Z]?),?\s+pars?\.\s+(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)
+  ```
+
+  Tolerance:
+
+  - Spaced or no-space (`Ill. Rev. Stat.` / `Ill.Rev.Stat.`)
+  - Capitalized or lowercase `[Cc]h.`
+  - Singular or plural `pars?.`
+  - Optional commas after `Stat.` and after the chapter number
+  - Letter-suffix chapter (`110A`)
+  - Section-body uses the period-followed-by-alphanumeric guard from #283
+
+  Captures:
+
+  - Group 1 → `year` (e.g., 1985 — the embedded year-of-edition)
+  - Group 2 → `title` (chapter, e.g., 40)
+  - Group 3 → paragraph body, parsed into `section` / `subsection` via
+    the shared `parseBody` helper
+
+  Jurisdiction is hardcoded `"IL"`; `code` is normalized to `"Ill. Rev. Stat."`
+  regardless of source spacing/punctuation.
+
+  ### Scope notes
+
+  - **Multi-paragraph lists** (`pars. 8-102, 8-103`) match the first
+    paragraph only; the trailing `, 8-103` is left for downstream. Same
+    shape as the existing single-paragraph match on canonical ILCS.
+
+  ### Tests
+
+  6 new tests under `Illinois Revised Statutes (pre-1993) (#330)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - Canonical `Ill. Rev. Stat. 1985, ch. 40, par. 504(a)`
+  - No-space + capitalized `Ill.Rev.Stat. 1985, Ch. 127, par. 780.04`
+  - Plural `pars.` (matches first only)
+  - Letter-suffix chapter `110A`
+  - Stray comma + `et seq.`
+  - Regression: modern `735 ILCS 5/2-1001` still routes through `chapter-act`
+
+  Full 2479-test suite passes; no regressions.
+
+- [#339](https://github.com/medelman17/eyecite-ts/pull/339) [`7fe50c8`](https://github.com/medelman17/eyecite-ts/commit/7fe50c8a2bcfb7cde8a03b9dd7b726a3269c5cfd) Thanks [@medelman17](https://github.com/medelman17)! - fix: ILCS trailing sentence period no longer absorbed into section (#331)
+
+  Modern Illinois Compiled Statutes (ILCS) citations that end a sentence
+  were leaving the period attached to the `section` field:
+
+  ```
+  "See 5 ILCS 100/1-1." → section: "1-1."   (was; should be "1-1")
+  "See 225 ILCS 60/22." → section: "22."    (was; should be "22")
+  ```
+
+  This is the same anti-pattern fixed for other section bodies in #283,
+  applied to the `chapter-act` family.
+
+  ### Fix
+
+  Both the tokenizer pattern (`chapter-act` in
+  `src/patterns/statutePatterns.ts`) and the extractor's anchored re-match
+  regex (`CHAPTER_ACT_RE` in `src/extract/statutes/extractChapterAct.ts`)
+  now use the period-followed-by-alphanumeric guard for the section body:
+
+  ```
+  \d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?
+  ```
+
+  A period is consumed only when followed by an alphanumeric (preserving
+  internal decimal sections such as `1-1.5`); a trailing sentence period
+  is left for the surrounding prose.
+
+  ### Field mapping clarification
+
+  The issue also reported that "chapter is lost." It is not — the chapter
+  has always been emitted on the `title` field on the extracted
+  `StatuteCitation` (e.g., `750 ILCS 36/305(b)` → `title: 750`,
+  `code: "36"`, `section: "305"`, `subsection: "(b)"`). The act number
+  sits in `code`. These field names predate the issue and are kept for
+  backward compatibility.
+
+  ### Tests
+
+  6 new tests under `ILCS trailing-period absorption (#331)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - `5 ILCS 100/1-1.` — trailing period stripped from hyphenated section
+  - `225 ILCS 60/22.` — trailing period stripped from bare-numeric section
+  - `735 ILCS 5/2-1001.` — trailing period stripped from canonical-shape section
+  - `750 ILCS 36/305(b).` — subsection preserved, trailing period stripped
+  - `820 ILCS 405/1100 et seq.` — `hasEtSeq` set, trailing period not absorbed
+  - `5 ILCS 100/1-1.5` — internal decimal period preserved (regression guard)
+
+  Full 2485-test suite passes; no regressions.
+
+- [#340](https://github.com/medelman17/eyecite-ts/pull/340) [`81e33ad`](https://github.com/medelman17/eyecite-ts/commit/81e33ad64b4139286118458298c739ce901d44ef) Thanks [@medelman17](https://github.com/medelman17)! - fix: suppress phantom case citation for `vol Ill. 2d R. ruleNum` (#332)
+
+  Illinois Supreme Court Rules are cited as `177 Ill. 2d R. 234`
+  (volume + reporter + `R.` + rule number). The state-reporter
+  tokenizer pattern's lazy reporter capture was absorbing ` R.` into
+  the reporter (yielding `reporter: "Ill.2d R."`, `page: 234`) and
+  emitting a phantom case citation for a non-existent case.
+
+  ### Fix
+
+  Add a negative lookahead `(?! R\.\s+\d)` to the inner loop of the
+  `state-reporter` pattern in `src/patterns/casePatterns.ts`. When the
+  lazy reporter expansion would consume ` R.` followed by a digit, the
+  lookahead fires, the whole match fails, and the input is left
+  untokenized.
+
+  Resulting behavior on `177 Ill. 2d R. 234`:
+
+  ```
+  before: { type: "case", volume: 177, reporter: "Ill.2d R.", page: 234 }
+  after:  (no citation emitted)
+  ```
+
+  ### Scope
+
+  This is the minimum fix that removes the wrong output. Producing a
+  typed rule citation (`type: "rule"` with `ruleSet` / `rule` fields) is
+  a larger feature — it requires a new citation type in the discriminated
+  union and isn't done here. Suppressing the false positive is strictly
+  better than emitting a wrong one downstream.
+
+  Other Illinois rule forms outside the canonical `vol Ill. (2d )?R. num`
+  shape (`Ill. R. Evid. 403`, `Ill. R. App. P. 5`, `Sup. Ct. R. 137`) are
+  left for a follow-up — they either don't tokenize as cases today or
+  need their own pattern.
+
+  ### Tests
+
+  7 new tests under `Illinois rule-marker boundary in state-reporter
+pattern (#332)` in `tests/extract/extractCase.test.ts`:
+
+  - `177 Ill. 2d R. 234` → 0 case citations
+  - Normalized `177 Ill.2d R. 234` → 0
+  - Trailing year-paren `177 Ill. 2d R. 431 (1997)` → 0
+  - Older `100 Ill. R. 5` → 0
+  - Mixed text: rule suppressed, real `234 Ill. 2d 5` case preserved
+  - Regression: real `177 Ill. 2d 1` still emits a case citation
+  - Regression: `123 Ill. App. 3d 456` reporter unaffected
+
+  Full 2492-test suite passes; no regressions.
+
+- [#341](https://github.com/medelman17/eyecite-ts/pull/341) [`5242565`](https://github.com/medelman17/eyecite-ts/commit/5242565eb41a85b748a4071d8ae4c64ad35e769f) Thanks [@medelman17](https://github.com/medelman17)! - fix: in-word em-dashes normalize to a single hyphen (#333)
+
+  Illinois opinions (and OCR'd reporter text more generally) use the
+  em-dash character `—` (U+2014) where most jurisdictions use a hyphen.
+  The `normalizeDashes` cleaner was rewriting every em-dash to triple
+  hyphen (`---`), the blank-page placeholder form. As a result, citations
+  like `par. 13—214(a)`, `pars. 8—102, 8—103`, and `at 875—877` were
+  contaminated with `---` in the section/pincite body, blocking
+  extraction or polluting downstream output.
+
+  ### Fix
+
+  Context-aware substitution in `src/clean/cleaners.ts:normalizeDashes`.
+  A new in-word rule runs first:
+
+  ```
+  text.replace(/(?<=\w)[—―](?=\w)/g, "-")
+  ```
+
+  - Between word characters → single hyphen (`13—214` → `13-214`,
+    `84—C—4508` → `84-C-4508` — both em-dashes converted in one pass via
+    zero-width lookbehind/lookahead).
+  - Standalone (whitespace on either side) → triple hyphen, preserving
+    the `500 F.4th — (2024)` blank-page placeholder behavior.
+
+  Em-dash-to-hyphen is length-preserving (1 codepoint each), so the
+  existing transformation map continues to map `originalStart` /
+  `originalEnd` 1:1 to the em-dash position in the source text.
+
+  ### Tests
+
+  11 new tests:
+
+  `tests/clean/cleanText.test.ts` (6):
+
+  - In-word em-dash between digits → single hyphen
+  - In-word em-dash in page range → single hyphen
+  - Adjacent em-dashes in docket separators handled in one pass
+  - Standalone em-dash → triple hyphen (regression for blank-page form)
+  - Mixed input (in-word vs standalone)
+  - In-word horizontal bar (U+2015) → hyphen
+
+  `tests/extract/extractStatute.test.ts` (5):
+
+  - End-to-end: `par. 13—214(a)` now extracts as `section: "13-214"`,
+    `subsection: "(a)"`
+  - Em-dash and hyphen variants produce equivalent statute output
+  - Multi-paragraph em-dash form (first paragraph matched)
+  - Blank-page em-dash still tokenizes as case with `---`
+  - Span check: `originalStart`/`originalEnd` map back to the em-dash
+    position in the source
+
+  Full 2503-test suite passes; no regressions.
+
+  ### Related
+
+  Surfaced by a 16-opinion Illinois sample. Companion to #330 (the ILRS
+  pattern itself); fixing #330 alone wouldn't help inputs that used the
+  canonical Illinois em-dash subdivision form. Page-range pincite capture
+  (`at 875—877` extracting both endpoints as a range, not just the first)
+  is a separate issue.
+
 ## 0.15.3
 
 ### Patch Changes
