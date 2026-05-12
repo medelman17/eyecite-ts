@@ -1386,3 +1386,74 @@ describe("short-form case party-name back-reference (#278)", () => {
     })
   })
 })
+
+describe("trailing parenthetical capture on short-form cites (#303)", () => {
+  describe("Id.", () => {
+    it("captures `Id. at 770 (Marsh)` — short-form case identifier", () => {
+      const text =
+        "We followed In re Marriage Cases (Marsh), 43 Cal.4th 757. Id. at 770 (Marsh)."
+      const cites = extractCitations(text)
+      const id = cites.find((c) => c.type === "id")
+      expect(id?.type).toBe("id")
+      if (id?.type === "id") {
+        expect(id.pincite).toBe(770)
+        expect(id.parenthetical).toBe("Marsh")
+      }
+    })
+
+    it("captures `Id. at 770 (citation omitted)` — drop-citation marker", () => {
+      const cites = extractCitations("The court agreed. Id. at 770 (citation omitted).")
+      const id = cites.find((c) => c.type === "id")
+      expect(id?.type).toBe("id")
+      if (id?.type === "id") {
+        expect(id.parenthetical).toBe("citation omitted")
+      }
+    })
+
+    it("regression: `Id. at 100` (no paren) has no parenthetical field", () => {
+      const cites = extractCitations("See Smith v. Jones, 100 F.3d 200. Id. at 100.")
+      const id = cites.find((c) => c.type === "id")
+      expect(id?.type).toBe("id")
+      if (id?.type === "id") {
+        expect(id.parenthetical).toBeUndefined()
+      }
+    })
+  })
+
+  describe("supra", () => {
+    it("captures `Smith, supra, at 200 (holding ...)` — explanatory paren", () => {
+      const text =
+        "We followed Smith v. Doe, 100 F.3d 200. Smith, supra, at 200 (holding that the rule applies)."
+      const cites = extractCitations(text)
+      const supra = cites.find((c) => c.type === "supra")
+      expect(supra?.type).toBe("supra")
+      if (supra?.type === "supra") {
+        expect(supra.parenthetical).toBe("holding that the rule applies")
+      }
+    })
+
+    it("regression: `Smith, supra, at 460` (no paren) has no parenthetical field", () => {
+      const cites = extractCitations(
+        "See Smith v. Jones, 100 F.3d 200. Smith, supra, at 460.",
+      )
+      const supra = cites.find((c) => c.type === "supra")
+      expect(supra?.type).toBe("supra")
+      if (supra?.type === "supra") {
+        expect(supra.parenthetical).toBeUndefined()
+      }
+    })
+  })
+
+  describe("short-form case", () => {
+    it("captures `100 F.3d at 770 (citations omitted)`", () => {
+      const text =
+        "See Smith v. Jones, 100 F.3d 200. Plaintiff relies on the 100 F.3d at 770 (citations omitted)."
+      const cites = extractCitations(text)
+      const sf = cites.find((c) => c.type === "shortFormCase")
+      expect(sf?.type).toBe("shortFormCase")
+      if (sf?.type === "shortFormCase") {
+        expect(sf.parenthetical).toBe("citations omitted")
+      }
+    })
+  })
+})

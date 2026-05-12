@@ -704,6 +704,15 @@ export interface IdCitation extends CitationBase {
   pincite?: number
   /** Structured pincite information (page, range, footnote, star-pagination). */
   pinciteInfo?: import("../extract/pincite").PinciteInfo
+  /**
+   * Trailing parenthetical content (text between the parens, excluding the
+   * parens themselves) captured from `Id. at N (...)` forms. Common values
+   * include drop-citation markers (`citation omitted`, `internal quotation
+   * marks omitted`), short-form case identifiers (`Marsh`, `Serrano III`),
+   * and explanatory holdings (`holding that ...`). Unclassified — consumers
+   * can post-classify if needed. #303
+   */
+  parenthetical?: string
   /** Component-level spans (currently just `pincite`; extend when needed). */
   spans?: import("./componentSpans").IdComponentSpans
 }
@@ -722,6 +731,12 @@ export interface SupraCitation extends CitationBase {
   pincite?: number
   /** Structured pincite information (page, range, footnote, star-pagination). */
   pinciteInfo?: import("../extract/pincite").PinciteInfo
+  /**
+   * Trailing parenthetical content (text between the parens, excluding the
+   * parens themselves). See `IdCitation.parenthetical` for common shapes
+   * and rationale. #303
+   */
+  parenthetical?: string
   /** Component-level spans (currently just `pincite`; extend when needed). */
   spans?: import("./componentSpans").SupraComponentSpans
 }
@@ -753,6 +768,12 @@ export interface ShortFormCaseCitation extends CitationBase {
    *  collapsed). Mirrors `defendantNormalized` / `plaintiffNormalized` on
    *  `FullCaseCitation`. */
   partyNameNormalized?: string
+  /**
+   * Trailing parenthetical content (text between the parens, excluding the
+   * parens themselves). See `IdCitation.parenthetical` for common shapes
+   * and rationale. #303
+   */
+  parenthetical?: string
 }
 
 /**

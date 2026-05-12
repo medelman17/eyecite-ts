@@ -325,9 +325,9 @@ export function extractCitations(
         if (token.patternId === "id" || token.patternId === "ibid") {
           citation = extractId(token, transformationMap, cleaned)
         } else if (token.patternId === "supra") {
-          citation = extractSupra(token, transformationMap)
+          citation = extractSupra(token, transformationMap, cleaned)
         } else if (token.patternId === "shortFormCase") {
-          citation = extractShortFormCase(token, transformationMap)
+          citation = extractShortFormCase(token, transformationMap, cleaned)
         } else {
           citation = extractCase(
             token,

@@ -42,6 +42,34 @@ function stripSupraPartyPrefix(raw: string): string {
 }
 
 /**
+ * Trailing-parenthetical lookahead for short-form citations (#303).
+ *
+ * Captures content of a single `(...)` parenthetical immediately after the
+ * citation core, allowing optional whitespace/comma between. The body uses
+ * `[^()]*` (no nesting) — `parenthetical` is the raw text inside one set of
+ * parens. Suitable for `Id. at N (Marsh)`, `Id. (citation omitted)`,
+ * `Smith, supra (holding that ...)`, `Smith, 500 F.2d at 125 (citations omitted)`.
+ */
+const TRAILING_PAREN_REGEX = /^[\s,]*\(([^()]*)\)/
+
+/**
+ * Scan the cleaned text after a short-form citation's span end for an
+ * immediately-trailing `(...)` parenthetical. Returns the inner text
+ * (excluding the parens) or `undefined` if none found. #303
+ */
+function extractTrailingParenthetical(
+  cleanedText: string | undefined,
+  cleanEnd: number,
+): string | undefined {
+  if (!cleanedText) return undefined
+  const after = cleanedText.slice(cleanEnd)
+  const m = TRAILING_PAREN_REGEX.exec(after)
+  if (!m) return undefined
+  const content = m[1].trim()
+  return content.length > 0 ? content : undefined
+}
+
+/**
  * Extracts Id. citation metadata from a tokenized citation.
  *
  * Parses token text to extract:
@@ -134,6 +162,9 @@ export function extractId(
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
+  // Trailing parenthetical (#303): `Id. at 770 (Marsh)`, `Id. (citation omitted)`.
+  const parenthetical = extractTrailingParenthetical(cleanedText, span.cleanEnd)
+
   return {
     type: "id",
     text,
@@ -149,6 +180,7 @@ export function extractId(
     patternsChecked: 1,
     pincite,
     pinciteInfo,
+    ...(parenthetical ? { parenthetical } : {}),
     spans,
   }
 }
@@ -185,7 +217,11 @@ export function extractId(
  * // }
  * ```
  */
-export function extractSupra(token: Token, transformationMap: TransformationMap): SupraCitation {
+export function extractSupra(
+  token: Token,
+  transformationMap: TransformationMap,
+  cleanedText?: string,
+): SupraCitation {
   const { text, span } = token
 
   // Try party-name pattern first: "Smith, supra [note N] [, at page]".
@@ -255,6 +291,9 @@ export function extractSupra(token: Token, transformationMap: TransformationMap)
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
+  // Trailing parenthetical (#303): `Smith, supra (holding ...)`.
+  const parenthetical = extractTrailingParenthetical(cleanedText, span.cleanEnd)
+
   return {
     type: "supra",
     text,
@@ -271,6 +310,7 @@ export function extractSupra(token: Token, transformationMap: TransformationMap)
     partyName,
     pincite,
     pinciteInfo,
+    ...(parenthetical ? { parenthetical } : {}),
     spans,
   }
 }
@@ -312,6 +352,7 @@ export function extractSupra(token: Token, transformationMap: TransformationMap)
 export function extractShortFormCase(
   token: Token,
   transformationMap: TransformationMap,
+  cleanedText?: string,
 ): ShortFormCaseCitation {
   const { text, span } = token
 
@@ -378,6 +419,9 @@ export function extractShortFormCase(
     confidence += 0.3
   }
 
+  // Trailing parenthetical (#303): `Smith, 500 F.2d at 125 (citations omitted)`.
+  const parenthetical = extractTrailingParenthetical(cleanedText, span.cleanEnd)
+
   return {
     type: "shortFormCase",
     text,
@@ -397,6 +441,7 @@ export function extractShortFormCase(
     pinciteInfo,
     partyName,
     partyNameNormalized,
+    ...(parenthetical ? { parenthetical } : {}),
     spans,
   }
 }
