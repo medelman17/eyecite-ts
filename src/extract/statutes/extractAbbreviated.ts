@@ -44,7 +44,15 @@ export function extractAbbreviated(
 
   const codeEntry = findAbbreviatedCode(abbrevText)
   const jurisdiction = codeEntry?.jurisdiction
-  const code = abbrevText
+  // Normalize OCR/spacing variants (`AR.S.`, `ARS`, `A. R.S.`) to the canonical
+  // short abbreviation when the input doesn't already match a recognized
+  // pattern verbatim — the stripped-form fallback in `findAbbreviatedCode`
+  // returns the canonical entry, so `entry.abbreviation` is the right
+  // normalized `code`. Exact matches keep their original-form `code`. #348
+  const code =
+    codeEntry && !codeEntry.patterns.some((p) => p.toLowerCase() === abbrevText.toLowerCase())
+      ? codeEntry.abbreviation
+      : abbrevText
 
   const { section, subsection, hasEtSeq } = parseBody(rawBody)
 
