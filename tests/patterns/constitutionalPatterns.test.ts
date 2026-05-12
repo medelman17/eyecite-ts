@@ -103,6 +103,30 @@ describe("constitutionalPatterns", () => {
       const matches = findMatches("under Cal. Const. amend. II, § 3")
       expect(matches).toHaveLength(1)
     })
+
+    // #329 — no-space variant: `Pa.Const.`, `Cal.Const.`, `N.Y.Const.`
+    it("matches no-space variant `Pa.Const.`", () => {
+      const matches = findMatches("under Pa.Const. art. VIII, § 4 today")
+      expect(matches.some((m) => m.patternId === "state-constitution")).toBe(true)
+      const m = matches.find((x) => x.patternId === "state-constitution")
+      expect(m?.text).toBe("Pa.Const. art. VIII, § 4")
+    })
+
+    it("matches no-space variant `Cal.Const.`", () => {
+      const matches = findMatches("under Cal.Const. art. I, § 6 today")
+      expect(matches.some((m) => m.patternId === "state-constitution")).toBe(true)
+    })
+
+    it("matches no-space variant `N.Y.Const.` (multi-part abbreviation)", () => {
+      const matches = findMatches("under N.Y.Const. art. III today")
+      expect(matches.some((m) => m.patternId === "state-constitution")).toBe(true)
+    })
+
+    it("does NOT match `PaConst.` (no separator at all)", () => {
+      // Sanity check: requiring `.` or whitespace prevents word-glue false positives.
+      const matches = findMatches("under PaConst. art. VIII, § 4 today")
+      expect(matches.some((m) => m.patternId === "state-constitution")).toBe(false)
+    })
   })
 
   describe("bare-constitution", () => {

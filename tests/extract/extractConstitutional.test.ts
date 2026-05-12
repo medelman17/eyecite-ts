@@ -216,6 +216,43 @@ describe("extractConstitutional", () => {
       expect(citation.article).toBe(1)
       expect(citation.section).toBe("1")
     })
+
+    // #329 — no-space variant: `Pa.Const.`, `Cal.Const.`, `N.Y.Const.`
+    it("extracts no-space `Pa.Const.` with jurisdiction", () => {
+      const token: Token = {
+        text: "Pa.Const. art. VIII, § 4",
+        span: { cleanStart: 0, cleanEnd: 24 },
+        type: "constitutional",
+        patternId: "state-constitution",
+      }
+      const citation = extractConstitutional(token, createIdentityMap())
+      expect(citation.jurisdiction).toBe("PA")
+      expect(citation.article).toBe(8)
+      expect(citation.section).toBe("4")
+    })
+
+    it("extracts no-space `Cal.Const.` with jurisdiction", () => {
+      const token: Token = {
+        text: "Cal.Const. art. I, § 6",
+        span: { cleanStart: 0, cleanEnd: 22 },
+        type: "constitutional",
+        patternId: "state-constitution",
+      }
+      const citation = extractConstitutional(token, createIdentityMap())
+      expect(citation.jurisdiction).toBe("CA")
+    })
+
+    it("extracts no-space `N.Y.Const.` (multi-part) with jurisdiction", () => {
+      const token: Token = {
+        text: "N.Y.Const. art. III",
+        span: { cleanStart: 0, cleanEnd: 19 },
+        type: "constitutional",
+        patternId: "state-constitution",
+      }
+      const citation = extractConstitutional(token, createIdentityMap())
+      expect(citation.jurisdiction).toBe("NY")
+      expect(citation.article).toBe(3)
+    })
   })
 
   describe("bare constitution", () => {
