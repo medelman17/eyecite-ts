@@ -40,6 +40,7 @@ import { extractOrsChapter } from "./statutes/extractOrsChapter"
 import { extractProse } from "./statutes/extractProse"
 import { extractRlh } from "./statutes/extractRlh"
 import { extractRrs1943 } from "./statutes/extractRrs1943"
+import { extractRigl1956 } from "./statutes/extractRigl1956"
 import { extractRsaChapter } from "./statutes/extractRsaChapter"
 import { extractTcaPostfix } from "./statutes/extractTcaPostfix"
 
@@ -172,6 +173,8 @@ export function extractStatute(
       return extractRlh(token, transformationMap)
     case "rrs-1943":
       return extractRrs1943(token, transformationMap)
+    case "rigl-1956":
+      return extractRigl1956(token, transformationMap)
     case "rsa-chapter":
       return extractRsaChapter(token, transformationMap)
     case "tca-postfix":
