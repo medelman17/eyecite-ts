@@ -2785,4 +2785,43 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Vermont V.S.A. canonical court style (#404)", () => {
+    it("extracts `13 V.S.A. § 3253(a)(8)` (canonical)", () => {
+      const cites = extractCitations("See 13 V.S.A. § 3253(a)(8).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("V.S.A.")
+        expect(cites[0].jurisdiction).toBe("VT")
+        expect(cites[0].title).toBe(13)
+        expect(cites[0].section).toBe("3253")
+        expect(cites[0].subsection).toBe("(a)(8)")
+      }
+    })
+
+    it("extracts `23 V.S.A. § 1201(a)(1)` (canonical with subsection)", () => {
+      const cites = extractCitations("See 23 V.S.A. § 1201(a)(1).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("VT")
+        expect(cites[0].title).toBe(23)
+        expect(cites[0].section).toBe("1201")
+      }
+    })
+
+    it("extracts `32 V.S.A. § 9741` (bare)", () => {
+      const cites = extractCitations("See 32 V.S.A. § 9741.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(32)
+        expect(cites[0].section).toBe("9741")
+      }
+    })
+  })
 })
