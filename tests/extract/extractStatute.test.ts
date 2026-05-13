@@ -2916,4 +2916,39 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Louisiana `La.R.S.` no-space variant (#415)", () => {
+    it("extracts `La.R.S. 48:453` (no space, colon title:section)", () => {
+      const cites = extractCitations("See La.R.S. 48:453.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("La. R.S.")
+        expect(cites[0].jurisdiction).toBe("LA")
+        expect(cites[0].section).toBe("48:453")
+      }
+    })
+
+    it("extracts `La.R.S. 23:1032` (canonical court style)", () => {
+      const cites = extractCitations("See La.R.S. 23:1032.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("23:1032")
+        expect(cites[0].jurisdiction).toBe("LA")
+      }
+    })
+
+    it("regression: `La. R.S. 48:453` (with space) continues to work", () => {
+      const cites = extractCitations("See La. R.S. 48:453.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("LA")
+      }
+    })
+  })
 })

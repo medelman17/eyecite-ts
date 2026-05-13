@@ -342,11 +342,14 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     regexFragment: "Ky\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|KRS",
   },
   // ── Louisiana ─────────────────────────────────────────────────────────────
+  // Louisiana — relaxed `La.R.S.` (no space between `La.` and `R.S.`)
+  // is a common LA court style. Canonical is `La. R.S.` (Bluebook);
+  // ordered last so the no-space variant normalizes to it. #415
   {
     jurisdiction: "LA",
-    abbreviations: ["La. Rev. Stat. Ann.", "La. R.S.", "LSA-R.S."],
+    abbreviations: ["La. Rev. Stat. Ann.", "LSA-R.S.", "La. R.S."],
     regexFragment:
-      "La\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|La\\.?\\s+R\\.?S\\.?|LSA-R\\.?S\\.?",
+      "La\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|La\\.?\\s*R\\.?S\\.?|LSA-R\\.?S\\.?",
   },
   // ── Maine ─────────────────────────────────────────────────────────────────
   {
