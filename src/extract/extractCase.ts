@@ -526,7 +526,33 @@ function stripDateFromCourt(content: string): string | undefined {
   court = court.replace(new RegExp(`\\s*${MONTH_PATTERN.source}\\s*$`, "i"), "").trim()
   // Strip any trailing commas left over
   court = court.replace(/,\s*$/, "").trim()
-  return court && /[A-Za-z]/.test(court) ? court : undefined
+  if (!court || !/[A-Za-z]/.test(court)) return undefined
+
+  // Reject explanatory parentheticals — `(holding that...)`, `(emphasis
+  // added)`, `(citations omitted)`, etc. These are NOT court abbreviations
+  // even after date-stripping. Bluebook court abbreviations (T7) virtually
+  // always contain a period (`D.C. Cir.`, `9th Cir.`, `S.D.N.Y.`,
+  // `Cal.`). Content with no period and starting with a known
+  // explanatory-signal word or running multiple words of lowercase prose
+  // is an explanatory parenthetical that should NOT be routed to `court`.
+  // #431
+  if (!court.includes(".")) {
+    const firstWord = court.match(/^[a-z]+/i)?.[0].toLowerCase()
+    if (firstWord && (SIGNAL_WORDS.has(firstWord) ||
+      firstWord === "emphasis" || firstWord === "internal" ||
+      firstWord === "citations" || firstWord === "footnote" ||
+      firstWord === "alteration" || firstWord === "alterations" ||
+      firstWord === "omitted" || firstWord === "see")) {
+      return undefined
+    }
+    // Multi-word lowercase prose (>= 3 words) without any period is
+    // explanatory text, not a court abbreviation.
+    const words = court.split(/\s+/)
+    if (words.length >= 3 && words.every((w) => /^[a-z]/.test(w))) {
+      return undefined
+    }
+  }
+  return court
 }
 
 // ============================================================================
@@ -2360,8 +2386,19 @@ export function extractCase(
     // the shared trailing paren that sits past a parallel-cite chain.
     collected = collectParentheticals(cleanedText, postChainStart)
     allParens = collected.parens
-    // Skip first paren (already parsed above as court/year)
-    const remaining = parentheticalContent ? allParens.slice(1) : allParens
+    // Skip first paren only if it yielded actual metadata (year/court/
+    // disposition/justices/scope). When the first paren is an explanatory
+    // parenthetical (`holding that...`, `emphasis added`), no metadata is
+    // extracted and the paren should fall through to be classified as
+    // explanatory and added to `parentheticals`. #431
+    const firstParenIsMetadata =
+      parentheticalContent &&
+      (year !== undefined ||
+        court !== undefined ||
+        disposition !== undefined ||
+        justices !== undefined ||
+        scope !== undefined)
+    const remaining = firstParenIsMetadata ? allParens.slice(1) : allParens
     for (const raw of remaining) {
       const classified = classifyParenthetical(raw.text)
       if (classified.kind === "metadata") {
