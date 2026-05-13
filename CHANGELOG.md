@@ -1,5 +1,93 @@
 # eyecite-ts
 
+## 0.15.10
+
+### Patch Changes
+
+- [#433](https://github.com/medelman17/eyecite-ts/pull/433) [`54ee35b`](https://github.com/medelman17/eyecite-ts/commit/54ee35bbdcbbe5b4d34b4f69864aa960c649a345) Thanks [@medelman17](https://github.com/medelman17)! - fix: signal field no longer falsely attached from distant prose (#430)
+
+  The `signal` field on a citation was being populated with `see`,
+  `see also`, `cf.`, etc. when no signal-word actually preceded the
+  citation — the detector found a signal word somewhere in the gap
+  between the previous citation and the current one (even
+  hundreds of characters back) and attached it. 146 occurrences
+  across all 39 sampled states.
+
+  ### Fix
+
+  `detectLeadingSignals` in `src/extract/detectStringCites.ts` now
+  rejects signals whose `end` position is more than 80 chars before
+  the citation start. Real `<signal> <case name>, <citation>`
+  patterns are typically under 80 chars; longer gaps indicate the
+  signal-word is stranded prose belonging to an earlier citation
+  or unrelated sentence.
+
+  ### Behavior changes
+
+  - `the court applied Hawkins v. Mahoney, 1999 MT 82` — no signal
+    attached (was: `signal: "see"` if any prior `see` appeared in
+    the gap)
+  - `we see no reason to disturb the holding. The legislature
+enacted NRS 616.110(2)` — no signal (was: false `signal: "see"`)
+  - `See Smith v. Jones, 100 U.S. 200 (1980)` — `signal: "see"`
+    unchanged
+  - `See also Brown v. Board, 347 U.S. 483` — `signal: "see also"`
+    unchanged
+
+  ### Tests
+
+  4 new tests under `signal field not falsely attached from
+distant prose (#430)` in `tests/extract/extractCase.test.ts`.
+  Full 2754-test suite passes; no regressions.
+
+- [#435](https://github.com/medelman17/eyecite-ts/pull/435) [`f5f0d1f`](https://github.com/medelman17/eyecite-ts/commit/f5f0d1fbb8b7d2ed5ec2d385ce9f5e26f07f6043) Thanks [@medelman17](https://github.com/medelman17)! - fix: explanatory parentheticals `(holding that...)` no longer routed to `court` field (#431)
+
+  When a citation had a trailing **explanatory parenthetical** —
+  `(holding that...)`, `(emphasis added)`, `(citations omitted)`,
+  `(internal citations omitted)`, etc. — eyecite-ts mis-routed the
+  content to the `court` field, leaving the case citation looking
+  like it came from a non-existent court. 171 occurrences across
+  15 states.
+
+  ### Fixes
+
+  Two coordinated changes in `src/extract/extractCase.ts`:
+
+  1. **`stripDateFromCourt` rejects explanatory text**: after the
+     date-stripping pass, the function now checks if the residual
+     text is actually a court abbreviation. Court abbreviations
+     (Bluebook T7) virtually always contain a period (`D.C. Cir.`,
+     `9th Cir.`, `S.D.N.Y.`). Text with no period and starting
+     with a known explanatory-signal word (`holding`, `finding`,
+     `quoting`, `emphasis`, `internal`, `citations`, `omitted`,
+     etc.), or text containing 3+ lowercase prose words, is now
+     rejected as a court candidate.
+
+  2. **Explanatory first-paren falls through to classification**:
+     the parenthetical-chaining logic in `extractCase` used to
+     always skip the first paren on the assumption that it
+     carried metadata (year/court). With the fix above, an
+     explanatory first paren produces no metadata, so it now
+     falls through to be classified as a `Parenthetical` and
+     added to the `parentheticals` array.
+
+  ### Behavior changes
+
+  - `336 Mont. 225 (holding that we review de novo)` →
+    `court=undefined`, `parentheticals=[{text: "holding that...",
+type: "holding"}]` (was: `court="holding that we review..."`)
+  - `368 Mont. 189 (emphasis in original)` → `court=undefined`
+  - `243 P.3d 415 (internal citations omitted)` →
+    `court=undefined`
+  - `100 U.S. 200 (D.C. Cir. 1980)` → unchanged
+  - `100 U.S. 200 (1980)` → unchanged
+
+  ### Tests
+
+  5 new tests under `explanatory parentheticals not routed to
+court field (#431)` in `tests/extract/extractCase.test.ts`.
+  Full 2758-test suite passes; no regressions.
+
 ## 0.15.9
 
 ### Patch Changes
