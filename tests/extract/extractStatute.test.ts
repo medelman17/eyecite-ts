@@ -3022,4 +3022,49 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Year-range edition parentheticals (#420)", () => {
+    it("extracts hyphenated year suffix: `(Supp.1975-76)` → year=1975, editionLabel=Supp.", () => {
+      const cites = extractCitations("See A.R.S. §§ 13-108 (Supp.1975-76).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].year).toBe(1975)
+        expect(cites[0].editionLabel).toBe("Supp.")
+      }
+    })
+
+    it("extracts full-year suffix: `(Supp.1973-1975)`", () => {
+      const cites = extractCitations("See A.R.S. § 13-108 (Supp.1973-1975).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].year).toBe(1973)
+      }
+    })
+
+    it("regression: no-space `(Supp.1998)` continues to work", () => {
+      const cites = extractCitations("See S.C.Code Ann. § 42-15-40 (Supp.1998).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].year).toBe(1998)
+        expect(cites[0].editionLabel).toBe("Supp.")
+      }
+    })
+
+    it("regression: spaced `(Supp. 1998)` continues to work", () => {
+      const cites = extractCitations("See S.C. Code Ann. § 42-15-40 (Supp. 1998).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].year).toBe(1998)
+        expect(cites[0].editionLabel).toBe("Supp.")
+      }
+    })
+  })
 })
