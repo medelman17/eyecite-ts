@@ -3067,4 +3067,60 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Idaho I.C. routing (high-volume regression — #422)", () => {
+    it("`I.C. § 19-2719` routes to Idaho (×11 in 50-opinion sample)", () => {
+      const cites = extractCitations("See I.C. § 19-2719.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("I.C.")
+        expect(cites[0].jurisdiction).toBe("ID")
+        expect(cites[0].section).toBe("19-2719")
+      }
+    })
+
+    it("`I.C. § 12-121` routes to Idaho", () => {
+      const cites = extractCitations("See I.C. § 12-121.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("ID")
+      }
+    })
+
+    it("`I.C. § 67-7709(1)(b)` with subsection routes to Idaho", () => {
+      const cites = extractCitations("See I.C. § 67-7709(1)(b).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("ID")
+        expect(cites[0].section).toBe("67-7709")
+        expect(cites[0].subsection).toBe("(1)(b)")
+      }
+    })
+
+    it("`under I.C. § 19-2719` (mid-sentence) routes to Idaho", () => {
+      const cites = extractCitations("Found under I.C. § 19-2719.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("ID")
+      }
+    })
+
+    it("regression: `IC 35-42-1-1` (no dots) still routes to Indiana", () => {
+      const cites = extractCitations("See IC 35-42-1-1.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("IN")
+      }
+    })
+  })
 })
