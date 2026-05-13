@@ -101,10 +101,17 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     regexFragment: "Fla\\.?\\s*Stat(?:utes)?\\.?(?:\\s*Ann\\.?)?|F\\.?S\\.?",
   },
   // ── Ohio ───────────────────────────────────────────────────────────────────
+  // Inter-letter spacing tolerance — `R. C. 713.15` (with space) is the
+  // dominant Ohio court-published style, more common than the no-space
+  // `R.C. 713.15`. The federal Internal Revenue Code (`I.R.C.`) has its
+  // own dedicated pattern (#376) so the `I.` prefix won't trigger Ohio.
+  // Canonical abbreviation is `R.C.` (Bluebook); ordered last so the
+  // stripped-form fallback normalizes spaced/dotless variants to it. #388
   {
     jurisdiction: "OH",
-    abbreviations: ["Ohio Rev. Code Ann.", "Ohio Rev. Code", "O.R.C.", "ORC", "R.C.", "RC"],
-    regexFragment: "Ohio\\s+Rev\\.?\\s+Code(?:\\s+Ann\\.?)?|O\\.?R\\.?C\\.?|R\\.?C\\.?",
+    abbreviations: ["Ohio Rev. Code Ann.", "Ohio Rev. Code", "O.R.C.", "ORC", "RC", "R.C."],
+    regexFragment:
+      "Ohio\\s+Rev\\.?\\s+Code(?:\\s+Ann\\.?)?|O\\.?\\s*R\\.?\\s*C\\.?|R\\.?\\s*C\\.?",
   },
   // ── Michigan ───────────────────────────────────────────────────────────────
   {

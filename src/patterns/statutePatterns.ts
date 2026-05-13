@@ -67,6 +67,19 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Ohio Revised Code Chapter form: `R.C. Chapter 4509`, `R. C. Chapter
+    // 1702`. The chapter number is treated as a complete citation (Ohio,
+    // like NH, allows chapter-only references). Spacing between `R.` and
+    // `C.` is optional — both `R.C.` and `R. C.` are accepted. #388
+    //
+    // Captures: (1) chapter number.
+    id: "oh-chapter",
+    regex: /\bR\.?\s*C\.?\s+Chapter\s+(\d+)/g,
+    description:
+      'Ohio Revised Code chapter-only form: "R.C. Chapter 4509" / "R. C. Chapter 1702" — #388',
+    type: "statute",
+  },
+  {
     id: "prose",
     regex: /\b[Ss]ection\s+(\d+[A-Za-z0-9-]*(?:\([^)]*\))*)\s+of\s+title\s+(\d+)\b/g,
     description:
