@@ -2479,4 +2479,65 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Rhode Island General Laws 1956 (#393)", () => {
+    it("extracts `G.L. 1956 (1969 Reenactment) §11-23-1` (full form)", () => {
+      const cites = extractCitations("See G.L. 1956 (1969 Reenactment) §11-23-1.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("G.L. 1956")
+        expect(cites[0].jurisdiction).toBe("RI")
+        expect(cites[0].section).toBe("11-23-1")
+        expect(cites[0].year).toBe(1969)
+        expect(cites[0].editionLabel).toBe("Reenactment")
+      }
+    })
+
+    it("extracts spaced `G. L. 1956 (1969 Reenactment) §9-21-2`", () => {
+      const cites = extractCitations("See G. L. 1956 (1969 Reenactment) §9-21-2.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("G.L. 1956")
+        expect(cites[0].section).toBe("9-21-2")
+        expect(cites[0].year).toBe(1969)
+      }
+    })
+
+    it("extracts `G. L. 1956, §10-7-1` (no reenactment paren)", () => {
+      const cites = extractCitations("See G. L. 1956, §10-7-1.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("RI")
+        expect(cites[0].section).toBe("10-7-1")
+        expect(cites[0].year).toBeUndefined()
+      }
+    })
+
+    it("extracts `G.L. 1956 §11-23-1` (no comma, no reenactment)", () => {
+      const cites = extractCitations("See G.L. 1956 §11-23-1.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("RI")
+        expect(cites[0].section).toBe("11-23-1")
+      }
+    })
+
+    it("regression: Massachusetts `G.L. c. 93A` still routes to MA", () => {
+      const cites = extractCitations("See G.L. c. 93A.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("MA")
+      }
+    })
+  })
 })

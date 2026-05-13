@@ -320,6 +320,22 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Rhode Island General Laws 1956 — modern RI statutory code. The
+    // `G.L. 1956` (or spaced `G. L. 1956`) prefix is distinctive because
+    // of the `1956` literal year, which disambiguates from Massachusetts
+    // `G.L. c. NNN` (chapter form). RI opinions often include a
+    // `(YYYY Reenactment)` parenthetical indicating which reenactment
+    // volume was in effect. #393
+    //
+    // Captures: (1) optional reenactment year, (2) section body.
+    id: "rigl-1956",
+    regex:
+      /\bG\.?\s*L\.?\s+1956\s*(?:\((\d{4})\s+Reenactment\))?\s*,?\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
+    description:
+      'Rhode Island General Laws 1956: "G.L. 1956 (1969 Reenactment) §11-23-1" — #393',
+    type: "statute",
+  },
+  {
     // Maryland article-letter codes — post-2002 the Maryland Code is
     // organized into named articles, each with a 2- or 3-letter prefix
     // used as the bare citation form (no `Md.` prefix): `HG § 19-906`,
