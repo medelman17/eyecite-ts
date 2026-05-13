@@ -1919,4 +1919,90 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Indiana pre-1976 Burns + IC year-edition + IND. CODE (#363)", () => {
+    it("year-edition: `IC 1971, 35-13-4-4` → year=1971, section=35-13-4-4", () => {
+      const cites = extractCitations("See IC 1971, 35-13-4-4.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("IC")
+        expect(cites[0].jurisdiction).toBe("IN")
+        expect(cites[0].section).toBe("35-13-4-4")
+        expect(cites[0].year).toBe(1971)
+      }
+    })
+
+    it("uppercase: `IND. CODE 6-5-1-7`", () => {
+      const cites = extractCitations("See IND. CODE 6-5-1-7.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("IN")
+        expect(cites[0].section).toBe("6-5-1-7")
+      }
+    })
+
+    it("pre-1976: `Burns Ind. Stat. Ann., § 10-3401 (1956 Repl.)`", () => {
+      const cites = extractCitations("See Burns Ind. Stat. Ann., § 10-3401 (1956 Repl.).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("IN")
+        expect(cites[0].section).toBe("10-3401")
+        expect(cites[0].year).toBe(1956)
+        expect(cites[0].editionLabel).toBe("Repl.")
+      }
+    })
+
+    it("pre-1976: `Ind. Stat. Ann. § 28-1710 (Burns 1971)` with publisher year", () => {
+      const cites = extractCitations("See Ind. Stat. Ann. § 28-1710 (Burns 1971).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("IN")
+        expect(cites[0].section).toBe("28-1710")
+        expect(cites[0].year).toBe(1971)
+      }
+    })
+
+    it("pre-1976: `Burns' Indiana Statutes Annotated § 48-702` (apostrophe form)", () => {
+      const cites = extractCitations("See Burns' Indiana Statutes Annotated § 48-702.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("IN")
+        expect(cites[0].section).toBe("48-702")
+      }
+    })
+
+    it("pre-1976: `Ind. Ann. Stat. § 10-4709`", () => {
+      const cites = extractCitations("See Ind. Ann. Stat. § 10-4709.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Ind. Ann. Stat.")
+        expect(cites[0].jurisdiction).toBe("IN")
+        expect(cites[0].section).toBe("10-4709")
+      }
+    })
+
+    it("regression: bare `IC 35-42-1-1` continues to work", () => {
+      const cites = extractCitations("See IC 35-42-1-1.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("IC")
+        expect(cites[0].jurisdiction).toBe("IN")
+        expect(cites[0].section).toBe("35-42-1-1")
+      }
+    })
+  })
 })

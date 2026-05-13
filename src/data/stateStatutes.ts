@@ -198,6 +198,8 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
   // opinions use either the spelled-out `Ind. Code` / `Indiana Code` or the
   // dotless `IC` shorthand. Restricting Indiana to the dotless `IC` lets
   // Idaho own `I.C.` / `I. C.` without losing Indiana coverage.
+  // `IND. CODE` (uppercase) is also accepted — Indiana case captions and
+  // some treatises use the all-caps form (#363).
   {
     jurisdiction: "IN",
     abbreviations: [
@@ -210,7 +212,23 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
       "IC",
     ],
     regexFragment:
-      "Burns\\s+Ind\\.?\\s+Code(?:\\s+Ann\\.?)?|Ind(?:iana)?\\.?\\s+Code(?:\\s+Ann\\.?)?|IC",
+      "Burns\\s+Ind\\.?\\s+Code(?:\\s+Ann\\.?)?|Ind(?:iana)?\\.?\\s+Code(?:\\s+Ann\\.?)?|IND\\.?\\s+CODE|IC",
+  },
+  // Pre-1976 Burns Indiana Statutes Annotated — modern Indiana opinions
+  // still cite this when referencing pre-1976 statutory text (#363).
+  // Examples: `Burns Ind. Stat. Ann., § 10-3401 (1956 Repl.)`,
+  // `Ind. Stat. Ann. § 28-1710 (Burns 1971)`, `Burns' Indiana Statutes
+  // Annotated § 48-702`, `Ind. Ann. Stat. § 10-4709`.
+  {
+    jurisdiction: "IN",
+    abbreviations: [
+      "Burns Indiana Statutes Annotated",
+      "Burns Ind. Stat. Ann.",
+      "Ind. Stat. Ann.",
+      "Ind. Ann. Stat.",
+    ],
+    regexFragment:
+      "Burns(?:'s|')?\\s+Ind(?:iana)?\\.?\\s+Stat(?:utes)?\\.?(?:\\s+Ann(?:otated)?\\.?)?|Ind(?:iana)?\\.?\\s+Stat\\.?\\s+Ann\\.?|Ind(?:iana)?\\.?\\s+Ann\\.?\\s+Stat\\.?",
   },
   // ── New Jersey ─────────────────────────────────────────────────────────────
   {
