@@ -2129,4 +2129,64 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("New Mexico bare-section form (#382)", () => {
+    it("extracts `Section 32A-2-7(A)` (bare, letter-prefix first part)", () => {
+      const cites = extractCitations("Section 32A-2-7(A) requires.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("NMSA 1978")
+        expect(cites[0].jurisdiction).toBe("NM")
+        expect(cites[0].section).toBe("32A-2-7")
+        expect(cites[0].subsection).toBe("(A)")
+      }
+    })
+
+    it("extracts `Section 22-10A-27(B)` (letter-prefix middle part)", () => {
+      const cites = extractCitations("See Section 22-10A-27(B).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("22-10A-27")
+        expect(cites[0].subsection).toBe("(B)")
+      }
+    })
+
+    it("extracts `§ 41-2-2` (symbol form, no subsection)", () => {
+      const cites = extractCitations("See § 41-2-2.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("NMSA 1978")
+        expect(cites[0].jurisdiction).toBe("NM")
+        expect(cites[0].section).toBe("41-2-2")
+      }
+    })
+
+    it("regression: `NMSA 1978, § 41-2-2` produces exactly one citation (no duplicate)", () => {
+      const cites = extractCitations("See NMSA 1978, § 41-2-2.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("NMSA 1978")
+        expect(cites[0].jurisdiction).toBe("NM")
+        expect(cites[0].section).toBe("41-2-2")
+      }
+    })
+
+    it("regression: Maryland `CP § 10-105(e)` (two-hyphen) doesn't collide", () => {
+      const cites = extractCitations("See CP § 10-105(e).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("MD")
+      }
+    })
+  })
 })
