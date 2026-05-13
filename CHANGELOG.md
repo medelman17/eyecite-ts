@@ -1,5 +1,214 @@
 # eyecite-ts
 
+## 0.15.9
+
+### Patch Changes
+
+- [#421](https://github.com/medelman17/eyecite-ts/pull/421) [`36425d4`](https://github.com/medelman17/eyecite-ts/commit/36425d4ec6d2cf2593da1d309a0d0856e4667b98) Thanks [@medelman17](https://github.com/medelman17)! - fix: `et seq.` captured by state-postfix patterns (FL, ID, MCA, TN, WI) (#419)
+
+  The `et seq.` suffix was systematically dropped from state-postfix
+  citations — `§§ 77-6-301 et seq., MCA` extracted only `77-6-301`
+  and lost the legally-significant "and the following sections"
+  marker. A 50-state baseline corpus showed 59 misses across 17
+  states (some via abbreviated-code which already worked; the
+  remainder via the postfix patterns introduced in #356, #360,
+  #372, #398, #414).
+
+  ### Fix
+
+  The section-body capture group in all five state-postfix
+  tokenizer patterns + their mirroring extractor regexes now
+  accepts the optional `(?:\s+et\s+seq\.?)?` trailer:
+
+  - `florida-postfix` + `florida-prefix-spelled` (#356)
+  - `idaho-postfix` (#360)
+  - `mca-postfix` (#372)
+  - `tca-postfix` (#398)
+  - `wi-stats-postfix` (#414)
+
+  `parseBody` already strips the trailer and sets `hasEtSeq:
+true` — the fix just lets the trailer get captured in the
+  section group so it reaches parseBody.
+
+  The Wisconsin extractor's whitespace-collapse step
+  (`replace(/\s+/g, "")`) was updated to split off the `et seq.`
+  trailer first, preserving the marker while still collapsing
+  spaces inside `(N)` subsection groups.
+
+  ### Behavior changes
+
+  - `§§ 77-6-301 et seq., MCA` → `hasEtSeq=true`, jur=MT (was:
+    not extracted as MCA — instead silently mis-routed to NM via
+    the bare-section fallback because the postfix container
+    failed)
+  - `§ 812.035 et seq., Florida Statutes` → `hasEtSeq=true`
+  - `Section 23-908 et seq., Idaho Code` → `hasEtSeq=true`
+  - `§ 39-904 et seq., T.C.A.` → `hasEtSeq=true`
+  - `§ 76.09 et seq., Stats.` → `hasEtSeq=true`
+
+  ### Scope notes
+
+  The following pieces of #419 are intentionally deferred:
+
+  - **CA Code Regs.** (`Cal. Code Regs., tit. 14, § 15000 et
+seq.`) — admin regs broadly deferred per #320.
+  - **NJ Admin Code** (`N.J.A.C. 18:46-1.1 et seq.`) — same.
+  - **Treatises** (`1 Larson, Workmen's Compensation Law § 15.00
+et seq.`) — deferred per #307.
+  - **Rules** (`RALJ 1.1 et seq.`, `RAP 16.3 et seq.`) — deferred
+    per #295.
+
+  The dominant statute occurrences (the 50 in the issue's
+  distribution) are now captured.
+
+  ### Tests
+
+  6 new tests under `et seq. captured by state-postfix patterns
+(#419)` in `tests/extract/extractStatute.test.ts`:
+
+  - MCA postfix `§§ 77-6-301 et seq., MCA`
+  - Florida postfix `§ 812.035 et seq., Florida Statutes`
+  - Idaho postfix `Section 23-908 et seq., Idaho Code`
+  - TN postfix `§ 39-904 et seq., T.C.A.`
+  - WI postfix `§ 76.09 et seq., Stats.`
+  - Regression: `Ark. Code Ann. § 9-27-301 et seq. (Supp. 1989)`
+
+  Full 2735-test suite passes; no regressions.
+
+  ### Related
+
+  This fix also incidentally repairs a Montana-→-NM
+  mis-classification: `§§ 77-6-301 et seq., MCA` was previously
+  silently mis-routed to NM because the MCA postfix pattern
+  failed (didn't capture et seq.), letting the NM bare-section
+  pattern (#382) match the inner `§§ 77-6-301`. With the postfix
+  container now capturing the full citation, MT wins.
+
+- [#425](https://github.com/medelman17/eyecite-ts/pull/425) [`602dfbc`](https://github.com/medelman17/eyecite-ts/commit/602dfbcd96aada9abc1972943ee3265c79123602) Thanks [@medelman17](https://github.com/medelman17)! - fix: hyphenated year-range edition parentheticals `(Supp.1975-76)` (#420)
+
+  The no-space and spaced single-year forms (`(Supp. 1998)`,
+  `(Supp.1998)`, `(Repl.1996)`) already worked via the year-paren
+  absorber. Only the hyphenated year-range form
+  (`(Supp.1975-76)`, `(Supp.1973-1975)`) was rejected because the
+  regex's closing `\)` expected to immediately follow the captured
+  `(\d{4})` year.
+
+  ### Fix
+
+  `STATUTE_YEAR_PAREN_REGEX` in `src/extract/extractCitations.ts`
+  now consumes an optional `(?:-\d{2,4})?` suffix after the year.
+  The first year is captured as the `year` field; the suffix is
+  consumed but not separately reported.
+
+  ### Behavior changes
+
+  - `(Supp.1975-76)` → `year=1975`, `editionLabel="Supp."` (was:
+    not extracted)
+  - `(Supp.1973-1975)` → `year=1973`, `editionLabel="Supp."`
+  - `(Supp.1998)`, `(Supp. 1998)`, `(Repl.1996)`, `(Reissue 2003)`
+    — all unchanged
+
+  ### Scope notes
+
+  The following pieces of #420 are intentionally deferred:
+
+  - **Section ranges** (`§§ 15-78-10 to -200`, `§§ 13-108 and
+13-621`) — multi-section family.
+  - **Bare-section + edition paren follow-on** (`42-17-40
+(Supp.2003)`) — short-form citation problem.
+
+  ### Tests
+
+  4 new tests under `Year-range edition parentheticals (#420)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - Hyphenated year `(Supp.1975-76)`
+  - Full year suffix `(Supp.1973-1975)`
+  - Regression: no-space `(Supp.1998)`
+  - Regression: spaced `(Supp. 1998)`
+
+  Full 2735-test suite passes; no regressions.
+
+- [#429](https://github.com/medelman17/eyecite-ts/pull/429) [`5235ee5`](https://github.com/medelman17/eyecite-ts/commit/5235ee50cae343f89ef391ebd689ba429bed36d0) Thanks [@medelman17](https://github.com/medelman17)! - fix: Federal `USC` / `CFR` / `USCA` / "United States Code" variants extracted as statutes (#428)
+
+  Federal-statute variants used in court-published opinions were
+  mis-typed as `case` or not extracted at all. 29 mis-typed
+  occurrences + 8 unextracted across 11 states.
+
+  ### Variants now supported
+
+  - `42 USC 1983` (no periods, no §) — previously mis-typed as case
+  - `42 CFR 447` — same
+  - `11 USCA § 544(a)(3)` (West annotated) — previously not extracted
+  - `49 U.S.C. Section 1513` (word `Section`) — was mis-typed as case
+  - `42 United States Code section 1983` (spelled-out) — was
+    mis-typed as case
+
+  ### Fixes
+
+  Three coordinated changes:
+
+  1. **Pattern alternation**: USC and CFR regexes in
+     `src/patterns/statutePatterns.ts` extended to accept `USC` /
+     `USCA` / `U.S.C.` / `U.S.C.A.` / `United States Code` for the
+     USC side and `C.F.R.` / `CFR` / `Code of Federal Regulations`
+     for the CFR side. Connector (`§§?` / `Section(s)` / `Sec.` /
+     `Part`) made optional so bare `N USC NNNN` form matches.
+
+  2. **Pattern priority**: USC/CFR/IRC patterns moved BEFORE
+     `casePatterns` in `extractCitations.ts` so the broad
+     `state-reporter` regex (which would otherwise match
+     `42 USC 1983` as vol-reporter-page) is subsumed by the
+     federal-statute container.
+
+  3. **Extractor regex**: `FEDERAL_SECTION_RE` and
+     `FEDERAL_PART_RE` in `extractFederal.ts` match the same
+     expanded alternation, with an optional connector. Code is
+     canonicalized to Bluebook form (`U.S.C.` for USC family,
+     `C.F.R.` for CFR family) via stripped-form comparison.
+
+  4. **False-positive blocklist**: USC/CFR/USCA added to the
+     `BLOCKED_REPORTERS` set in `filterFalsePositives.ts` so any
+     residual `state-reporter` match falls back to the
+     false-positive filter (low confidence + warning).
+
+  ### Behavior changes
+
+  - `42 USC 1983` → `code="U.S.C."`, `title=42`, `section="1983"`
+    (was: type=case, warnings)
+  - `42 CFR 447` → `code="C.F.R."`, `title=42`, `section="447"`
+  - `11 USCA § 544(a)(3)` → `code="U.S.C."`, `title=11`,
+    `section="544"`, `subsection="(a)(3)"`
+  - `49 U.S.C. Section 1513` → `code="U.S.C."`, `title=49`
+  - `42 United States Code section 1983` → `code="U.S.C."`,
+    `title=42`
+  - `42 U.S.C. § 1983` (canonical Bluebook) — unchanged
+
+  ### Behavior notes
+
+  The `code` field is now canonicalized to Bluebook form. Previously
+  the no-period variants would emit `code="USC"` / `"CFR"`
+  preserving the input surface. Two existing tests (extractFederal
+  "should extract USC without periods", "should handle CFR without
+  periods") were updated to reflect the new canonicalized output;
+  the corpus fixture entry for `15 USC § 78j` was updated similarly.
+
+  ### Scope notes
+
+  The following pieces of #428 are intentionally deferred:
+
+  - **`Title 18, USC Section 659`** title-prefix prose — needs
+    prose-form pattern with `Title N` prefix
+  - **Multi-title shortcut** (`21 U.S.C. and 42`) — semantic
+    shorthand for "title 21 and title 42 of the U.S.C."
+
+  ### Tests
+
+  7 new tests under `Federal USC / CFR variants (#428)` in
+  `tests/extract/extractStatute.test.ts`. Full 2747-test suite
+  passes; one corpus fixture and two extractFederal tests
+  updated for the new canonicalized `code` output.
+
 ## 0.15.8
 
 ### Patch Changes
