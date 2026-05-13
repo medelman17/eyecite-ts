@@ -424,6 +424,24 @@ export const statutePatterns: Pattern[] = [
     // `abbreviated-code` so prefixed forms win span dedup. #358
     //
     // Captures: (1) "Code Ann." or "Code", (2) section body.
+    // West Virginia historical Code 1931 form: `Code 1931, 49-6-3, as
+    // amended` / `Code, 1931, 49-6-3` / `Code, 14-2-13` (no year). West
+    // Virginia compiled its statutes in 1931 and modern WV opinions still
+    // cite the 1931 code for statutory history. The 3-part hyphenated
+    // section format (`N-N-N`) plus the `Code 1931` or comma-separated
+    // `Code, ` prefix disambiguates from Georgia pre-1983 and Virginia
+    // bare-Code. Listed BEFORE `ga-pre-1983` so the longer 3-part WV
+    // sections win span dedup. #406
+    //
+    // Captures: (1) optional 1931 year, (2) section body.
+    id: "wv-code-1931",
+    regex:
+      /\bCode,?(?:\s+(1931))?,\s+(\d+-\d+[A-Z]?-\d+(?:[A-Za-z0-9])?(?:\([A-Za-z0-9]+\))*)/g,
+    description:
+      'West Virginia historical Code 1931: "Code 1931, 49-6-3, as amended" / "Code, 14-2-13" — #406',
+    type: "statute",
+  },
+  {
     id: "ga-pre-1983",
     regex:
       /\b(Code(?:\s+Ann\.?)?)\s+§\s*(\d+-\d+(?![\d-])(?!\.\d)(?:[A-Za-z0-9])?(?:\([A-Za-z0-9]+\))*)/g,

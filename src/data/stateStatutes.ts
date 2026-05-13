@@ -476,10 +476,16 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     regexFragment: "Wis\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|W\\.?S\\.?A\\.?",
   },
   // ── West Virginia ─────────────────────────────────────────────────────────
+  // West Virginia — `W.Va.Code` (no space) is a common form in WV court
+  // opinions. Relaxing `\s+` to `\s*` between `W.Va.` and `Code` prevents
+  // the NM bare-section pattern (#382) from silently capturing the
+  // `§ N-N-N` suffix when the no-space form is used. Canonical is
+  // `W. Va. Code Ann.` (Bluebook); ordered last so all variants
+  // normalize to it. #406
   {
     jurisdiction: "WV",
-    abbreviations: ["W. Va. Code Ann.", "W. Va. Code", "WV Code"],
-    regexFragment: "W\\.?\\s*Va\\.?\\s+Code(?:\\s+Ann\\.?)?|WV\\s+Code",
+    abbreviations: ["W. Va. Code", "WV Code", "W. Va. Code Ann."],
+    regexFragment: "W\\.?\\s*Va\\.?\\s*Code(?:\\s+Ann\\.?)?|WV\\s+Code",
   },
   // ── Wyoming ───────────────────────────────────────────────────────────────
   {

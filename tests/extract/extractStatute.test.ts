@@ -2727,4 +2727,62 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("West Virginia W.Va. Code + historical Code 1931 (#406)", () => {
+    it("extracts `W.Va.Code § 8-24-28` (no space — no longer mis-routes to NM)", () => {
+      const cites = extractCitations("See W.Va.Code § 8-24-28.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("WV")
+        expect(cites[0].section).toBe("8-24-28")
+      }
+    })
+
+    it("extracts historical `Code 1931, 49-6-3, as amended`", () => {
+      const cites = extractCitations("See Code 1931, 49-6-3, as amended.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("W. Va. Code")
+        expect(cites[0].jurisdiction).toBe("WV")
+        expect(cites[0].section).toBe("49-6-3")
+        expect(cites[0].year).toBe(1931)
+      }
+    })
+
+    it("extracts historical `Code, 1931, 49-6-3` (comma-separated)", () => {
+      const cites = extractCitations("See Code, 1931, 49-6-3.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("49-6-3")
+        expect(cites[0].year).toBe(1931)
+      }
+    })
+
+    it("extracts bare `Code, 14-2-13` (no year — implicit 1931)", () => {
+      const cites = extractCitations("See Code, 14-2-13.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("WV")
+        expect(cites[0].section).toBe("14-2-13")
+      }
+    })
+
+    it("regression: `W.Va. Code § 55-7B-1` (with space) continues to work", () => {
+      const cites = extractCitations("See W.Va. Code § 55-7B-1.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("WV")
+      }
+    })
+  })
 })
