@@ -80,7 +80,9 @@ export function buildAbbreviatedCodeRegex(): RegExp {
     // `A.R.S. section 14-2804(A)` interchangeably with `A.R.S. § 14-2804(A)`.
     // Optional comma between code name and connector (`Idaho Code, § N`) is
     // common in Idaho practice (#360) and harmless elsewhere.
-    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9]))*(?:\\([^)]*\\))*(?:\\s*et\\s+seq\\.?)?)`,
+    // Trailing subscript groups accept either parens or brackets — MSA uses
+    // `[N]` for subdivisions (`MSA 23.710[252]`) #370.
+    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9]))*(?:\\([^)]*\\)|\\[[^\\]]*\\])*(?:\\s*et\\s+seq\\.?)?)`,
     "g",
   )
 }
@@ -115,6 +117,16 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
       "MCL",
     ],
     regexFragment: "Mich\\.?\\s+Comp\\.?\\s+Laws(?:\\s+(?:Ann|Serv)\\.?)?|M\\.?C\\.?L\\.?|MCL[AS]?",
+  },
+  // Michigan Statutes Annotated (MSA) — historical Callaghan-published
+  // companion to MCL. Bare `MSA` (no dots) is Michigan; the dotted `M.S.A.`
+  // is reserved for Minnesota Statutes Annotated (Bluebook standard).
+  // Separate entry from MCL so the canonical `code` field stays `MSA` rather
+  // than being normalized to `MCL`. #370
+  {
+    jurisdiction: "MI",
+    abbreviations: ["Mich. Stat. Ann.", "MSA"],
+    regexFragment: "Mich\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|MSA",
   },
   // ── Utah ───────────────────────────────────────────────────────────────────
   {
@@ -308,10 +320,13 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     regexFragment: "Me\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|M\\.?R\\.?S\\.?A?\\.?",
   },
   // ── Minnesota ─────────────────────────────────────────────────────────────
+  // The dotted `M.S.A.` form (literal dots required) routes to Minnesota
+  // Statutes Annotated; the dotless `MSA` belongs to Michigan (Mich. Stat.
+  // Ann.) via array order — see Michigan entry above. #370
   {
     jurisdiction: "MN",
     abbreviations: ["Minn. Stat. Ann.", "Minn. Stat.", "M.S.A."],
-    regexFragment: "Minn\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|M\\.?S\\.?A\\.?",
+    regexFragment: "Minn\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|M\\.S\\.A\\.",
   },
   // ── Mississippi ───────────────────────────────────────────────────────────
   {
