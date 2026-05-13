@@ -34,6 +34,7 @@ import { extractMdArticleLetter } from "./statutes/extractMdArticleLetter"
 import { extractMinnStYearEdition } from "./statutes/extractMinnStYearEdition"
 import { extractNamedCode } from "./statutes/extractNamedCode"
 import { extractNmBareSection } from "./statutes/extractNmBareSection"
+import { extractNyBareLaw } from "./statutes/extractNyBareLaw"
 import { extractOhChapter } from "./statutes/extractOhChapter"
 import { extractOrsChapter } from "./statutes/extractOrsChapter"
 import { extractProse } from "./statutes/extractProse"
@@ -160,6 +161,8 @@ export function extractStatute(
       return extractMinnStYearEdition(token, transformationMap)
     case "nm-bare-section":
       return extractNmBareSection(token, transformationMap)
+    case "ny-bare-named-code":
+      return extractNyBareLaw(token, transformationMap)
     case "oh-chapter":
       return extractOhChapter(token, transformationMap)
     case "ors-chapter":
