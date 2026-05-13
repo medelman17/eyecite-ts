@@ -240,7 +240,7 @@ export const statutePatterns: Pattern[] = [
     // `\b` wouldn't anchor at end-of-string. The closed alternation
     // (`Florida Statutes | Fla. Stat.`) is specific enough on its own.
     regex:
-      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+(?:Florida\s+Statutes|Fla\.\s*Stat\.)/g,
+      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+(?:Florida\s+Statutes|Fla\.\s*Stat\.)/g,
     description:
       'Florida postfix statute form: "section 812.035(7), Florida Statutes" / "§83.15, Florida Statutes" — #356',
     type: "statute",
@@ -254,7 +254,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) section body.
     id: "florida-prefix-spelled",
     regex:
-      /\bFlorida\s+Statutes?\s*§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
+      /\bFlorida\s+Statutes?\s*§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?)/g,
     description:
       'Florida spelled-out prefix form: "Florida Statute 679.504(3)" / "Florida Statutes §73.071" — #356',
     type: "statute",
@@ -269,7 +269,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) section body.
     id: "idaho-postfix",
     regex:
-      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+Idaho\s+Code(?:\s+Ann\.?)?/g,
+      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+Idaho\s+Code(?:\s+Ann\.?)?/g,
     description:
       'Idaho postfix statute form: "Section 23-908(4), Idaho Code" — #360',
     type: "statute",
@@ -284,7 +284,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) section body.
     id: "mca-postfix",
     regex:
-      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+MCA/g,
+      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+MCA/g,
     description: 'Montana Code Annotated postfix form: "§ 77-6-205(2), MCA" — #372',
     type: "statute",
   },
@@ -297,7 +297,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) section body.
     id: "tca-postfix",
     regex:
-      /(?<![A-Za-z])(?:[Ss]ections?|[Ss]ec\.?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+T\.?C\.?A\.?/g,
+      /(?<![A-Za-z])(?:[Ss]ections?|[Ss]ec\.?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+T\.?C\.?A\.?/g,
     description:
       'Tennessee Code Annotated postfix form: "§ 39-904, T.C.A." — #398',
     type: "statute",
@@ -329,7 +329,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) section body.
     id: "wi-stats-postfix",
     regex:
-      /(?<![A-Za-z])(?:§§?|[Ss]ections?|[Ss]ec\.?)\s*(\d+\.\d+(?:[A-Za-z0-9])?(?:\s*\([^)]*\))*[A-Za-z0-9]*),?\s+(?:Stats\.|STATS\.)/g,
+      /(?<![A-Za-z])(?:§§?|[Ss]ections?|[Ss]ec\.?)\s*(\d+\.\d+(?:[A-Za-z0-9])?(?:\s*\([^)]*\))*[A-Za-z0-9]*(?:\s+et\s+seq\.?)?),?\s+(?:Stats\.|STATS\.)/g,
     description:
       'Wisconsin Statutes postfix form: "§ 76.09, Stats." / "sec. 805.13(3), Stats." — #414',
     type: "statute",

@@ -15,7 +15,7 @@ import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from 
 import { parseBody } from "./parseBody"
 
 const TCA_POSTFIX_RE =
-  /^(?:[Ss]ections?|[Ss]ec\.?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+T\.?C\.?A\.?$/d
+  /^(?:[Ss]ections?|[Ss]ec\.?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+T\.?C\.?A\.?$/d
 
 export function extractTcaPostfix(
   token: Token,

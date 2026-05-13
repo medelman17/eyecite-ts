@@ -19,7 +19,7 @@ import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from 
 import { parseBody } from "./parseBody"
 
 const WI_STATS_POSTFIX_RE =
-  /^(?:§§?|[Ss]ections?|[Ss]ec\.?)\s*(\d+\.\d+(?:[A-Za-z0-9])?(?:\s*\([^)]*\))*[A-Za-z0-9]*),?\s+(?:Stats\.|STATS\.)$/d
+  /^(?:§§?|[Ss]ections?|[Ss]ec\.?)\s*(\d+\.\d+(?:[A-Za-z0-9])?(?:\s*\([^)]*\))*[A-Za-z0-9]*(?:\s+et\s+seq\.?)?),?\s+(?:Stats\.|STATS\.)$/d
 
 export function extractWiStatsPostfix(
   token: Token,
@@ -27,7 +27,13 @@ export function extractWiStatsPostfix(
 ): StatuteCitation {
   const { text, span } = token
   const match = WI_STATS_POSTFIX_RE.exec(text)!
-  const rawBody = match[1].replace(/\s+/g, "")
+  // Split off the optional ` et seq.` trailer before collapsing whitespace,
+  // so the section body's spaces inside `(N)` groups can still be removed
+  // while preserving the et seq. marker for parseBody (#419).
+  const etSeqMatch = match[1].match(/\s+et\s+seq\.?$/)
+  const sectionPart = etSeqMatch ? match[1].slice(0, -etSeqMatch[0].length) : match[1]
+  const cleanSection = sectionPart.replace(/\s+/g, "")
+  const rawBody = etSeqMatch ? `${cleanSection} et seq.` : cleanSection
   const { section, subsection, hasEtSeq } = parseBody(rawBody)
 
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)

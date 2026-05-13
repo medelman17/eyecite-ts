@@ -2951,4 +2951,75 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("et seq. captured by state-postfix patterns (#419)", () => {
+    it("MCA postfix: `§§ 77-6-301 et seq., MCA` → hasEtSeq=true, jur=MT", () => {
+      const cites = extractCitations("See §§ 77-6-301 et seq., MCA.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("MCA")
+        expect(cites[0].jurisdiction).toBe("MT")
+        expect(cites[0].section).toBe("77-6-301")
+        expect(cites[0].hasEtSeq).toBe(true)
+      }
+    })
+
+    it("Florida postfix: `§ 812.035 et seq., Florida Statutes` → hasEtSeq=true", () => {
+      const cites = extractCitations("See § 812.035 et seq., Florida Statutes.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("FL")
+        expect(cites[0].hasEtSeq).toBe(true)
+      }
+    })
+
+    it("Idaho postfix: `Section 23-908 et seq., Idaho Code` → hasEtSeq=true", () => {
+      const cites = extractCitations("See Section 23-908 et seq., Idaho Code.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("ID")
+        expect(cites[0].hasEtSeq).toBe(true)
+      }
+    })
+
+    it("TN postfix: `§ 39-904 et seq., T.C.A.` → hasEtSeq=true", () => {
+      const cites = extractCitations("See § 39-904 et seq., T.C.A.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("TN")
+        expect(cites[0].hasEtSeq).toBe(true)
+      }
+    })
+
+    it("WI postfix: `§ 76.09 et seq., Stats.` → hasEtSeq=true", () => {
+      const cites = extractCitations("See § 76.09 et seq., Stats.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("WI")
+        expect(cites[0].hasEtSeq).toBe(true)
+      }
+    })
+
+    it("regression: abbreviated-code form `Ark. Code Ann. § 9-27-301 et seq. (Supp. 1989)`", () => {
+      const cites = extractCitations(
+        "See Ark. Code Ann. § 9-27-301 et seq. (Supp. 1989).",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].hasEtSeq).toBe(true)
+        expect(cites[0].year).toBe(1989)
+        expect(cites[0].editionLabel).toBe("Supp.")
+      }
+    })
+  })
 })

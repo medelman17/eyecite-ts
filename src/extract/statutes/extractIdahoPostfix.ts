@@ -16,7 +16,7 @@ import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from 
 import { parseBody } from "./parseBody"
 
 const IDAHO_POSTFIX_RE =
-  /^(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+Idaho\s+Code(?:\s+Ann\.?)?$/d
+  /^(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+Idaho\s+Code(?:\s+Ann\.?)?$/d
 
 export function extractIdahoPostfix(
   token: Token,
