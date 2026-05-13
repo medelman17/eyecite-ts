@@ -27,10 +27,10 @@ import { parseBody } from "./parseBody"
 // `^` anchor is fine here — the extractor receives only the matched span,
 // so the leading position is always the start of the captured token text.
 const FLORIDA_POSTFIX_RE =
-  /^(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+(?:Florida\s+Statutes|Fla\.\s*Stat\.)$/d
+  /^(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+(?:Florida\s+Statutes|Fla\.\s*Stat\.)$/d
 
 const FLORIDA_PREFIX_SPELLED_RE =
-  /^Florida\s+Statutes?\s*§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)$/d
+  /^Florida\s+Statutes?\s*§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?)$/d
 
 export function extractFloridaStatute(
   token: Token,
