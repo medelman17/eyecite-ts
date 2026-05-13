@@ -1351,4 +1351,101 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Idaho Code variants (#360)", () => {
+    it("extracts `Idaho Code section 15-5-209` (word section)", () => {
+      const cites = extractCitations("See Idaho Code section 15-5-209.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Idaho Code")
+        expect(cites[0].section).toBe("15-5-209")
+        expect(cites[0].jurisdiction).toBe("ID")
+      }
+    })
+
+    it("extracts `Idaho Code section 19-2715(5)` with subsection", () => {
+      const cites = extractCitations("See Idaho Code section 19-2715(5).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Idaho Code")
+        expect(cites[0].section).toBe("19-2715")
+        expect(cites[0].subsection).toBe("(5)")
+      }
+    })
+
+    it("extracts `Idaho Code, § 19-4906(c)` (comma form)", () => {
+      const cites = extractCitations("Idaho Code, § 19-4906(c).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Idaho Code")
+        expect(cites[0].section).toBe("19-4906")
+        expect(cites[0].subsection).toBe("(c)")
+        expect(cites[0].jurisdiction).toBe("ID")
+      }
+    })
+
+    it("extracts `Section 23-908(4), Idaho Code` (postfix form)", () => {
+      const cites = extractCitations("Section 23-908(4), Idaho Code.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Idaho Code")
+        expect(cites[0].section).toBe("23-908")
+        expect(cites[0].subsection).toBe("(4)")
+        expect(cites[0].jurisdiction).toBe("ID")
+      }
+    })
+
+    it("extracts `I.C. § 61-623` (canonical dotted abbreviation)", () => {
+      const cites = extractCitations("See I.C. § 61-623.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("I.C.")
+        expect(cites[0].section).toBe("61-623")
+        expect(cites[0].jurisdiction).toBe("ID")
+      }
+    })
+
+    it("extracts `I. C. § 61-623` (inter-letter spaced abbreviation)", () => {
+      const cites = extractCitations("See I. C. § 61-623.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("I.C.")
+        expect(cites[0].section).toBe("61-623")
+        expect(cites[0].jurisdiction).toBe("ID")
+      }
+    })
+
+    it("regression: Indiana `IC 35-42-1-1` still routes to Indiana", () => {
+      const cites = extractCitations("See IC 35-42-1-1.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("IN")
+      }
+    })
+
+    it("regression: Indiana `Ind. Code § 35-42-1-1` still routes to Indiana", () => {
+      const cites = extractCitations("See Ind. Code § 35-42-1-1.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("IN")
+        expect(cites[0].section).toBe("35-42-1-1")
+      }
+    })
+  })
 })

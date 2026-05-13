@@ -24,8 +24,9 @@ import { parseBody } from "./parseBody"
 // lazy abbreviation capture would absorb the word `section` and break
 // `findAbbreviatedCode` lookups (e.g., `Arkansas Code Annotated section
 // 11-9-102` would emit abbrevText="Arkansas Code Annotated section").
+// Optional comma between code and connector (`Idaho Code, § N`) #360.
 const ABBREVIATED_RE =
-  /^(?:(\d+)\s+)?(.+?)\s*(?:§§?|[Ss]ections?)?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/d
+  /^(?:(\d+)\s+)?(.+?)\s*,?\s*(?:§§?|[Ss]ections?)?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/d
 
 export function extractAbbreviated(
   token: Token,
