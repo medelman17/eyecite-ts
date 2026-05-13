@@ -33,6 +33,7 @@ import { extractMcaPostfix } from "./statutes/extractMcaPostfix"
 import { extractMdArticleLetter } from "./statutes/extractMdArticleLetter"
 import { extractMinnStYearEdition } from "./statutes/extractMinnStYearEdition"
 import { extractNamedCode } from "./statutes/extractNamedCode"
+import { extractNmBareSection } from "./statutes/extractNmBareSection"
 import { extractProse } from "./statutes/extractProse"
 import { extractRlh } from "./statutes/extractRlh"
 import { extractRrs1943 } from "./statutes/extractRrs1943"
@@ -155,6 +156,8 @@ export function extractStatute(
       return extractMdArticleLetter(token, transformationMap)
     case "minn-st-year-edition":
       return extractMinnStYearEdition(token, transformationMap)
+    case "nm-bare-section":
+      return extractNmBareSection(token, transformationMap)
     case "rlh":
       return extractRlh(token, transformationMap)
     case "rrs-1943":

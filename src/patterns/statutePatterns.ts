@@ -335,6 +335,26 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // New Mexico bare-section form: `Section 32A-2-7(A)`, `§ 41-2-2`. NM
+    // opinions cite NMSA 1978 sections without a code prefix — the three-
+    // hyphen section format (`\d[A-Z]?-\d[A-Z]?-\d[A-Z]?`) is distinctive
+    // among state codes and serves as the disambiguator. Listed AFTER
+    // `abbreviated-code` so a full `NMSA 1978, § 41-2-2` citation is not
+    // double-counted by this bare-section pattern (the abbreviated-code
+    // container would otherwise tie with this contained pattern, leaving
+    // a duplicate cite at the inner span). #382
+    //
+    // Captures: (1) section body — three-part hyphenated form with
+    // optional uppercase-letter suffixes and optional parenthetical
+    // subsection (`(A)`, `(B)`, `(1)`).
+    id: "nm-bare-section",
+    regex:
+      /(?<![A-Za-z])(?:§\s*|[Ss]ection\s+)(\d+[A-Z]?-\d+[A-Z]?-\d+[A-Z]?(?:\([A-Za-z0-9]+\))*)/g,
+    description:
+      'New Mexico bare-section form: "Section 32A-2-7(A)" / "§ 41-2-2" — #382',
+    type: "statute",
+  },
+  {
     id: "ca-bare-code",
     regex: buildCaBareCodeRegex(),
     description:
