@@ -2062,4 +2062,71 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("New Hampshire RSA chapter form (#378)", () => {
+    it("extracts `RSA chapter 169-D` (chapter-only)", () => {
+      const cites = extractCitations("See RSA chapter 169-D.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("RSA")
+        expect(cites[0].jurisdiction).toBe("NH")
+        expect(cites[0].section).toBe("169-D")
+      }
+    })
+
+    it("extracts `RSA chapter 597`", () => {
+      const cites = extractCitations("See RSA chapter 597.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("597")
+      }
+    })
+
+    it("extracts `RSA ch. 458-C` (abbreviated chapter)", () => {
+      const cites = extractCitations("See RSA ch. 458-C.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("RSA")
+        expect(cites[0].section).toBe("458-C")
+      }
+    })
+
+    it("extracts `RSA [chapter] 173-B` (bracketed-chapter form)", () => {
+      const cites = extractCitations("See RSA [chapter] 173-B.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("RSA")
+        expect(cites[0].section).toBe("173-B")
+      }
+    })
+
+    it("regression: colon-section `RSA 511:2` continues to work", () => {
+      const cites = extractCitations("See RSA 511:2.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("RSA")
+        expect(cites[0].section).toBe("511:2")
+      }
+    })
+
+    it("regression: full Bluebook `N.H. Rev. Stat. Ann. § 511:2` continues to work", () => {
+      const cites = extractCitations("See N.H. Rev. Stat. Ann. § 511:2.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NH")
+      }
+    })
+  })
 })
