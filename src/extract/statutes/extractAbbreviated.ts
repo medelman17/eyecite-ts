@@ -26,8 +26,9 @@ import { parseBody } from "./parseBody"
 // 11-9-102` would emit abbrevText="Arkansas Code Annotated section").
 // Optional comma between code and connector (`Idaho Code, § N`) #360.
 // Trailing subscript groups accept either parens or brackets — MSA #370.
+// Internal comma allowed when followed by digit — Kansas `23-9,101` #367.
 const ABBREVIATED_RE =
-  /^(?:(\d+)\s+)?(.+?)\s*,?\s*(?:§§?|[Ss]ections?)?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\)|\[[^\]]*\])*(?:\s*et\s+seq\.?)?)$/d
+  /^(?:(\d+)\s+)?(.+?)\s*,?\s*(?:§§?|[Ss]ections?)?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9])|,(?=\d))*(?:\([^)]*\)|\[[^\]]*\])*(?:\s*et\s+seq\.?)?)$/d
 
 export function extractAbbreviated(
   token: Token,

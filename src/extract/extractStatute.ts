@@ -26,6 +26,7 @@ import { extractFederal } from "./statutes/extractFederal"
 import { extractFloridaStatute } from "./statutes/extractFloridaStatute"
 import { extractIdahoPostfix } from "./statutes/extractIdahoPostfix"
 import { extractIllRevStat } from "./statutes/extractIllRevStat"
+import { extractKsaYearEdition } from "./statutes/extractKsaYearEdition"
 import { extractMcaPostfix } from "./statutes/extractMcaPostfix"
 import { extractMinnStYearEdition } from "./statutes/extractMinnStYearEdition"
 import { extractNamedCode } from "./statutes/extractNamedCode"
@@ -138,6 +139,8 @@ export function extractStatute(
       return extractFloridaStatute(token, transformationMap)
     case "idaho-postfix":
       return extractIdahoPostfix(token, transformationMap)
+    case "ksa-year-edition":
+      return extractKsaYearEdition(token, transformationMap)
     case "mca-postfix":
       return extractMcaPostfix(token, transformationMap)
     case "minn-st-year-edition":

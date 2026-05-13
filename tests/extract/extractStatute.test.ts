@@ -1705,4 +1705,65 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Kansas K.S.A. year-edition + comma-section (#367)", () => {
+    it("year-edition: `K.S.A. 2009 Supp. 44-501(d)(2)` → year=2009, section=44-501", () => {
+      const cites = extractCitations("See K.S.A. 2009 Supp. 44-501(d)(2).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("K.S.A.")
+        expect(cites[0].jurisdiction).toBe("KS")
+        expect(cites[0].section).toBe("44-501")
+        expect(cites[0].subsection).toBe("(d)(2)")
+        expect(cites[0].year).toBe(2009)
+        expect(cites[0].editionLabel).toBe("Supp.")
+      }
+    })
+
+    it("year-edition: `K.S.A. 1988 Supp. 44-556`", () => {
+      const cites = extractCitations("See K.S.A. 1988 Supp. 44-556.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("44-556")
+        expect(cites[0].year).toBe(1988)
+      }
+    })
+
+    it("comma-section: `K.S.A. 23-9,101` preserves internal comma", () => {
+      const cites = extractCitations("See K.S.A. 23-9,101.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("K.S.A.")
+        expect(cites[0].section).toBe("23-9,101")
+      }
+    })
+
+    it("comma-section: `K.S.A. 23-9,316`", () => {
+      const cites = extractCitations("See K.S.A. 23-9,316.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("23-9,316")
+      }
+    })
+
+    it("regression: bare `K.S.A. 44-501` continues to work", () => {
+      const cites = extractCitations("See K.S.A. 44-501.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("K.S.A.")
+        expect(cites[0].jurisdiction).toBe("KS")
+        expect(cites[0].section).toBe("44-501")
+      }
+    })
+  })
 })
