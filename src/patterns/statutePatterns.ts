@@ -219,6 +219,27 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Maryland article-letter codes — post-2002 the Maryland Code is
+    // organized into named articles, each with a 2- or 3-letter prefix
+    // used as the bare citation form (no `Md.` prefix): `HG § 19-906`,
+    // `CP § 10-105(e)(4)`, `R.P. § 8-211`. This is the dominant Maryland
+    // citation style for any Maryland appellate opinion since 2002. The
+    // letter prefixes are a closed enumeration; matching is restricted to
+    // that set to keep the false-positive risk bounded. #368
+    //
+    // The mandatory `§` connector disambiguates the letter prefix from
+    // ordinary prose tokens like `IN` or `TR` that happen to appear at
+    // the start of a sentence.
+    //
+    // Captures: (1) code-letter prefix, (2) section body.
+    id: "md-article-letter",
+    regex:
+      /\b(AB|AG|BO|BR|CJ|CL|CP|CR|CS|EC|ED|EL|EN|ET|FI|FL|GP|HG|HO|HS|HU|IN|LE|LG|LU|NR|PS|PUC|R\.?P\.?|RP|SF|SG|TA|TG|TP|TR)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+    description:
+      'Maryland article-letter codes: "HG § 19-906", "CP § 10-105", "R.P. § 8-211" — #368',
+    type: "statute",
+  },
+  {
     // Minnesota Statutes year-edition form: `Minn. St. 1971, § 176.66`.
     // The year (1971/1974/etc.) is the edition of Minnesota Statutes, not
     // the section number — abbreviated-code would mis-capture the year as

@@ -28,6 +28,7 @@ import { extractIdahoPostfix } from "./statutes/extractIdahoPostfix"
 import { extractIllRevStat } from "./statutes/extractIllRevStat"
 import { extractKsaYearEdition } from "./statutes/extractKsaYearEdition"
 import { extractMcaPostfix } from "./statutes/extractMcaPostfix"
+import { extractMdArticleLetter } from "./statutes/extractMdArticleLetter"
 import { extractMinnStYearEdition } from "./statutes/extractMinnStYearEdition"
 import { extractNamedCode } from "./statutes/extractNamedCode"
 import { extractProse } from "./statutes/extractProse"
@@ -143,6 +144,8 @@ export function extractStatute(
       return extractKsaYearEdition(token, transformationMap)
     case "mca-postfix":
       return extractMcaPostfix(token, transformationMap)
+    case "md-article-letter":
+      return extractMdArticleLetter(token, transformationMap)
     case "minn-st-year-edition":
       return extractMinnStYearEdition(token, transformationMap)
     case "rlh":
