@@ -673,8 +673,12 @@ function inheritSubsequentHistoryCaseName(citations: Citation[]): void {
  * `.` and an optional second capitalized word so `Cum. Supp.` and
  * `Lexis Nexis` both flow through the same regex.
  */
+// Year supports optional hyphenated year-range suffix (`1975-76`, `1973-1975`)
+// — Arizona and a few other states use multi-year supplement parentheticals
+// like `(Supp.1975-76)`. The first year is captured; the suffix is consumed
+// but not separately reported. #420
 const STATUTE_YEAR_PAREN_REGEX =
-  /^\s*(?:,\s*(?:at\s+)?\d+(?:-\d+)?\s*)?\(\s*([A-Z][A-Za-z]+\.?(?:\s+[A-Z][A-Za-z]+\.?)?)?\s*(\d{4})\s*([A-Z][A-Za-z]+\.?(?:\s+[A-Z][A-Za-z]+\.?)?)?\s*\)/
+  /^\s*(?:,\s*(?:at\s+)?\d+(?:-\d+)?\s*)?\(\s*([A-Z][A-Za-z]+\.?(?:\s+[A-Z][A-Za-z]+\.?)?)?\s*(\d{4})(?:-\d{2,4})?\s*([A-Z][A-Za-z]+\.?(?:\s+[A-Z][A-Za-z]+\.?)?)?\s*\)/
 
 /**
  * Edition-label set — captured tokens that should populate `editionLabel`
