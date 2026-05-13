@@ -7,8 +7,10 @@
  * @module extract/statutes/parseBody
  */
 
-/** Separate subsection chain from section number */
-const SUBSECTION_RE = /^([^(]+?)\s*((?:\([^)]*\))*)$/
+/** Separate subsection chain from section number.
+ * Accepts both `(...)` and `[...]` — MSA uses bracket subscripts
+ * (`23.710[252]`) interchangeably with parens (`23.710(252)`). #370 */
+const SUBSECTION_RE = /^([^([]+?)\s*((?:\([^)]*\)|\[[^\]]*\])*)$/
 
 /** Et seq. at end of string */
 const ET_SEQ_RE = /\s*et\s+seq\.?\s*$/i

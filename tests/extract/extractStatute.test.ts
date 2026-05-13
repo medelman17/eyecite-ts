@@ -1448,4 +1448,76 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Michigan MSA jurisdiction + bracket subscripts (#370)", () => {
+    it("extracts `MSA 23.710(254)` as Michigan (not Minnesota)", () => {
+      const cites = extractCitations("See MSA 23.710(254).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("MSA")
+        expect(cites[0].jurisdiction).toBe("MI")
+        expect(cites[0].section).toBe("23.710")
+        expect(cites[0].subsection).toBe("(254)")
+      }
+    })
+
+    it("extracts `MSA 23.710[252]` with bracket subscript", () => {
+      const cites = extractCitations("See MSA 23.710[252].").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("MSA")
+        expect(cites[0].jurisdiction).toBe("MI")
+        expect(cites[0].section).toBe("23.710")
+        expect(cites[0].subsection).toBe("[252]")
+      }
+    })
+
+    it("extracts `Mich. Stat. Ann. § 23.710` as Michigan", () => {
+      const cites = extractCitations("See Mich. Stat. Ann. § 23.710.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("MI")
+      }
+    })
+
+    it("regression: dotted `M.S.A. § 480A.06` still routes to Minnesota", () => {
+      const cites = extractCitations("See M.S.A. § 480A.06.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("M.S.A.")
+        expect(cites[0].jurisdiction).toBe("MN")
+      }
+    })
+
+    it("regression: `Minn. Stat. § 290.16` still routes to Minnesota", () => {
+      const cites = extractCitations("See Minn. Stat. § 290.16.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("MN")
+        expect(cites[0].section).toBe("290.16")
+      }
+    })
+
+    it("regression: `MCL 801.258` still routes to Michigan with code=MCL", () => {
+      const cites = extractCitations("See MCL 801.258.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("MCL")
+        expect(cites[0].jurisdiction).toBe("MI")
+        expect(cites[0].section).toBe("801.258")
+      }
+    })
+  })
 })
