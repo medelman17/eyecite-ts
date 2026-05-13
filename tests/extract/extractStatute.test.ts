@@ -3123,4 +3123,90 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Federal USC / CFR variants (#428)", () => {
+    it("`42 USC 1983` (no periods, no §) → canonical U.S.C.", () => {
+      const cites = extractCitations("under 42 USC 1983.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("U.S.C.")
+        expect(cites[0].title).toBe(42)
+        expect(cites[0].section).toBe("1983")
+      }
+    })
+
+    it("`23 USC 409` (no periods, no §) → U.S.C.", () => {
+      const cites = extractCitations("violates 23 USC 409.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("U.S.C.")
+        expect(cites[0].title).toBe(23)
+      }
+    })
+
+    it("`42 CFR 447` (no §) → C.F.R.", () => {
+      const cites = extractCitations("see 42 CFR 447.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("C.F.R.")
+        expect(cites[0].title).toBe(42)
+        expect(cites[0].section).toBe("447")
+      }
+    })
+
+    it("`11 USCA § 544(a)(3)` (West annotated) → U.S.C.", () => {
+      const cites = extractCitations("11 USCA § 544(a)(3).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("U.S.C.")
+        expect(cites[0].title).toBe(11)
+        expect(cites[0].section).toBe("544")
+        expect(cites[0].subsection).toBe("(a)(3)")
+      }
+    })
+
+    it("`49 U.S.C. Section 1513` (word Section) → U.S.C.", () => {
+      const cites = extractCitations("49 U.S.C. Section 1513.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("U.S.C.")
+        expect(cites[0].title).toBe(49)
+        expect(cites[0].section).toBe("1513")
+      }
+    })
+
+    it("`42 United States Code section 1983` (spelled-out) → U.S.C.", () => {
+      const cites = extractCitations("42 United States Code section 1983.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("U.S.C.")
+        expect(cites[0].title).toBe(42)
+        expect(cites[0].section).toBe("1983")
+      }
+    })
+
+    it("regression: canonical `42 U.S.C. § 1983` continues to work", () => {
+      const cites = extractCitations("42 U.S.C. § 1983.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("U.S.C.")
+        expect(cites[0].title).toBe(42)
+        expect(cites[0].section).toBe("1983")
+      }
+    })
+  })
 })
