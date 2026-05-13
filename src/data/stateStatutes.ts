@@ -77,14 +77,16 @@ export function buildAbbreviatedCodeRegex(): RegExp {
     // Period and comma guards prevent sentence punctuation from being
     // absorbed into the section.
     //
-    // Section connector: `§`, `§§`, or the spelled-out word `section(s)` /
-    // `Section(s)` (#348). Arizona and several other state corpora cite as
-    // `A.R.S. section 14-2804(A)` interchangeably with `A.R.S. § 14-2804(A)`.
+    // Section connector: `§`, `§§`, the spelled-out word `section(s)` /
+    // `Section(s)` (#348), or the abbreviation `sec.` / `Sec.` (Tennessee
+    // and several other state corpora interchange these — #398). Arizona
+    // cites as `A.R.S. section 14-2804(A)` interchangeably with `A.R.S. §
+    // 14-2804(A)`.
     // Optional comma between code name and connector (`Idaho Code, § N`) is
     // common in Idaho practice (#360) and harmless elsewhere.
     // Trailing subscript groups accept either parens or brackets — MSA uses
     // `[N]` for subdivisions (`MSA 23.710[252]`) #370.
-    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9])|,(?=\\d))*(?:\\([^)]*\\)|\\[[^\\]]*\\])*(?:\\s*et\\s+seq\\.?)?)`,
+    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?|[Ss]ec\\.?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9])|,(?=\\d))*(?:\\([^)]*\\)|\\[[^\\]]*\\])*(?:\\s*et\\s+seq\\.?)?)`,
     "g",
   )
 }
@@ -439,9 +441,12 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     regexFragment: "S\\.?D\\.?\\s+Codified\\s+Laws|S\\.?D\\.?C\\.?L\\.?|SDCL",
   },
   // ── Tennessee ─────────────────────────────────────────────────────────────
+  // Canonical abbreviation is `T.C.A.` (Bluebook); ordered last so the
+  // stripped-form fallback normalizes `TCA` (no dots) and spaced variants
+  // to it. #398
   {
     jurisdiction: "TN",
-    abbreviations: ["Tenn. Code Ann.", "Tennessee Code", "T.C.A.", "TN Code"],
+    abbreviations: ["Tenn. Code Ann.", "Tennessee Code", "TN Code", "T.C.A."],
     regexFragment: "Tenn(?:essee)?\\.?\\s+Code(?:\\s+Ann\\.?)?|T\\.?C\\.?A\\.?|TN\\s+Code",
   },
   // ── Vermont ───────────────────────────────────────────────────────────────
