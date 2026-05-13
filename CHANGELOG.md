@@ -1,5 +1,1442 @@
 # eyecite-ts
 
+## 0.15.7
+
+### Patch Changes
+
+- [#365](https://github.com/medelman17/eyecite-ts/pull/365) [`1657ccb`](https://github.com/medelman17/eyecite-ts/commit/1657ccb0b1b724376ceba64025c9d9b73d826ad8) Thanks [@medelman17](https://github.com/medelman17)! - fix: Florida postfix and spelled-out-prefix statute forms (#356)
+
+  Florida courts use a distinctive postfix citation syntax where the
+  code name appears AFTER the section number — opposite the typical
+  Bluebook prefix order. eyecite-ts handled the canonical Bluebook
+  `Fla. Stat. § N` form but missed every Florida-specific variant. A
+  50-opinion Florida sample produced 15+ statute misses dominated by
+  these forms:
+
+  - `section 812.035(7), Florida Statutes`
+  - `§83.15, Florida Statutes`
+  - `§120.68, Fla. Stat.`
+  - `Florida Statute 679.504(3)` (singular code name, no `section`/`§`)
+  - `Florida Statutes §73.071(3)(b)`
+
+  ### Fix
+
+  Two new tokenizer patterns + one new extractor:
+
+  - **`florida-postfix`** — section first, then code name
+    (`section <body>, Florida Statutes|Fla. Stat.` /
+    `§<body>, Florida Statutes|Fla. Stat.`). Uses a lookbehind
+    `(?<![A-Za-z])` boundary so the pattern can start at `§` (a `\b`
+    anchor doesn't match before a non-word char).
+  - **`florida-prefix-spelled`** — spelled-out code name first
+    (`Florida Statute(s) [§] <body>`). Distinct from the canonical
+    Bluebook `Fla. Stat. §` prefix already handled by `abbreviated-code`.
+
+  Both patternIds dispatch to a new
+  `src/extract/statutes/extractFloridaStatute.ts`, which emits
+  `code: "Fla. Stat."` (normalized) and `jurisdiction: "FL"`.
+
+  The patterns are listed BEFORE `abbreviated-code` in `statutePatterns.ts`
+  so the container shapes win span dedup over the trailing `Florida
+Statutes` token (which would otherwise tokenize on its own with a
+  phantom section).
+
+  ### Scope notes
+
+  Two pieces of #356 are intentionally deferred:
+
+  - **Chapter-only references** (`Chapter 78, Florida Statutes`,
+    `Chapters 74-310 and 75-191, Florida Statutes`) — needs a data
+    model change (separate `chapter` field, or a chapter-only marker)
+    that's larger than a tight regex fix.
+  - **Florida session laws** (`Chapters 74-310 and 75-191, Laws of
+Florida`) — needs a new `sessionLaw` citation type. Tracked
+    separately alongside California `Stats.`, Colorado `Sess. Laws`,
+    and Arkansas equivalents.
+
+  ### Tests
+
+  7 new tests under `Florida postfix + spelled-out-prefix statute forms
+(#356)` in `tests/extract/extractStatute.test.ts`:
+
+  - Postfix word-section: `section 812.035(7), Florida Statutes`
+  - Postfix §-section (no space): `§83.15, Florida Statutes`
+  - Postfix §-section with `Fla. Stat.`: `§120.68, Fla. Stat.`
+  - Spelled-out singular prefix: `Florida Statute 679.504(3)`
+  - Spelled-out plural prefix + §: `Florida Statutes §73.071(3)(b)`
+  - Regression: canonical `Fla. Stat. § 812.035(7)`
+  - Regression: abbreviated `F.S. § 812.035`
+
+  Full 2569-test suite passes; no regressions.
+
+  ### Related
+
+  Same family as #348 (Arizona), #349 (Arkansas), #352 (Colorado), #330
+  (Illinois pre-1993), #343 (Alabama 1940). Each state's statute code
+  has its own ordering, abbreviation, and connector conventions that
+  need explicit pattern coverage.
+
+- [#407](https://github.com/medelman17/eyecite-ts/pull/407) [`68657f0`](https://github.com/medelman17/eyecite-ts/commit/68657f01aa8909e79650aff8b39e63ccc7f1bf2b) Thanks [@medelman17](https://github.com/medelman17)! - feat: Georgia pre-1983 Code (`Code Ann. § 26-2101`, `Code § 27-2501`) (#358)
+
+  Georgia replaced its old "Code" / "Code of Georgia Annotated" with
+  OCGA in 1983. Modern Georgia opinions still cite the pre-1983 code
+  for statutory history. Bare `Code Ann.` (no state prefix) and bare
+  `Code` are unambiguously Georgia — other states use prefixed forms
+  (`Md. Code Ann.`, `Ind. Code Ann.`) which are handled by the
+  `named-code` / `abbreviated-code` patterns.
+
+  ### Fix
+
+  New `ga-pre-1983` tokenizer pattern + dedicated `extractGaPre1983`
+  extractor. The TWO-part hyphenated section format (`\d+-\d+` with
+  negative lookahead `(?![\d-])` so 3-part OCGA-style sections like
+  `15-11-26` don't partial-match) serves as the disambiguator. Listed
+  AFTER `abbreviated-code` so prefixed forms (`Ark. Code Ann.`,
+  `Idaho Code`, etc.) win span dedup.
+
+  Emits `code: "Code"` or `"Code Ann."`, `jurisdiction: "GA"`, and
+  the two-part section.
+
+  ### Scope notes
+
+  The following pieces of #358 are intentionally deferred:
+
+  - **Code parenthetical history** (`Code Ann. § 67-1316 (Ga. L.
+1958, p. 655; as amended)`) — the inner `(Ga. L. ...)`
+    session-law parenthetical needs separate parsing.
+  - **`Ga. L. YYYY, p. NNN` session laws** — pending unified
+    `sessionLaw` citation type.
+  - **CPA parenthetical cross-references** (`CPA § 17(a) (Code Ann.
+§ 81A-117(a))`) — same family.
+
+  ### Tests
+
+  6 new tests under `Georgia pre-1983 Code (#358)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - `Code Ann. § 26-2101` (bare with Ann.)
+  - `Code § 27-2501` (bare, no Ann.)
+  - `Code § 110-501` (longer title)
+  - Regression: Maryland `Md. Code Ann. § 10-105` (still MD)
+  - Regression: modern OCGA `OCGA § 15-11-26(b)` (3-part, no
+    partial match)
+  - Regression: `Ga. Code Ann. § 16-5-1` (3-part, exactly one
+    citation — named-code wins via span dedup)
+
+  Full 2694-test suite passes; no regressions.
+
+  ### Related
+
+  The bare-pattern approach mirrors the NY bare named-code form
+  (#386) but with a more constrained section-format disambiguator.
+  The 2-part vs. 3-part hyphenated-section distinction (`26-2101`
+  vs. `15-11-26`) is the same disambiguator used by the NM
+  bare-section pattern (#382) but in the opposite direction —
+  Georgia uses 2-part while NM uses 3-part.
+
+- [#369](https://github.com/medelman17/eyecite-ts/pull/369) [`fb94f03`](https://github.com/medelman17/eyecite-ts/commit/fb94f03494722f2d76e1aa516a7a6af72c95faa6) Thanks [@medelman17](https://github.com/medelman17)! - feat: extract Revised Laws of Hawaii (pre-1955) `RLH YYYY § N` citations (#359)
+
+  Hawaii compiled its statutes as `RLH 1935`, `RLH 1945`, and `RLH 1955`
+  before adopting the modern Hawaii Revised Statutes (HRS) in 1968.
+  Modern Hawaii opinions still cite RLH when referencing pre-1955
+  statutory history. A 50-opinion Hawaii sample showed these forms
+  weren't extracted.
+
+  ### Fix
+
+  New `rlh` tokenizer pattern in `src/patterns/statutePatterns.ts` and
+  dedicated `extractRlh` extractor at
+  `src/extract/statutes/extractRlh.ts`.
+
+  Tokenizer regex:
+
+  ```
+  \bRLH\s+(\d{4})\s+§\s+(<section-body>)
+  ```
+
+  The `RLH` abbreviation is distinctively Hawaii-only, so no
+  jurisdiction disambiguation is needed. Output:
+  `code: "RLH"`, `jurisdiction: "HI"`, `year` = edition (1935/1945/1955),
+  `section` (and `subsection` if present).
+
+  ### Scope notes
+
+  The dominant Hawaii citation form `HRS § N` already worked (handled by
+  the abbreviated-code pattern). This PR adds only the historical RLH
+  compilation. The following pieces of #359 are intentionally deferred:
+
+  - **HRS Chapter-only references** (`HRS Chapter 353E`) — needs a
+    `chapter`/section-less data model.
+  - **HRS multi-section lists** (`HRS §§ 705-500, 707-701(1) (1985)`)
+    — same multi-section scope deferred for other states.
+  - **Hawaii Session Laws** (`1927 Sess. L., Act 206, § 4, at 209`) —
+    needs a new `sessionLaw` citation type, tracked alongside the
+    unified-session-law work for CA / FL / CO / AR / GA.
+  - **Prose form with okina** (`Section X of the Hawai'i Revised
+Statutes`) — sibling to `extractColoradoProse` (#352); deferred.
+
+  ### Tests
+
+  4 new tests under `Revised Laws of Hawaii (pre-1955) (#359)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - Canonical `RLH 1935 § 2545`
+  - `RLH 1945 § 7186`
+  - Hyphenated section `RLH 1955 § 100-1`
+  - Regression: modern `HRS § 658-8 (1976)` continues to work
+
+  Full 2574-test suite passes; no regressions.
+
+  ### Related
+
+  Companion to #330 (pre-1993 Illinois Revised Statutes) and #343
+  (Code of Alabama 1940) — historical state-statute formats that
+  remain in active citation.
+
+- [#374](https://github.com/medelman17/eyecite-ts/pull/374) [`d02c1c3`](https://github.com/medelman17/eyecite-ts/commit/d02c1c3e3ebec79b6abc9999ada39037af16c055) Thanks [@medelman17](https://github.com/medelman17)! - feat: extract Idaho Code variants — `Idaho Code, § N`, postfix `Section N, Idaho Code`, and `I.C.` / `I. C.` abbreviations (#360)
+
+  Idaho courts cite the Idaho Code in five interchangeable forms within a
+  single opinion. Only the canonical `Idaho Code § N` and the universal
+  `Idaho Code section N` (#348) variants were extracted. A 50-opinion
+  Idaho sample produced 20+ Idaho Code misses — the dominant statutory
+  citation form.
+
+  ### Fixes
+
+  - **Comma form** (`Idaho Code, § 19-4906(c)`) — added optional comma
+    between code name and section connector in the `abbreviated-code`
+    tokenizer regex (`buildAbbreviatedCodeRegex` in
+    `src/data/stateStatutes.ts`) and the mirroring extractor regex
+    (`ABBREVIATED_RE` in `src/extract/statutes/extractAbbreviated.ts`).
+    Universal change; harmless to other states.
+  - **Postfix form** (`Section 23-908(4), Idaho Code`) — new
+    `idaho-postfix` tokenizer pattern (sibling to `florida-postfix`),
+    routed to dedicated `extractIdahoPostfix` extractor. Emits
+    `code: "Idaho Code"`, `jurisdiction: "ID"`.
+  - **`I.C. § N`** / **`I. C. § N`** — Idaho regex fragment now admits
+    `I\.?\s*C\.?` (canonical dotted + inter-letter spacing variants).
+    The stripped-form fallback in `findAbbreviatedCode` resolves
+    spacing variants to the canonical `I.C.` abbreviation.
+
+  ### Indiana / Idaho disambiguation
+
+  Bare `I.C.` (with dots) is the Idaho abbreviation; Indiana opinions
+  use the dotless `IC` or the spelled-out `Ind. Code` forms instead.
+  The Indiana regex fragment in `src/data/stateStatutes.ts` was
+  tightened from `I\.?C\.?` (which matched both `IC` and `I.C.`) to
+  literal `IC`, freeing the dotted form for Idaho. Indiana coverage of
+  `IC`, `Ind. Code`, `Indiana Code`, and `Burns Ind. Code Ann.` is
+  unchanged.
+
+  ### Scope notes
+
+  The following pieces of #360 are intentionally deferred:
+
+  - **Multi-section lists** (`I.C. §§ 61-624, 61-629`,
+    `Idaho Code §§ 19-4904 and 19-852`) — deferred across all states
+    pending a unified multi-section data-model decision.
+  - **Section ranges** (`I.C. §§ 16-1605-1607`) — ambiguous parse
+    (range vs. weird single section); deferred with the multi-section
+    work.
+
+  ### Tests
+
+  8 new tests under `Idaho Code variants (#360)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - `Idaho Code section 15-5-209`
+  - `Idaho Code section 19-2715(5)` with subsection
+  - `Idaho Code, § 19-4906(c)` (comma form)
+  - `Section 23-908(4), Idaho Code` (postfix form)
+  - `I.C. § 61-623` (canonical dotted)
+  - `I. C. § 61-623` (spaced)
+  - Regression: `IC 35-42-1-1` still routes to Indiana
+  - Regression: `Ind. Code § 35-42-1-1` still routes to Indiana
+
+  Full 2583-test suite passes; no regressions.
+
+  ### Related
+
+  Sibling to #356 (Florida postfix), #348 (universal word-section
+  connector), and #349 (Arkansas inter-letter spacing). Every state
+  with a dotted-abbreviation code (A.R.S., C.R.S., I.C., etc.) needs
+  both spacing tolerance and an audit against neighboring states that
+  might collide on the stripped form.
+
+- [#389](https://github.com/medelman17/eyecite-ts/pull/389) [`133bb7f`](https://github.com/medelman17/eyecite-ts/commit/133bb7f86ebeabfe588644c76df7ee1d5d892711) Thanks [@medelman17](https://github.com/medelman17)! - feat: Indiana pre-1976 Burns Statutes, `IC YYYY` year-edition mis-parse, uppercase `IND. CODE` (#363)
+
+  A 50-opinion Indiana sweep produced 15+ Indiana statute misses
+  covering three distinct failure modes:
+
+  1. **Pre-1976 Burns Indiana Statutes Annotated** — modern
+     Indiana opinions still cite this when referencing pre-1976
+     statutory text (`Burns Ind. Stat. Ann.`, `Burns' Indiana
+Statutes Annotated`, `Ind. Stat. Ann.`, `Ind. Ann. Stat.`).
+     All variants were entirely unrecognized.
+  2. **`IC YYYY` year-edition mis-parse** — `IC 1971, 35-13-4-4`
+     captured the year as section (silently substituting `1971`
+     for the actual section `35-13-4-4`), same family as the
+     year-edition mis-parses fixed for Colorado #352, Minnesota
+     #371, and Kansas #367.
+  3. **Uppercase `IND. CODE`** — Indiana case captions and some
+     treatises use the all-caps form, but the Indiana regex
+     fragment only matched the mixed-case `Ind. Code`.
+
+  ### Fixes
+
+  - **Pre-1976 Burns entry**: new separate Indiana entry in
+    `src/data/stateStatutes.ts` for the historical Burns Indiana
+    Statutes Annotated compilation. Fragment matches
+    `Burns(?:'s|')?\s+Ind(?:iana)?\.?\s+Stat(?:utes)?\.?
+(?:\s+Ann(?:otated)?\.?)?` plus the `Ind. Stat. Ann.` and
+    `Ind. Ann. Stat.` forms. Sibling to Arkansas's modern/pre-1987
+    split (#349).
+
+  - **Apostrophe-aware stripped lookup**: `findAbbreviatedCode`
+    in `src/data/knownCodes.ts` now strips apostrophes (along
+    with dots and whitespace) when computing the canonical
+    stripped-form key. This lets `Burns' Indiana Statutes
+Annotated` resolve to the apostrophe-less entry.
+
+  - **IC year-edition pattern**: new `ic-year-edition` tokenizer
+    pattern + dedicated `extractIcYearEdition` extractor. Captures
+    `IC 1971, 35-13-4-4` as `code: "IC"`, `year: 1971`,
+    `section: "35-13-4-4"`, `jurisdiction: "IN"`. The trailing
+    `, NN-N-N` separator distinguishes year-edition from bare
+    `IC NN-N-N` modern cites. Listed BEFORE `abbreviated-code`.
+
+  - **`IND. CODE` uppercase**: Indiana regex fragment extended
+    with `IND\.?\s+CODE` to accept the all-caps variant.
+
+  ### Behavior changes
+
+  - `IC 1971, 35-13-4-4` → `section="35-13-4-4"`, `year=1971`
+    (was: `section="1971"`)
+  - `Burns Ind. Stat. Ann., § 10-3401 (1956 Repl.)` →
+    `jurisdiction="IN"`, `year=1956`, `editionLabel="Repl."`
+    (was: not extracted)
+  - `Burns' Indiana Statutes Annotated § 48-702` →
+    `jurisdiction="IN"` (was: jurisdiction undefined; apostrophe
+    blocked stripped-form lookup)
+  - `IND. CODE 6-5-1-7` → `jurisdiction="IN"`, `section="6-5-1-7"`
+    (was: not extracted)
+  - Modern `IC 35-42-1-1` → unchanged
+
+  ### Scope notes
+
+  The following pieces of #363 are intentionally deferred:
+
+  - **Indiana Acts session laws** (`Indiana Acts 1905, ch. 129,
+§ 243`, `Acts 1929, ch. 172, § 49, p. 536`) — pending
+    unified `sessionLaw` citation type alongside session-law
+    formats for other states.
+
+  ### Tests
+
+  7 new tests under `Indiana pre-1976 Burns + IC year-edition +
+IND. CODE (#363)` in `tests/extract/extractStatute.test.ts`:
+
+  - Year-edition `IC 1971, 35-13-4-4`
+  - Uppercase `IND. CODE 6-5-1-7`
+  - Pre-1976 `Burns Ind. Stat. Ann., § 10-3401 (1956 Repl.)`
+  - Pre-1976 `Ind. Stat. Ann. § 28-1710 (Burns 1971)`
+  - Pre-1976 `Burns' Indiana Statutes Annotated § 48-702`
+    (apostrophe form)
+  - Pre-1976 `Ind. Ann. Stat. § 10-4709`
+  - Regression: bare modern `IC 35-42-1-1`
+
+  Full 2628-test suite passes; no regressions.
+
+  ### Related
+
+  Companion to #330 (pre-1993 Illinois Revised Statutes), #343
+  (Code of Alabama 1940), #359 (Revised Laws of Hawaii pre-1955),
+  #349 (Arkansas pre-1987 Statutes Annotated), and #373 (Nebraska
+  R.R.S. 1943) — historical state-statute compilations that
+  remain in active citation. The `IC YYYY` mis-parse fix joins
+  Colorado #352, Minnesota #371, and Kansas #367 in the
+  year-edition pattern family.
+
+- [#385](https://github.com/medelman17/eyecite-ts/pull/385) [`e7bd3f8`](https://github.com/medelman17/eyecite-ts/commit/e7bd3f827916a3716b4b1427cdd7508893717cda) Thanks [@medelman17](https://github.com/medelman17)! - fix: Massachusetts `G.L. c.` spacing variants, `sec.` connector, chapter-only, and spelled-out `General Laws` (#364)
+
+  A 50-opinion Massachusetts sample showed 15+ misses dominated by
+  the bare `G.L. c.` form — the canonical Massachusetts court style
+  since 1932. The `mass-chapter` pattern only matched the strict
+  `G.L. c. NNN, § NN` form, missing the common variants:
+
+  - `G.L.c. NNN` (no space between `G.L.` and `c.`)
+  - `G. L. c. NNN` (spaced abbreviation)
+  - `G.L. c. NNN, sec. NN` (`sec.` instead of `§`)
+  - `G.L. c. NNN` (chapter-only, no section)
+  - `General Laws c. NNN, § NN` (spelled-out without `Mass.`)
+
+  Beyond losing the statutory citation, the unrecognized text spilled
+  forward and corrupted case-name extraction for the **next**
+  citation (`G.L.c. 93A. Begelfer v. Najarian` →
+  `caseName="G.L.c. 93A. Begelfer v. Najarian"`).
+
+  ### Fixes
+
+  Two regexes updated in tandem — the `mass-chapter` tokenizer
+  pattern in `src/patterns/statutePatterns.ts` and the mirroring
+  `MASS_CHAPTER_RE` in `src/extract/statutes/extractNamedCode.ts`:
+
+  1. Spacing between corpus prefix and `c.` made optional
+     (`\s+(?:ch\.?|c\.?)` → `\s*(?:ch\.?|c\.?)`) so `G.L.c.`
+     matches.
+  2. Section connector accepts `§` / `§§` / `sec.` / `Sec.` /
+     `section` / `Section` alongside the canonical `§`.
+  3. Section portion now optional (chapter-only citations like
+     `G.L. c. 93A` are valid by themselves and need to extract
+     so the unrecognized text doesn't pollute the next citation's
+     case-name).
+  4. Corpus alternation extended with `General Laws` (spelled-out
+     without the `Mass.` prefix — common in Massachusetts
+     opinions which omit the home-state qualifier).
+
+  The extractor in `extractNamedCode.ts` defaults the section body
+  to empty string when missing — `code` (chapter), `jurisdiction:
+"MA"`, and `section: ""` for chapter-only citations.
+
+  ### Scope notes
+
+  The following pieces of #364 are intentionally deferred:
+
+  - **`St. YYYY, c. NNN, § N`** session laws (Acts/Statutes of
+    Massachusetts) — pending unified `sessionLaw` citation type.
+  - **`NNN CMR § N.NN`** (Code of Massachusetts Regulations) —
+    administrative regulations broadly deferred per #320.
+  - **`§ N.NN`** short-form regulation follow-on — short-form
+    citation problem, not extraction.
+
+  ### Tests
+
+  7 new tests under `Massachusetts G.L. c. spacing/sec./chapter-only
+variants (#364)` in `tests/extract/extractStatute.test.ts`:
+
+  - `G.L. c. 268A, sec. 25` (sec. connector)
+  - `G.L.c. 93A` (no space)
+  - `G. L. c. 93A` (spaced abbreviation, chapter-only)
+  - `G.L.c. 90, §34M`
+  - `G.L.c. 272, §99E(3)` (with subsection)
+  - `General Laws c. 94C, § 32A(a)` (spelled-out)
+  - Regression: `Mass. Gen. Laws c. 93A, § 2`
+
+  Full 2620-test suite passes; no regressions.
+
+- [#383](https://github.com/medelman17/eyecite-ts/pull/383) [`e1f392b`](https://github.com/medelman17/eyecite-ts/commit/e1f392bc0b832473a71c20358ea597052c8d02eb) Thanks [@medelman17](https://github.com/medelman17)! - fix: Kansas `K.S.A. YYYY Supp.` year-edition mis-parse + comma-section format (#367)
+
+  A 43-opinion Kansas sweep showed the same mis-parse 30+ times:
+  every `K.S.A. YYYY Supp. NN-NNN` cite had the year mis-captured as
+  the section number, silently substituting (e.g.) `2009` for the
+  actual section `44-501(d)(2)`. Separately, Kansas's
+  comma-section format `NN-N,NNN` (e.g. `K.S.A. 23-9,101`) was being
+  truncated at the comma, dropping `,101`.
+
+  ### Fixes
+
+  - **Year-edition pattern**: new `ksa-year-edition` tokenizer
+    pattern + dedicated `extractKsaYearEdition` extractor. Captures
+    `K.S.A. 2009 Supp. 44-501(d)(2)` as `code: "K.S.A."`,
+    `year: 2009`, `editionLabel: "Supp."`, `section: "44-501"`,
+    `subsection: "(d)(2)"`. The `Supp.` marker is optional —
+    bound-volume cites (`K.S.A. YYYY NN-NNN` without `Supp.`) also
+    match. Listed BEFORE `abbreviated-code` so this shape wins.
+
+  - **Comma-section format**: the universal section-body regex (in
+    `buildAbbreviatedCodeRegex` and `ABBREVIATED_RE`) now accepts
+    `,(?=\d)` — comma followed by digit — alongside the existing
+    alphanumeric/colon/slash/hyphen character class. So `K.S.A.
+23-9,101` parses as `section: "23-9,101"` rather than
+    truncating to `"23-9"`. The lookahead guard prevents a sentence
+    comma from being absorbed.
+
+  ### Behavior changes
+
+  - `K.S.A. 2009 Supp. 44-501(d)(2)` → `section="44-501"`,
+    `year=2009`, `editionLabel="Supp."` (was: `section="2009"`,
+    everything else dropped)
+  - `K.S.A. 23-9,101` → `section="23-9,101"` (was: `"23-9"`)
+  - `K.S.A. 44-501` → unchanged
+
+  ### Scope notes
+
+  The following pieces of #367 are intentionally deferred:
+
+  - **Kansas session laws** (`L. 1985, ch. 176, § 2`) — deferred
+    alongside the other session-law formats (`Ga. L.`, `Stats.`,
+    `Laws of Florida`, `Ind. Acts`, `PA YYYY`, `Sess. L.`) pending a
+    unified `sessionLaw` citation type.
+
+  ### Tests
+
+  5 new tests under `Kansas K.S.A. year-edition + comma-section
+(#367)` in `tests/extract/extractStatute.test.ts`:
+
+  - `K.S.A. 2009 Supp. 44-501(d)(2)` (year-edition + subsection)
+  - `K.S.A. 1988 Supp. 44-556` (year-edition without subsection)
+  - `K.S.A. 23-9,101` (comma-section)
+  - `K.S.A. 23-9,316`
+  - Regression: bare `K.S.A. 44-501`
+
+  Full 2608-test suite passes; no regressions.
+
+  ### Related
+
+  Year-edition is sibling to Minnesota `Minn. St. YYYY, § N` (#371
+  landed), Colorado `C.R.S. 1963` (#352 landed), and Nebraska
+  `R.R.S. 1943, Reissue YYYY` (#373 landed). The comma-section
+  character-class change is universal but Kansas-driven: no other
+  state uses the `NN-N,NNN` form so the impact is bounded.
+
+- [#384](https://github.com/medelman17/eyecite-ts/pull/384) [`b627091`](https://github.com/medelman17/eyecite-ts/commit/b627091ae7de0a40cba100c708ba06ab8619a239) Thanks [@medelman17](https://github.com/medelman17)! - feat: Maryland article-letter codes (`HG § 19-906`, `CP § 10-105`, `R.P. § 8-211`, ...) (#368)
+
+  Maryland reorganized its statutory code in 2002 into ~30 named
+  articles, each cited by a 2- or 3-letter prefix (`HG` for
+  Health-General, `CP` for Criminal Procedure, `R.P.` for Real
+  Property, etc.). This is the dominant Maryland court style for
+  every modern Maryland appellate opinion. A 38-opinion Maryland
+  sweep showed 25+ Maryland statute misses, dominated by these
+  article-letter forms — none were extracted.
+
+  ### Fix
+
+  New `md-article-letter` tokenizer pattern in
+  `src/patterns/statutePatterns.ts` + dedicated
+  `extractMdArticleLetter` extractor at
+  `src/extract/statutes/extractMdArticleLetter.ts`. The letter
+  prefixes are a closed enumeration matching the published
+  Maryland-Code article list:
+
+  ```
+  AB AG BO BR CJ CL CP CR CS EC ED EL EN ET FI FL GP HG HO HS
+  HU IN LE LG LU NR PS PUC R.P. RP SF SG TA TG TP TR
+  ```
+
+  Both dotted (`R.P.`) and dotless (`RP`) variants of Real Property
+  are accepted. The mandatory `§` connector disambiguates the
+  letter prefix from ordinary prose tokens that happen to appear at
+  sentence-initial position. Emits `code: <surface form>`,
+  `jurisdiction: "MD"`, `section`, `subsection` (preserves the
+  deep-subsection chains common in Maryland statutes:
+  `CP § 10-105(e)(4)(ii)(2)`).
+
+  ### Scope notes
+
+  The following pieces of #368 are intentionally deferred:
+
+  - **Long-form Bluebook** (`Md. Code Ann., Health-Gen. § 19-906`)
+    — the existing `named-code` regex breaks on the hyphen in
+    `Health-Gen.`; a one-character regex change there is sufficient
+    but deferred to a follow-up PR.
+  - **Pre-2002 numbered articles** (`Article 27, § 36`,
+    `Article 101, § 56(e)`) — requires a different pattern; some
+    collision risk with `Article` in other prose contexts.
+  - **Postfix prose** (`Section X of the Y Article`) — requires
+    enumerating the article-name forms.
+  - **Maryland session laws** (`1987 Md. Laws, ch. 670`,
+    `2001 Md. Laws, Chap. 10, § 2`) — pending unified
+    `sessionLaw` type.
+
+  ### Tests
+
+  6 new tests under `Maryland article-letter codes (#368)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - `HG § 19-906` (Health-General)
+  - `CP § 10-105(e)(4)(ii)(2)` (deep-subsection chain)
+  - `R.P. § 8-211` (dotted variant)
+  - `BR § 1-101` (Business Regulation)
+  - `FL § 5-1027` (Family Law — doesn't collide with Florida)
+  - Regression: `Fla. Stat. § 119.07` continues to route to Florida
+
+  Full 2614-test suite passes; no regressions.
+
+  ### Related
+
+  The Maryland article-letter code system is unique among U.S.
+  states — no other jurisdiction uses 2-letter prefixes as the
+  bare citation form. The pattern complements the existing
+  `named-code` family that handles `N.Y. Penal Law § N`,
+  `Cal. Civ. Code § N`, etc.
+
+- [#375](https://github.com/medelman17/eyecite-ts/pull/375) [`945fd11`](https://github.com/medelman17/eyecite-ts/commit/945fd1105b469d3fc70ae8b40bde751441a471cb) Thanks [@medelman17](https://github.com/medelman17)! - fix: Michigan `MSA` no longer mis-classified as Minnesota; bracket-subscript sections (`MSA 23.710[252]`) preserved (#370)
+
+  A 32-opinion Michigan sweep showed 100% (53/53) of `MSA` citations
+  mis-classified as Minnesota — `MSA` matched Minnesota's
+  `M\.?S\.?A\.?` regex fragment (which made dots optional). The
+  dotless `MSA` is in fact **Michigan Statutes Annotated** (Callaghan),
+  the historical companion to MCL; the dotted `M.S.A.` is the Bluebook
+  abbreviation for Minnesota Statutes Annotated.
+
+  ### Fixes
+
+  - **MSA disambiguation**: Minnesota's regex fragment in
+    `src/data/stateStatutes.ts` tightened from `M\.?S\.?A\.?`
+    to literal `M\.S\.A\.` (dots required). A new Michigan entry
+    for Michigan Statutes Annotated (`abbreviations: ["Mich. Stat.
+Ann.", "MSA"]`) lives alongside the existing MCL entry, so
+    the canonical `code` for `MSA` citations stays `MSA` rather
+    than being normalized to `MCL`.
+
+  - **Bracket-subscript sections**: section body in
+    `buildAbbreviatedCodeRegex` and `ABBREVIATED_RE`
+    (`extractAbbreviated.ts`) now accepts either `(...)` or
+    `[...]` as trailing subscript groups. MSA cites bracket
+    subscripts (`23.710[252]`) interchangeably with parens. The
+    `SUBSECTION_RE` in `parseBody.ts` was extended to split on
+    the first `[` as well, so `23.710[252]` parses as
+    `section="23.710"`, `subsection="[252]"`.
+
+  ### Behavior changes
+
+  - `MSA 23.710(254)` now emits `code: "MSA"`, `jurisdiction:
+"MI"` (was `code: "M.S.A."`, `jurisdiction: "MN"`).
+  - `MSA 23.710[252]` now extracts (was: dropped at tokenize
+    time because section body rejected brackets).
+  - `M.S.A. § 480A.06` continues to emit `jurisdiction: "MN"`
+    — the dotted form is the Bluebook standard for Minnesota.
+  - `Minn. Stat.` / `Minn. Stat. Ann.` continue to emit
+    `jurisdiction: "MN"`.
+  - `MCL` / `MCLA` / `M.C.L.` / `Mich. Comp. Laws` continue to
+    emit `jurisdiction: "MI"` with their respective canonical
+    code names.
+
+  ### Scope notes
+
+  The following pieces of #370 are intentionally deferred:
+
+  - **`Stat Ann 1963 Rev § 21.96`** — year-edition variant
+    format, sibling to the deferred `IC YYYY` (#363), `C.R.S.
+1963` (#352), `K.S.A. Supp.` (#367) family. Needs a unified
+    edition-year data model decision.
+  - **`PA 1901, No 206`** — Public Acts session laws.
+    Deferred alongside the other session-law formats (`Ga. L.`,
+    `Stats.`, `Laws of Florida`, etc.) pending a unified
+    `sessionLaw` citation type.
+  - **Prose forms** like `section 3110(3) of the Michigan
+no-fault statute` — needs document-level context to attach
+    a jurisdiction.
+
+  ### Tests
+
+  6 new tests under `Michigan MSA jurisdiction + bracket
+subscripts (#370)` in `tests/extract/extractStatute.test.ts`:
+
+  - `MSA 23.710(254)` → `code="MSA"`, `jurisdiction="MI"`
+  - `MSA 23.710[252]` → `subsection="[252]"`
+  - `Mich. Stat. Ann. § 23.710` → `jurisdiction="MI"`
+  - Regression: `M.S.A. § 480A.06` → `jurisdiction="MN"`
+  - Regression: `Minn. Stat. § 290.16` → `jurisdiction="MN"`
+  - Regression: `MCL 801.258` → `code="MCL"`,
+    `jurisdiction="MI"`
+
+  Full 2589-test suite passes; no regressions.
+
+  ### Related
+
+  Same disambiguation pattern as #360 (Idaho `I.C.` vs Indiana
+  `IC`): when two states share an abbreviated form, prefer the
+  formally-distinct surface (dots vs. no-dots, spacing) to
+  route to the more common modern usage. The Michigan side
+  follows the published source — Callaghan's MSA was the
+  modern Michigan abbreviation through the 1990s.
+
+- [#379](https://github.com/medelman17/eyecite-ts/pull/379) [`7f6965c`](https://github.com/medelman17/eyecite-ts/commit/7f6965c4d3c4d3daa51ac3faf1c21c54e22f12d5) Thanks [@medelman17](https://github.com/medelman17)! - feat: Minnesota `Minn. St.` short form, year-edition (`Minn. St. YYYY, § N`), and spelled-out `Minnesota Statutes` extraction (#371)
+
+  A 35-opinion Minnesota sweep produced 30+ Minnesota statute misses.
+  `Minn. St.` (without the `at`) is the canonical Minnesota court style
+  — distinct from the federal Bluebook's `Minn. Stat.` Modern Minnesota
+  opinions and pre-1980 historical opinions use the year-edition form
+  `Minn. St. 1971, § 176.66` to indicate which compilation was in
+  effect at the time of the events.
+
+  ### Fixes
+
+  - **Modern `Minn. St. N.NN`**: Minnesota regex fragment in
+    `src/data/stateStatutes.ts` extended to accept `Minn. St.` (short
+    form) alongside `Minn. Stat.` (Bluebook). The abbreviations array
+    adds `Minn. St.` so the canonical `code` field preserves the
+    surface form when extracted.
+
+  - **Spelled-out `Minnesota Statutes`**: fragment also matches the
+    spelled-out short title plus optional `Ann.` / `Annotated`
+    trailer. Pairs with the universal optional-comma + word "Section"
+    connector (added in #348/#360) to handle prose forms like
+    `Minnesota Statutes, Section 120.10`.
+
+  - **Year-edition `Minn. St. YYYY, § N`**: new `minn-st-year-edition`
+    tokenizer pattern (listed BEFORE `abbreviated-code` so it wins for
+    the year-edition shape) routed to dedicated extractor
+    `extractMinnStYearEdition`. Captures the edition year (1971 /
+    1974 / 1967 / etc.) into the `year` field and the actual section
+    into `section`. Emits `code: "Minn. Stat."` (normalized canonical).
+    The `, § N` separator is REQUIRED so we don't false-positive on
+    bare years that happen to follow `Minn. St.`
+
+  ### Behavior changes
+
+  - `Minn. St. 48.30` → `code="Minn. St."`, `jurisdiction="MN"`,
+    `section="48.30"` (was: not extracted)
+  - `Minn. St. 1971, § 176.66` → `code="Minn. Stat."`, `year=1971`,
+    `section="176.66"`, `jurisdiction="MN"` (was: section
+    mis-captured as "1971" by abbreviated-code, then not extracted at
+    all since `Minn. St.` wasn't in the fragment)
+  - `Minnesota Statutes, Section 120.10` → `code="Minnesota Statutes"`,
+    `section="120.10"`, `jurisdiction="MN"` (was: not extracted)
+  - `Minn. Stat. § 480A.06` continues to work (Bluebook form
+    unchanged)
+
+  ### Scope notes
+
+  The following pieces of #371 are intentionally deferred:
+
+  - **Subdivision parsing** (`, subd. 5`, `subds. 1 and 2`,
+    `Subdivision 2`): the section extracts correctly but the trailing
+    `subd.` text is dropped. Requires either a `subdivision` field on
+    `StatuteCitation` or an extension to the subsection chain
+    grammar.
+  - **Laws of Minnesota session laws** (`L. 1969, c. 570`): deferred
+    alongside the other session-law formats (`Ga. L.`, `Stats.`,
+    `Laws of Florida`, `Ind. Acts`, `PA YYYY`) pending a unified
+    `sessionLaw` citation type.
+
+  ### Tests
+
+  6 new tests under `Minnesota \`Minn. St.\` short form and
+  year-edition (#371)`in`tests/extract/extractStatute.test.ts`:
+
+  - Modern `Minn. St. 48.30`
+  - Criminal `Minn. St. 609.035`
+  - Year-edition `Minn. St. 1971, § 176.66`
+  - Year-edition with subsection `Minn. St. 1974, § 80A.14(n)`
+  - Spelled-out `Minnesota Statutes, Section 120.10`
+  - Regression: Bluebook `Minn. Stat. § 480A.06`
+
+  Full 2596-test suite passes; no regressions.
+
+  ### Related
+
+  Year-edition form is sibling to Colorado `C.R.S. 1963` (#352
+  landed), Indiana `IC 1971` (#363 deferred), Kansas `K.S.A. Supp.
+YYYY` (#367 deferred), and Stat Ann year-edition (#370 deferred).
+  Each state with a year-edition variant needs its own tokenizer
+  pattern because the year semantics differ: Colorado names the
+  compilation year in the abbreviation (`C.R.S. 1963` is the
+  compilation, not an edition of `C.R.S.`); Minnesota uses the
+  year-edition to mark which compilation was in force when the events
+  occurred (more like a parenthetical edition than a code-name
+  component).
+
+- [#380](https://github.com/medelman17/eyecite-ts/pull/380) [`478fdce`](https://github.com/medelman17/eyecite-ts/commit/478fdce8d298f7d41bf98c654cfc17b335e4d23d) Thanks [@medelman17](https://github.com/medelman17)! - feat: Montana Code Annotated postfix form (`§ N, MCA`) and edition-year parentheticals (#372)
+
+  Montana's canonical court style places the section before the code
+  name, with the code name `MCA` after a comma — same shape as
+  Florida's `§ N, Florida Statutes` and Idaho's `§ N, Idaho Code`. A
+  22-opinion Montana sweep produced 30+ MCA misses; every modern
+  Montana Supreme Court opinion uses this form.
+
+  ### Fix
+
+  New `mca-postfix` tokenizer pattern in `src/patterns/statutePatterns.ts`
+  and dedicated `extractMcaPostfix` extractor at
+  `src/extract/statutes/extractMcaPostfix.ts`. Listed BEFORE
+  `abbreviated-code` so the container-shape wins span dedup. Emits
+  `code: "MCA"`, `jurisdiction: "MT"`, `section`, and optional
+  `subsection`.
+
+  The trailing edition-year parenthetical (`MCA (1983)`) is attached
+  by the generic year-paren absorber in `extractCitations.ts` — no
+  extractor change needed.
+
+  ### Scope notes
+
+  The following pieces of #372 are intentionally deferred:
+
+  - **Abbreviated section continuation** (`§61-4-205 and -206, MCA`)
+    — the second section `-206` carries forward title/article from
+    the first (`61-4-`); deferred alongside the other multi-section
+    patterns.
+  - **Multi-section lists** in general — same deferral.
+
+  ### Tests
+
+  5 new tests under `Montana Code Annotated postfix form (#372)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - `§ 77-6-205(2), MCA`
+  - `Section 40-4-121(7)(a), MCA` (word "section")
+  - `§ 39-71-703, MCA (1983)` (edition year)
+  - Regression: `Mont. Code Ann. § 77-6-205`
+  - Regression: `MCA § 77-6-205`
+
+  Full 2597-test suite passes; no regressions.
+
+  ### Related
+
+  Third state-postfix pattern after Florida (#356) and Idaho (#360).
+  The pattern shape is now reusable: every state with a postfix
+  citation style follows the same template.
+
+- [#381](https://github.com/medelman17/eyecite-ts/pull/381) [`e30ffe9`](https://github.com/medelman17/eyecite-ts/commit/e30ffe995f14c15773c85f7c8a87eaadac0039c7) Thanks [@medelman17](https://github.com/medelman17)! - feat: Nebraska R.R.S. 1943 historical form + `Reissue YYYY` edition label (#373)
+
+  A 23-opinion Nebraska sweep produced 15+ Nebraska statute misses.
+  The modern `Neb. Rev. Stat. § N-NNNN` form worked, but two pieces
+  were broken:
+
+  1. The historical `R.R.S. 1943` form (Reissue Revised Statutes of
+     Nebraska, 1943) was completely unrecognized — Nebraska compiled
+     its statutes in 1943 and re-issues volumes on a rolling basis, so
+     pre-1990 Nebraska opinions cite this form heavily and modern
+     opinions still cite it when referencing statutory history.
+  2. The Nebraska-specific `(Reissue YYYY)` parenthetical was being
+     captured as a `year` but not labeled — it should populate
+     `editionLabel: "Reissue"` alongside the year (parallel to the
+     `Repl.` / `Supp.` / `Cum. Supp.` labels added in #349).
+
+  ### Fixes
+
+  - **R.R.S. 1943 pattern**: new `rrs-1943` tokenizer pattern in
+    `src/patterns/statutePatterns.ts` + dedicated `extractRrs1943`
+    extractor. Handles `section 38-901, R. R. S. 1943` (no Reissue)
+    and `§ 30-2806, R. R. S. 1943, Reissue 1975` (with Reissue).
+    Accepts inter-letter spacing in `R.R.S.` (common OCR variant).
+    Emits `code: "R.R.S. 1943"`, `jurisdiction: "NE"`, `section`,
+    and — when present — `year` (the Reissue year) plus
+    `editionLabel: "Reissue"`.
+
+  - **Reissue edition label**: `EDITION_LABEL_REGEX` in
+    `extractCitations.ts` extended to recognize `Reissue` as an
+    edition label (joining `Repl.`, `Supp.`, `Cum. Supp.`). The
+    generic year-paren absorber now correctly routes
+    `Neb. Rev. Stat. § 71-5016 (Reissue 2003)` to
+    `editionLabel: "Reissue"`, `year: 2003`.
+
+  ### Scope notes
+
+  The following pieces of #373 are intentionally deferred:
+
+  - **Section ranges** (`§§ 71-5016 to 71-5041 (Reissue 2003)`) —
+    multi-section deferred across all states.
+  - **Bare-section follow-on with Cum. Supp.** (`43-253 (Cum. Supp.
+2002)`) — this is a short-form citation problem (resolves to the
+    parent full-form citation), not an extraction problem.
+
+  ### Tests
+
+  4 new tests under `Nebraska R.R.S. 1943 + Reissue edition label
+(#373)` in `tests/extract/extractStatute.test.ts`:
+
+  - `section 38-901, R. R. S. 1943` (no Reissue)
+  - `§ 30-2806, R. R. S. 1943, Reissue 1975` (with Reissue year)
+  - `Neb. Rev. Stat. § 71-5016 (Reissue 2003)` (Reissue paren)
+  - Regression: bare modern `Neb. Rev. Stat. § 71-5016`
+
+  Full 2603-test suite passes; no regressions.
+
+  ### Related
+
+  Companion to #330 (pre-1993 Illinois Revised Statutes), #343 (Code
+  of Alabama 1940), and #359 (Revised Laws of Hawaii pre-1955) —
+  historical state-statute compilations that remain in active
+  citation. The Reissue edition label joins the family established
+  by #349 (Arkansas `Repl.` / `Supp.` / `Cum. Supp.`).
+
+- [#390](https://github.com/medelman17/eyecite-ts/pull/390) [`2dcb622`](https://github.com/medelman17/eyecite-ts/commit/2dcb622515b36ccc7cfb99c34f19abc899348317) Thanks [@medelman17](https://github.com/medelman17)! - fix: `I.R.C. § N` (Internal Revenue Code) no longer mis-classified as Ohio Revised Code (#376)
+
+  A 37-opinion New Jersey sweep showed 14 out of 14 (100%) `I.R.C.`
+  citations mis-routed to Ohio: the regex engine matched Ohio's
+  `R\.?C\.?` fragment starting at the second character of `I.R.C.`,
+  silently producing `code: "R.C.", jurisdiction: "OH"` and
+  truncating the federal IRC reference. Every federal-tax statutory
+  citation in the corpus was lost.
+
+  ### Fix
+
+  New `irc` tokenizer pattern in `src/patterns/statutePatterns.ts`
+
+  - dedicated `extractIrc` extractor at
+    `src/extract/statutes/extractIrc.ts`. Matches both the dotted
+    `I.R.C.` and dotless `IRC` forms. Listed BEFORE
+    `abbreviated-code` so the longer `I.R.C.` match wins span dedup
+    over Ohio's `R.C.` match at the same position. Output:
+    `code: "I.R.C."`, `jurisdiction: "US"`, `section`, `subsection`.
+    Dotless `IRC` is also normalized to canonical `"I.R.C."`.
+
+  ### Behavior changes
+
+  - `I.R.C. § 1367` → `code="I.R.C."`, `jurisdiction="US"` (was:
+    `code="R.C."`, `jurisdiction="OH"`)
+  - `I.R.C. § 1366(a)(1)` → with subsection
+  - `IRC § 1341` → `code="I.R.C."` (normalized)
+  - Ohio `Ohio Rev. Code Ann. § 2925.03` → unchanged
+  - Ohio `R.C. § 2925.03` → unchanged
+
+  ### Scope notes
+
+  The following pieces of #376 are intentionally deferred:
+
+  - **Prose `§ N et seq. of the Internal Revenue Code`** —
+    prose-form IRC references; needs a different pattern.
+  - **N.J.S.A. colon-shorthand** (`N.J.S.A. 54A:9-8(c) and :8-7`
+    — `:8-7` is title-carry-forward shorthand) — same family as
+    Montana `-206` form, deferred with multi-section work.
+
+  ### Tests
+
+  5 new tests under `Internal Revenue Code I.R.C. — federal, not
+Ohio (#376)` in `tests/extract/extractStatute.test.ts`:
+
+  - `I.R.C. § 1367`
+  - `I.R.C. § 1366(a)(1)` with subsection
+  - Bare `IRC § 1341` (normalized to I.R.C.)
+  - Regression: `Ohio Rev. Code Ann. § 2925.03`
+  - Regression: `R.C. § 2925.03`
+
+  Full 2636-test suite passes; no regressions.
+
+  ### Related
+
+  Same family of jurisdiction-routing bugs as #370 (Michigan MSA
+  → Minnesota) and #360 (Idaho I.C. → Indiana) — when a longer
+  abbreviation contains a shorter state-code abbreviation as a
+  suffix, the regex engine matches the shorter pattern at the
+  wrong position. The fix pattern (longer-match wins via container
+  shape + span dedup) is now established across these three
+  state-pair mis-classifications.
+
+- [#391](https://github.com/medelman17/eyecite-ts/pull/391) [`ef8ef80`](https://github.com/medelman17/eyecite-ts/commit/ef8ef807e50adf0dd7a002e9dd96934b168879a1) Thanks [@medelman17](https://github.com/medelman17)! - feat: New Hampshire `RSA chapter NNN-X` and `RSA ch. NNN-X` chapter-only form (#378)
+
+  NH uniquely cites the chapter number alone as a complete citation:
+  `RSA chapter 169-D`, `RSA ch. 458-C`, `RSA [chapter] 173-B`. The
+  colon-section form `RSA 511:2` was already handled by the
+  `abbreviated-code` family, but the chapter-only variants were
+  completely unrecognized.
+
+  ### Fix
+
+  New `rsa-chapter` tokenizer pattern in
+  `src/patterns/statutePatterns.ts` + dedicated `extractRsaChapter`
+  extractor at `src/extract/statutes/extractRsaChapter.ts`. Handles:
+
+  - `RSA chapter 169-D` (spelled `chapter`)
+  - `RSA ch. 458-C` (abbreviated `ch.`)
+  - `RSA [chapter] 173-B` (bracketed-chapter typographical
+    convention used by some NH opinions)
+
+  Emits `code: "RSA"`, `jurisdiction: "NH"`, with the chapter
+  identifier in `section` (NH treats the chapter as the citation's
+  identifier when no individual subsection is pin-cited).
+
+  ### Scope notes
+
+  The following pieces of #378 are intentionally deferred:
+
+  - **Roman-numeral subsections** (`RSA 511:2, XIX`) — the trailing
+    `, XIX` is dropped; preserving it requires a different
+    subsection-grammar handling.
+  - **Edition parentheticals** (`RSA chapter 458 (Supp. 2000)`,
+    `RSA chapter 165 (1977 and Supp. 1983)`) — single `Supp.` is
+    attached by the existing year-paren absorber; multi-edition
+    parentheticals (`(1977 and Supp. 1983)`) require additional
+    parsing.
+  - **Session laws** (`Laws 1979, 377:1`, `Laws 2011, 268:4`) —
+    pending unified `sessionLaw` citation type.
+
+  ### Tests
+
+  6 new tests under `New Hampshire RSA chapter form (#378)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - `RSA chapter 169-D`
+  - `RSA chapter 597`
+  - `RSA ch. 458-C` (abbreviated)
+  - `RSA [chapter] 173-B` (bracketed)
+  - Regression: colon-section `RSA 511:2`
+  - Regression: full Bluebook `N.H. Rev. Stat. Ann. § 511:2`
+
+  Full 2642-test suite passes; no regressions.
+
+  ### Related
+
+  NH is the only state whose primary citation form is
+  chapter-only (the chapter number functions as a complete
+  identifier — there's no implicit "section 1" assumption). This
+  makes the pattern simple and unambiguous: the `RSA` prefix is
+  distinctively NH.
+
+- [#394](https://github.com/medelman17/eyecite-ts/pull/394) [`aae0aeb`](https://github.com/medelman17/eyecite-ts/commit/aae0aebb3b26d72fdbc65b8ed0f14bc49e245a87) Thanks [@medelman17](https://github.com/medelman17)! - feat: New Mexico bare-section form `Section 32A-2-7(A)` / `§ 41-2-2` (#382)
+
+  NM opinions cite NMSA 1978 sections in a distinctive bare form
+  without the code abbreviation — the three-hyphen section format
+  (`\d[A-Z]?-\d[A-Z]?-\d[A-Z]?`) is unique among state codes and
+  serves as the disambiguator. A 50-opinion NM sweep produced
+  dozens of misses on these forms.
+
+  ### Fix
+
+  New `nm-bare-section` tokenizer pattern in
+  `src/patterns/statutePatterns.ts` + dedicated
+  `extractNmBareSection` extractor at
+  `src/extract/statutes/extractNmBareSection.ts`. Matches both
+  `§ 41-2-2` (symbol form) and `Section 32A-2-7(A)` (spelled-out
+  form). Listed AFTER `abbreviated-code` so that a full
+  `NMSA 1978, § 41-2-2` citation isn't double-counted (the
+  abbreviated-code container would otherwise tie with this
+  contained pattern, leaving a duplicate cite at the inner span).
+
+  Uses `(?<![A-Za-z])` lookbehind anchor instead of `\b` because
+  the pattern can start at `§` (non-word char where `\b` doesn't
+  apply).
+
+  Emits `code: "NMSA 1978"`, `jurisdiction: "NM"`, `section` with
+  the three-hyphen body, and `subsection` for any trailing
+  parenthetical (`(A)`, `(B)`, `(1)`).
+
+  ### Scope notes
+
+  The following pieces of #382 are intentionally deferred:
+
+  - **NMRA rule citations** (`Rule 16-110(C) NMRA`) — rule
+    citations broadly deferred per #295.
+  - **Public Law form** (`Public Law 567`) — used in NM opinions
+    for federal statutes; separate `publicLaw` family.
+
+  ### Tests
+
+  5 new tests under `New Mexico bare-section form (#382)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - `Section 32A-2-7(A)` (letter-prefix first part)
+  - `Section 22-10A-27(B)` (letter-prefix middle part)
+  - `§ 41-2-2` (symbol form, no subsection)
+  - Regression: `NMSA 1978, § 41-2-2` produces exactly one
+    citation (no duplicate from the contained inner span)
+  - Regression: Maryland `CP § 10-105(e)` (two-hyphen) doesn't
+    collide — the three-hyphen requirement keeps the patterns
+    disjoint
+
+  Full 2649-test suite passes; no regressions.
+
+- [#399](https://github.com/medelman17/eyecite-ts/pull/399) [`3c5793b`](https://github.com/medelman17/eyecite-ts/commit/3c5793be0177052e26b28ce5138766e9660d0e9c) Thanks [@medelman17](https://github.com/medelman17)! - feat: New York bare named-code form `Penal Law § N`, `Labor Law § N [3]` (#386)
+
+  NY opinions omit the `N.Y.` prefix when citing their own state's
+  codes — `Penal Law § 130.52` rather than `N.Y. Penal Law §
+130.52`. The disambiguator is the word `Law` after the code name
+  (other states use `Code`). NY also uses **bracket-subdivision**
+  form `[1]`, `[3-a]`, `[a]`, `[iv]` interchangeably with the
+  canonical paren form `(1)`. Both were unrecognized.
+
+  ### Fix
+
+  New `ny-bare-named-code` tokenizer pattern + dedicated
+  `extractNyBareLaw` extractor. Listed AFTER `named-code` so the
+  longer `N.Y. <Law> § N` form wins span dedup when the prefix is
+  present. The enumerated list of NY law names is closed; matching
+  is restricted to known NY codes so the false-positive risk is
+  bounded.
+
+  Section body accepts both `(...)` and `[...]` trailing groups,
+  so `Penal Law § 130.00 [3]` and `Labor Law § 220 [3-a]` parse
+  with the bracket subdivision in `subsection`.
+
+  Emits `code: "<Name> Law"` (e.g., `"Penal Law"`),
+  `jurisdiction: "NY"`.
+
+  Supported NY law names: Penal, Labor, Real Property, General
+  Business, General Obligations, General Municipal, Municipal
+  Home Rule, Criminal Procedure, Insurance, Executive, Judiciary,
+  Civil Practice, Civil Rights, Education, Public Health, Banking,
+  Domestic Relations, Environmental Conservation, Election, Social
+  Services, Estates Powers and Trusts, Vehicle and Traffic,
+  Surrogate's Court Procedure, Family Court, Court of Claims,
+  Workers' Compensation, Highway, Tax, Personal Property.
+
+  ### Scope notes
+
+  The following pieces of #386 are intentionally deferred:
+
+  - **CPLR / SCPA / N-PCL bare forms** (`CPLR 5601 (a)`, `SCPA
+1803`, `N-PCL 1411 [a]`) — these don't follow the `<Name>
+Law` pattern; need their own bare patterns.
+  - **`CPLR article 78`** — article-based citation, separate
+    parse.
+  - **`L YYYY, ch NNN` session laws** — pending unified
+    `sessionLaw` citation type.
+  - **Town Code / municipal codes** — broadly out of scope.
+
+  ### Tests
+
+  5 new tests under `New York bare named-code + bracket
+subdivisions (#386)` in `tests/extract/extractStatute.test.ts`:
+
+  - Bare `Penal Law § 130.52`
+  - `Penal Law § 130.00 [3]` (bracket subdivision)
+  - `Labor Law § 220 [3-a]` (bracket with hyphen-letter)
+  - `General Municipal Law § 874`
+  - Regression: `N.Y. Penal Law § 130.52` (no duplicate)
+
+  Full 2665-test suite passes; no regressions.
+
+  ### Related
+
+  Companion to issue #12 (state bare-statute) for the NY laws
+  that are commonly cited without prefix. The bracket-subdivision
+  fix builds on the bracket-section work in #370 (MSA
+  `23.710[252]`) — brackets are now accepted in three contexts:
+  abbreviated-code section body, parseBody subsection chain, and
+  NY named-code section body.
+
+- [#396](https://github.com/medelman17/eyecite-ts/pull/396) [`218eadb`](https://github.com/medelman17/eyecite-ts/commit/218eadb04dadef42a8fad3481fe9e6e49cf5fa34) Thanks [@medelman17](https://github.com/medelman17)! - feat: Oregon `ORS chapter NN` chapter-only form (#387)
+
+  The modern `ORS NNN.NNN` section form was already handled by
+  `abbreviated-code`, but the chapter-only reference `ORS chapter
+34` (treating the chapter number as a complete citation, like NH
+  RSA and OH R.C.) was unrecognized.
+
+  ### Fix
+
+  New `ors-chapter` tokenizer pattern + dedicated
+  `extractOrsChapter` extractor. Emits `code: "ORS"`,
+  `jurisdiction: "OR"`, with the chapter ID in `section` (matching
+  the convention from NH `rsa-chapter` #378 and OH `oh-chapter`
+  #388).
+
+  ### Scope notes
+
+  The following pieces of #387 are intentionally deferred:
+
+  - **Oregon Laws session laws** (`Or Laws 2013, ch 25, § 1`,
+    `Oregon Laws 1981, chapter 784`) — pending unified
+    `sessionLaw` citation type.
+  - **Oregon municipal codes** (`Cornelius City Code section
+10.40.030`, `CCC section 10.40.030`) — municipal codes
+    broadly out of scope.
+
+  ### Tests
+
+  2 new tests under `Oregon ORS chapter-only form (#387)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - `ORS chapter 34` (chapter-only)
+  - Regression: `ORS 131.315(7)` (modern form)
+
+  Full 2662-test suite passes; no regressions.
+
+  ### Related
+
+  Third chapter-only state pattern after NH `rsa-chapter` (#378)
+  and OH `oh-chapter` (#388). The shape is becoming a reusable
+  template for states whose statute compilations support
+  chapter-level references.
+
+- [#395](https://github.com/medelman17/eyecite-ts/pull/395) [`4bc5430`](https://github.com/medelman17/eyecite-ts/commit/4bc5430da1f909928cf5ffeab7a0d35a7b128a00) Thanks [@medelman17](https://github.com/medelman17)! - fix: Ohio `R. C.` (spaced) and `R.C. Chapter N` (chapter-only) forms (#388)
+
+  Ohio's canonical statutory abbreviation is `R.C.` (Revised Code),
+  but the spelled-out form `R. C.` with a space between `R.` and
+  `C.` is the dominant form in court-published Ohio opinions — more
+  common than the no-space `R.C.` variant. eyecite-ts didn't
+  recognize the spaced form, and the `R. C. Chapter NNNN`
+  chapter-only variant was also missing for both spacings.
+
+  ### Fixes
+
+  - **Spaced `R. C.`**: Ohio regex fragment in
+    `src/data/stateStatutes.ts` now admits inter-letter spacing
+    (`R\.?\s*C\.?` instead of `R\.?C\.?`). The federal Internal
+    Revenue Code (`I.R.C.`, #376) has its own dedicated pattern
+    with higher priority, so the `I.` prefix won't trigger Ohio.
+  - **Canonical normalization**: Ohio's abbreviations array was
+    reordered so `R.C.` (Bluebook standard, with dots) is the last
+    element and becomes the canonical short form. Spaced variants
+    (`R. C.`, `R . C .`) and dotless variants (`RC`) all resolve
+    to `R.C.` via the stripped-form fallback.
+  - **Chapter form**: new `oh-chapter` tokenizer pattern +
+    dedicated `extractOhChapter` extractor handles both spacings
+    of `R.C. Chapter N` / `R. C. Chapter N`. The chapter
+    identifier goes into the `section` field (matching the
+    convention established by the NH `rsa-chapter` extractor for
+    chapter-only citations).
+
+  ### Behavior changes
+
+  - `R. C. 713.15` → `code="R.C."`, `jurisdiction="OH"`,
+    `section="713.15"` (was: not extracted)
+  - `R. C. 5321.15(C)` → with subsection `(C)`
+  - `R. C. Chapter 1702` → `section="1702"` (was: not extracted)
+  - `R.C. Chapter 4509` → `section="4509"` (was: not extracted)
+  - `R.C. 5302.20` → unchanged
+  - `I.R.C. § 1367` → unchanged (still federal, not Ohio)
+
+  ### Scope notes
+
+  The following pieces of #388 are intentionally deferred:
+
+  - **Prose form** (`section 120.33 of the Revised Code`) — needs
+    a different pattern; multiple states have similar prose forms.
+
+  ### Tests
+
+  6 new tests under `Ohio R. C. spacing variant + R.C. Chapter
+form (#388)` in `tests/extract/extractStatute.test.ts`:
+
+  - Spaced `R. C. 713.15`
+  - Spaced `R. C. 5321.15(C)` with subsection
+  - Spaced chapter `R. C. Chapter 1702`
+  - No-space chapter `R.C. Chapter 4509`
+  - Regression: `R.C. 5302.20`
+  - Regression: federal `I.R.C. § 1367` still routes to federal
+
+  Full 2655-test suite passes; no regressions.
+
+  ### Related
+
+  Spacing-tolerance fix follows the pattern established by Arizona
+  A.R.S. (#348), Arkansas (#349), Hawaii I.C. → Idaho (#360), and
+  Indiana → Idaho disambiguation (#360). Chapter-only form mirrors
+  NH `rsa-chapter` (#378).
+
+- [#403](https://github.com/medelman17/eyecite-ts/pull/403) [`d213ecc`](https://github.com/medelman17/eyecite-ts/commit/d213eccf4eda12b32d24a4d8ddb450922c7a7a39) Thanks [@medelman17](https://github.com/medelman17)! - fix: Pennsylvania `P. S.` / `Pa. C. S.` (spaced) variants normalize to canonical forms (#392)
+
+  Pennsylvania court opinions interchange `P.S.` / `P. S.` (Purdon's
+  Statutes) and `Pa.C.S.` / `Pa. C. S.` / `Pa. C.S.` (Consolidated
+  Statutes) freely. The spaced variants were unrecognized.
+
+  ### Fix
+
+  - **Pennsylvania consolidated** (Pa.C.S.) fragment relaxed from
+    `Pa\.?\s*C\.?S\.?A?\.?` to `Pa\.?\s*C\.?\s*S\.?\s*A?\.?`,
+    allowing inter-letter whitespace.
+  - **Pennsylvania unconsolidated** (P.S.) fragment relaxed from
+    `P\.?S\.?` to `P\.?\s*S\.?`.
+  - **Canonical reordering**: abbreviations arrays reordered so
+    Bluebook canonical forms (`Pa.C.S.`, `P.S.`) are the last
+    elements. Spaced and dotless variants normalize to them via
+    the stripped-form fallback.
+
+  ### Behavior changes
+
+  - `75 P. S. § 1037` → `code="P.S."`, `title=75`,
+    `section="1037"` (was: not extracted)
+  - `42 Pa. C. S. § 7341` → `code="Pa.C.S."` (was: not extracted)
+  - `40 P.S. § 991.1801`, `42 Pa.C.S. § 7341` → unchanged
+
+  ### Scope notes
+
+  The following pieces of #392 are intentionally deferred:
+
+  - **`Act of [Date], P.L. NNN, No. NNN, § N` session laws** —
+    pending unified `sessionLaw` citation type.
+  - **Named-act references** (`Section 7(1) of the Wills Act of
+1947`, `Section 319 of the Workmen's Compensation Act`) —
+    prose form; matches named-act registry rather than abbreviated
+    code.
+  - **OCR variant** (`77 P:S. §671` — colon for period) — OCR
+    cleanup belongs upstream.
+
+  ### Tests
+
+  4 new tests under `Pennsylvania P.S. / Pa.C.S. spacing variants
+(#392)` in `tests/extract/extractStatute.test.ts`:
+
+  - Spaced `75 P. S. § 1037` (canonicalized to P.S.)
+  - Spaced `42 Pa. C. S. § 7341` (canonicalized to Pa.C.S.)
+  - Regression: `40 P.S. § 991.1801`
+  - Regression: `42 Pa.C.S. § 7341`
+
+  Full 2689-test suite passes; no regressions.
+
+  ### Related
+
+  Spacing-tolerance fix is the fifth in this family: Arizona
+  A.R.S. (#348), Ohio R.C. (#388), Tennessee T.C.A. (#398),
+  South Carolina S.C. Code Ann. (#397), and now Pennsylvania
+  P.S./Pa.C.S. Combined with the canonical reordering, the pattern
+  established for these states is now used routinely.
+
+- [#402](https://github.com/medelman17/eyecite-ts/pull/402) [`a0fef81`](https://github.com/medelman17/eyecite-ts/commit/a0fef81ae1e361c103ab34ccf0869868914bfb62) Thanks [@medelman17](https://github.com/medelman17)! - feat: Rhode Island General Laws 1956 `G.L. 1956 (1969 Reenactment) §N-N-N` (#393)
+
+  RI uses `G.L. 1956` (General Laws of 1956) as its modern
+  statutory code, with an optional `(YYYY Reenactment)`
+  parenthetical indicating which reenactment volume was in
+  effect. The `1956` literal year is the disambiguator from
+  Massachusetts `G.L. c. NNN` (chapter form).
+
+  ### Fix
+
+  New `rigl-1956` tokenizer pattern + dedicated `extractRigl1956`
+  extractor. Captures both the canonical full form
+  (`G.L. 1956 (1969 Reenactment) §11-23-1`) and the simpler forms
+  (`G.L. 1956 §N-N-N`, `G. L. 1956, §N-N-N`). The reenactment
+  year goes into the `year` field and `editionLabel` is set to
+  `"Reenactment"` when present.
+
+  ### Scope notes
+
+  The following pieces of #393 are intentionally deferred:
+
+  - **Bare-section follow-ons** (`§45-32-22`, `§11-8-3`) —
+    short-form citation problem, not extraction.
+  - **Bare-section ranges** (`§§45-32-11 to 45-32-21`,
+    `§§45-32-4 and 45-32-11`) — multi-section deferred across all
+    states.
+  - **`(YYYY Reenactment)` as bare parenthetical** after a
+    bare-section follow-on — would need standalone-paren
+    handling.
+  - **`P.L. YYYY, ch. NNN` public laws** — pending unified
+    `sessionLaw` citation type.
+  - **OCR variant** (`§6A-9-307(l)` — `l` is misread `1`) —
+    edge case; OCR cleanup belongs upstream.
+
+  ### Tests
+
+  5 new tests under `Rhode Island General Laws 1956 (#393)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - `G.L. 1956 (1969 Reenactment) §11-23-1` (full form)
+  - `G. L. 1956 (1969 Reenactment) §9-21-2` (spaced)
+  - `G. L. 1956, §10-7-1` (no reenactment paren)
+  - `G.L. 1956 §11-23-1` (no comma, no reenactment)
+  - Regression: Massachusetts `G.L. c. 93A` still routes to MA
+
+  Full 2684-test suite passes; no regressions.
+
+  ### Related
+
+  The disambiguation pattern (year literal vs. chapter marker)
+  follows the precedent established by Colorado `C.R.S. 1963`
+  (#352), Alabama `Code 1940` (#343), Hawaii `RLH 1935` (#359),
+  Nebraska `R.R.S. 1943` (#373). Every state with a 19xx-year
+  compilation has its own pattern with the year embedded.
+
+- [#401](https://github.com/medelman17/eyecite-ts/pull/401) [`12d45a4`](https://github.com/medelman17/eyecite-ts/commit/12d45a49dd5d6cd19717c512dc630d33b610abdd) Thanks [@medelman17](https://github.com/medelman17)! - fix: South Carolina `S.C.Code Ann.` (no space) routing + canonical normalization (#397)
+
+  S.C. opinions interchange `S.C.Code Ann.` (no space between `S.C.`
+  and `Code`) with `S.C. Code Ann.` (with space). The no-space form
+  was unrecognized — and worse, the NM bare-section pattern (#382)
+  was silently capturing the `§ N-N-N` suffix and mis-routing every
+  no-space SC citation to **New Mexico** jurisdiction.
+
+  ### Fix
+
+  - **SC fragment**: `\s+` between `S.C.` and `Code` relaxed to
+    `\s*` so the no-space form matches the SC container pattern.
+    Once the container matches, span dedup correctly subsumes the
+    NM bare-section pattern's contained match on `§ N-N-N`.
+  - **Canonical `S.C. Code Ann.`**: SC abbreviations reordered so
+    `S.C. Code Ann.` (Bluebook standard with `Ann.`) is the last
+    element / canonical. The no-space `S.C.Code Ann.` form now
+    normalizes to it via the stripped-form fallback.
+
+  ### Behavior changes
+
+  - `S.C.Code Ann. § 42-11-70 (1985)` → `code="S.C. Code Ann."`,
+    `jurisdiction="SC"`, `year=1985` (was: mis-routed to NM)
+  - `S.C.Code Ann. § 42-15-40 (Supp. 1998)` →
+    `year=1998`, `editionLabel="Supp."` (Supp. label was already
+    recognized from #349)
+  - `S.C.Code Ann. section 38-53-100(D)` → SC (was: NM)
+  - `S.C. Code § 20-8-130(B)(1)` → unchanged
+  - `S.C. Code Ann. § 42-11-70` → unchanged
+  - `Section 32A-2-7(A)` (bare NM form) → unchanged (still NM)
+
+  ### Scope notes
+
+  The following pieces of #397 are intentionally deferred:
+
+  - **Postfix prose** (`section 20-3-130 of the South Carolina
+Code`) — prose form needs a different pattern.
+  - **Bare-section follow-ons** (`§ 38-77-160`,
+    `section 38-77-142`) — short-form citation problem, not
+    extraction.
+
+  ### Tests
+
+  6 new tests under `South Carolina S.C.Code Ann. spacing variants
+(#397)` in `tests/extract/extractStatute.test.ts`:
+
+  - `S.C.Code Ann. § 42-11-70 (1985)` (no-space, year paren)
+  - `S.C.Code Ann. § 42-15-40 (Supp. 1998)` (Supp.
+    editionLabel)
+  - `S.C.Code Ann. section 38-53-100(D)` (word section)
+  - Regression: `S.C. Code § 20-8-130(B)(1)` (spaced, no Ann.)
+  - Regression: `S.C. Code Ann. § 42-11-70`
+  - Regression: NM `Section 32A-2-7(A)` still routes to NM
+
+  Full 2677-test suite passes; no regressions.
+
+  ### Related
+
+  The NM mis-routing problem demonstrates the importance of
+  keeping container-shape patterns broad enough to match all
+  state-style variants. The fix pattern (relax whitespace
+  requirements in state fragments + reorder canonical
+  abbreviations) follows the precedent established by Ohio (#388)
+  and Tennessee (#398).
+
+- [#400](https://github.com/medelman17/eyecite-ts/pull/400) [`68f17ce`](https://github.com/medelman17/eyecite-ts/commit/68f17cec7639ff32dda10b0cf166768b7d07c385) Thanks [@medelman17](https://github.com/medelman17)! - fix: Tennessee `T.C.A.` variants — `sec.` connector, postfix form, dotless `TCA` (#398)
+
+  Tennessee opinions interchange every stylistic variant of the
+  T.C.A. abbreviation. Most worked already, but the `sec.` / `Sec.`
+  section connector (universal across multiple states) and the
+  postfix `§ N, T.C.A.` form were unrecognized.
+
+  ### Fixes
+
+  - **Universal `sec.` / `Sec.` section connector**: the section
+    connector in `buildAbbreviatedCodeRegex` and `ABBREVIATED_RE`
+    now accepts `sec.` / `Sec.` alongside `§`, `§§`, and the
+    spelled-out word `section(s)` / `Section(s)`. This is a
+    Tennessee-driven change but benefits any state that
+    interchanges these forms.
+  - **T.C.A. postfix pattern**: new `tca-postfix` tokenizer +
+    dedicated `extractTcaPostfix` extractor for `§ 39-904, T.C.A.`
+    Sibling to florida-postfix, idaho-postfix, mca-postfix.
+  - **Canonical `T.C.A.`**: Tennessee abbreviations array
+    reordered so `T.C.A.` (Bluebook standard with dots) is the
+    last element / canonical. The dotless `TCA` and spaced variants
+    now normalize to `T.C.A.` via the stripped-form fallback.
+
+  ### Behavior changes
+
+  - `T.C.A. sec. 40-2407` → extracted (was: not extracted)
+  - `T.C.A. Sec. 40-3809` → extracted
+  - `TCA sec. 40-2528` → `code="T.C.A."` (canonicalized)
+  - `§ 39-904, T.C.A.` (postfix) → extracted
+  - `T.C.A. § 39-2404` → unchanged
+  - `T.C.A. 40-2020` (no connector) → unchanged
+
+  ### Scope notes
+
+  The following pieces of #398 are intentionally deferred:
+
+  - **Multi-section lists** (`T.C.A. Secs. 40-3806, 40-3814, and
+40-3818`) — multi-section deferred across all states.
+  - **OCR variant `TOA`** (TCA misread) — edge case; OCR
+    cleanup belongs upstream of citation extraction.
+
+  ### Tests
+
+  6 new tests under `Tennessee T.C.A. variants + postfix (#398)`
+  in `tests/extract/extractStatute.test.ts`:
+
+  - `T.C.A. sec. 40-2407` (sec. connector)
+  - `T.C.A. Sec. 40-3809` (capital Sec.)
+  - `TCA sec. 40-2528` (dotless, canonicalized)
+  - `§ 39-904, T.C.A.` (postfix)
+  - Regression: `T.C.A. § 39-2404`
+  - Regression: `Tenn. Code Ann. § 39-2404`
+
+  Full 2671-test suite passes; no regressions.
+
+  ### Related
+
+  Universal `sec.` connector follows the pattern established by
+  the universal `Section`/`section` word connector (#348). Postfix
+  form is the fourth state-postfix pattern after Florida (#356),
+  Idaho (#360), and Montana (#372). The canonicalization
+  reordering matches the Ohio pattern (#388).
+
 ## 0.15.6
 
 ### Patch Changes
