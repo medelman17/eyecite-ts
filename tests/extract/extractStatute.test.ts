@@ -2540,4 +2540,54 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Pennsylvania P.S. / Pa.C.S. spacing variants (#392)", () => {
+    it("extracts spaced `75 P. S. § 1037` (canonicalized to P.S.)", () => {
+      const cites = extractCitations("See 75 P. S. § 1037.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("P.S.")
+        expect(cites[0].jurisdiction).toBe("PA")
+        expect(cites[0].title).toBe(75)
+        expect(cites[0].section).toBe("1037")
+      }
+    })
+
+    it("extracts spaced `42 Pa. C. S. § 7341` (canonicalized to Pa.C.S.)", () => {
+      const cites = extractCitations("See 42 Pa. C. S. § 7341.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Pa.C.S.")
+        expect(cites[0].jurisdiction).toBe("PA")
+        expect(cites[0].title).toBe(42)
+        expect(cites[0].section).toBe("7341")
+      }
+    })
+
+    it("regression: `40 P.S. § 991.1801` (no space) continues to work", () => {
+      const cites = extractCitations("See 40 P.S. § 991.1801.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("P.S.")
+        expect(cites[0].section).toBe("991.1801")
+      }
+    })
+
+    it("regression: `42 Pa.C.S. § 7341` (no space) continues to work", () => {
+      const cites = extractCitations("See 42 Pa.C.S. § 7341.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Pa.C.S.")
+        expect(cites[0].section).toBe("7341")
+      }
+    })
+  })
 })
