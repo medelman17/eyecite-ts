@@ -50,6 +50,23 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // New Hampshire Revised Statutes Annotated — chapter form. NH uniquely
+    // cites the chapter number alone (no section) as a valid citation:
+    // `RSA chapter 169-D`, `RSA ch. 458-C`, `RSA [chapter] 173-B`. The
+    // bracketed-chapter form (`[chapter]`) is a typographical convention
+    // used by some NH opinions to indicate the chapter token was inserted
+    // by the reporter rather than original text. The colon-section form
+    // (`RSA 511:2`) is already handled by `abbreviated-code`. #378
+    //
+    // Captures: (1) chapter body — digits + optional hyphen-letter suffix
+    // (NH uses forms like `169-D`, `458-C`).
+    id: "rsa-chapter",
+    regex: /\bRSA\s+(?:\[chapter\]|chapter|ch\.?)\s+(\d+(?:-[A-Z])?)/g,
+    description:
+      'New Hampshire RSA chapter-only form: "RSA chapter 169-D" / "RSA ch. 458-C" — #378',
+    type: "statute",
+  },
+  {
     id: "prose",
     regex: /\b[Ss]ection\s+(\d+[A-Za-z0-9-]*(?:\([^)]*\))*)\s+of\s+title\s+(\d+)\b/g,
     description:

@@ -36,6 +36,7 @@ import { extractNamedCode } from "./statutes/extractNamedCode"
 import { extractProse } from "./statutes/extractProse"
 import { extractRlh } from "./statutes/extractRlh"
 import { extractRrs1943 } from "./statutes/extractRrs1943"
+import { extractRsaChapter } from "./statutes/extractRsaChapter"
 
 /**
  * Legacy inline parser for unknown patterns.
@@ -158,6 +159,8 @@ export function extractStatute(
       return extractRlh(token, transformationMap)
     case "rrs-1943":
       return extractRrs1943(token, transformationMap)
+    case "rsa-chapter":
+      return extractRsaChapter(token, transformationMap)
     default:
       // unknown patterns use legacy parser
       return extractLegacy(token, transformationMap)
