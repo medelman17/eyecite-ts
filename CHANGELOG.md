@@ -1,5 +1,256 @@
 # eyecite-ts
 
+## 0.15.8
+
+### Patch Changes
+
+- [#409](https://github.com/medelman17/eyecite-ts/pull/409) [`dc75d7b`](https://github.com/medelman17/eyecite-ts/commit/dc75d7b3503b645b4173547f7024568defb74837) Thanks [@medelman17](https://github.com/medelman17)! - feat: Virginia bare `Code § 18.2-308.2` form + tighten Georgia pre-1983 disambiguator (#405)
+
+  Virginia uses a bare `Code §` form (no `Va.` prefix) as its
+  canonical statutory citation style. A 50-opinion VA sample
+  produced 30+ misses — the largest single-state miss volume in
+  the sweep series.
+
+  ### Fix
+
+  - **New `va-bare-code` tokenizer pattern + extractor**: matches
+    bare `Code § N.N-NNN` and the explicit `Virginia Code §
+N.N-NNN`. Output: `code: "Code"` / `"Virginia Code"`,
+    `jurisdiction: "VA"`.
+
+  - **Disambiguator from Georgia pre-1983**: Virginia sections
+    always include at least one PERIOD (`18.2-308.2`,
+    `20-107.3(D)`, `8.01-581.17`), while Georgia pre-1983 sections
+    never do (`26-2101`, `27-2501`, `110-501`). The VA pattern
+    matches `(?:\d+\.\d+-\d+(?:\.\d+)?|\d+-\d+\.\d+)` — either
+    title has period or section has period (or both).
+
+  - **Tighten Georgia pre-1983 pattern**: added negative
+    lookahead `(?!\.\d)` after the section so Virginia sections
+    with period-followed-by-digit don't mis-route to Georgia.
+    Sentence-end periods (`Code § 26-2101.`) still allow
+    Georgia matching because `(?!\.\d)` only rejects when period
+    is followed by digit. Fixes a regression introduced with the
+    Georgia pre-1983 pattern (#358).
+
+  ### Behavior changes
+
+  - `Code § 18.2-308.2` → `code="Code"`, `jurisdiction="VA"`
+    (was: not extracted)
+  - `Code § 46.2-1571` → VA (was: not extracted)
+  - `Code § 20-107.3(D)` → VA, `subsection="(D)"` (was:
+    mis-classified as GA with truncated section "20-107")
+  - `Virginia Code § 8.01-581.17` → VA (was: not extracted)
+  - `Code § 27-2501` → unchanged (GA, no periods in section)
+  - `Va. Code Ann. § 18.2-308.2` → unchanged (VA via named-code)
+
+  ### Scope notes
+
+  The following pieces of #405 are intentionally deferred:
+
+  - **Bare-section follow-on** (`§ 8.01-20.1`) — short-form
+    citation problem, not extraction.
+
+  ### Tests
+
+  6 new tests under `Virginia bare Code form (#405)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - `Code § 18.2-308.2` (canonical VA)
+  - `Code § 46.2-1571` (period in title only)
+  - `Code § 20-107.3(D)` (period in section only, with subsection)
+  - `Virginia Code § 8.01-581.17` (explicit prefix)
+  - Regression: Georgia `Code § 27-2501` still routes to GA
+  - Regression: `Va. Code Ann. § 18.2-308.2` continues to work
+
+  Full 2701-test suite passes; no regressions.
+
+  ### Related
+
+  This is the largest-impact fix in the bare-code family. The
+  period-vs-no-period disambiguator is a clean structural
+  distinction that should be robust against false positives in
+  either direction. Pairs the Georgia pre-1983 pattern (#358)
+  with a corresponding Virginia pattern, with disjoint section
+  formats keeping them mutually exclusive.
+
+- [#411](https://github.com/medelman17/eyecite-ts/pull/411) [`9d9971d`](https://github.com/medelman17/eyecite-ts/commit/9d9971d1a4a6a70e468d523f7888daa92fb055a2) Thanks [@medelman17](https://github.com/medelman17)! - feat: West Virginia `W.Va.Code` (no space) routing + historical `Code 1931` form (#406)
+
+  WV opinions interchange `W.Va. Code` (with space) and `W.Va.Code`
+  (no space). The no-space form was unrecognized, and worse, the NM
+  bare-section pattern (#382) was silently capturing the `§ N-N-N`
+  suffix and mis-routing every no-space WV citation to **New Mexico**
+  (same family of regressions as the SC #397 fix).
+
+  Modern WV opinions also cite the historical `Code 1931` form for
+  statutory history — unrecognized.
+
+  ### Fixes
+
+  - **WV fragment**: `\s+` between `W.Va.` and `Code` relaxed to
+    `\s*` so the no-space form matches the WV container pattern.
+    Span dedup then subsumes the NM bare-section match. WV
+    abbreviations reordered so `W. Va. Code Ann.` (Bluebook) is
+    canonical; no-space variants normalize via stripped-form
+    fallback.
+  - **New `wv-code-1931` pattern**: matches `Code 1931, N-N-N, as
+amended` / `Code, 1931, N-N-N` / `Code, N-N-N` (bare, no year).
+    The 3-part hyphenated section format disambiguates from
+    Georgia pre-1983 (2-part) and Virginia bare-Code (always
+    contains period). When the `1931` year is present, captures
+    as `year`. Listed BEFORE `ga-pre-1983` so WV 3-part sections
+    win span dedup.
+
+  ### Behavior changes
+
+  - `W.Va.Code § 8-24-28` (no space) → `jurisdiction="WV"` (was:
+    mis-routed to NM)
+  - `Code 1931, 49-6-3, as amended` → `code="W. Va. Code"`,
+    `jurisdiction="WV"`, `year=1931` (was: not extracted)
+  - `Code, 1931, 49-6-3` → `year=1931` (was: not extracted)
+  - `Code, 14-2-13` → WV (was: not extracted)
+  - `W.Va. Code § 55-7B-1` (with space) → unchanged
+  - `W. Va. Code Ann. § 17C-5-2` → unchanged
+
+  ### Scope notes
+
+  The following pieces of #406 are intentionally deferred:
+
+  - **Section ranges** (`W.Va. Code §§ 55-7B-1 to -12`) —
+    multi-section deferred across all states.
+  - **Repl./Cum. Supp. parentheticals** (`(1976 Repl.Vol.)`,
+    `(Supp.2007)`) — these mostly attach via the generic year-paren
+    absorber from #349 #373, but the `Repl.Vol.` form may need
+    additional patterns.
+  - **Chapter/Article prose** (`Chapter 5A, Article 3 of the Code
+of West Virginia`) — prose form needs a different pattern.
+  - **Local ordinances** (`Fairmont, W.Va. Ordinance 425, § 1.200`)
+    — out of scope for statutory extraction.
+
+  ### Tests
+
+  5 new tests under `West Virginia W.Va. Code + historical Code
+1931 (#406)` in `tests/extract/extractStatute.test.ts`:
+
+  - `W.Va.Code § 8-24-28` (no space — fixes NM mis-routing)
+  - `Code 1931, 49-6-3, as amended` (historical with year)
+  - `Code, 1931, 49-6-3` (comma-separated)
+  - `Code, 14-2-13` (bare, no year)
+  - Regression: `W.Va. Code § 55-7B-1` (with space)
+
+  Full 2708-test suite passes; no regressions.
+
+  ### Related
+
+  Second jurisdiction-routing regression caused by the NM
+  bare-section pattern (#382) — first was SC (#397). Pattern:
+  when a state's container regex requires `\s+` where the
+  real-world form has `\s*`, the bare-section pattern matches
+  the inner `§ N-N-N` and steals the citation. The fix is
+  straightforward: relax the state's whitespace requirement.
+
+- [#413](https://github.com/medelman17/eyecite-ts/pull/413) [`fe01958`](https://github.com/medelman17/eyecite-ts/commit/fe019580c2ccfc6a13e9550ba73b96d33732edfd) Thanks [@medelman17](https://github.com/medelman17)! - feat: Washington RCW chapter-postfix form `chapter 49.60 RCW` (#408)
+
+  Canonical Washington court style places the chapter number BEFORE
+  RCW (postfix form), unlike the prefix `RCW chapter NN` form used
+  in other states. The `NN.NN` chapter format is distinctively
+  Washington.
+
+  ### Fix
+
+  New `rcw-chapter-postfix` tokenizer pattern + dedicated
+  `extractRcwChapterPostfix` extractor. Accepts both lowercase
+  `chapter` and capitalized `Chapter`. Emits `code: "RCW"`,
+  `jurisdiction: "WA"`, with the chapter ID in `section` (matching
+  the convention from `rsa-chapter` #378, `oh-chapter` #388,
+  `ors-chapter` #387).
+
+  ### Scope notes
+
+  The following pieces of #408 are intentionally deferred:
+
+  - **`Laws of YYYY, ch. NNN, § N`** session laws — pending
+    unified `sessionLaw` citation type.
+  - **`[former] N.NN.NN [(YYYY)]`** bracketed annotation — marks
+    superseded sections; needs separate handling.
+  - **Section continuation** (`RCW 60.04 -.181(3)`) — multi-section
+    family.
+
+  ### Tests
+
+  3 new tests under `Washington RCW chapter-postfix form (#408)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - `chapter 49.60 RCW` (lowercase)
+  - `Chapter 41.26 RCW` (capitalized)
+  - Regression: `RCW 10.88.330` (prefix form)
+
+  Full 2717-test suite passes; no regressions.
+
+  ### Related
+
+  Sixth chapter-only state pattern (after NH `rsa-chapter` #378,
+  OH `oh-chapter` #388, OR `ors-chapter` #387, plus the WV-1931
+  historical pattern). Washington's distinctive postfix variant
+  (chapter BEFORE the code abbreviation) is unique in the family.
+
+- [#416](https://github.com/medelman17/eyecite-ts/pull/416) [`9857d0e`](https://github.com/medelman17/eyecite-ts/commit/9857d0e68f4c760b6ffecc24e35b18c831629e72) Thanks [@medelman17](https://github.com/medelman17)! - feat: Wisconsin Statutes postfix form `§ NN.NN, Stats.` + uppercase `STATS.` (#414)
+
+  Wisconsin court style places the `Stats.` abbreviation AFTER the
+  section, separated by a comma — `§ 76.09, Stats.`, `sec. 805.13(3),
+Stats.`, `§ 48.415(l)(a)3, STATS.` (uppercase). The dominant
+  Wisconsin citation form (11 occurrences in a 50-opinion sample
+  for `§ 76.09, Stats.` alone) was unrecognized.
+
+  ### Fix
+
+  New `wi-stats-postfix` tokenizer pattern + dedicated
+  `extractWiStatsPostfix` extractor. Sibling to florida-postfix,
+  idaho-postfix, mca-postfix, tca-postfix — fifth state-postfix
+  pattern, distinguished from the others by its trailing
+  alphanumeric sub-subsection marker (`3` in `48.415(l)(a)3`).
+
+  - Section connector accepts `§`, `§§`, `sec.`/`Sec.`,
+    `section`/`Section`.
+  - Code abbreviation accepts both lowercase `Stats.` and
+    uppercase `STATS.`.
+  - Section body allows trailing alphanumeric after paren chain
+    (`(l)(a)3`) for Wisconsin's sub-subsection notation.
+
+  Emits `code: "Wis. Stat."`, `jurisdiction: "WI"`, section body
+  with full subsection chain.
+
+  ### Scope notes
+
+  The following pieces of #414 are intentionally deferred:
+
+  - **`sec. (Rule) NN.NN, Stats.`** — Wisconsin evidence rules
+    cited as Stats. sections; needs handling of the inserted
+    `(Rule)` annotation.
+  - **Bare-section follow-ons** (`§ 19.36(3)`, `§ 68.13`) —
+    short-form citation problem, not extraction.
+
+  ### Tests
+
+  5 new tests under `Wisconsin Stats. postfix form (#414)` in
+  `tests/extract/extractStatute.test.ts`:
+
+  - `§ 76.09, Stats.` (canonical lowercase)
+  - `§ 48.415(l)(a)3, STATS.` (uppercase + trailing
+    sub-subsection)
+  - `sec. 805.13(3), Stats.` (word sec.)
+  - `Section 48.415, Stats.` (capitalized word Section)
+  - Regression: `Wis. Stat. § 803.04(2)` (modern prefix)
+
+  Full 2721-test suite passes; no regressions.
+
+  ### Related
+
+  Fifth state-postfix pattern after FL (#356), ID (#360), MT
+  (#372), TN (#398). Wisconsin is unique in supporting trailing
+  alphanumeric sub-subsection markers — other postfix states stop
+  at the closing paren of the last subsection.
+
 ## 0.15.7
 
 ### Patch Changes
