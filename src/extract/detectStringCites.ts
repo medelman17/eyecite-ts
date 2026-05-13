@@ -342,6 +342,13 @@ export function detectLeadingSignals(citations: Citation[], cleanedText: string)
       if (firstChar >= "a" && firstChar <= "z") continue
     }
 
+    // Reject signals far from the citation start (#430). A signal that
+    // belongs to a different earlier citation should not bleed forward.
+    // Real `<signal> <case name>, <citation>` patterns typically fit in
+    // ~80 chars; longer gaps suggest the signal is stranded prose.
+    const distance = gapText.length - best.end
+    if (distance > 80) continue
+
     setSignal(c, best.signal)
   }
 }

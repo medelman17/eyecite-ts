@@ -5998,3 +5998,45 @@ describe("parallel-cite case-name propagation (high-volume regression — #423)"
   })
 })
 
+describe("signal field not falsely attached from distant prose (#430)", () => {
+  it("no signal when no signal-word precedes the citation", () => {
+    const cs = extractCitations("...the court applied Hawkins v. Mahoney, 1999 MT 82.")
+    const cite = cs.find((c) => (c as { text?: string }).text?.includes("1999 MT 82"))
+    expect(cite).toBeDefined()
+    if (cite) {
+      // No `See`/`Cf.`/etc. precedes the citation
+      expect((cite as { signal?: string }).signal).toBeUndefined()
+    }
+  })
+
+  it("no signal when prose contains a `see` word elsewhere but not before the cite", () => {
+    // The "see" in "we see no reason" is prose, not a citation signal.
+    const cs = extractCitations(
+      "Earlier we see no reason to disturb the holding. The legislature enacted NRS 616.110(2).",
+    )
+    const stat = cs.find((c) => c.type === "statute")
+    expect(stat).toBeDefined()
+    if (stat) {
+      expect((stat as { signal?: string }).signal).toBeUndefined()
+    }
+  })
+
+  it("signal still attaches when close: `See Smith v. Jones, 100 U.S. 200 (1980)`", () => {
+    const cs = extractCitations("See Smith v. Jones, 100 U.S. 200 (1980).")
+    const cite = cs.find((c) => c.type === "case")
+    expect(cite).toBeDefined()
+    if (cite) {
+      expect((cite as { signal?: string }).signal).toBe("see")
+    }
+  })
+
+  it("signal still attaches: `See also Brown v. Board, 347 U.S. 483`", () => {
+    const cs = extractCitations("See also Brown v. Board, 347 U.S. 483.")
+    const cite = cs.find((c) => c.type === "case")
+    expect(cite).toBeDefined()
+    if (cite) {
+      expect((cite as { signal?: string }).signal).toBe("see also")
+    }
+  })
+})
+
