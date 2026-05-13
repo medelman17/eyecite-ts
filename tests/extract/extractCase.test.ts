@@ -6040,3 +6040,59 @@ describe("signal field not falsely attached from distant prose (#430)", () => {
   })
 })
 
+describe("explanatory parentheticals not routed to court field (#431)", () => {
+  it("`(holding that...)` not routed to court; populated as parenthetical", () => {
+    const cs = extractCitations(
+      "336 Mont. 225 (holding that we review de novo).",
+    ).filter((c) => c.type === "case")
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "case") {
+      expect(cs[0].court).toBeUndefined()
+      expect(cs[0].parentheticals).toBeDefined()
+      expect(cs[0].parentheticals?.[0].text).toContain("holding that")
+      expect(cs[0].parentheticals?.[0].type).toBe("holding")
+    }
+  })
+
+  it("`(emphasis in original)` not routed to court", () => {
+    const cs = extractCitations("368 Mont. 189 (emphasis in original).").filter(
+      (c) => c.type === "case",
+    )
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "case") {
+      expect(cs[0].court).toBeUndefined()
+    }
+  })
+
+  it("`(internal citations omitted)` not routed to court", () => {
+    const cs = extractCitations("243 P.3d 415 (internal citations omitted).").filter(
+      (c) => c.type === "case",
+    )
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "case") {
+      expect(cs[0].court).toBeUndefined()
+    }
+  })
+
+  it("regression: `(D.C. Cir. 1980)` still routes court correctly", () => {
+    const cs = extractCitations("100 U.S. 200 (D.C. Cir. 1980).").filter(
+      (c) => c.type === "case",
+    )
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "case") {
+      expect(cs[0].court).toBe("D.C. Cir.")
+      expect(cs[0].year).toBe(1980)
+    }
+  })
+
+  it("regression: `(1980)` year-only paren still works", () => {
+    const cs = extractCitations("100 U.S. 200 (1980).").filter(
+      (c) => c.type === "case",
+    )
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "case") {
+      expect(cs[0].year).toBe(1980)
+    }
+  })
+})
+
