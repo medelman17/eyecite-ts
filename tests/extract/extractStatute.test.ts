@@ -2824,4 +2824,39 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Washington RCW chapter-postfix form (#408)", () => {
+    it("extracts `chapter 49.60 RCW` (lowercase)", () => {
+      const cites = extractCitations("See chapter 49.60 RCW.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("RCW")
+        expect(cites[0].jurisdiction).toBe("WA")
+        expect(cites[0].section).toBe("49.60")
+      }
+    })
+
+    it("extracts `Chapter 41.26 RCW` (capitalized)", () => {
+      const cites = extractCitations("See Chapter 41.26 RCW.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("41.26")
+      }
+    })
+
+    it("regression: `RCW 10.88.330` (prefix form) continues to work", () => {
+      const cites = extractCitations("See RCW 10.88.330.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("RCW")
+        expect(cites[0].section).toBe("10.88.330")
+      }
+    })
+  })
 })
