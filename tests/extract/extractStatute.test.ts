@@ -1592,4 +1592,65 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Montana Code Annotated postfix form (#372)", () => {
+    it("extracts `§ 77-6-205(2), MCA`", () => {
+      const cites = extractCitations("See § 77-6-205(2), MCA.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("MCA")
+        expect(cites[0].jurisdiction).toBe("MT")
+        expect(cites[0].section).toBe("77-6-205")
+        expect(cites[0].subsection).toBe("(2)")
+      }
+    })
+
+    it("extracts `Section 40-4-121(7)(a), MCA` (word section)", () => {
+      const cites = extractCitations("See Section 40-4-121(7)(a), MCA.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("MCA")
+        expect(cites[0].section).toBe("40-4-121")
+        expect(cites[0].subsection).toBe("(7)(a)")
+      }
+    })
+
+    it("extracts edition year: `§ 39-71-703, MCA (1983)`", () => {
+      const cites = extractCitations("See § 39-71-703, MCA (1983).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("MCA")
+        expect(cites[0].section).toBe("39-71-703")
+        expect(cites[0].year).toBe(1983)
+      }
+    })
+
+    it("regression: prefix `Mont. Code Ann. § 77-6-205` continues to work", () => {
+      const cites = extractCitations("See Mont. Code Ann. § 77-6-205.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("MT")
+        expect(cites[0].section).toBe("77-6-205")
+      }
+    })
+
+    it("regression: prefix `MCA § 77-6-205` continues to work", () => {
+      const cites = extractCitations("See MCA § 77-6-205.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("MCA")
+        expect(cites[0].jurisdiction).toBe("MT")
+      }
+    })
+  })
 })
