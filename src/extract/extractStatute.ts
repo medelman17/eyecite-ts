@@ -24,6 +24,7 @@ import { extractChapterAct } from "./statutes/extractChapterAct"
 import { extractColoradoProse } from "./statutes/extractColoradoProse"
 import { extractFederal } from "./statutes/extractFederal"
 import { extractFloridaStatute } from "./statutes/extractFloridaStatute"
+import { extractIcYearEdition } from "./statutes/extractIcYearEdition"
 import { extractIdahoPostfix } from "./statutes/extractIdahoPostfix"
 import { extractIllRevStat } from "./statutes/extractIllRevStat"
 import { extractKsaYearEdition } from "./statutes/extractKsaYearEdition"
@@ -138,6 +139,8 @@ export function extractStatute(
     case "florida-postfix":
     case "florida-prefix-spelled":
       return extractFloridaStatute(token, transformationMap)
+    case "ic-year-edition":
+      return extractIcYearEdition(token, transformationMap)
     case "idaho-postfix":
       return extractIdahoPostfix(token, transformationMap)
     case "ksa-year-edition":

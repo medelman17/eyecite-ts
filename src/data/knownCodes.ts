@@ -848,14 +848,15 @@ for (const entry of abbreviatedCodes) {
 }
 
 /**
- * Stripped-form index — pattern with all dots and whitespace removed.
- * Used by `findAbbreviatedCode` to resolve OCR/spacing variants like
- * `AR.S.`, `ARS`, `A. R.S.` to the canonical `A.R.S.` entry (#348).
+ * Stripped-form index — pattern with all dots, whitespace, and apostrophes
+ * removed. Used by `findAbbreviatedCode` to resolve OCR/spacing variants
+ * like `AR.S.`, `ARS`, `A. R.S.` to the canonical `A.R.S.` entry (#348),
+ * and to normalize possessive forms like `Burns'` (#363).
  */
 const _byStrippedPattern = new Map<string, CodeEntry>()
 for (const entry of abbreviatedCodes) {
   for (const pattern of entry.patterns) {
-    const stripped = pattern.toLowerCase().replace(/[.\s]/g, "")
+    const stripped = pattern.toLowerCase().replace(/[.\s']/g, "")
     if (stripped.length === 0) continue
     // Last-write-wins; abbreviated arrays are ordered longest-first within an
     // entry, so the SHORTEST (canonical) form for a given stripped key wins.
@@ -887,8 +888,10 @@ export function findAbbreviatedCode(abbrevText: string): CodeEntry | undefined {
   if (exact) return exact
 
   // 2. Stripped-form match — OCR variants like `AR.S.`, `ARS`, `A. R.S.`
-  //    all collapse to `ars` and resolve to the canonical `A.R.S.` entry. #348
-  const stripped = lower.replace(/[.\s]/g, "")
+  //    all collapse to `ars` and resolve to the canonical `A.R.S.` entry
+  //    (#348). Also strips apostrophes so `Burns' Indiana Statutes Annotated`
+  //    matches the entry's `Burns Indiana Statutes Annotated` form (#363).
+  const stripped = lower.replace(/[.\s']/g, "")
   if (stripped.length > 0) {
     const strippedHit = _byStrippedPattern.get(stripped)
     if (strippedHit) return strippedHit

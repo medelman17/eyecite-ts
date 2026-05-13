@@ -280,6 +280,21 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Indiana Code year-edition form: `IC 1971, 35-13-4-4` — the year
+    // between IC and the section is the compilation/edition year of the
+    // Indiana Code, not the section. abbreviated-code would silently
+    // capture the year as section. The trailing `, NN-N-N` separator
+    // distinguishes this from a bare `IC NN-N-N` modern citation. Listed
+    // BEFORE `abbreviated-code` so this shape wins. #363
+    //
+    // Captures: (1) edition year, (2) section body.
+    id: "ic-year-edition",
+    regex:
+      /\bIC\s+(\d{4}),\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
+    description: 'Indiana Code year-edition form: "IC 1971, 35-13-4-4" — #363',
+    type: "statute",
+  },
+  {
     id: "abbreviated-code",
     regex: buildAbbreviatedCodeRegex(),
     description: "Abbreviated state code citations for all US jurisdictions",
