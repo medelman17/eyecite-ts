@@ -426,9 +426,29 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) "Code Ann." or "Code", (2) section body.
     id: "ga-pre-1983",
     regex:
-      /\b(Code(?:\s+Ann\.?)?)\s+§\s*(\d+-\d+(?![\d-])(?:[A-Za-z0-9])?(?:\([A-Za-z0-9]+\))*)/g,
+      /\b(Code(?:\s+Ann\.?)?)\s+§\s*(\d+-\d+(?![\d-])(?!\.\d)(?:[A-Za-z0-9])?(?:\([A-Za-z0-9]+\))*)/g,
     description:
-      'Georgia pre-1983 Code: "Code Ann. § 26-2101" / "Code § 27-2501" — #358',
+      'Georgia pre-1983 Code: "Code Ann. § 26-2101" / "Code § 27-2501" — #358 (#405 tightened)',
+    type: "statute",
+  },
+  {
+    // Virginia bare-Code form: `Code § 18.2-308.2`, `Code § 46.2-1571`,
+    // `Virginia Code § 8.01-581.17`, `Code § 20-107.3(D)`. Virginia's
+    // canonical court style omits the `Va.` prefix. The disambiguator from
+    // Georgia pre-1983 (also bare `Code §`) is the PERIOD in the title or
+    // section — Virginia sections always include at least one period
+    // (`18.2-308.2`, `20-107.3`), while Georgia pre-1983 sections never
+    // do (`26-2101`, `27-2501`). #405
+    //
+    // Listed AFTER `abbreviated-code` and `ga-pre-1983` so the more
+    // specific patterns win span dedup when their conditions are met.
+    //
+    // Captures: (1) "Virginia Code" or "Code", (2) section body.
+    id: "va-bare-code",
+    regex:
+      /\b(Virginia\s+Code|Code)\s+§\s*((?:\d+\.\d+-\d+(?:\.\d+)?|\d+-\d+\.\d+)(?:\([A-Za-z0-9]+\))*)/g,
+    description:
+      'Virginia bare Code form: "Code § 18.2-308.2" / "Virginia Code § 8.01-581.17" — #405',
     type: "statute",
   },
   {

@@ -2658,4 +2658,73 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Virginia bare Code form (#405)", () => {
+    it("extracts `Code § 18.2-308.2` (canonical VA)", () => {
+      const cites = extractCitations("See Code § 18.2-308.2.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Code")
+        expect(cites[0].jurisdiction).toBe("VA")
+        expect(cites[0].section).toBe("18.2-308.2")
+      }
+    })
+
+    it("extracts `Code § 46.2-1571` (period in title only)", () => {
+      const cites = extractCitations("See Code § 46.2-1571.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("46.2-1571")
+        expect(cites[0].jurisdiction).toBe("VA")
+      }
+    })
+
+    it("extracts `Code § 20-107.3(D)` (period in section only, with subsection)", () => {
+      const cites = extractCitations("See Code § 20-107.3(D).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("VA")
+        expect(cites[0].section).toBe("20-107.3")
+        expect(cites[0].subsection).toBe("(D)")
+      }
+    })
+
+    it("extracts `Virginia Code § 8.01-581.17` (explicit prefix)", () => {
+      const cites = extractCitations("See Virginia Code § 8.01-581.17.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Virginia Code")
+        expect(cites[0].jurisdiction).toBe("VA")
+        expect(cites[0].section).toBe("8.01-581.17")
+      }
+    })
+
+    it("regression: Georgia `Code § 27-2501` (no periods) still routes to GA", () => {
+      const cites = extractCitations("See Code § 27-2501.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("GA")
+      }
+    })
+
+    it("regression: `Va. Code Ann. § 18.2-308.2` (prefixed) continues to work", () => {
+      const cites = extractCitations("See Va. Code Ann. § 18.2-308.2.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("VA")
+      }
+    })
+  })
 })
