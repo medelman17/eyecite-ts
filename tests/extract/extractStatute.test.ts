@@ -1301,4 +1301,54 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Revised Laws of Hawaii (pre-1955) (#359)", () => {
+    it("extracts `RLH 1935 § 2545`", () => {
+      const cites = extractCitations("Per RLH 1935 § 2545.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("RLH")
+        expect(cites[0].section).toBe("2545")
+        expect(cites[0].year).toBe(1935)
+        expect(cites[0].jurisdiction).toBe("HI")
+      }
+    })
+
+    it("extracts `RLH 1945 § 7186`", () => {
+      const cites = extractCitations("Per RLH 1945 § 7186.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("RLH")
+        expect(cites[0].section).toBe("7186")
+        expect(cites[0].year).toBe(1945)
+      }
+    })
+
+    it("extracts hyphenated section: `RLH 1955 § 100-1`", () => {
+      const cites = extractCitations("Per RLH 1955 § 100-1.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("100-1")
+        expect(cites[0].year).toBe(1955)
+      }
+    })
+
+    it("regression: modern `HRS § 658-8 (1976)` continues to work", () => {
+      const cites = extractCitations("HRS § 658-8 (1976).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("HRS")
+        expect(cites[0].section).toBe("658-8")
+        expect(cites[0].year).toBe(1976)
+      }
+    })
+  })
 })

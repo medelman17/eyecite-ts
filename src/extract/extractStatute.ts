@@ -27,6 +27,7 @@ import { extractFloridaStatute } from "./statutes/extractFloridaStatute"
 import { extractIllRevStat } from "./statutes/extractIllRevStat"
 import { extractNamedCode } from "./statutes/extractNamedCode"
 import { extractProse } from "./statutes/extractProse"
+import { extractRlh } from "./statutes/extractRlh"
 
 /**
  * Legacy inline parser for unknown patterns.
@@ -131,6 +132,8 @@ export function extractStatute(
     case "florida-postfix":
     case "florida-prefix-spelled":
       return extractFloridaStatute(token, transformationMap)
+    case "rlh":
+      return extractRlh(token, transformationMap)
     default:
       // unknown patterns use legacy parser
       return extractLegacy(token, transformationMap)
