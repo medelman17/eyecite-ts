@@ -1520,4 +1520,76 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Minnesota `Minn. St.` short form and year-edition (#371)", () => {
+    it("extracts modern `Minn. St. 48.30`", () => {
+      const cites = extractCitations("See Minn. St. 48.30.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Minn. St.")
+        expect(cites[0].jurisdiction).toBe("MN")
+        expect(cites[0].section).toBe("48.30")
+      }
+    })
+
+    it("extracts `Minn. St. 609.035` (criminal section)", () => {
+      const cites = extractCitations("See Minn. St. 609.035.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("MN")
+        expect(cites[0].section).toBe("609.035")
+      }
+    })
+
+    it("year-edition: `Minn. St. 1971, § 176.66` → year=1971, section=176.66", () => {
+      const cites = extractCitations("See Minn. St. 1971, § 176.66.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Minn. Stat.")
+        expect(cites[0].jurisdiction).toBe("MN")
+        expect(cites[0].section).toBe("176.66")
+        expect(cites[0].year).toBe(1971)
+      }
+    })
+
+    it("year-edition: `Minn. St. 1974, § 80A.14(n)` preserves subsection", () => {
+      const cites = extractCitations("See Minn. St. 1974, § 80A.14(n).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("80A.14")
+        expect(cites[0].subsection).toBe("(n)")
+        expect(cites[0].year).toBe(1974)
+      }
+    })
+
+    it("extracts spelled-out `Minnesota Statutes, Section 120.10`", () => {
+      const cites = extractCitations("See Minnesota Statutes, Section 120.10.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("MN")
+        expect(cites[0].section).toBe("120.10")
+      }
+    })
+
+    it("regression: Bluebook `Minn. Stat. § 480A.06` continues to work", () => {
+      const cites = extractCitations("See Minn. Stat. § 480A.06.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Minn. Stat.")
+        expect(cites[0].jurisdiction).toBe("MN")
+      }
+    })
+  })
 })

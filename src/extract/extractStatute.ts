@@ -26,6 +26,7 @@ import { extractFederal } from "./statutes/extractFederal"
 import { extractFloridaStatute } from "./statutes/extractFloridaStatute"
 import { extractIdahoPostfix } from "./statutes/extractIdahoPostfix"
 import { extractIllRevStat } from "./statutes/extractIllRevStat"
+import { extractMinnStYearEdition } from "./statutes/extractMinnStYearEdition"
 import { extractNamedCode } from "./statutes/extractNamedCode"
 import { extractProse } from "./statutes/extractProse"
 import { extractRlh } from "./statutes/extractRlh"
@@ -135,6 +136,8 @@ export function extractStatute(
       return extractFloridaStatute(token, transformationMap)
     case "idaho-postfix":
       return extractIdahoPostfix(token, transformationMap)
+    case "minn-st-year-edition":
+      return extractMinnStYearEdition(token, transformationMap)
     case "rlh":
       return extractRlh(token, transformationMap)
     default:
