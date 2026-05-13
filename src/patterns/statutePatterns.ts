@@ -318,6 +318,23 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Wisconsin Statutes postfix form: `§ 76.09, Stats.`, `sec. 805.13(3),
+    // Stats.`, `§ 48.415(l)(a)3, STATS.`. Wisconsin court style places the
+    // `Stats.` abbreviation AFTER the section, separated by a comma. Both
+    // lowercase `Stats.` and uppercase `STATS.` are common. The trailing
+    // alphanumeric character (`3` in `48.415(l)(a)3`) is the Wisconsin
+    // sub-subsection marker. Listed BEFORE `abbreviated-code` so the
+    // container shape wins span dedup. #414
+    //
+    // Captures: (1) section body.
+    id: "wi-stats-postfix",
+    regex:
+      /(?<![A-Za-z])(?:§§?|[Ss]ections?|[Ss]ec\.?)\s*(\d+\.\d+(?:[A-Za-z0-9])?(?:\s*\([^)]*\))*[A-Za-z0-9]*),?\s+(?:Stats\.|STATS\.)/g,
+    description:
+      'Wisconsin Statutes postfix form: "§ 76.09, Stats." / "sec. 805.13(3), Stats." — #414',
+    type: "statute",
+  },
+  {
     // Nebraska Reissue Revised Statutes 1943 (R.R.S. 1943) — historical
     // form: `section 38-901, R. R. S. 1943` or `§ 30-2806, R.R.S. 1943,
     // Reissue 1975`. Nebraska compiled its statutes in 1943 and re-issues

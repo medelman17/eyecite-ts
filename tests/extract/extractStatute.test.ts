@@ -2859,4 +2859,61 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Wisconsin Stats. postfix form (#414)", () => {
+    it("extracts `§ 76.09, Stats.` (canonical lowercase)", () => {
+      const cites = extractCitations("See § 76.09, Stats.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Wis. Stat.")
+        expect(cites[0].jurisdiction).toBe("WI")
+        expect(cites[0].section).toBe("76.09")
+      }
+    })
+
+    it("extracts `§ 48.415(l)(a)3, STATS.` (uppercase, trailing sub-subsection)", () => {
+      const cites = extractCitations("See § 48.415(l)(a)3, STATS.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Wis. Stat.")
+        expect(cites[0].section).toBe("48.415(l)(a)3")
+      }
+    })
+
+    it("extracts `sec. 805.13(3), Stats.` (word sec.)", () => {
+      const cites = extractCitations("See sec. 805.13(3), Stats.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("WI")
+        expect(cites[0].section).toBe("805.13")
+      }
+    })
+
+    it("extracts `Section 48.415, Stats.` (capitalized word Section)", () => {
+      const cites = extractCitations("See Section 48.415, Stats.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("48.415")
+      }
+    })
+
+    it("regression: `Wis. Stat. § 803.04(2)` (modern prefix) continues to work", () => {
+      const cites = extractCitations("See Wis. Stat. § 803.04(2).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Wis. Stat.")
+        expect(cites[0].jurisdiction).toBe("WI")
+      }
+    })
+  })
 })

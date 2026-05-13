@@ -46,6 +46,7 @@ import { extractRsaChapter } from "./statutes/extractRsaChapter"
 import { extractRcwChapterPostfix } from "./statutes/extractRcwChapterPostfix"
 import { extractTcaPostfix } from "./statutes/extractTcaPostfix"
 import { extractVaBareCode } from "./statutes/extractVaBareCode"
+import { extractWiStatsPostfix } from "./statutes/extractWiStatsPostfix"
 import { extractWvCode1931 } from "./statutes/extractWvCode1931"
 
 /**
@@ -189,6 +190,8 @@ export function extractStatute(
       return extractTcaPostfix(token, transformationMap)
     case "va-bare-code":
       return extractVaBareCode(token, transformationMap)
+    case "wi-stats-postfix":
+      return extractWiStatsPostfix(token, transformationMap)
     case "wv-code-1931":
       return extractWvCode1931(token, transformationMap)
     default:
