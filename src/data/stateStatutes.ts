@@ -429,10 +429,18 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     regexFragment: "R\\.?I\\.?\\s+Gen\\.?\\s+Laws|R\\.?I\\.?G\\.?L\\.?",
   },
   // ── South Carolina ────────────────────────────────────────────────────────
+  // South Carolina — `S.C.Code Ann.` (no space) is a common style in
+  // South Carolina court opinions; the `\s+` was too strict and silently
+  // routed every no-space form to the NM bare-section pattern via its
+  // contained-span match on `§ N-N-N`. Accepting `\s*` (zero or more
+  // spaces) here keeps the SC container match intact, which then
+  // subsumes the NM bare-section via span dedup. Canonical is `S.C. Code
+  // Ann.` (Bluebook); ordered last so spaced/no-space variants normalize
+  // to it. #397
   {
     jurisdiction: "SC",
-    abbreviations: ["S.C. Code Ann.", "S.C. Code"],
-    regexFragment: "S\\.?C\\.?\\s+Code(?:\\s+Ann\\.?)?",
+    abbreviations: ["S.C. Code", "S.C. Code Ann."],
+    regexFragment: "S\\.?C\\.?\\s*Code(?:\\s+Ann\\.?)?",
   },
   // ── South Dakota ──────────────────────────────────────────────────────────
   {

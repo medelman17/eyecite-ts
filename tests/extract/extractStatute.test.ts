@@ -2412,4 +2412,71 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("South Carolina S.C.Code Ann. spacing variants (#397)", () => {
+    it("extracts `S.C.Code Ann. § 42-11-70 (1985)` (no space between S.C. and Code)", () => {
+      const cites = extractCitations("See S.C.Code Ann. § 42-11-70 (1985).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("S.C. Code Ann.")
+        expect(cites[0].jurisdiction).toBe("SC")
+        expect(cites[0].section).toBe("42-11-70")
+        expect(cites[0].year).toBe(1985)
+      }
+    })
+
+    it("extracts `S.C.Code Ann. § 42-15-40 (Supp. 1998)` with Supp. editionLabel", () => {
+      const cites = extractCitations("See S.C.Code Ann. § 42-15-40 (Supp. 1998).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].year).toBe(1998)
+        expect(cites[0].editionLabel).toBe("Supp.")
+      }
+    })
+
+    it("extracts `S.C.Code Ann. section 38-53-100(D)` (word section)", () => {
+      const cites = extractCitations("See S.C.Code Ann. section 38-53-100(D).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("SC")
+        expect(cites[0].section).toBe("38-53-100")
+      }
+    })
+
+    it("regression: `S.C. Code § 20-8-130(B)(1)` (spaced, no Ann.) continues to work", () => {
+      const cites = extractCitations("See S.C. Code § 20-8-130(B)(1).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("SC")
+      }
+    })
+
+    it("regression: `S.C. Code Ann. § 42-11-70` (spaced, with Ann.) continues to work", () => {
+      const cites = extractCitations("See S.C. Code Ann. § 42-11-70.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("S.C. Code Ann.")
+      }
+    })
+
+    it("regression: NM bare-section `Section 32A-2-7(A)` still routes to NM", () => {
+      const cites = extractCitations("Section 32A-2-7(A) requires.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NM")
+      }
+    })
+  })
 })
