@@ -2590,4 +2590,72 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Georgia pre-1983 Code (#358)", () => {
+    it("extracts `Code Ann. § 26-2101` (bare, Georgia pre-1983)", () => {
+      const cites = extractCitations("See Code Ann. § 26-2101.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Code Ann.")
+        expect(cites[0].jurisdiction).toBe("GA")
+        expect(cites[0].section).toBe("26-2101")
+      }
+    })
+
+    it("extracts `Code § 27-2501` (bare, no Ann.)", () => {
+      const cites = extractCitations("See Code § 27-2501.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Code")
+        expect(cites[0].jurisdiction).toBe("GA")
+        expect(cites[0].section).toBe("27-2501")
+      }
+    })
+
+    it("extracts `Code § 110-501` (longer title)", () => {
+      const cites = extractCitations("See Code § 110-501.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("110-501")
+      }
+    })
+
+    it("regression: Maryland `Md. Code Ann. § 10-105` still routes to MD", () => {
+      const cites = extractCitations("See Md. Code Ann. § 10-105.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("MD")
+      }
+    })
+
+    it("regression: modern OCGA `OCGA § 15-11-26(b)` (3-part) doesn't collide", () => {
+      const cites = extractCitations("See OCGA § 15-11-26(b).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("OCGA")
+        expect(cites[0].section).toBe("15-11-26")
+      }
+    })
+
+    it("regression: `Ga. Code Ann. § 16-5-1` (3-part) produces exactly one citation", () => {
+      const cites = extractCitations("See Ga. Code Ann. § 16-5-1.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("GA")
+        expect(cites[0].section).toBe("16-5-1")
+      }
+    })
+  })
 })
