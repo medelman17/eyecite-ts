@@ -5958,3 +5958,43 @@ describe("Illinois rule-marker boundary in state-reporter pattern (#332)", () =>
   })
 })
 
+describe("parallel-cite case-name propagation (high-volume regression — #423)", () => {
+  // Issue reported 1,533 occurrences against v0.15.7. Verifying the
+  // examples from the issue's quality-issue evidence now propagate
+  // caseName onto every parallel cite in the group.
+  it("`Walker v. Elkin, 252 N.C. 152, 118 S.E.2d 1 (1960)`: both cites get caseName", () => {
+    const cases = extractCitations(
+      "See Walker v. Elkin, 252 N.C. 152, 118 S.E.2d 1 (1960).",
+    ).filter((c) => c.type === "case")
+    expect(cases).toHaveLength(2)
+    if (cases[0]?.type === "case" && cases[1]?.type === "case") {
+      expect(cases[0].caseName).toBe("Walker v. Elkin")
+      expect(cases[1].caseName).toBe("Walker v. Elkin")
+      // Both share the primary's groupId
+      expect(cases[0].groupId).toBe(cases[1].groupId)
+    }
+  })
+
+  it("`Marren v. Gamble, 246 S.E.2d 736, 295 N.C. 162 (1978)`: both cites get caseName", () => {
+    const cases = extractCitations(
+      "Marren v. Gamble, 246 S.E.2d 736, 295 N.C. 162 (1978).",
+    ).filter((c) => c.type === "case")
+    expect(cases).toHaveLength(2)
+    if (cases[0]?.type === "case" && cases[1]?.type === "case") {
+      expect(cases[0].caseName).toBe("Marren v. Gamble")
+      expect(cases[1].caseName).toBe("Marren v. Gamble")
+    }
+  })
+
+  it("`Hall v. Kansas Farm Bureau` parallel citation propagates caseName", () => {
+    const cases = extractCitations(
+      "Hall v. Kansas Farm Bureau, 274 Kan. 263, 50 P.3d 495 (2002).",
+    ).filter((c) => c.type === "case")
+    expect(cases).toHaveLength(2)
+    if (cases[0]?.type === "case" && cases[1]?.type === "case") {
+      expect(cases[0].caseName).toBe("Hall v. Kansas Farm Bureau")
+      expect(cases[1].caseName).toBe("Hall v. Kansas Farm Bureau")
+    }
+  })
+})
+
