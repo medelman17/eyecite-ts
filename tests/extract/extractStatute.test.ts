@@ -1766,4 +1766,73 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Maryland article-letter codes (#368)", () => {
+    it("extracts `HG § 19-906` (Health-General)", () => {
+      const cites = extractCitations("See HG § 19-906.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("HG")
+        expect(cites[0].jurisdiction).toBe("MD")
+        expect(cites[0].section).toBe("19-906")
+      }
+    })
+
+    it("extracts `CP § 10-105(e)(4)(ii)(2)` with deep subsection", () => {
+      const cites = extractCitations("See CP § 10-105(e)(4)(ii)(2).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("CP")
+        expect(cites[0].section).toBe("10-105")
+        expect(cites[0].subsection).toBe("(e)(4)(ii)(2)")
+      }
+    })
+
+    it("extracts `R.P. § 8-211` (dotted variant)", () => {
+      const cites = extractCitations("See R.P. § 8-211.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("R.P.")
+        expect(cites[0].jurisdiction).toBe("MD")
+      }
+    })
+
+    it("extracts `BR § 1-101` (Business Regulation)", () => {
+      const cites = extractCitations("See BR § 1-101.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("BR")
+        expect(cites[0].jurisdiction).toBe("MD")
+      }
+    })
+
+    it("extracts `FL § 5-1027` (Family Law) — doesn't collide with Florida", () => {
+      const cites = extractCitations("See FL § 5-1027.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("FL")
+        expect(cites[0].jurisdiction).toBe("MD")
+      }
+    })
+
+    it("regression: Florida `Fla. Stat. § 119.07` continues to route to Florida", () => {
+      const cites = extractCitations("See Fla. Stat. § 119.07.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("FL")
+      }
+    })
+  })
 })
