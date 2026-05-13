@@ -33,6 +33,23 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Internal Revenue Code (IRC) — federal tax code citations. The `I.R.C.`
+    // form is the canonical Bluebook abbreviation; bare `IRC` is also common.
+    // Without this pattern, Ohio's `R.C.` regex matches the suffix of
+    // `I.R.C.` and silently routes every IRC citation to Ohio jurisdiction
+    // (14/14 misclassifications in a 37-opinion NJ sweep). #376
+    //
+    // Listed BEFORE `abbreviated-code` so the longer `I.R.C.` match wins
+    // span dedup over Ohio's `R.C.` match at the same position.
+    //
+    // Captures: (1) section body.
+    id: "irc",
+    regex:
+      /\b(?:I\.R\.C\.|IRC)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+    description: 'Internal Revenue Code: "I.R.C. § 1367", "IRC § 1341" — #376',
+    type: "statute",
+  },
+  {
     id: "prose",
     regex: /\b[Ss]ection\s+(\d+[A-Za-z0-9-]*(?:\([^)]*\))*)\s+of\s+title\s+(\d+)\b/g,
     description:

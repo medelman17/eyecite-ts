@@ -2005,4 +2005,61 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Internal Revenue Code I.R.C. — federal, not Ohio (#376)", () => {
+    it("extracts `I.R.C. § 1367` as federal", () => {
+      const cites = extractCitations("See I.R.C. § 1367.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("I.R.C.")
+        expect(cites[0].jurisdiction).toBe("US")
+        expect(cites[0].section).toBe("1367")
+      }
+    })
+
+    it("extracts `I.R.C. § 1366(a)(1)` with subsection", () => {
+      const cites = extractCitations("See I.R.C. § 1366(a)(1).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("1366")
+        expect(cites[0].subsection).toBe("(a)(1)")
+      }
+    })
+
+    it("extracts bare `IRC § 1341` as federal (normalized to I.R.C.)", () => {
+      const cites = extractCitations("See IRC § 1341.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("I.R.C.")
+        expect(cites[0].jurisdiction).toBe("US")
+      }
+    })
+
+    it("regression: Ohio `Ohio Rev. Code § 2925.03` still routes to Ohio", () => {
+      const cites = extractCitations("See Ohio Rev. Code Ann. § 2925.03.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("OH")
+      }
+    })
+
+    it("regression: bare Ohio `R.C. § 2925.03` still routes to Ohio", () => {
+      const cites = extractCitations("See R.C. § 2925.03.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("R.C.")
+        expect(cites[0].jurisdiction).toBe("OH")
+      }
+    })
+  })
 })
