@@ -2189,4 +2189,74 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Ohio R. C. spacing variant + R.C. Chapter form (#388)", () => {
+    it("extracts spaced `R. C. 713.15`", () => {
+      const cites = extractCitations("See R. C. 713.15.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("R.C.")
+        expect(cites[0].jurisdiction).toBe("OH")
+        expect(cites[0].section).toBe("713.15")
+      }
+    })
+
+    it("extracts spaced `R. C. 5321.15(C)` with subsection", () => {
+      const cites = extractCitations("See R. C. 5321.15(C).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("R.C.")
+        expect(cites[0].section).toBe("5321.15")
+        expect(cites[0].subsection).toBe("(C)")
+      }
+    })
+
+    it("extracts spaced chapter `R. C. Chapter 1702`", () => {
+      const cites = extractCitations("See R. C. Chapter 1702.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("R.C.")
+        expect(cites[0].jurisdiction).toBe("OH")
+        expect(cites[0].section).toBe("1702")
+      }
+    })
+
+    it("extracts no-space chapter `R.C. Chapter 4509`", () => {
+      const cites = extractCitations("See R.C. Chapter 4509.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("4509")
+      }
+    })
+
+    it("regression: `R.C. 5302.20` (no space) continues to work", () => {
+      const cites = extractCitations("See R.C. 5302.20.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("R.C.")
+        expect(cites[0].section).toBe("5302.20")
+      }
+    })
+
+    it("regression: federal `I.R.C. § 1367` still routes to federal (not Ohio)", () => {
+      const cites = extractCitations("See I.R.C. § 1367.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("I.R.C.")
+        expect(cites[0].jurisdiction).toBe("US")
+      }
+    })
+  })
 })
