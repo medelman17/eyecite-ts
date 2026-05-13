@@ -188,6 +188,22 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Minnesota Statutes year-edition form: `Minn. St. 1971, § 176.66`.
+    // The year (1971/1974/etc.) is the edition of Minnesota Statutes, not
+    // the section number — abbreviated-code would mis-capture the year as
+    // section. Listed BEFORE `abbreviated-code` so the year-edition shape
+    // wins. The trailing `, § N` is REQUIRED so we don't false-positive on
+    // bare years that happen to follow `Minn. St.`. #371
+    //
+    // Captures: (1) edition year, (2) section body.
+    id: "minn-st-year-edition",
+    regex:
+      /\bMinn\.?\s+(?:Stat|St)\.?\s+(19\d{2}),\s*§\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\)|\[[^\]]*\])*)/g,
+    description:
+      'Minnesota Statutes year-edition form: "Minn. St. 1971, § 176.66" — #371',
+    type: "statute",
+  },
+  {
     id: "abbreviated-code",
     regex: buildAbbreviatedCodeRegex(),
     description: "Abbreviated state code citations for all US jurisdictions",

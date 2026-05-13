@@ -323,10 +323,15 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
   // The dotted `M.S.A.` form (literal dots required) routes to Minnesota
   // Statutes Annotated; the dotless `MSA` belongs to Michigan (Mich. Stat.
   // Ann.) via array order — see Michigan entry above. #370
+  // The short form `Minn. St.` (without the `at`) is the canonical Minnesota
+  // court style — distinct from the federal Bluebook's `Minn. Stat.` (#371).
+  // `Minnesota Statutes` (spelled out) is the official short title used in
+  // postfix prose forms.
   {
     jurisdiction: "MN",
-    abbreviations: ["Minn. Stat. Ann.", "Minn. Stat.", "M.S.A."],
-    regexFragment: "Minn\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|M\\.S\\.A\\.",
+    abbreviations: ["Minnesota Statutes", "Minn. Stat. Ann.", "Minn. Stat.", "Minn. St.", "M.S.A."],
+    regexFragment:
+      "Minnesota\\s+Statutes(?:\\s+Ann(?:otated)?\\.?)?|Minn\\.?\\s+(?:Stat|St)\\.?(?:\\s+Ann\\.?)?|M\\.S\\.A\\.",
   },
   // ── Mississippi ───────────────────────────────────────────────────────────
   {
