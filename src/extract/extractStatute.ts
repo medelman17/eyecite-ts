@@ -27,6 +27,7 @@ import { extractFloridaStatute } from "./statutes/extractFloridaStatute"
 import { extractIcYearEdition } from "./statutes/extractIcYearEdition"
 import { extractIdahoPostfix } from "./statutes/extractIdahoPostfix"
 import { extractIllRevStat } from "./statutes/extractIllRevStat"
+import { extractIrc } from "./statutes/extractIrc"
 import { extractKsaYearEdition } from "./statutes/extractKsaYearEdition"
 import { extractMcaPostfix } from "./statutes/extractMcaPostfix"
 import { extractMdArticleLetter } from "./statutes/extractMdArticleLetter"
@@ -141,6 +142,8 @@ export function extractStatute(
       return extractFloridaStatute(token, transformationMap)
     case "ic-year-edition":
       return extractIcYearEdition(token, transformationMap)
+    case "irc":
+      return extractIrc(token, transformationMap)
     case "idaho-postfix":
       return extractIdahoPostfix(token, transformationMap)
     case "ksa-year-edition":
