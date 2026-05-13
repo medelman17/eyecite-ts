@@ -72,8 +72,10 @@ export function buildAbbreviatedCodeRegex(): RegExp {
 
   return new RegExp(
     // Section body: digits prefix, then alphanumeric/colon/slash/hyphen OR
-    // period-followed-by-alphanumeric (lookahead). Period guard prevents
-    // sentence-ending punctuation from being absorbed into the section.
+    // period-followed-by-alphanumeric (lookahead) OR comma-followed-by-digit
+    // (Kansas comma-section format `NN-N,NNN` like `K.S.A. 23-9,101`, #367).
+    // Period and comma guards prevent sentence punctuation from being
+    // absorbed into the section.
     //
     // Section connector: `§`, `§§`, or the spelled-out word `section(s)` /
     // `Section(s)` (#348). Arizona and several other state corpora cite as
@@ -82,7 +84,7 @@ export function buildAbbreviatedCodeRegex(): RegExp {
     // common in Idaho practice (#360) and harmless elsewhere.
     // Trailing subscript groups accept either parens or brackets — MSA uses
     // `[N]` for subdivisions (`MSA 23.710[252]`) #370.
-    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9]))*(?:\\([^)]*\\)|\\[[^\\]]*\\])*(?:\\s*et\\s+seq\\.?)?)`,
+    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9])|,(?=\\d))*(?:\\([^)]*\\)|\\[[^\\]]*\\])*(?:\\s*et\\s+seq\\.?)?)`,
     "g",
   )
 }

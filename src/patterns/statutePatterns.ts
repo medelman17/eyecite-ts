@@ -235,6 +235,24 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Kansas Statutes Annotated year-edition / Supp. form: `K.S.A. 2009
+    // Supp. 44-501(d)(2)`. The year between K.S.A. and the section number
+    // is the compilation/supplement year, not the section — abbreviated-code
+    // would mis-capture the year. The Supp. token is optional (some Kansas
+    // courts write `K.S.A. YYYY NN-NNN` without `Supp.` to mean the bound
+    // volume of that year). Listed BEFORE `abbreviated-code` so this shape
+    // wins. The internal comma (`23-9,101`) is the Kansas comma-section
+    // form, also supported. #367
+    //
+    // Captures: (1) edition year, (2) optional Supp. marker, (3) section.
+    id: "ksa-year-edition",
+    regex:
+      /\bK\.?\s*S\.?\s*A\.?\s+(\d{4})(?:\s+(Supp\.?))?\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9])|,(?=\d))*(?:\([^)]*\))*)/g,
+    description:
+      'Kansas Statutes Annotated year-edition: "K.S.A. 2009 Supp. 44-501(d)(2)" — #367',
+    type: "statute",
+  },
+  {
     id: "abbreviated-code",
     regex: buildAbbreviatedCodeRegex(),
     description: "Abbreviated state code citations for all US jurisdictions",
