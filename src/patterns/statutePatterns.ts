@@ -412,6 +412,26 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Georgia pre-1983 Code — `Code § 27-2501`, `Code Ann. § 26-2101`,
+    // `Code § 110-501`. Georgia replaced its old "Code" / "Code of Georgia
+    // Annotated" with OCGA in 1983. Modern Georgia opinions still cite the
+    // pre-1983 code for statutory history. The TWO-part hyphenated section
+    // format (`\d+-\d+` with negative lookahead `(?![\d-])` so 3-part
+    // OCGA-style sections don't partial-match) is the disambiguator —
+    // bare `Code Ann.` is always Georgia (other states use prefixed
+    // `Md. Code Ann.`, `Ind. Code Ann.`, etc., which the `named-code`
+    // and `abbreviated-code` patterns handle). Listed AFTER
+    // `abbreviated-code` so prefixed forms win span dedup. #358
+    //
+    // Captures: (1) "Code Ann." or "Code", (2) section body.
+    id: "ga-pre-1983",
+    regex:
+      /\b(Code(?:\s+Ann\.?)?)\s+§\s*(\d+-\d+(?![\d-])(?:[A-Za-z0-9])?(?:\([A-Za-z0-9]+\))*)/g,
+    description:
+      'Georgia pre-1983 Code: "Code Ann. § 26-2101" / "Code § 27-2501" — #358',
+    type: "statute",
+  },
+  {
     // New Mexico bare-section form: `Section 32A-2-7(A)`, `§ 41-2-2`. NM
     // opinions cite NMSA 1978 sections without a code prefix — the three-
     // hyphen section format (`\d[A-Z]?-\d[A-Z]?-\d[A-Z]?`) is distinctive
