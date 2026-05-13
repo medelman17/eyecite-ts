@@ -62,10 +62,16 @@ export const statutePatterns: Pattern[] = [
   {
     id: "mass-chapter",
     // Matches: Mass. Gen. Laws ch. X, § Y / M.G.L.A. c. X, § Y / G.L. c. X, § Y / A.L.M. c. X, § Y
+    // Spacing between corpus prefix and `c.` is optional (`G.L.c.` is common
+    // Massachusetts court style). The section connector accepts both `§` and
+    // `sec.` / `Sec.` (Massachusetts opinions use both). The section portion
+    // itself is optional — chapter-only citations like `G.L. c. 93A`
+    // refer to the entire chapter and are valid by themselves. #364
+    //
     // Section body: period only allowed when followed by alphanumeric, so a
     // trailing sentence period is not absorbed (#283).
     regex:
-      /\b(Mass\.?\s*Gen\.?\s*Laws|M\.?G\.?L\.?A?\.?|A\.?L\.?M\.?|G\.?\s*L\.?)\s+(?:ch\.?|c\.?)\s*(\w+),?\s*§\s*(\w+(?:[\w/-]|\.(?=\w))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(Mass\.?\s*Gen\.?\s*Laws|General\s+Laws|M\.?G\.?L\.?A?\.?|A\.?L\.?M\.?|G\.?\s*L\.?)\s*(?:ch\.?|c\.?)\s*(\w+)(?:,?\s*(?:§§?|[Ss]ec\.?|[Ss]ection)\s*(\w+(?:[\w/-]|\.(?=\w))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?))?/g,
     description: 'Massachusetts chapter-based citations (e.g., "Mass. Gen. Laws ch. 93A, § 2")',
     type: "statute",
   },

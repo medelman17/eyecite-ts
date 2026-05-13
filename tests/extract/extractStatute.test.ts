@@ -1835,4 +1835,88 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Massachusetts G.L. c. spacing/sec./chapter-only variants (#364)", () => {
+    it("extracts `G.L. c. 268A, sec. 25` (sec. instead of §)", () => {
+      const cites = extractCitations("See G.L. c. 268A, sec. 25.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("268A")
+        expect(cites[0].jurisdiction).toBe("MA")
+        expect(cites[0].section).toBe("25")
+      }
+    })
+
+    it("extracts `G.L.c. 93A` (no space between G.L. and c.)", () => {
+      const cites = extractCitations("See G.L.c. 93A.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("93A")
+        expect(cites[0].jurisdiction).toBe("MA")
+      }
+    })
+
+    it("extracts `G. L. c. 93A` chapter-only (spaced abbreviation, no section)", () => {
+      const cites = extractCitations("See G. L. c. 93A.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("93A")
+        expect(cites[0].jurisdiction).toBe("MA")
+        expect(cites[0].section).toBe("")
+      }
+    })
+
+    it("extracts `G.L.c. 90, §34M` (combined no-space + § + section)", () => {
+      const cites = extractCitations("See G.L.c. 90, §34M.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("90")
+        expect(cites[0].section).toBe("34M")
+      }
+    })
+
+    it("extracts `G.L.c. 272, §99E(3)` with subsection", () => {
+      const cites = extractCitations("See G.L.c. 272, §99E(3).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("272")
+        expect(cites[0].section).toBe("99E")
+        expect(cites[0].subsection).toBe("(3)")
+      }
+    })
+
+    it("extracts spelled-out `General Laws c. 94C, § 32A(a)`", () => {
+      const cites = extractCitations("See General Laws c. 94C, § 32A(a).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("94C")
+        expect(cites[0].section).toBe("32A")
+        expect(cites[0].subsection).toBe("(a)")
+      }
+    })
+
+    it("regression: `Mass. Gen. Laws c. 93A, § 2` continues to work", () => {
+      const cites = extractCitations("See Mass. Gen. Laws c. 93A, § 2.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("93A")
+        expect(cites[0].jurisdiction).toBe("MA")
+        expect(cites[0].section).toBe("2")
+      }
+    })
+  })
 })

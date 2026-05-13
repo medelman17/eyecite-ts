@@ -24,8 +24,11 @@ import { parseBody } from "./parseBody"
 const NAMED_CODE_RE =
   /^(N\.?\s*Y\.?|Cal(?:ifornia)?\.?|Tex(?:as)?\.?|Md\.?|Va\.?|Ala(?:bama)?\.?)\s+(.*?)\s*§§?\s*(.+)$/sd
 
-/** Match mass-chapter token: corpus abbreviation + ch./c. + chapter + § + section */
-const MASS_CHAPTER_RE = /^(.*?)\s+(?:ch\.?|c\.?)\s*(\w+),?\s*§\s*(.+)$/d
+/** Match mass-chapter token: corpus abbreviation + ch./c. + chapter + optional (§|sec.) + section.
+ *  Section connector and section body are optional — `G.L. c. 93A`
+ *  chapter-only citations are valid (#364). Spacing before `c.` is optional
+ *  so `G.L.c.` matches (also #364). */
+const MASS_CHAPTER_RE = /^(.*?)\s*(?:ch\.?|c\.?)\s*(\w+)(?:,?\s*(?:§§?|[Ss]ec\.?|[Ss]ection)\s*(.+))?$/d
 
 /** Map normalized jurisdiction prefixes to 2-letter state codes */
 const PREFIX_MAP: Record<string, string> = {
@@ -111,7 +114,9 @@ export function extractNamedCode(
     if (massMatch) {
       jurisdiction = "MA"
       code = massMatch[2] // chapter number (e.g., "93A")
-      rawBody = massMatch[3]
+      // Section body is optional — chapter-only citations like `G.L. c. 93A`
+      // are valid. When absent, leave the section empty. (#364)
+      rawBody = massMatch[3] ?? ""
     } else {
       code = text
       rawBody = ""
