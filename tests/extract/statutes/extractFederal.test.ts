@@ -24,10 +24,11 @@ describe("extractFederal", () => {
       expect(c.confidence).toBeGreaterThanOrEqual(0.95)
     })
 
-    it("should extract USC without periods", () => {
+    it("should extract USC without periods (canonicalized to U.S.C.)", () => {
       const c = extractFederal(makeToken("15 USC § 78j", "usc"), map)
       expect(c.title).toBe(15)
-      expect(c.code).toBe("USC")
+      // No-period form normalizes to Bluebook canonical (#428)
+      expect(c.code).toBe("U.S.C.")
       expect(c.section).toBe("78j")
       expect(c.jurisdiction).toBe("US")
     })
@@ -106,10 +107,11 @@ describe("extractFederal", () => {
       expect(c.subsection).toBe("(b)(14)")
     })
 
-    it("should handle CFR without periods", () => {
+    it("should handle CFR without periods (canonicalized to C.F.R.)", () => {
       const c = extractFederal(makeToken("40 CFR § 122", "cfr"), map)
       expect(c.title).toBe(40)
-      expect(c.code).toBe("CFR")
+      // No-period form normalizes to Bluebook canonical (#428)
+      expect(c.code).toBe("C.F.R.")
       expect(c.section).toBe("122")
     })
   })

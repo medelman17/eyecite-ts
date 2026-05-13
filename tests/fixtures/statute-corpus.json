@@ -8,7 +8,7 @@
   {
     "text": "15 USC § 78j",
     "expected": [
-      { "type": "statute", "title": 15, "code": "USC", "section": "78j", "jurisdiction": "US" }
+      { "type": "statute", "title": 15, "code": "U.S.C.", "section": "78j", "jurisdiction": "US" }
     ]
   },
   {

@@ -17,19 +17,30 @@ import type { Pattern } from "./casePatterns"
 
 export const statutePatterns: Pattern[] = [
   {
+    // U.S. Code — Bluebook canonical `42 U.S.C. § 1983` plus court-published
+    // variants: `42 USC 1983` (no periods, no §), `11 USCA § 544(a)(3)` (West
+    // annotated), `49 U.S.C. Section 1513` (spelled-out "Section"), `42
+    // United States Code section 1983` (fully spelled-out code name). #428
+    //
+    // The connector (`§§?` / `[Ss]ections?` / `[Ss]ec\.?`) is OPTIONAL —
+    // bare `N USC NNNN` form omits any connector. The leading `\b(\d+)`
+    // title is the disambiguator from prose.
     id: "usc",
     regex:
-      /\b(\d+)\s+(?:U\.S\.C\.?|USC)\s*§§?\s*(\d+[A-Za-z0-9-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s+(?:U\.?S\.?C\.?A?\.?|USCA?|United\s+States\s+Code)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
     description:
-      'U.S. Code citations with optional subsections and et seq. (e.g., "42 U.S.C. § 1983(a)(1) et seq.")',
+      'U.S. Code citations (U.S.C., USC, USCA, "United States Code") with optional §/Section connector — #428',
     type: "statute",
   },
   {
+    // Code of Federal Regulations — Bluebook canonical `42 C.F.R. § 122.26`
+    // plus no-§ variants `42 CFR 447`, `45 CFR 303`, `29 CFR 1926`. The
+    // connector (`§§?` / `Part` / `Section`) is OPTIONAL. #428
     id: "cfr",
     regex:
-      /\b(\d+)\s+C\.?F\.?R\.?\s*(?:(?:Part|pt\.)\s+|§§?\s*)(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s+C\.?F\.?R\.?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
     description:
-      'Code of Federal Regulations with Part or §, subsections, et seq. (e.g., "12 C.F.R. Part 226", "40 C.F.R. § 122.26(b)(14)")',
+      'Code of Federal Regulations with optional Part/§/Section connector — #428',
     type: "statute",
   },
   {

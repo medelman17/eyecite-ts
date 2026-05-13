@@ -225,13 +225,24 @@ export function extractCitations(
 
   // Step 2: Tokenize (synchronous)
   // Note: Pattern order matters for deduplication - more specific patterns first
+  // USC and CFR patterns are placed BEFORE casePatterns so the broad
+  // state-reporter regex (which matches `42 USC 1983` as vol-reporter-page)
+  // is subsumed by the more specific federal-statute match. Without this,
+  // `42 USC 1983` mis-types as `case`. #428
+  const federalStatutePatterns = statutePatterns.filter(
+    (p) => p.id === "usc" || p.id === "cfr" || p.id === "irc",
+  )
+  const otherStatutePatterns = statutePatterns.filter(
+    (p) => p.id !== "usc" && p.id !== "cfr" && p.id !== "irc",
+  )
   const allPatterns = options?.patterns || [
     ...neutralPatterns, // Most specific (year-based format)
     ...docketPatterns, // Docket-number citations (anchored by "No. ")
     ...shortFormPatterns, // Short-form (requires " at " keyword)
+    ...federalStatutePatterns, // USC/CFR/IRC — before casePatterns (#428)
     ...casePatterns, // Case citations (reporter-specific)
     ...constitutionalPatterns, // Constitutional citations (more specific than statutes)
-    ...statutePatterns, // Statutes (code-specific)
+    ...otherStatutePatterns, // State statutes (code-specific)
     ...journalPatterns, // Least specific (broad pattern)
   ]
   const tokens = tokenize(cleaned, allPatterns)

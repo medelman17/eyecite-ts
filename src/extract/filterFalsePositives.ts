@@ -62,6 +62,19 @@ const BLOCKED_REPORTERS: ReadonlySet<string> = new Set([
   "c.m.l.r.",
   // Historical English
   "edw.",
+  // Federal statute/regulation abbreviations — the broad state-reporter
+  // regex matches `42 USC 1983` and `42 CFR 447` (volume + token + page),
+  // mis-typing federal statutory citations as `case`. The volume-band
+  // check in `isImplausibleReporter` only runs for volumes 1–20, so high-
+  // volume federal-code citations slip through. Adding them here ensures
+  // they're filtered regardless of volume — the USC/CFR statute patterns
+  // will then capture them correctly. #428
+  "usc",
+  "usca",
+  "u.s.c.",
+  "u.s.c.a.",
+  "cfr",
+  "c.f.r.",
 ])
 
 /**
