@@ -191,16 +191,22 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     regexFragment: "Ga\\.?\\s+Code(?:\\s+Ann\\.?)?|O\\.?C\\.?G\\.?A\\.?",
   },
   // ── Pennsylvania (consolidated) ────────────────────────────────────────────
+  // Inter-letter spacing tolerance — `Pa. C. S.` (with spaces) is a
+  // common Pennsylvania court-published style. Canonical is `Pa.C.S.`
+  // (Bluebook); ordered last so spaced variants normalize to it. #392
   {
     jurisdiction: "PA",
-    abbreviations: ["Pa. Cons. Stat.", "Pa.C.S.A.", "Pa.C.S.", "Pa. C.S.A.", "Pa. C.S."],
-    regexFragment: "Pa\\.?\\s*C\\.?S\\.?A?\\.?|Pa\\.?\\s+Cons\\.?\\s+Stat\\.?",
+    abbreviations: ["Pa. Cons. Stat.", "Pa. C.S.A.", "Pa. C.S.", "Pa.C.S.A.", "Pa.C.S."],
+    regexFragment: "Pa\\.?\\s*C\\.?\\s*S\\.?\\s*A?\\.?|Pa\\.?\\s+Cons\\.?\\s+Stat\\.?",
   },
   // ── Pennsylvania (unconsolidated) ──────────────────────────────────────────
+  // Inter-letter spacing tolerance — `P. S.` (with space) is a common
+  // Pennsylvania court-published style. Canonical is `P.S.` (Bluebook);
+  // ordered last so spaced/dotless variants normalize to it. #392
   {
     jurisdiction: "PA",
-    abbreviations: ["P.S.", "PS"],
-    regexFragment: "P\\.?S\\.?",
+    abbreviations: ["PS", "P.S."],
+    regexFragment: "P\\.?\\s*S\\.?",
   },
   // ── Indiana ────────────────────────────────────────────────────────────────
   // The bare dotted `I.C.` form is reserved for Idaho (#360) — Indiana
