@@ -80,6 +80,18 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Oregon Revised Statutes chapter-only form: `ORS chapter 34`. The
+    // modern `ORS NNN.NNN` section form is already handled by
+    // `abbreviated-code`; this pattern captures chapter-only references.
+    // #387
+    //
+    // Captures: (1) chapter number.
+    id: "ors-chapter",
+    regex: /\bORS\s+chapter\s+(\d+)/g,
+    description: 'Oregon Revised Statutes chapter-only form: "ORS chapter 34" — #387',
+    type: "statute",
+  },
+  {
     id: "prose",
     regex: /\b[Ss]ection\s+(\d+[A-Za-z0-9-]*(?:\([^)]*\))*)\s+of\s+title\s+(\d+)\b/g,
     description:
