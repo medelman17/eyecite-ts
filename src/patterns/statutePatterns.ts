@@ -202,6 +202,23 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Nebraska Reissue Revised Statutes 1943 (R.R.S. 1943) — historical
+    // form: `section 38-901, R. R. S. 1943` or `§ 30-2806, R.R.S. 1943,
+    // Reissue 1975`. Nebraska compiled its statutes in 1943 and re-issues
+    // volumes on a rolling basis, so the trailing `Reissue YYYY` clause
+    // gives the volume year. The `R.R.S.` token admits inter-letter
+    // spacing (`R. R. S.`) — common OCR variant. Listed BEFORE
+    // `abbreviated-code` so the container shape wins. #373
+    //
+    // Captures: (1) section body, (2) optional Reissue year.
+    id: "rrs-1943",
+    regex:
+      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+R\.?\s*R\.?\s*S\.?\s+1943(?:,\s+Reissue\s+(\d{4}))?/g,
+    description:
+      'Nebraska Reissue Revised Statutes 1943: "§ 30-2806, R.R.S. 1943, Reissue 1975" — #373',
+    type: "statute",
+  },
+  {
     // Minnesota Statutes year-edition form: `Minn. St. 1971, § 176.66`.
     // The year (1971/1974/etc.) is the edition of Minnesota Statutes, not
     // the section number — abbreviated-code would mis-capture the year as

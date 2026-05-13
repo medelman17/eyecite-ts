@@ -31,6 +31,7 @@ import { extractMinnStYearEdition } from "./statutes/extractMinnStYearEdition"
 import { extractNamedCode } from "./statutes/extractNamedCode"
 import { extractProse } from "./statutes/extractProse"
 import { extractRlh } from "./statutes/extractRlh"
+import { extractRrs1943 } from "./statutes/extractRrs1943"
 
 /**
  * Legacy inline parser for unknown patterns.
@@ -143,6 +144,8 @@ export function extractStatute(
       return extractMinnStYearEdition(token, transformationMap)
     case "rlh":
       return extractRlh(token, transformationMap)
+    case "rrs-1943":
+      return extractRrs1943(token, transformationMap)
     default:
       // unknown patterns use legacy parser
       return extractLegacy(token, transformationMap)

@@ -679,9 +679,10 @@ const STATUTE_YEAR_PAREN_REGEX =
 /**
  * Edition-label set — captured tokens that should populate `editionLabel`
  * rather than `publisher`. `Repl.` = replacement volume, `Supp.` = supplement,
- * `Cum. Supp.` = cumulative supplement. #349
+ * `Cum. Supp.` = cumulative supplement. `Reissue` = reissued volume
+ * (Nebraska's rolling-reissue convention) #349 #373
  */
-const EDITION_LABEL_REGEX = /^(?:Repl|Supp|Cum\.?\s*Supp)\.?$/i
+const EDITION_LABEL_REGEX = /^(?:Repl|Supp|Cum\.?\s*Supp|Reissue)\.?$/i
 
 /**
  * Attach `year` (and optional `publisher` / `editionLabel`) to statute

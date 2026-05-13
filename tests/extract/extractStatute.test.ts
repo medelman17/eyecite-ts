@@ -1653,4 +1653,56 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Nebraska R.R.S. 1943 + Reissue edition label (#373)", () => {
+    it("extracts `section 38-901, R. R. S. 1943` (no Reissue)", () => {
+      const cites = extractCitations("See section 38-901, R. R. S. 1943.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("R.R.S. 1943")
+        expect(cites[0].jurisdiction).toBe("NE")
+        expect(cites[0].section).toBe("38-901")
+        expect(cites[0].year).toBeUndefined()
+      }
+    })
+
+    it("extracts `§ 30-2806, R. R. S. 1943, Reissue 1975`", () => {
+      const cites = extractCitations("See § 30-2806, R. R. S. 1943, Reissue 1975.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("R.R.S. 1943")
+        expect(cites[0].jurisdiction).toBe("NE")
+        expect(cites[0].section).toBe("30-2806")
+        expect(cites[0].year).toBe(1975)
+        expect(cites[0].editionLabel).toBe("Reissue")
+      }
+    })
+
+    it("attaches `Reissue YYYY` parenthetical to modern Neb. Rev. Stat.", () => {
+      const cites = extractCitations("Neb. Rev. Stat. § 71-5016 (Reissue 2003).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Neb. Rev. Stat.")
+        expect(cites[0].year).toBe(2003)
+        expect(cites[0].editionLabel).toBe("Reissue")
+      }
+    })
+
+    it("regression: bare modern `Neb. Rev. Stat. § 71-5016` continues to work", () => {
+      const cites = extractCitations("See Neb. Rev. Stat. § 71-5016.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NE")
+        expect(cites[0].section).toBe("71-5016")
+      }
+    })
+  })
 })
