@@ -289,6 +289,20 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Tennessee Code Annotated postfix form: `§ 39-904, T.C.A.` — the code
+    // name appears AFTER the section, separated by a comma. Sibling to
+    // florida-postfix, idaho-postfix, mca-postfix. Listed BEFORE
+    // `abbreviated-code` so the container shape wins span dedup. #398
+    //
+    // Captures: (1) section body.
+    id: "tca-postfix",
+    regex:
+      /(?<![A-Za-z])(?:[Ss]ections?|[Ss]ec\.?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+T\.?C\.?A\.?/g,
+    description:
+      'Tennessee Code Annotated postfix form: "§ 39-904, T.C.A." — #398',
+    type: "statute",
+  },
+  {
     // Nebraska Reissue Revised Statutes 1943 (R.R.S. 1943) — historical
     // form: `section 38-901, R. R. S. 1943` or `§ 30-2806, R.R.S. 1943,
     // Reissue 1975`. Nebraska compiled its statutes in 1943 and re-issues

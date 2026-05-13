@@ -41,6 +41,7 @@ import { extractProse } from "./statutes/extractProse"
 import { extractRlh } from "./statutes/extractRlh"
 import { extractRrs1943 } from "./statutes/extractRrs1943"
 import { extractRsaChapter } from "./statutes/extractRsaChapter"
+import { extractTcaPostfix } from "./statutes/extractTcaPostfix"
 
 /**
  * Legacy inline parser for unknown patterns.
@@ -173,6 +174,8 @@ export function extractStatute(
       return extractRrs1943(token, transformationMap)
     case "rsa-chapter":
       return extractRsaChapter(token, transformationMap)
+    case "tca-postfix":
+      return extractTcaPostfix(token, transformationMap)
     default:
       // unknown patterns use legacy parser
       return extractLegacy(token, transformationMap)

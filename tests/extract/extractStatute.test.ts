@@ -2344,4 +2344,72 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Tennessee T.C.A. variants + postfix (#398)", () => {
+    it("extracts `T.C.A. sec. 40-2407` (sec. connector)", () => {
+      const cites = extractCitations("See T.C.A. sec. 40-2407.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("T.C.A.")
+        expect(cites[0].jurisdiction).toBe("TN")
+        expect(cites[0].section).toBe("40-2407")
+      }
+    })
+
+    it("extracts `T.C.A. Sec. 40-3809` (capital Sec.)", () => {
+      const cites = extractCitations("See T.C.A. Sec. 40-3809.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("40-3809")
+      }
+    })
+
+    it("extracts `TCA sec. 40-2528` (dotless, canonicalized to T.C.A.)", () => {
+      const cites = extractCitations("See TCA sec. 40-2528.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("T.C.A.")
+        expect(cites[0].jurisdiction).toBe("TN")
+        expect(cites[0].section).toBe("40-2528")
+      }
+    })
+
+    it("extracts postfix `§ 39-904, T.C.A.`", () => {
+      const cites = extractCitations("See § 39-904, T.C.A.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("T.C.A.")
+        expect(cites[0].jurisdiction).toBe("TN")
+        expect(cites[0].section).toBe("39-904")
+      }
+    })
+
+    it("regression: `T.C.A. § 39-2404` continues to work", () => {
+      const cites = extractCitations("See T.C.A. § 39-2404.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("TN")
+      }
+    })
+
+    it("regression: `Tenn. Code Ann. § 39-2404` continues to work", () => {
+      const cites = extractCitations("See Tenn. Code Ann. § 39-2404.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Tenn. Code Ann.")
+      }
+    })
+  })
 })
