@@ -78,7 +78,9 @@ export function buildAbbreviatedCodeRegex(): RegExp {
     // Section connector: `§`, `§§`, or the spelled-out word `section(s)` /
     // `Section(s)` (#348). Arizona and several other state corpora cite as
     // `A.R.S. section 14-2804(A)` interchangeably with `A.R.S. § 14-2804(A)`.
-    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*(?:§§?|[Ss]ections?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9]))*(?:\\([^)]*\\))*(?:\\s*et\\s+seq\\.?)?)`,
+    // Optional comma between code name and connector (`Idaho Code, § N`) is
+    // common in Idaho practice (#360) and harmless elsewhere.
+    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9]))*(?:\\([^)]*\\))*(?:\\s*et\\s+seq\\.?)?)`,
     "g",
   )
 }
@@ -178,6 +180,10 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     regexFragment: "P\\.?S\\.?",
   },
   // ── Indiana ────────────────────────────────────────────────────────────────
+  // The bare dotted `I.C.` form is reserved for Idaho (#360) — Indiana
+  // opinions use either the spelled-out `Ind. Code` / `Indiana Code` or the
+  // dotless `IC` shorthand. Restricting Indiana to the dotless `IC` lets
+  // Idaho own `I.C.` / `I. C.` without losing Indiana coverage.
   {
     jurisdiction: "IN",
     abbreviations: [
@@ -187,11 +193,10 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
       "Indiana Code",
       "Ind. Code Ann.",
       "Ind. Code",
-      "I.C.",
       "IC",
     ],
     regexFragment:
-      "Burns\\s+Ind\\.?\\s+Code(?:\\s+Ann\\.?)?|Ind(?:iana)?\\.?\\s+Code(?:\\s+Ann\\.?)?|I\\.?C\\.?",
+      "Burns\\s+Ind\\.?\\s+Code(?:\\s+Ann\\.?)?|Ind(?:iana)?\\.?\\s+Code(?:\\s+Ann\\.?)?|IC",
   },
   // ── New Jersey ─────────────────────────────────────────────────────────────
   {
@@ -267,10 +272,15 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     regexFragment: "Iowa\\s+Code(?:\\s+Ann\\.?)?|I\\.?C\\.?A\\.?",
   },
   // ── Idaho ─────────────────────────────────────────────────────────────────
+  // Idaho fragment admits the dotted `I.C.` abbreviation plus inter-letter
+  // spacing variants (`I. C.`, OCR `I.  C.`) and the no-dots form (`IC` is
+  // owned by Indiana via array order). The extractor normalizes all variants
+  // to the canonical `Idaho Code` via the stripped-form fallback in
+  // `findAbbreviatedCode`. #360
   {
     jurisdiction: "ID",
-    abbreviations: ["Idaho Code Ann.", "Idaho Code"],
-    regexFragment: "Idaho\\s+Code(?:\\s+Ann\\.?)?",
+    abbreviations: ["Idaho Code Ann.", "Idaho Code", "I.C."],
+    regexFragment: "Idaho\\s+Code(?:\\s+Ann\\.?)?|I\\.?\\s*C\\.?",
   },
   // ── Kansas ────────────────────────────────────────────────────────────────
   {

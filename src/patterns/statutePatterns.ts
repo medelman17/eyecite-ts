@@ -173,6 +173,21 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Idaho postfix form: `Section 23-908(4), Idaho Code` — the code name
+    // appears AFTER the section. Sibling to florida-postfix. Listed BEFORE
+    // `abbreviated-code` so the container-shape wins span dedup (otherwise
+    // the trailing `Idaho Code` could tokenize as a separate abbreviated-code
+    // match). #360
+    //
+    // Captures: (1) section body.
+    id: "idaho-postfix",
+    regex:
+      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+Idaho\s+Code(?:\s+Ann\.?)?/g,
+    description:
+      'Idaho postfix statute form: "Section 23-908(4), Idaho Code" — #360',
+    type: "statute",
+  },
+  {
     id: "abbreviated-code",
     regex: buildAbbreviatedCodeRegex(),
     description: "Abbreviated state code citations for all US jurisdictions",
