@@ -119,6 +119,28 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // New York bare named-code form: `Penal Law § 130.52`, `Labor Law §
+    // 220 [3-a]`. NY opinions omit the `N.Y.` prefix when citing their own
+    // state's codes (other states use `Code` while NY uses `Law` — the
+    // word `Law` after the code name is the disambiguator). The enumerated
+    // list of NY law names is closed; matching is restricted to known NY
+    // codes so the false-positive risk is bounded. Bracket-subdivision
+    // groups `[3]`, `[a]`, `[iv]` are accepted alongside the canonical
+    // `(N)` form — NY style is to use brackets when paren collisions are
+    // a concern. #386
+    //
+    // Listed AFTER `named-code` so the longer `N.Y. Penal Law § N` form
+    // wins span dedup when the `N.Y.` prefix is present.
+    //
+    // Captures: (1) code name, (2) section body with bracket/paren chain.
+    id: "ny-bare-named-code",
+    regex:
+      /\b(Penal|Labor|Real Property|General Business|General Obligations|General Municipal|Municipal Home Rule|Criminal Procedure|Insurance|Executive|Judiciary|Civil Practice|Civil Rights|Education|Public Health|Banking|Domestic Relations|Environmental Conservation|Election|Social Services|Estates Powers and Trusts|Vehicle and Traffic|Surrogate's Court Procedure|Family Court|Court of Claims|Workers' Compensation|Highway|Tax|Personal Property)\s+Law\s+§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\)|\[[^\]]*\])*(?:\s+(?:\([^)]*\)|\[[^\]]*\]))*)/g,
+    description:
+      'New York bare named-code form: "Penal Law § 130.00 [3]", "Labor Law § 220 [3-a]" — #386',
+    type: "statute",
+  },
+  {
     id: "mass-chapter",
     // Matches: Mass. Gen. Laws ch. X, § Y / M.G.L.A. c. X, § Y / G.L. c. X, § Y / A.L.M. c. X, § Y
     // Spacing between corpus prefix and `c.` is optional (`G.L.c.` is common

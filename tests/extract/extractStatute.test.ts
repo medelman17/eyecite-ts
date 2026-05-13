@@ -2285,4 +2285,63 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("New York bare named-code + bracket subdivisions (#386)", () => {
+    it("extracts bare `Penal Law § 130.52`", () => {
+      const cites = extractCitations("See Penal Law § 130.52.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Penal Law")
+        expect(cites[0].jurisdiction).toBe("NY")
+        expect(cites[0].section).toBe("130.52")
+      }
+    })
+
+    it("extracts `Penal Law § 130.00 [3]` (bracket subdivision)", () => {
+      const cites = extractCitations("See Penal Law § 130.00 [3].").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Penal Law")
+        expect(cites[0].section).toBe("130.00")
+        expect(cites[0].subsection).toBe("[3]")
+      }
+    })
+
+    it("extracts `Labor Law § 220 [3-a]` (bracket subdivision with hyphen-letter)", () => {
+      const cites = extractCitations("See Labor Law § 220 [3-a].").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("Labor Law")
+        expect(cites[0].section).toBe("220")
+        expect(cites[0].subsection).toBe("[3-a]")
+      }
+    })
+
+    it("extracts `General Municipal Law § 874`", () => {
+      const cites = extractCitations("See General Municipal Law § 874.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("General Municipal Law")
+        expect(cites[0].jurisdiction).toBe("NY")
+      }
+    })
+
+    it("regression: `N.Y. Penal Law § 130.52` produces exactly one citation", () => {
+      const cites = extractCitations("See N.Y. Penal Law § 130.52.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NY")
+      }
+    })
+  })
 })
