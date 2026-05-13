@@ -44,6 +44,7 @@ import { extractRrs1943 } from "./statutes/extractRrs1943"
 import { extractRigl1956 } from "./statutes/extractRigl1956"
 import { extractRsaChapter } from "./statutes/extractRsaChapter"
 import { extractTcaPostfix } from "./statutes/extractTcaPostfix"
+import { extractVaBareCode } from "./statutes/extractVaBareCode"
 
 /**
  * Legacy inline parser for unknown patterns.
@@ -182,6 +183,8 @@ export function extractStatute(
       return extractRsaChapter(token, transformationMap)
     case "tca-postfix":
       return extractTcaPostfix(token, transformationMap)
+    case "va-bare-code":
+      return extractVaBareCode(token, transformationMap)
     default:
       // unknown patterns use legacy parser
       return extractLegacy(token, transformationMap)
