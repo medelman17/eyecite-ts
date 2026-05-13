@@ -2259,4 +2259,30 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("Oregon ORS chapter-only form (#387)", () => {
+    it("extracts `ORS chapter 34`", () => {
+      const cites = extractCitations("See ORS chapter 34.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("ORS")
+        expect(cites[0].jurisdiction).toBe("OR")
+        expect(cites[0].section).toBe("34")
+      }
+    })
+
+    it("regression: `ORS 131.315(7)` (modern form) continues to work", () => {
+      const cites = extractCitations("See ORS 131.315(7).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("ORS")
+        expect(cites[0].jurisdiction).toBe("OR")
+        expect(cites[0].section).toBe("131.315")
+      }
+    })
+  })
 })
