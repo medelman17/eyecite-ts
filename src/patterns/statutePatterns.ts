@@ -188,6 +188,20 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Montana postfix form: `§ 77-6-205(2), MCA` or `Section 40-4-121(7)(a),
+    // MCA` — the dominant Montana citation style (every modern Montana opinion
+    // uses this form). Sibling to florida-postfix and idaho-postfix. The
+    // trailing edition-year parenthetical (`MCA (1983)`) is left to the
+    // generic year-paren absorber in extractCitations.ts to attach. #372
+    //
+    // Captures: (1) section body.
+    id: "mca-postfix",
+    regex:
+      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+MCA/g,
+    description: 'Montana Code Annotated postfix form: "§ 77-6-205(2), MCA" — #372',
+    type: "statute",
+  },
+  {
     // Minnesota Statutes year-edition form: `Minn. St. 1971, § 176.66`.
     // The year (1971/1974/etc.) is the edition of Minnesota Statutes, not
     // the section number — abbreviated-code would mis-capture the year as
