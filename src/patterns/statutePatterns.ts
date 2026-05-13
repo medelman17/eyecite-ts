@@ -303,6 +303,21 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Washington chapter-postfix form: `chapter 49.60 RCW`, `Chapter 41.26
+    // RCW`. Canonical Washington court style places the chapter number
+    // before RCW (the opposite of the prefix `RCW chapter` form used in
+    // other states). The chapter is in `NN.NN` format — distinctively
+    // Washington. Listed BEFORE `abbreviated-code` so the container shape
+    // wins span dedup over a potential `RCW` standalone match. #408
+    //
+    // Captures: (1) chapter body in NN.NN form.
+    id: "rcw-chapter-postfix",
+    regex: /\b[Cc]hapter\s+(\d+\.\d+)\s+RCW/g,
+    description:
+      'Washington RCW chapter postfix form: "chapter 49.60 RCW" — #408',
+    type: "statute",
+  },
+  {
     // Nebraska Reissue Revised Statutes 1943 (R.R.S. 1943) — historical
     // form: `section 38-901, R. R. S. 1943` or `§ 30-2806, R.R.S. 1943,
     // Reissue 1975`. Nebraska compiled its statutes in 1943 and re-issues
