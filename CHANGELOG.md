@@ -1,5 +1,70 @@
 # eyecite-ts
 
+## 0.16.2
+
+### Patch Changes
+
+- [#459](https://github.com/medelman17/eyecite-ts/pull/459) [`6181fcd`](https://github.com/medelman17/eyecite-ts/commit/6181fcd850e1bbcb1dc22075f5778c67015ad975) Thanks [@medelman17](https://github.com/medelman17)! - fix: plural `§§ N, N` / `§§ N and N` emits one citation per section (#453)
+
+  When a statute reference uses the plural section symbol `§§`
+  followed by multiple sections (`§§ 18-8004, 18-8005(5)`,
+  `§§ 13-108 and 13-621`), only the first section was captured —
+  **60 occurrences across 10 states** in the v0.16.0 corpus were
+  losing the second and subsequent sections.
+
+  ### Fix
+
+  New `expandPluralSectionList` post-extract pass (step 4.4 in
+  `extractCitations.ts`):
+
+  1. For each statute citation whose `matchedText` contains `§§`,
+     scan the cleaned text immediately after its end.
+  2. Match a continuation pattern of `(,|and|to) <section>` and
+     emit one new `StatuteCitation` per match.
+  3. Each continuation inherits `code`, `jurisdiction`, `title`,
+     `year`, `publisher`, `editionLabel`, etc. from the head
+     citation; only `section` differs.
+
+  Connectors: `,` / `and` / `to`. Section format covers
+  `12940`, `18-8004`, `12945(b)`, `707-701(1)`.
+
+  ### Tests
+
+  11 new tests in `tests/extract/issue453PluralSection.test.ts`:
+  comma-separated lists, three-section lists, `and` connector,
+  inherited code/jurisdiction, singular-§ regression, span
+  fidelity, subsection on second section, and space-padded
+  connector. Full 2885-test suite passes.
+
+  The range form `§§ 16-1605-1607` (chapter+range expansion) is
+  deferred to a follow-up issue — this fix covers the most common
+  comma/`and`-separated forms.
+
+- [#457](https://github.com/medelman17/eyecite-ts/pull/457) [`145e63d`](https://github.com/medelman17/eyecite-ts/commit/145e63df38be3b19bef52a184e9d626fb5488f5a) Thanks [@medelman17](https://github.com/medelman17)! - fix: bare-party shortform accepts `at p. N` / `at pp. N-M` / `at page N` (#454)
+
+  The #439 fix recognized `Smith, at 12` but not the California
+  Style Manual variant `Smith, at p. 12` — **26 CA occurrences**
+  in the v0.16.0 replay used the `p.` / `pp.` page-prefix form and
+  were dropped.
+
+  ### Fix
+
+  Extended the pincite-capture regex in
+  `detectBarePartyBackReferences` to accept an optional
+  `p.` / `pp.` / `page` / `pages` between `at` and the digit:
+
+  ```
+  (?<![A-Za-z'])(<name>)\s*,\s*at\s+(?:pp?\.?\s*|pages?\s+)?(<pincite>)
+  ```
+
+  ### Tests
+
+  7 new tests under `California style \`at p. N\` / \`at pp. N-M\`
+  (#454)`in`tests/extract/issue439BarePartyShortform.test.ts`:
+`at p. N`, `at pp. N-M`, `at page N`, `at pages N-M`, multi-word
+  plaintiff, non-digit FP rejection, and the no-prefix regression.
+  Full 2874-test suite passes.
+
 ## 0.16.1
 
 ### Patch Changes
