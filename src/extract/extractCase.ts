@@ -2588,6 +2588,24 @@ export function extractCase(
     if (caseNameResult) {
       caseName = caseNameResult.caseName
 
+      // Strip trailing year / court+year / parallel-cite tokens from
+      // caseName — the backward scan sometimes absorbs the CSM year paren
+      // or the start of a parallel citation. #436
+      //
+      // - Trailing `(YYYY)` or `(Court YYYY)` → strip whole paren.
+      // - Trailing `, NNNN <reporter token>` → strip the parallel-cite
+      //   start, e.g., `State v. Lane, 1998 MT 76` → `State v. Lane`.
+      if (caseName) {
+        // Trailing parenthetical (year or court+year)
+        caseName = caseName.replace(/\s*\((?:[^()]*\s)?\d{4}\)\s*$/, "").trim()
+        // Trailing comma + parallel-cite start (volume + reporter + page-like)
+        caseName = caseName
+          .replace(/,\s+\d+\s+[A-Z][A-Za-z.&'\d\s]*\d+\s*$/, "")
+          .trim()
+        // Trailing comma + neutral-cite shape (YYYY <state> NN)
+        caseName = caseName.replace(/,\s+\d{4}\s+[A-Z]+\s+\d+\s*$/, "").trim()
+      }
+
       // CSM year-first form puts the year *before* volume-reporter-page
       // (`In re K.F. (2009) 173 Cal.App.4th 655` — #19). Pick it up here when
       // there's no trailing court parenthetical to recover it from. Don't

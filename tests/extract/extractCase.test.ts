@@ -6096,3 +6096,39 @@ describe("explanatory parentheticals not routed to court field (#431)", () => {
   })
 })
 
+describe("caseName trailing-token absorption (#436)", () => {
+  it("trailing `(YYYY)` paren stripped from caseName", () => {
+    const cs = extractCitations(
+      "In Holton v. F. H. Stoltze Land & Lumber Co. (1981), 195 Mont. 1.",
+    ).filter((c) => c.type === "case")
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "case") {
+      expect(cs[0].caseName).toBe("Holton v. F. H. Stoltze Land & Lumber Co.")
+    }
+  })
+
+  it("trailing `(Court YYYY)` paren stripped from caseName", () => {
+    const cs = extractCitations(
+      "See United States v. Villano (10th Cir. 1987), 829 F.2d 1158.",
+    ).filter((c) => c.type === "case")
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "case") {
+      expect(cs[0].caseName).toBe("United States v. Villano")
+    }
+  })
+
+  it("trailing `, NNNN <reporter> NN` parallel-cite start stripped", () => {
+    const cs = extractCitations(
+      "State v. Lane, 1998 MT 76, 962 P.2d 1190 (1998).",
+    ).filter((c) => c.type === "case")
+    // The case-citation (962 P.2d 1190) should have clean caseName
+    const caseCite = cs.find(
+      (c) => (c as { reporter?: string }).reporter === "P.2d",
+    )
+    expect(caseCite).toBeDefined()
+    if (caseCite?.type === "case") {
+      expect(caseCite.caseName).toBe("State v. Lane")
+    }
+  })
+})
+
