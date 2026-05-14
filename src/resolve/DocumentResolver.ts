@@ -111,6 +111,14 @@ export class DocumentResolver {
   resolve(): ResolvedCitation[] {
     const resolved: ResolvedCitation[] = []
 
+    // Precompute, for each citation, its parenthesis depth at its start
+    // position relative to the raw document. A citation inside `(...)` is
+    // a parenthetical child of whatever opened that paren — typically the
+    // preceding citation's explanatory `(quoting X)` or `(citing Y)` block.
+    // This is more robust than relying on `fullSpan`, which is only computed
+    // for `case`/`docket` citations (shortFormCase, statute, etc. lack it).
+    const parenDepths = this.computeParenDepths()
+
     for (let i = 0; i < this.citations.length; i++) {
       this.context.citationIndex = i
       const citation = this.citations[i]
@@ -136,18 +144,21 @@ export class DocumentResolver {
             // citation's explanatory parenthetical (e.g. "(citing X)" or
             // "(quoting Y)") is a sub-reference within the parent's
             // citation, not the cited authority of that sentence — so it
-            // must not become Id.'s default antecedent. Detect this by
-            // checking whether the current cite's span lies within an
-            // earlier full cite's fullSpan. We still track it for
-            // supra/short-form resolution.
-            const isParentheticalChild = resolved.some((prior) => {
-              const priorFullSpan = getFullSpan(prior)
-              if (!priorFullSpan) return false
-              return (
-                priorFullSpan.cleanStart <= citation.span.cleanStart &&
-                priorFullSpan.cleanEnd >= citation.span.cleanEnd
-              )
-            })
+            // must not become Id.'s default antecedent. Detection uses
+            // paren depth (works for any prior citation type) with the
+            // legacy fullSpan check as fallback for case-name-prefixed
+            // citations whose `(...)` ends before the paren-depth model
+            // catches up.
+            const isParentheticalChild =
+              parenDepths[i] > 0 ||
+              resolved.some((prior) => {
+                const priorFullSpan = getFullSpan(prior)
+                if (!priorFullSpan) return false
+                return (
+                  priorFullSpan.cleanStart <= citation.span.cleanStart &&
+                  priorFullSpan.cleanEnd >= citation.span.cleanEnd
+                )
+              })
             if (!isParentheticalChild) {
               this.context.lastResolvedIndex = i
             }
@@ -199,6 +210,33 @@ export class DocumentResolver {
     }
 
     return resolved
+  }
+
+  /**
+   * Compute parenthesis depth at the start position of each citation.
+   * Walks the raw text once, counting `(` and `)` and recording the
+   * running depth at every citation's `span.cleanStart`. Depth > 0
+   * indicates the citation is nested inside an open parenthetical
+   * block (typically an explanatory `(quoting X)` / `(citing Y)`
+   * following an earlier citation).
+   */
+  private computeParenDepths(): number[] {
+    const depths: number[] = new Array(this.citations.length).fill(0)
+    if (this.citations.length === 0) return depths
+
+    let depth = 0
+    let pos = 0
+    for (let i = 0; i < this.citations.length; i++) {
+      const start = this.citations[i].span.cleanStart
+      while (pos < start && pos < this.text.length) {
+        const ch = this.text[pos]
+        if (ch === "(") depth++
+        else if (ch === ")" && depth > 0) depth--
+        pos++
+      }
+      depths[i] = depth
+    }
+    return depths
   }
 
   /**
