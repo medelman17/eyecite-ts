@@ -922,10 +922,14 @@ function detectBarePartyBackReferences(
 
   for (const [name, anchorList] of anchorsByName) {
     const escapedName = escapeRegex(name)
+    // Optional page-prefix: California Style Manual uses `at p. N` / `at pp.
+    // N-M` for short-form pincite refs. Also accept spelled-out `page` /
+    // `pages`. (#454)
+    const pagePrefix = "(?:pp?\\.?\\s*|pages?\\s+)?"
     const pincitePart =
       "\\d+(?:[-\\u2013\\u2014]\\d+)?(?:,\\s*\\d+(?:[-\\u2013\\u2014]\\d+)?)*"
     const pattern = new RegExp(
-      `(?<![A-Za-z'])(${escapedName})\\s*,\\s*at\\s+(${pincitePart})`,
+      `(?<![A-Za-z'])(${escapedName})\\s*,\\s*at\\s+${pagePrefix}(${pincitePart})`,
       "g",
     )
 

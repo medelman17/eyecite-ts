@@ -546,4 +546,65 @@ describe("issue #439 — bare-party shortform back-reference", () => {
       expect(names).toEqual(["Jones", "Smith"])
     })
   })
+
+  describe("California style `at p. N` / `at pp. N-M` (#454)", () => {
+    it("`Taylor, at p. 19` extracts with pincite=19", () => {
+      const text = "Taylor v. State, 50 Cal. 3d 10, 19 (1990). Taylor, at p. 19."
+      const cites = extractCitations(text)
+      const short = shortForms(cites)
+      expect(short).toHaveLength(1)
+      expect(short[0].partyName).toBe("Taylor")
+      expect(short[0].pincite).toBe(19)
+    })
+
+    it("multi-word plaintiff with p. prefix", () => {
+      const text =
+        "Woodland Hills v. City, 23 Cal. 3d 917 (1979). Woodland Hills, at p. 947."
+      const cites = extractCitations(text)
+      const short = shortForms(cites)
+      expect(short).toHaveLength(1)
+      expect(short[0].pincite).toBe(947)
+    })
+
+    it("`Lexin, at pp. 1085-1092` with pp. (plural) prefix and range", () => {
+      const text =
+        "Lexin v. Superior Court, 47 Cal. 4th 1050 (2010). Lexin, at pp. 1085-1092."
+      const cites = extractCitations(text)
+      const short = shortForms(cites)
+      expect(short).toHaveLength(1)
+      expect(short[0].pincite).toBe(1085)
+      expect(short[0].pinciteInfo?.endPage).toBe(1092)
+    })
+
+    it("`Smith, at page 19` spelled-out form", () => {
+      const text = "Smith v. State, 50 Cal. 3d 10 (1990). Smith, at page 19."
+      const cites = extractCitations(text)
+      const short = shortForms(cites)
+      expect(short).toHaveLength(1)
+      expect(short[0].pincite).toBe(19)
+    })
+
+    it("`Smith, at pages 19-22` spelled-out plural form", () => {
+      const text = "Smith v. State, 50 Cal. 3d 10 (1990). Smith, at pages 19-22."
+      const cites = extractCitations(text)
+      const short = shortForms(cites)
+      expect(short).toHaveLength(1)
+      expect(short[0].pincite).toBe(19)
+    })
+
+    it("does not match `at p.` followed by non-digit", () => {
+      const text = "Smith v. State, 50 Cal. 3d 10 (1990). Smith, at p. trial..."
+      const cites = extractCitations(text)
+      const short = shortForms(cites)
+      expect(short).toHaveLength(0)
+    })
+
+    it("non-CA-style `Smith, at 19` still works after #454 (regression)", () => {
+      const text = "Smith v. State, 100 F.2d 10 (1990). Smith, at 19."
+      const cites = extractCitations(text)
+      const short = shortForms(cites)
+      expect(short).toHaveLength(1)
+      expect(short[0].pincite).toBe(19)
+    })
+  })
 })
