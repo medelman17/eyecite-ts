@@ -430,6 +430,10 @@ export function extractCitations(
     citations.push(citation)
   }
 
+  // Step 4.4: Expand plural-section statute lists (`§§ N, N` /
+  // `§§ N and N`) into one statute citation per section. (#453)
+  expandPluralSectionList(citations, cleaned, transformationMap)
+
   // Step 4.5: Link subsequent history citations using Union-Find.
   // Three-phase approach: match signals → union chains → aggregate entries.
   // Invariant: citations are in text order (guaranteed by token-order processing above).
@@ -834,6 +838,80 @@ const BARE_PARTY_BLOCKED_NAMES = new Set([
   "respondent",
   "united states",
 ])
+
+/**
+ * Expand a plural `§§ N, N` (or `§§ N and N`) statute reference into one
+ * StatuteCitation per section. The tokenizer captures only the FIRST
+ * section; this pass walks the text right after a `§§`-marked statute
+ * citation and emits additional citations for each comma-/`and`-separated
+ * section it finds. Each emitted citation inherits `code`, `jurisdiction`,
+ * `title`, `year`, `publisher`, `editionLabel`, and other metadata from
+ * the head citation. (#453)
+ *
+ * Connector grammar: `,` | ` and ` | ` to `.
+ * Section grammar: `\d[\w-]*(?:\([A-Za-z0-9]+\))*` — covers
+ * `12940`, `18-8004`, `12945(b)`, `707-701(1)`.
+ */
+function expandPluralSectionList(
+  citations: Citation[],
+  cleaned: string,
+  transformationMap: TransformationMap,
+): void {
+  const sectionPart = "\\d[\\w-]*(?:\\([A-Za-z0-9]+\\))*"
+  const connectorPart = "\\s*,\\s*|\\s+and\\s+|\\s+to\\s+"
+  const continuationRe = new RegExp(
+    `^(?:${connectorPart})(${sectionPart})`,
+  )
+
+  const newCitations: Citation[] = []
+
+  for (const cite of citations) {
+    if (cite.type !== "statute") continue
+    if (!cite.matchedText.includes("§§")) continue
+
+    let cursor = cite.span.cleanEnd
+    while (cursor < cleaned.length) {
+      const slice = cleaned.slice(cursor)
+      const m = continuationRe.exec(slice)
+      if (!m) break
+
+      const fullMatchLen = m[0].length
+      const sectionText = m[1]
+      const sectionStart = cursor + fullMatchLen - sectionText.length
+      const sectionEnd = cursor + fullMatchLen
+
+      const { originalStart, originalEnd } = resolveOriginalSpan(
+        { cleanStart: sectionStart, cleanEnd: sectionEnd },
+        transformationMap,
+      )
+
+      const continuation: import("@/types/citation").StatuteCitation = {
+        ...cite,
+        text: sectionText,
+        matchedText: sectionText,
+        section: sectionText,
+        span: {
+          cleanStart: sectionStart,
+          cleanEnd: sectionEnd,
+          originalStart,
+          originalEnd,
+        },
+        // Don't carry subsection/pincite from the head — those were specific
+        // to the head section.
+        subsection: undefined,
+        pincite: undefined,
+        spans: undefined,
+      }
+      newCitations.push(continuation)
+
+      cursor = sectionEnd
+    }
+  }
+
+  if (newCitations.length === 0) return
+  citations.push(...newCitations)
+  citations.sort((a, b) => a.span.cleanStart - b.span.cleanStart)
+}
 
 function detectBarePartyBackReferences(
   citations: Citation[],
