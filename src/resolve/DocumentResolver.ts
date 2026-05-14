@@ -164,10 +164,36 @@ export class DocumentResolver {
         this.context.lastResolvedIndex = resolution.resolvedTo
       }
 
+      // Bluebook Rule 4.1: an `Id.` without an explicit `at NNN` refers
+      // to the same page(s) cited in the antecedent. When the antecedent
+      // carried a pincite and the Id. did not, propagate the pincite.
+      let citationOut: Citation = citation
+      if (
+        citation.type === "id" &&
+        citation.pincite === undefined &&
+        resolution?.resolvedTo !== undefined
+      ) {
+        const antecedent = this.citations[resolution.resolvedTo]
+        if (
+          antecedent &&
+          "pincite" in antecedent &&
+          typeof antecedent.pincite === "number"
+        ) {
+          const idOut: IdCitation = {
+            ...(citation as IdCitation),
+            pincite: antecedent.pincite,
+          }
+          if ("pinciteInfo" in antecedent && antecedent.pinciteInfo) {
+            idOut.pinciteInfo = antecedent.pinciteInfo
+          }
+          citationOut = idOut
+        }
+      }
+
       // Add citation with resolution metadata
       // Type assertion is safe: runtime logic only sets resolution on short-form citations
       resolved.push({
-        ...citation,
+        ...citationOut,
         resolution,
       } as ResolvedCitation)
     }
