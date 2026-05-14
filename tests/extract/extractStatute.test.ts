@@ -3209,4 +3209,63 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("state admin codes NMAC/OAR/COMAR/IDAPA/ARM (#438)", () => {
+    it("NMAC postfix: `19.25.13.27 NMAC` → jur=NM", () => {
+      const cites = extractCitations("violates 19.25.13.27 NMAC.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("NMAC")
+        expect(cites[0].jurisdiction).toBe("NM")
+        expect(cites[0].section).toBe("19.25.13.27")
+      }
+    })
+
+    it("OAR prefix: `OAR 734-050-0050` → jur=OR", () => {
+      const cites = extractCitations("under OAR 734-050-0050.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("OAR")
+        expect(cites[0].jurisdiction).toBe("OR")
+      }
+    })
+
+    it("COMAR prefix: `COMAR 20.32.01.04F` → jur=MD", () => {
+      const cites = extractCitations("see COMAR 20.32.01.04F.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("COMAR")
+        expect(cites[0].jurisdiction).toBe("MD")
+      }
+    })
+
+    it("IDAPA prefix: `IDAPA 58.01.03.004.03` → jur=ID", () => {
+      const cites = extractCitations("IDAPA 58.01.03.004.03.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("IDAPA")
+        expect(cites[0].jurisdiction).toBe("ID")
+      }
+    })
+
+    it("ARM postfix: `26.3.142(6), ARM` → jur=MT", () => {
+      const cites = extractCitations("26.3.142(6), ARM.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("ARM")
+        expect(cites[0].jurisdiction).toBe("MT")
+        expect(cites[0].section).toBe("26.3.142(6)")
+      }
+    })
+  })
 })
