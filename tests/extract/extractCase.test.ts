@@ -6132,6 +6132,98 @@ describe("caseName trailing-token absorption (#436)", () => {
   })
 })
 
+describe("institutional / special-prefix case names (#437 regression)", () => {
+  it("`Board of Educ. v. Smith` captures plaintiff with `Board of` prefix", () => {
+    const cs = extractCitations("Board of Educ. v. Smith, 100 U.S. 200.").filter(
+      (c) => c.type === "case",
+    )
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "case") {
+      expect(cs[0].caseName).toBe("Board of Educ. v. Smith")
+      expect(cs[0].plaintiff).toBe("Board of Educ.")
+    }
+  })
+
+  it("`In re Estate of Jones` captures full procedural prefix", () => {
+    const cs = extractCitations("In re Estate of Jones, 100 U.S. 200.").filter(
+      (c) => c.type === "case",
+    )
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "case") {
+      expect(cs[0].caseName).toBe("In re Estate of Jones")
+    }
+  })
+
+  it("`Commissioner of Revenue v. Acme` keeps full plaintiff", () => {
+    const cs = extractCitations(
+      "Commissioner of Revenue v. Acme, 100 U.S. 200.",
+    ).filter((c) => c.type === "case")
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "case") {
+      expect(cs[0].plaintiff).toBe("Commissioner of Revenue")
+    }
+  })
+})
+
+describe("entity-suffix case names (Co., Inc., Corp., LLC) (#442 regression)", () => {
+  it("`Holton v. F. H. Stoltze Land & Lumber Co.` preserves Co. suffix", () => {
+    const cs = extractCitations(
+      "Holton v. F. H. Stoltze Land & Lumber Co., 195 Mont. 1 (1981).",
+    ).filter((c) => c.type === "case")
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "case") {
+      expect(cs[0].caseName).toBe("Holton v. F. H. Stoltze Land & Lumber Co.")
+    }
+  })
+
+  it("`Acme Inc. v. Smith Corp.` preserves both entity suffixes", () => {
+    const cs = extractCitations("Acme Inc. v. Smith Corp., 100 U.S. 200.").filter(
+      (c) => c.type === "case",
+    )
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "case") {
+      expect(cs[0].caseName).toBe("Acme Inc. v. Smith Corp.")
+    }
+  })
+
+  it("`Smith v. Jones LLC` preserves LLC suffix", () => {
+    const cs = extractCitations("Smith v. Jones LLC, 100 U.S. 200.").filter(
+      (c) => c.type === "case",
+    )
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "case") {
+      expect(cs[0].caseName).toBe("Smith v. Jones LLC")
+    }
+  })
+})
+
+describe("subsequent-history case name inheritance (#443 regression)", () => {
+  it("`cert. denied` history citation inherits parent case name", () => {
+    const cs = extractCitations(
+      "Briscoe v. State, 280 Md. 1, 372 A.2d 1 (1977), cert. denied, 283 Md. 730 (1978).",
+    ).filter((c) => c.type === "case")
+    // Parent + parallel + history = 3 citations, all sharing caseName
+    expect(cs.length).toBeGreaterThanOrEqual(2)
+    for (const c of cs) {
+      if (c.type === "case") {
+        expect(c.caseName).toBe("Briscoe v. State")
+      }
+    }
+  })
+
+  it("`aff'd` history citation inherits parent case name", () => {
+    const cs = extractCitations(
+      "Smith v. Jones, 100 U.S. 1 (2010), aff'd, 200 U.S. 5 (2011).",
+    ).filter((c) => c.type === "case")
+    expect(cs.length).toBeGreaterThanOrEqual(2)
+    for (const c of cs) {
+      if (c.type === "case") {
+        expect(c.caseName).toBe("Smith v. Jones")
+      }
+    }
+  })
+})
+
 describe("neutral-citation caseName backward search (#441)", () => {
   it("`Christian v. Atl. Richfield Co., 2015 MT 255` captures caseName on neutral cite", () => {
     const cs = extractCitations(
