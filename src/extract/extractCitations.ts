@@ -453,6 +453,12 @@ export function extractCitations(
   // `28 U.S.C. § 1331 (West 2018)` → publisher="West", year=2018.
   attachStatuteYearParen(citations, cleaned)
 
+  // Step 4.7: Disambiguate bare-section statute jurisdiction by document
+  // context. NM and WV both use `§ N-N-N` shapes; when a WV full citation
+  // appears earlier in the document, follow-on bare sections inherit WV
+  // jurisdiction. (#432)
+  inheritBareSectionJurisdiction(citations)
+
   // Step 4.75: Detect string citation groups (semicolon-separated)
   detectStringCitations(citations, cleaned)
 
@@ -732,6 +738,44 @@ function attachStatuteYearParen(citations: Citation[], cleaned: string): void {
       cite.editionLabel = token.replace(/\s+/g, " ").trim()
     } else {
       cite.publisher = token
+    }
+  }
+}
+
+/**
+ * Reassign jurisdiction for bare-section statute citations (`§ N-N-N`) based
+ * on document context. The `nm-bare-section` pattern claims NM by default
+ * because the three-hyphen section shape is most common in New Mexico, but
+ * other states (notably West Virginia) share the shape. When a full-form WV
+ * statute citation appears earlier in the document, follow-on bare sections
+ * should inherit WV jurisdiction. (#432)
+ *
+ * Forward single-pass: tracks the most recent jurisdictional context from
+ * full-form statute citations (those whose matchedText does NOT start with a
+ * bare `§` / `Section ` marker). When a bare NM-tagged citation appears, it
+ * is reassigned if the active context is WV.
+ */
+function inheritBareSectionJurisdiction(citations: Citation[]): void {
+  let context: "WV" | "NM" | null = null
+
+  for (const cite of citations) {
+    if (cite.type !== "statute") continue
+
+    const isBareSection = /^(?:§|Section\s)/.test(cite.matchedText)
+
+    if (!isBareSection) {
+      if (cite.jurisdiction === "WV") context = "WV"
+      else if (cite.jurisdiction === "NM") context = "NM"
+      continue
+    }
+
+    if (
+      cite.jurisdiction === "NM" &&
+      cite.code === "NMSA 1978" &&
+      context === "WV"
+    ) {
+      cite.jurisdiction = "WV"
+      cite.code = "W. Va. Code"
     }
   }
 }
