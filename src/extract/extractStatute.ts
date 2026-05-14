@@ -44,6 +44,7 @@ import { extractRrs1943 } from "./statutes/extractRrs1943"
 import { extractRigl1956 } from "./statutes/extractRigl1956"
 import { extractRsaChapter } from "./statutes/extractRsaChapter"
 import { extractRcwChapterPostfix } from "./statutes/extractRcwChapterPostfix"
+import { extractStateAdminCode } from "./statutes/extractStateAdminCode"
 import { extractTcaPostfix } from "./statutes/extractTcaPostfix"
 import { extractVaBareCode } from "./statutes/extractVaBareCode"
 import { extractWiStatsPostfix } from "./statutes/extractWiStatsPostfix"
@@ -182,6 +183,8 @@ export function extractStatute(
       return extractRrs1943(token, transformationMap)
     case "rcw-chapter-postfix":
       return extractRcwChapterPostfix(token, transformationMap)
+    case "state-admin-code":
+      return extractStateAdminCode(token, transformationMap)
     case "rigl-1956":
       return extractRigl1956(token, transformationMap)
     case "rsa-chapter":

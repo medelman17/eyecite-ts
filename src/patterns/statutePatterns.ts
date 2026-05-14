@@ -329,6 +329,26 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // State administrative-code citations — five families that share the
+    // pattern `<code-abbreviation> <hierarchical-section>` (prefix) or
+    // `<hierarchical-section> <code-abbreviation>` (postfix). #438
+    //
+    // - NMAC (New Mexico, postfix): `19.25.13.27 NMAC`
+    // - OAR  (Oregon, prefix):       `OAR 734-050-0050`
+    // - COMAR (Maryland, prefix):    `COMAR 20.32.01.04F`
+    // - IDAPA (Idaho, prefix):       `IDAPA 58.01.03.004.03`
+    // - ARM  (Montana, postfix):     `26.3.142(6), ARM`
+    //
+    // Each form is anchored on the distinctive abbreviation so the
+    // pattern only fires for real admin-code references.
+    id: "state-admin-code",
+    regex:
+      /\b(?:(NMAC)\s+(\d+\.\d+\.\d+\.\d+(?:\([A-Z]\))?)|(?<=^|[^A-Za-z])(\d+\.\d+\.\d+\.\d+(?:\([A-Z]\))?)\s+(NMAC)|(OAR)\s+(\d+-\d+-\d+)|(COMAR)\s+(\d+\.\d+\.\d+\.\d+[A-Z]?)|(IDAPA)\s+(\d+\.\d+\.\d+\.\d+\.\d+)|(?<=^|[^A-Za-z])(\d+\.\d+\.\d+(?:\(\d+\))?),\s+(ARM)\b)/g,
+    description:
+      'State admin codes NMAC/OAR/COMAR/IDAPA/ARM — #438',
+    type: "statute",
+  },
+  {
     // Wisconsin Statutes postfix form: `§ 76.09, Stats.`, `sec. 805.13(3),
     // Stats.`, `§ 48.415(l)(a)3, STATS.`. Wisconsin court style places the
     // `Stats.` abbreviation AFTER the section, separated by a comma. Both
