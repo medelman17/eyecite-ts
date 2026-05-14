@@ -3268,4 +3268,68 @@ describe("extractStatute", () => {
       }
     })
   })
+
+  describe("WV bare-section context propagation (#432)", () => {
+    it("bare `§ 55-7B-7` after `W.Va. Code` context → jurisdiction=WV", () => {
+      const text =
+        "W.Va. Code § 55-7B-1 establishes the rule. § 55-7B-7 mandates that..."
+      const cites = extractCitations(text).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(2)
+      if (cites[0]?.type === "statute") expect(cites[0].jurisdiction).toBe("WV")
+      if (cites[1]?.type === "statute") {
+        expect(cites[1].jurisdiction).toBe("WV")
+        expect(cites[1].code).toBe("W. Va. Code")
+        expect(cites[1].section).toBe("55-7B-7")
+      }
+    })
+
+    it("bare `§ 49-6-5` after `Code 1931` context → jurisdiction=WV", () => {
+      const text = "Code 1931, 49-6-3, as amended. § 49-6-5 also applies."
+      const cites = extractCitations(text).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(2)
+      if (cites[1]?.type === "statute") {
+        expect(cites[1].jurisdiction).toBe("WV")
+        expect(cites[1].code).toBe("W. Va. Code")
+      }
+    })
+
+    it("multiple bare sections after one WV context all inherit WV", () => {
+      const text =
+        "Under W.Va. Code § 55-7B-1, the rule applies. See § 61-3-12 and § 8-24-1."
+      const cites = extractCitations(text).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(3)
+      for (const cite of cites) {
+        if (cite.type === "statute") expect(cite.jurisdiction).toBe("WV")
+      }
+    })
+
+    it("bare-section with NO preceding context stays NM (default)", () => {
+      const cites = extractCitations("Section 32A-2-7(A).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NM")
+        expect(cites[0].code).toBe("NMSA 1978")
+      }
+    })
+
+    it("bare-section after NM context stays NM (regression)", () => {
+      const text =
+        "NMSA 1978, § 32A-2-1 provides. Section 32A-2-7(A) further states..."
+      const cites = extractCitations(text).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(2)
+      for (const cite of cites) {
+        if (cite.type === "statute") expect(cite.jurisdiction).toBe("NM")
+      }
+    })
+
+    it("WV context then later NM context — subsequent bare follows NM", () => {
+      const text =
+        "W.Va. Code § 55-7B-1 first. NMSA 1978, § 32A-2-1 next. § 7-1-3 last."
+      const cites = extractCitations(text).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(3)
+      if (cites[2]?.type === "statute") expect(cites[2].jurisdiction).toBe("NM")
+    })
+  })
 })
