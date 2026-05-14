@@ -175,28 +175,43 @@ export class DocumentResolver {
         this.context.lastResolvedIndex = resolution.resolvedTo
       }
 
-      // Bluebook Rule 4.1: an `Id.` without an explicit `at NNN` refers
-      // to the same page(s) cited in the antecedent. When the antecedent
-      // carried a pincite and the Id. did not, propagate the pincite.
+      // Bluebook Rule 4.1: an `Id.` refers to the same authority and page(s)
+      // cited in the antecedent. When the antecedent is a case citation,
+      // propagate its caption (caseName, plaintiff, defendant, procedural
+      // prefix). When the Id. lacks an explicit `at NNN`, also propagate
+      // pincite from the antecedent. Consumers can then use the Id.
+      // directly without walking `resolution.resolvedTo`.
       let citationOut: Citation = citation
-      if (
-        citation.type === "id" &&
-        citation.pincite === undefined &&
-        resolution?.resolvedTo !== undefined
-      ) {
+      if (citation.type === "id" && resolution?.resolvedTo !== undefined) {
         const antecedent = this.citations[resolution.resolvedTo]
-        if (
-          antecedent &&
-          "pincite" in antecedent &&
-          typeof antecedent.pincite === "number"
-        ) {
-          const idOut: IdCitation = {
-            ...(citation as IdCitation),
-            pincite: antecedent.pincite,
+        if (antecedent) {
+          const idOut: IdCitation = { ...(citation as IdCitation) }
+
+          // Pincite inheritance (when Id. has none explicit).
+          if (
+            idOut.pincite === undefined &&
+            "pincite" in antecedent &&
+            typeof antecedent.pincite === "number"
+          ) {
+            idOut.pincite = antecedent.pincite
+            if ("pinciteInfo" in antecedent && antecedent.pinciteInfo) {
+              idOut.pinciteInfo = antecedent.pinciteInfo
+            }
           }
-          if ("pinciteInfo" in antecedent && antecedent.pinciteInfo) {
-            idOut.pinciteInfo = antecedent.pinciteInfo
+
+          // Case-name inheritance (only when antecedent is a `case`).
+          if (antecedent.type === "case") {
+            if (antecedent.caseName) idOut.caseName = antecedent.caseName
+            if (antecedent.plaintiff) idOut.plaintiff = antecedent.plaintiff
+            if (antecedent.defendant) idOut.defendant = antecedent.defendant
+            if (antecedent.plaintiffNormalized)
+              idOut.plaintiffNormalized = antecedent.plaintiffNormalized
+            if (antecedent.defendantNormalized)
+              idOut.defendantNormalized = antecedent.defendantNormalized
+            if (antecedent.proceduralPrefix)
+              idOut.proceduralPrefix = antecedent.proceduralPrefix
           }
+
           citationOut = idOut
         }
       }

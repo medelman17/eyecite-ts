@@ -732,6 +732,24 @@ export interface IdCitation extends CitationBase {
    * can post-classify if needed. #303
    */
   parenthetical?: string
+  /**
+   * Case name inherited from the antecedent (full citation that the `Id.`
+   * resolves to). Populated by the resolver when `resolve: true` and the
+   * antecedent is a `case`-type citation. Undefined otherwise. Consumers
+   * who don't enable resolution should walk `resolution.resolvedTo` to
+   * find the antecedent.
+   */
+  caseName?: string
+  /** Inherited plaintiff name from antecedent (resolver-populated). */
+  plaintiff?: string
+  /** Inherited defendant name from antecedent (resolver-populated). */
+  defendant?: string
+  /** Inherited normalized plaintiff name from antecedent. */
+  plaintiffNormalized?: string
+  /** Inherited normalized defendant name from antecedent. */
+  defendantNormalized?: string
+  /** Inherited procedural prefix (`In re`, `Estate of`, etc.) from antecedent. */
+  proceduralPrefix?: string
   /** Component-level spans (currently just `pincite`; extend when needed). */
   spans?: import("./componentSpans").IdComponentSpans
 }
