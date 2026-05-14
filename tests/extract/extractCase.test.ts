@@ -6132,3 +6132,41 @@ describe("caseName trailing-token absorption (#436)", () => {
   })
 })
 
+describe("neutral-citation caseName backward search (#441)", () => {
+  it("`Christian v. Atl. Richfield Co., 2015 MT 255` captures caseName on neutral cite", () => {
+    const cs = extractCitations(
+      "In Christian v. Atl. Richfield Co., 2015 MT 255, the court held",
+    ).filter((c) => c.type === "neutral")
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "neutral") {
+      expect((cs[0] as { caseName?: string }).caseName).toBe(
+        "Christian v. Atl. Richfield Co.",
+      )
+    }
+  })
+
+  it("`Farmers Union Mut. Ins. Co. v. Staples, 2004 MT 108` (leading See stripped)", () => {
+    const cs = extractCitations(
+      "See Farmers Union Mut. Ins. Co. v. Staples, 2004 MT 108.",
+    ).filter((c) => c.type === "neutral")
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "neutral") {
+      expect((cs[0] as { caseName?: string }).caseName).toBe(
+        "Farmers Union Mut. Ins. Co. v. Staples",
+      )
+    }
+  })
+
+  it("`Blair v. Mid-Continent Cas. Co., 2007 MT 208` (no leading signal)", () => {
+    const cs = extractCitations("Blair v. Mid-Continent Cas. Co., 2007 MT 208.").filter(
+      (c) => c.type === "neutral",
+    )
+    expect(cs).toHaveLength(1)
+    if (cs[0]?.type === "neutral") {
+      expect((cs[0] as { caseName?: string }).caseName).toBe(
+        "Blair v. Mid-Continent Cas. Co.",
+      )
+    }
+  })
+})
+

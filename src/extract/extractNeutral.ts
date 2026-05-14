@@ -12,7 +12,7 @@ import type { NeutralCitation } from "@/types/citation"
 import type { NeutralComponentSpans } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 import type { StructuredDate } from "./dates"
-import { parseParenthetical } from "./extractCase"
+import { extractCaseName, parseParenthetical } from "./extractCase"
 import { parsePincite, type PinciteInfo } from "./pincite"
 
 /** Matches a trailing pincite on a neutral citation. Accepts both
@@ -211,6 +211,37 @@ export function extractNeutral(
   // Confidence: 1.0 (neutral format is unambiguous)
   const confidence = 1.0
 
+  // Case-name backward search — the canonical neutral form is
+  // `<caseName>, YYYY ST NNN` (`Christian v. Atl. Richfield Co., 2015 MT
+  // 255`). Without this, case-name association on neutral cites is lost
+  // (#441).
+  let caseName: string | undefined
+  if (cleanedText) {
+    const cnResult = extractCaseName(cleanedText, span.cleanStart)
+    if (cnResult) {
+      caseName = cnResult.caseName
+      if (caseName) {
+        // Strip leading signal/prose words (`See`, `See also`, `In`,
+        // `Cf.`, `But see`) — the neutral extractor doesn't run the
+        // case extractor's signal-extraction pre-pass, so these stay
+        // in caseName otherwise.
+        caseName = caseName
+          .replace(
+            /^(?:But\s+see(?:\s+also)?,?\s+|See\s+also,?\s+|See\s+generally\s+|See,\s+e\.g\.,?\s+|See\s+|Cf\.\s+|In\s+|Accord\s+|Contra\s+|Compare\s+|E\.g\.,?\s+)/,
+            "",
+          )
+          .trim()
+        // Apply the same trailing-token cleanup as full-case extraction so
+        // parallel-cite starts and year parens aren't absorbed (#436).
+        caseName = caseName.replace(/\s*\((?:[^()]*\s)?\d{4}\)\s*$/, "").trim()
+        caseName = caseName
+          .replace(/,\s+\d+\s+[A-Z][A-Za-z.&'\d\s]*\d+\s*$/, "")
+          .trim()
+        caseName = caseName.replace(/,\s+\d{4}\s+[A-Z]+\s+\d+\s*$/, "").trim()
+      }
+    }
+  }
+
   return {
     type: "neutral",
     text,
@@ -232,6 +263,7 @@ export function extractNeutral(
     pincite,
     pinciteInfo,
     ...(date ? { date } : {}),
+    ...(caseName ? { caseName } : {}),
     spans,
   }
 }
