@@ -576,6 +576,10 @@ export interface NeutralCitation extends CitationBase {
    */
   date?: import("../extract/dates").StructuredDate
 
+  /** Case name captured from backward search (#441).
+   *  Canonical form: `<caseName>, YYYY ST NNN`. */
+  caseName?: string
+
   /** Precise text positions for each parsed component of this citation. */
   spans?: NeutralComponentSpans
 }
