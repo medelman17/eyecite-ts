@@ -46,6 +46,8 @@ import { detectParallelCitations } from "./detectParallel"
 import { detectStringCitations, detectLeadingSignals } from "./detectStringCites"
 import { extractId, extractShortFormCase, extractSupra } from "./extractShortForms"
 import { applyFalsePositiveFilters } from "./filterFalsePositives"
+import { parsePincite } from "./pincite"
+import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 
 /**
  * Regex to parse "volume reporter page" from a citation token's text.
@@ -459,6 +461,10 @@ export function extractCitations(
   // jurisdiction. (#432)
   inheritBareSectionJurisdiction(citations)
 
+  // Step 4.72: Detect bare-party shortform back-references (`Smith, at 12`)
+  // anchored to earlier full case citations. (#439)
+  detectBarePartyBackReferences(citations, cleaned, transformationMap)
+
   // Step 4.75: Detect string citation groups (semicolon-separated)
   detectStringCitations(citations, cleaned)
 
@@ -778,6 +784,222 @@ function inheritBareSectionJurisdiction(citations: Citation[]): void {
       cite.code = "W. Va. Code"
     }
   }
+}
+
+/**
+ * Detect bare-party shortform back-references (`Smith, at 12`) anchored to
+ * earlier full case citations. After the first full citation establishes
+ * `Smith v. Jones, 100 F.2d 50`, subsequent shorthand `Smith, at 12` is a
+ * standard Bluebook back-reference but is not captured by the regex
+ * tokenizer because it lacks the volume+reporter shape. (#439)
+ *
+ * Algorithm:
+ *   1. Build a party-name index from FullCaseCitation plaintiff/defendant
+ *      names. Names < MIN_NAME_LEN chars and a small blocklist of common
+ *      generic captions are excluded to keep false-positive risk low.
+ *   2. For each indexed name, scan the cleaned text for
+ *      `<name>, at <pincite>` matches AFTER the anchor's position.
+ *   3. Reject matches that overlap an existing citation's span (avoids
+ *      double-counting when the bare-party form is itself part of a larger
+ *      string-cite or back-reference).
+ *   4. Emit a ShortFormCaseCitation inheriting `volume` / `reporter` /
+ *      `page` from the anchor, with `partyName` and `pincite` set from
+ *      the match.
+ *
+ * Conservative anchoring: only names that already appear as a party in a
+ * full citation can match. This is the core FP defense — bare `Smith, at 5`
+ * with no prior `Smith v. ...` citation is left as prose.
+ */
+const BARE_PARTY_MIN_NAME_LEN = 3
+const BARE_PARTY_BLOCKED_NAMES = new Set([
+  "the",
+  "and",
+  "but",
+  "for",
+  "see",
+  "see also",
+  "cf",
+  "but see",
+  "but cf",
+  "compare",
+  "accord",
+  "state",
+  "people",
+  "court",
+  "plaintiff",
+  "defendant",
+  "appellant",
+  "appellee",
+  "petitioner",
+  "respondent",
+  "united states",
+])
+
+function detectBarePartyBackReferences(
+  citations: Citation[],
+  cleaned: string,
+  transformationMap: TransformationMap,
+): void {
+  type Anchor = {
+    cite: import("@/types/citation").FullCaseCitation
+    name: string
+    normalized: string
+  }
+
+  // Strip leading procedural prefixes (`In re`, `Estate of`, `Ex parte`) and
+  // sentence-initial signal connectors (`See`, `Cf.`, `Then`, `Compare`) from
+  // captured plaintiff names so the bare back-reference matches the residual
+  // distinguishing name (`Smith` from `In re Smith`).
+  const stripNamePrefix = (raw: string): string => {
+    let s = raw.trim()
+    // Procedural prefix: `In re X`, `Estate of X`, `Ex parte X`, `Matter of X`.
+    s = s.replace(
+      /^(?:In\s+re|Estate\s+of|Ex\s+parte|Matter\s+of|Application\s+of)\s+/i,
+      "",
+    )
+    // Sentence-initial signal connectors that bleed into the captured plaintiff.
+    s = s.replace(
+      /^(?:But\s+(?:see|cf\.?)|See(?:\s+also)?|Compare|Cf\.?|Accord|E\.\s*g\.?|Also|Then)\s+/,
+      "",
+    )
+    return s.trim()
+  }
+
+  const anchors: Anchor[] = []
+  const seenKeys = new Set<string>()
+  const addAnchor = (
+    cite: import("@/types/citation").FullCaseCitation,
+    raw: string,
+    norm: string | undefined,
+  ): void => {
+    const trimmed = raw.trim()
+    if (trimmed.length < BARE_PARTY_MIN_NAME_LEN) return
+    const normalized = (norm ?? trimmed.toLowerCase()).trim()
+    if (BARE_PARTY_BLOCKED_NAMES.has(normalized)) return
+    const key = `${cite.span.cleanStart}:${trimmed}`
+    if (seenKeys.has(key)) return
+    seenKeys.add(key)
+    anchors.push({ cite, name: trimmed, normalized })
+  }
+
+  for (const cite of citations) {
+    if (cite.type !== "case") continue
+    if (cite.plaintiff) {
+      addAnchor(cite, cite.plaintiff, cite.plaintiffNormalized)
+      const stripped = stripNamePrefix(cite.plaintiff)
+      if (stripped && stripped !== cite.plaintiff) {
+        addAnchor(cite, stripped, stripped.toLowerCase())
+      }
+    }
+    if (cite.defendant) {
+      addAnchor(cite, cite.defendant, cite.defendantNormalized)
+      const stripped = stripNamePrefix(cite.defendant)
+      if (stripped && stripped !== cite.defendant) {
+        addAnchor(cite, stripped, stripped.toLowerCase())
+      }
+    }
+  }
+
+  if (anchors.length === 0) return
+
+  const escapeRegex = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+  // Group anchors by their exact display name. When several anchors share
+  // a name, the LATEST one whose end-position precedes the bare-ref wins
+  // (Bluebook short-form refers to the most recent establishment).
+  const anchorsByName = new Map<string, Anchor[]>()
+  for (const a of anchors) {
+    const list = anchorsByName.get(a.name) ?? []
+    list.push(a)
+    anchorsByName.set(a.name, list)
+  }
+  for (const list of anchorsByName.values()) {
+    list.sort((a, b) => a.cite.span.cleanStart - b.cite.span.cleanStart)
+  }
+
+  const newCitations: Citation[] = []
+  const seenSpans = new Set<string>()
+
+  for (const [name, anchorList] of anchorsByName) {
+    const escapedName = escapeRegex(name)
+    const pincitePart =
+      "\\d+(?:[-\\u2013\\u2014]\\d+)?(?:,\\s*\\d+(?:[-\\u2013\\u2014]\\d+)?)*"
+    const pattern = new RegExp(
+      `(?<![A-Za-z'])(${escapedName})\\s*,\\s*at\\s+(${pincitePart})`,
+      "g",
+    )
+
+    let match: RegExpExecArray | null
+    while ((match = pattern.exec(cleaned)) !== null) {
+      const start = match.index
+      const end = start + match[0].length
+
+      // Find the latest anchor whose end is before this match.
+      let anchor: Anchor | undefined
+      for (const candidate of anchorList) {
+        if (candidate.cite.span.cleanEnd > start) break
+        anchor = candidate
+      }
+      if (!anchor) continue
+
+      if (overlapsExistingCitation(citations, start, end)) continue
+
+      const key = `${start}-${end}`
+      if (seenSpans.has(key)) continue
+      seenSpans.add(key)
+
+      // For comma-list pincites (`12-13, 21`), parse just the first chunk —
+      // the head page is the canonical pincite.
+      const firstChunk = match[2].split(",")[0].trim()
+      const pinciteInfo = parsePincite(firstChunk) ?? undefined
+      const pincite = pinciteInfo?.page
+
+      const { originalStart, originalEnd } = resolveOriginalSpan(
+        { cleanStart: start, cleanEnd: end },
+        transformationMap,
+      )
+
+      const anchorPage =
+        typeof anchor.cite.page === "number"
+          ? anchor.cite.page
+          : Number.parseInt(String(anchor.cite.page), 10) || undefined
+
+      newCitations.push({
+        type: "shortFormCase",
+        text: match[0],
+        matchedText: match[0],
+        confidence: 0.85,
+        processTimeMs: 0,
+        patternsChecked: 0,
+        span: { cleanStart: start, cleanEnd: end, originalStart, originalEnd },
+        volume: anchor.cite.volume,
+        reporter: anchor.cite.reporter,
+        page: anchorPage,
+        pincite,
+        pinciteInfo,
+        partyName: match[1],
+        partyNameNormalized: anchor.normalized,
+      })
+    }
+  }
+
+  if (newCitations.length === 0) return
+
+  citations.push(...newCitations)
+  citations.sort((a, b) => a.span.cleanStart - b.span.cleanStart)
+}
+
+function overlapsExistingCitation(
+  citations: Citation[],
+  start: number,
+  end: number,
+): boolean {
+  for (const c of citations) {
+    if (c.span.cleanEnd <= start) continue
+    if (c.span.cleanStart >= end) continue
+    return true
+  }
+  return false
 }
 
 function inheritParallelCaseName(citations: Citation[]): void {
