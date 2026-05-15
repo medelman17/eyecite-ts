@@ -1105,6 +1105,19 @@ const PAREN_SIGNAL_BOUNDARY_REGEX =
  *  plaintiff field. #323 */
 const SENTENCE_BOUNDARY_REGEX = /[.)]\s+(?=[A-Z(])/g
 
+/** Prior-citation year-paren boundary: a closing paren preceded by a 4-digit
+ *  year, followed by an explicit citation-list connector word (`and`, `or`,
+ *  `see`, `but see`, `see also`, `e.g.`) or a semicolon. Catches the gap
+ *  left by SENTENCE_BOUNDARY_REGEX when the next caption's first word is
+ *  lowercase (e.g., `(Del. 1984), and Rales v. Blasband` — `and` is
+ *  lowercase so the sentence regex skips it).
+ *
+ *  The connector word is required (not optional) so we don't false-positive
+ *  on Montana / California year-first captions like `Holton v. Co. (1981),
+ *  195 Mont. 1` (the `, 195` is a parallel reporter, not a list connector). */
+const PRIOR_YEAR_PAREN_BOUNDARY_REGEX =
+  /\b\d{4}\)\s*(?:,\s*(?:and|or|see(?:\s+also)?|but\s+see|e\.g\.)|;)\s+/g
+
 /** Louisiana docket-prefix boundary (#232). Matches the Louisiana citation
  *  shape `NN-NNNN (La. ... M/D/YY)` or `YYYY-K-NNNN (La. ... M/D/YY)` that
  *  precedes the parallel `So. 2d` / `So. 3d` reporter citation. The capture
@@ -1231,6 +1244,19 @@ export function extractCaseName(
   // Check parenthetical signal boundaries (#182)
   PAREN_SIGNAL_BOUNDARY_REGEX.lastIndex = 0
   while ((match = PAREN_SIGNAL_BOUNDARY_REGEX.exec(precedingText)) !== null) {
+    const boundaryEnd = match.index + match[0].length
+    if (boundaryEnd > lastBoundaryIndex) {
+      lastBoundaryIndex = boundaryEnd
+    }
+  }
+
+  // Check prior-citation year-paren boundaries: `(YYYY), ` followed by an
+  // optional list connector (`and`/`or`/`see`/`;`). Catches the gap left by
+  // SENTENCE_BOUNDARY_REGEX when the next caption's first word is lowercase
+  // (e.g., `(Del. 1984), and Rales v. Blasband` — `and` is lowercase so the
+  // sentence regex skips it).
+  PRIOR_YEAR_PAREN_BOUNDARY_REGEX.lastIndex = 0
+  while ((match = PRIOR_YEAR_PAREN_BOUNDARY_REGEX.exec(precedingText)) !== null) {
     const boundaryEnd = match.index + match[0].length
     if (boundaryEnd > lastBoundaryIndex) {
       lastBoundaryIndex = boundaryEnd
