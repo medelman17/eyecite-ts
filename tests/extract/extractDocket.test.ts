@@ -238,5 +238,39 @@ describe("Docket citation extraction (#215)", () => {
       expect(docket).toBeDefined()
       expect(docket?.docketNumber).toBe("18-cv-7039")
     })
+
+    it("PACER format with colon: `No. 2:17-cv-00413`", () => {
+      const text =
+        "G. v. United Healthcare, No. 2:17-cv-00413 (D. Utah June 9, 2020)."
+      const citations = extractCitations(text)
+      const docket = citations.find((c) => c.type === "docket") as
+        | DocketCitation
+        | undefined
+      expect(docket).toBeDefined()
+      expect(docket?.docketNumber).toBe("2:17-cv-00413")
+      expect(docket?.caseName).toBe("G. v. United Healthcare")
+    })
+
+    it("PACER format with prefix and colon: `Civil No. 1:22-cv-1234`", () => {
+      const text =
+        "Smith v. Jones, Civil No. 1:22-cv-1234 (S.D.N.Y. Apr. 1, 2024)."
+      const citations = extractCitations(text)
+      const docket = citations.find((c) => c.type === "docket") as
+        | DocketCitation
+        | undefined
+      expect(docket).toBeDefined()
+      expect(docket?.docketNumber).toBe("1:22-cv-1234")
+    })
+
+    it("anonymized single-letter plaintiff: `G. v. United Healthcare`", () => {
+      const text =
+        "G. v. United Healthcare, No. 2:17-cv-00413 (D. Utah 2020)."
+      const citations = extractCitations(text)
+      const docket = citations.find((c) => c.type === "docket") as
+        | DocketCitation
+        | undefined
+      expect(docket).toBeDefined()
+      expect(docket?.caseName).toBe("G. v. United Healthcare")
+    })
   })
 })

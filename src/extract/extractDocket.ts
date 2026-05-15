@@ -66,7 +66,7 @@ export function extractDocket(
   // match[1]. The docket number may start with letters (CT trial-court
   // `CV-01-...`, GA `A08A0646`) or digits.
   const tokenRegex =
-    /\b(?:(?:C\.A\.|Civ\.|Civil(?:\s+Action)?|Case|Adv\.|Docket)\s+)?No\.\s+([A-Za-z\d]+(?:[-\s][A-Za-z\d]+)*)\s+\(([^)]+)\)/
+    /\b(?:(?:C\.A\.|Civ\.|Civil(?:\s+Action)?|Case|Adv\.|Docket)\s+)?No\.\s+([A-Za-z\d]+(?::?[A-Za-z\d]+)?(?:[-\s][A-Za-z\d]+)*)\s+\(([^)]+)\)/
   const match = tokenRegex.exec(text)
   if (!match) return undefined
 
