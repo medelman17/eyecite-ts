@@ -463,7 +463,7 @@ export function extractCitations(
   // context. NM and WV both use `§ N-N-N` shapes; when a WV full citation
   // appears earlier in the document, follow-on bare sections inherit WV
   // jurisdiction. (#432)
-  inheritBareSectionJurisdiction(citations)
+  inheritBareSectionJurisdiction(citations, cleaned)
 
   // Step 4.72: Detect bare-party shortform back-references (`Smith, at 12`)
   // anchored to earlier full case citations. (#439)
@@ -756,17 +756,36 @@ function attachStatuteYearParen(citations: Citation[], cleaned: string): void {
  * Reassign jurisdiction for bare-section statute citations (`§ N-N-N`) based
  * on document context. The `nm-bare-section` pattern claims NM by default
  * because the three-hyphen section shape is most common in New Mexico, but
- * other states (notably West Virginia) share the shape. When a full-form WV
- * statute citation appears earlier in the document, follow-on bare sections
- * should inherit WV jurisdiction. (#432)
+ * other states share the shape:
+ *   - West Virginia (W.Va. Code) — #432
+ *   - Colorado (C.R.S.) — #464
+ *   - Montana (MCA) — #464 (also catches trailing `, MCA` postfix)
  *
  * Forward single-pass: tracks the most recent jurisdictional context from
  * full-form statute citations (those whose matchedText does NOT start with a
  * bare `§` / `Section ` marker). When a bare NM-tagged citation appears, it
- * is reassigned if the active context is WV.
+ * is reassigned if the active context belongs to a known overlapping state.
+ *
+ * Additionally, when a bare NM-tagged citation has a `, MCA` / `, M.C.A.`
+ * postfix in the cleaned text immediately after its end (within a short
+ * window), reroute to MT.
  */
-function inheritBareSectionJurisdiction(citations: Citation[]): void {
-  let context: "WV" | "NM" | null = null
+type BareSectionContext = {
+  jurisdiction: string
+  code: string
+}
+
+const BARE_SECTION_CONTEXT_OVERRIDES: Record<string, BareSectionContext> = {
+  WV: { jurisdiction: "WV", code: "W. Va. Code" },
+  CO: { jurisdiction: "CO", code: "C.R.S." },
+  MT: { jurisdiction: "MT", code: "MCA" },
+}
+
+function inheritBareSectionJurisdiction(
+  citations: Citation[],
+  cleaned: string,
+): void {
+  let context: BareSectionContext | null = null
 
   for (const cite of citations) {
     if (cite.type !== "statute") continue
@@ -774,18 +793,34 @@ function inheritBareSectionJurisdiction(citations: Citation[]): void {
     const isBareSection = /^(?:§|Section\s)/.test(cite.matchedText)
 
     if (!isBareSection) {
-      if (cite.jurisdiction === "WV") context = "WV"
-      else if (cite.jurisdiction === "NM") context = "NM"
+      // Update context based on this full-form citation's jurisdiction.
+      const j = cite.jurisdiction
+      if (j && BARE_SECTION_CONTEXT_OVERRIDES[j]) {
+        context = BARE_SECTION_CONTEXT_OVERRIDES[j]
+      } else if (j === "NM") {
+        context = null // NM context cancels overrides — back to default
+      }
       continue
     }
 
-    if (
-      cite.jurisdiction === "NM" &&
-      cite.code === "NMSA 1978" &&
-      context === "WV"
-    ) {
-      cite.jurisdiction = "WV"
-      cite.code = "W. Va. Code"
+    if (cite.jurisdiction !== "NM" || cite.code !== "NMSA 1978") continue
+
+    // Trailing-MCA-postfix: `§ N-N-N, MCA` — even without preceding context,
+    // the postfix is a definitive Montana signal. Scan a window up to the
+    // next sentence break (`. ` / `; `) so the postfix applies to head
+    // cites in lists too (e.g. `§§ 49-2-205 and -303, MCA`).
+    const after = cleaned.slice(cite.span.cleanEnd, cite.span.cleanEnd + 200)
+    const sentenceBreak = after.search(/[.;](?:\s|$)/)
+    const window = sentenceBreak >= 0 ? after.slice(0, sentenceBreak) : after
+    if (/,\s*M\.?\s*C\.?\s*A\.?\b/.test(window)) {
+      cite.jurisdiction = "MT"
+      cite.code = "MCA"
+      continue
+    }
+
+    if (context) {
+      cite.jurisdiction = context.jurisdiction
+      cite.code = context.code
     }
   }
 }
