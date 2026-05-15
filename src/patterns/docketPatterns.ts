@@ -33,7 +33,7 @@ export const docketPatterns: Pattern[] = [
     // The `\bNo\.` anchor + space-separated paren keep this narrow without a
     // case-name lookbehind — case-name validation lives in the extractor.
     regex:
-      /\b(?:(?:C\.A\.|Civ\.|Civil(?:\s+Action)?|Case|Adv\.|Docket)\s+)?No\.\s+([A-Za-z\d]+(?:-[\w\d]+)*)\s+\(([^)]+\s(\d{4}))\)/g,
+      /\b(?:(?:C\.A\.|Civ\.|Civil(?:\s+Action)?|Case|Adv\.|Docket)\s+)?No\.\s+([A-Za-z\d]+(?:[-\s][A-Za-z\d]+)*)\s+\(([^)]+\s(\d{4}))\)/g,
     description:
       'Docket-number citation: "Party v. Party, [C.A./Civ./Civil/Case/Adv./Docket] No. <docket> (<court> <year>)"',
     type: "docket",
