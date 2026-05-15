@@ -5951,8 +5951,9 @@ describe("Illinois rule-marker boundary in state-reporter pattern (#332)", () =>
     expect(cases).toHaveLength(1)
     if (cases[0]?.type === "case") {
       expect(cases[0].volume).toBe(123)
-      // Reporter is post-normalization (`Ill. App. 3d` → `Ill. App.3d`)
-      expect(cases[0].reporter).toBe("Ill. App.3d")
+      // Reporter preserves the Bluebook T1 canonical form `Ill. App. 3d`
+      // (with space before the ordinal). See #465.
+      expect(cases[0].reporter).toBe("Ill. App. 3d")
       expect(cases[0].page).toBe(456)
     }
   })
