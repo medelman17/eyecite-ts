@@ -104,4 +104,106 @@ describe("Docket citation extraction (#215)", () => {
       expect(cases.length).toBeGreaterThanOrEqual(1)
     })
   })
+
+  describe("Docket-number prefixes (`C.A. No.`, `Civ. No.`, `Case No.`)", () => {
+    it("`C.A. No.` — Delaware Chancery Action docket", () => {
+      const text =
+        "See IMG Holding LLC v. Dimon, C.A. No. 2023-0522-KSJM (Del. Ch. Apr. 16, 2024)."
+      const citations = extractCitations(text)
+      const docket = citations.find((c) => c.type === "docket") as
+        | DocketCitation
+        | undefined
+      expect(docket).toBeDefined()
+      expect(docket?.docketNumber).toBe("2023-0522-KSJM")
+      expect(docket?.caseName).toBe("IMG Holding LLC v. Dimon")
+    })
+
+    it("`Civ. No.` — civil-action docket", () => {
+      const text = "Smith v. Jones, Civ. No. 22-1234 (D.N.J. 2024)."
+      const citations = extractCitations(text)
+      const docket = citations.find((c) => c.type === "docket") as
+        | DocketCitation
+        | undefined
+      expect(docket).toBeDefined()
+      expect(docket?.docketNumber).toBe("22-1234")
+    })
+
+    it("`Case No.` — generic case-number prefix", () => {
+      const text = "Doe v. Roe, Case No. 23-cv-9999 (S.D. Tex. 2024)."
+      const citations = extractCitations(text)
+      const docket = citations.find((c) => c.type === "docket") as
+        | DocketCitation
+        | undefined
+      expect(docket).toBeDefined()
+      expect(docket?.docketNumber).toBe("23-cv-9999")
+    })
+
+    it("`Civil Action No.` — spelled-out federal form", () => {
+      const text =
+        "Smith v. Jones, Civil Action No. 22-cv-1234 (D. Del. Apr. 1, 2024)."
+      const citations = extractCitations(text)
+      const docket = citations.find((c) => c.type === "docket") as
+        | DocketCitation
+        | undefined
+      expect(docket).toBeDefined()
+      expect(docket?.docketNumber).toBe("22-cv-1234")
+    })
+
+    it("docket inside an explanatory `(cited in ...)` parenthetical", () => {
+      const text =
+        "Aronson v. Lewis, 473 A.2d 805, 811 (Del. 1984) (cited in IMG Holding LLC v. Dimon, C.A. No. 2023-0522-KSJM (Del. Ch. Apr. 16, 2024))."
+      const citations = extractCitations(text)
+      const docket = citations.find((c) => c.type === "docket") as
+        | DocketCitation
+        | undefined
+      expect(docket).toBeDefined()
+      expect(docket?.caseName).toBe("IMG Holding LLC v. Dimon")
+      // The Aronson full citation should still extract too.
+      const aronson = citations.find(
+        (c) => c.type === "case" && c.caseName === "Aronson v. Lewis",
+      )
+      expect(aronson).toBeDefined()
+    })
+
+    it("plain `No.` still works (regression)", () => {
+      const text = "Smith v. Jones, No. 22-1234 (S.D.N.Y. 2024)."
+      const citations = extractCitations(text)
+      const docket = citations.find((c) => c.type === "docket") as
+        | DocketCitation
+        | undefined
+      expect(docket).toBeDefined()
+      expect(docket?.docketNumber).toBe("22-1234")
+    })
+
+    it("`Docket No.` — spelled-out (common in MA, MI, CT, NJ, NV)", () => {
+      const text = "Smith v. Jones, Docket No. 286528 (Mass. App. 2024)."
+      const citations = extractCitations(text)
+      const docket = citations.find((c) => c.type === "docket") as
+        | DocketCitation
+        | undefined
+      expect(docket).toBeDefined()
+      expect(docket?.docketNumber).toBe("286528")
+    })
+
+    it("`Civil No.` — bare `Civil` (without `Action`)", () => {
+      const text = "Smith v. Jones, Civil No. 70-3104 (D. Haw. 1972)."
+      const citations = extractCitations(text)
+      const docket = citations.find((c) => c.type === "docket") as
+        | DocketCitation
+        | undefined
+      expect(docket).toBeDefined()
+      expect(docket?.docketNumber).toBe("70-3104")
+    })
+
+    it("CT trial-court docket: `Docket No. CV-01-0508597`", () => {
+      const text =
+        "Smith v. Jones, Superior Court, judicial district of New Britain, Docket No. CV-01-0508597 (Conn. Super. 2014)."
+      const citations = extractCitations(text)
+      const docket = citations.find((c) => c.type === "docket") as
+        | DocketCitation
+        | undefined
+      expect(docket).toBeDefined()
+      expect(docket?.docketNumber).toBe("CV-01-0508597")
+    })
+  })
 })

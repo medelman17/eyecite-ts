@@ -60,8 +60,13 @@ export function extractDocket(
 ): DocketCitation | undefined {
   const { text, span } = token
 
-  // Parse the token text: "No. <docket> (<paren-content>)"
-  const tokenRegex = /\bNo\.\s+([\d]+(?:-[\w\d]+)*)\s+\(([^)]+)\)/
+  // Parse the token text: "[<prefix>] No. <docket> (<paren-content>)"
+  // Optional prefix (C.A. / Civ. / Civil [Action] / Case / Adv. / Docket) is
+  // dropped from the parsed metadata — the canonical docket number lives in
+  // match[1]. The docket number may start with letters (CT trial-court
+  // `CV-01-...`, GA `A08A0646`) or digits.
+  const tokenRegex =
+    /\b(?:(?:C\.A\.|Civ\.|Civil(?:\s+Action)?|Case|Adv\.|Docket)\s+)?No\.\s+([A-Za-z\d]+(?:-[\w\d]+)*)\s+\(([^)]+)\)/
   const match = tokenRegex.exec(text)
   if (!match) return undefined
 
