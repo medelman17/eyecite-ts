@@ -1,5 +1,109 @@
 # eyecite-ts
 
+## 0.17.1
+
+### Patch Changes
+
+- [#470](https://github.com/medelman17/eyecite-ts/pull/470) [`e3450af`](https://github.com/medelman17/eyecite-ts/commit/e3450af954f79b5a8159824dd12352d362da6642) Thanks [@medelman17](https://github.com/medelman17)! - fix: caseName backward search stops at prior citation's `(YYYY)` paren when followed by a list connector
+
+  In citation lists with lowercase connectors like
+  `...(Del. 1984), and Rales v. Blasband, 634 A.2d 927 (Del. 1993)`,
+  the case-name backward search was crossing the previous
+  citation's `(YYYY)` closing paren and absorbing it into the
+  third citation's plaintiff:
+
+  ```
+  got: caseName="Del. 1984), and Rales v. Blasband"
+       plaintiff="Del. 1984), and Rales"
+  exp: caseName="Rales v. Blasband"
+       plaintiff="Rales"
+  ```
+
+  `SENTENCE_BOUNDARY_REGEX` (`[.)]\s+(?=[A-Z(])`) requires the
+  character after the boundary to be uppercase, so it skipped the
+  lowercase `and` connector and let the backward search continue.
+
+  ### Fix
+
+  New `PRIOR_YEAR_PAREN_BOUNDARY_REGEX` recognizes
+  `<year>)\s*(?:,\s*(and|or|see|but\s+see|see\s+also|e\.g\.)|;)\s+`
+  as a citation boundary. The connector word is required so the
+  boundary doesn't false-positive on Montana / California
+  year-first captions where the comma after the year leads to a
+  parallel reporter (`Holton v. Co. (1981), 195 Mont. 1` — the
+  `, 195` is a reporter, not a list connector).
+
+  ### Tests
+
+  7 new tests in `tests/extract/issueCaseNameYearParenBoundary.test.ts`:
+  three-case list with `, and`, two-case list with `, and`,
+  semicolon connector, `see also` connector, multi-period court
+  abbrev, and two regression sentinels (simple single citation,
+  first citation in a list). Full 2925-test suite passes;
+  existing #436 Montana-year-paren and #19 California-year-first
+  tests still pass.
+
+- [#469](https://github.com/medelman17/eyecite-ts/pull/469) [`e8c9a4a`](https://github.com/medelman17/eyecite-ts/commit/e8c9a4acc9c56fe189b9652ceecc67747c820480) Thanks [@medelman17](https://github.com/medelman17)! - fix: docket pattern accepts `C.A.` / `Civ.` / `Civil` / `Case` / `Civil Action` / `Adv.` / `Docket` prefixes
+
+  Docket-number citations preceded by a docket-type prefix were
+  silently dropped. The corpus survey in
+  `tests/fixtures/docket-citations.json` shows these forms across
+  all 39 states:
+
+  - `C.A. No.` — Delaware Chancery Action
+  - `Civ. No.` / `Civil No.` — federal civil docket (also HI, NH, MA)
+  - `Civil Action No.` — spelled-out federal form
+  - `Case No.` — generic (CA, FL, GA, MD, SC, SD, VA, WI, WV)
+  - `Adv. No.` — bankruptcy adversary proceeding
+  - `Docket No.` — MA, MI, CT, NJ, NV, NC, VT appellate/trial form
+
+  ### Fix
+
+  Extended the `docket-paren-court-year` pattern and the
+  `extractDocket` token parser to accept an optional prefix
+  immediately before `No.`. The prefix is dropped from the
+  extracted `docketNumber` — the canonical docket number is the
+  alphanumeric/hyphen sequence that follows. Also extended the
+  docket-number character class so docket numbers may start with
+  letters (`CV-01-0508597`, `A08A0646`) as well as digits.
+
+  ### Tests
+
+  9 new tests under `Docket-number prefixes` in
+  `tests/extract/extractDocket.test.ts`: every prefix family, the
+  user-reported `(cited in IMG Holding LLC v. Dimon, C.A. No. ...)`
+  parenthetical case, CT trial-court `Docket No. CV-...` form,
+  and a plain `No.` regression sentinel. Full 2918-test suite
+  passes.
+
+- [#467](https://github.com/medelman17/eyecite-ts/pull/467) [`f105a72`](https://github.com/medelman17/eyecite-ts/commit/f105a722f50a7b53496060a4146d33cab600d2da) Thanks [@medelman17](https://github.com/medelman17)! - fix: extend bare-section jurisdiction context to MT (MCA) and CO (C.R.S.) (#464)
+
+  The #432 fix introduced per-document context propagation for
+  bare-section citations (`§ N-N-N`), but only recognized West
+  Virginia (`W.Va. Code`). **29 occurrences** across MT (17) and
+  CO (12) in the v0.16.2 replay were still routed to NM:
+
+  | State | Trigger          | Example                           |
+  | ----- | ---------------- | --------------------------------- |
+  | MT    | `, MCA` postfix  | `§§ 49-2-205 and -303, MCA`       |
+  | CO    | `C.R.S.` context | `C.R.S. § 13-25-126; § 13-25-130` |
+
+  ### Fix
+
+  Generalized `inheritBareSectionJurisdiction` (step 4.7) to a
+  table-driven override map covering WV, CO, and MT. Additionally,
+  when a bare `§ N-N-N` is followed within the same sentence by a
+  `, MCA` (or `, M.C.A.`) postfix, the citation is rerouted to MT
+  even without preceding C.R.S./W.Va. Code context.
+
+  ### Tests
+
+  8 new tests in `tests/extract/issue464MtCoBareSection.test.ts`:
+  MT trailing-postfix in list, MT standalone (regression), MT
+  same-paragraph not-attached postfix, CO `C.R.S.` propagation, CO
+  `Colo. Rev. Stat.` propagation, NM default preserved, WV (#432)
+  regression, NMSA regression. Full 2909-test suite passes.
+
 ## 0.17.0
 
 ### Minor Changes
