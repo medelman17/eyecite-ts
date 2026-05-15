@@ -205,5 +205,38 @@ describe("Docket citation extraction (#215)", () => {
       expect(docket).toBeDefined()
       expect(docket?.docketNumber).toBe("CV-01-0508597")
     })
+
+    it("N.D. Ill. space-separated format: `No. 18 C 7039`", () => {
+      const text =
+        "Carter v. Illinois Gaming Board, No. 18 C 7039 (N.D. Ill. Nov. 25, 2019) (collecting Seventh Circuit cases)."
+      const citations = extractCitations(text)
+      const docket = citations.find((c) => c.type === "docket") as
+        | DocketCitation
+        | undefined
+      expect(docket).toBeDefined()
+      expect(docket?.docketNumber).toBe("18 C 7039")
+      expect(docket?.caseName).toBe("Carter v. Illinois Gaming Board")
+      expect(docket?.year).toBe(2019)
+    })
+
+    it("N.D. Ill. shorter form `No. 18 CV 1234`", () => {
+      const text = "Foo v. Bar, No. 18 CV 1234 (N.D. Ill. 2018)."
+      const citations = extractCitations(text)
+      const docket = citations.find((c) => c.type === "docket") as
+        | DocketCitation
+        | undefined
+      expect(docket).toBeDefined()
+      expect(docket?.docketNumber).toBe("18 CV 1234")
+    })
+
+    it("hyphen-separated still works (regression)", () => {
+      const text = "Foo v. Bar, No. 18-cv-7039 (N.D. Ill. 2018)."
+      const citations = extractCitations(text)
+      const docket = citations.find((c) => c.type === "docket") as
+        | DocketCitation
+        | undefined
+      expect(docket).toBeDefined()
+      expect(docket?.docketNumber).toBe("18-cv-7039")
+    })
   })
 })
