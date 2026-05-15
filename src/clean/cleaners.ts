@@ -213,6 +213,12 @@ export function normalizeReporterSpacing(text: string): string {
   result = result.replace(/\bU\.\s*S\.\s*C\./g, "U.S.C.")
   result = result.replace(/\bC\.\s*F\.\s*R\./g, "C.F.R.")
 
+  // Regional-reporter inner-space collapse (N.W., S.W., N.E., S.E.):
+  // OCR / typesetter inserts a space between the directional letters
+  // (`N. W.2d` → `N.W.2d`). The general ordinal-suffix collapse below
+  // would handle the `2d` portion but not the inner letter-pair space. #466
+  result = result.replace(/\b([NS])\.\s+([WE])\./g, "$1.$2.")
+
   // Specific reporter abbreviation collapses
   result = result.replace(/\bU\.\s+S\./g, "U.S.")
   result = result.replace(/\bS\.\s+Ct\./g, "S.Ct.")
@@ -223,6 +229,11 @@ export function normalizeReporterSpacing(text: string): string {
   // General ordinal-suffix collapse: "Supp. 2d" → "Supp.2d", "Ed. 2d" → "Ed.2d",
   // "St. 3d" → "St.3d", "So. 2d" → "So.2d", "Wis. 2d" → "Wis.2d"
   result = result.replace(/([A-Za-z])\.\s+(\d+[a-z]+)/g, "$1.$2")
+
+  // Illinois Appellate Reports — restore the space `App.` strips out by the
+  // general rule above. Bluebook T1 canonical form is `Ill. App. 2d` /
+  // `Ill. App. 3d` (with a space before the ordinal). #465
+  result = result.replace(/\bIll\.\s+App\.(\d+[a-z]+)/g, "Ill. App. $1")
 
   return result
 }
