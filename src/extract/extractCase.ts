@@ -1376,6 +1376,18 @@ export function extractCaseName(
         }
       }
 
+      // Section-heading boundary: when the defendant captured includes a
+      // standalone capitalized to-be verb (`Is`, `Are`, `Was`, `Were`), the
+      // backward search crossed a section heading like `Smith v. Jones Is
+      // Distinguishable\nIn Smith v. Jones, 100 F.2d 50 (1990)`. Real
+      // corporate / party names don't contain these verbs as standalone
+      // tokens — truncate the defendant at the verb to recover the real
+      // defendant name.
+      const headingVerbMatch = /\s(?:Is|Are|Was|Were)\s/.exec(defendantText)
+      if (headingVerbMatch) {
+        defendantText = defendantText.substring(0, headingVerbMatch.index).trim()
+      }
+
       // Preserve the source's `v` punctuation form in `caseName`. New York
       // courts use `v` (no period); federal/most state courts use `v.`. The
       // existing V_CASE_NAME_REGEX accepts both via `v(?:s)?\.?` — extract
