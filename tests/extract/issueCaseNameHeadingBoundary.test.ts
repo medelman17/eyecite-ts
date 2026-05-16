@@ -42,6 +42,31 @@ In Foo v. Bar, 100 F.2d 50 (1990), ...`
       expect(cite?.defendant).toBe("Anthem, Inc.")
     })
 
+    it("entity-suffix `, Inc.` preserved when heading triggers multi-`v.`", () => {
+      // The full text has both a section heading and the body citation. The
+      // heading triggers the multi-`v.` recovery, and the recovery must NOT
+      // truncate `Anthem, Inc.` at the entity-suffix comma.
+      const text = `Collins v. Anthem, Inc. Is Distinguishable
+In Collins v. Anthem, Inc., 100 F.2d 50 (1990), the court...`
+      const cite = findFirstCase(text)
+      expect(cite?.caseName).toBe("Collins v. Anthem, Inc.")
+      expect(cite?.defendant).toBe("Anthem, Inc.")
+    })
+
+    it("entity-suffix `, LLC` preserved with heading", () => {
+      const text = `Foo v. Acme, LLC Is Distinguishable
+In Foo v. Acme, LLC, 100 F.2d 50 (1990), ...`
+      const cite = findFirstCase(text)
+      expect(cite?.defendant).toBe("Acme, LLC")
+    })
+
+    it("entity-suffix `, Corp.` preserved with heading", () => {
+      const text = `Foo v. Acme, Corp. Is Distinguishable
+In Foo v. Acme, Corp., 100 F.2d 50 (1990), ...`
+      const cite = findFirstCase(text)
+      expect(cite?.defendant).toBe("Acme, Corp.")
+    })
+
     it("single citation with no heading still works", () => {
       const text = "Smith v. Jones, 100 F.2d 50 (1990)"
       const cite = findFirstCase(text)
