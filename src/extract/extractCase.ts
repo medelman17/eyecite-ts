@@ -1365,27 +1365,45 @@ export function extractCaseName(
       // Detect consolidated captions: vMatch[0] contains 2+ "v." anchors.
       // The non-greedy regex defendant (group 2) is anchored at the trailing
       // ",$" and so absorbs downstream comma-separated caption segments
-      // including their own "v." anchors (#222). Recovery: truncate the
-      // defendant at its first comma to keep just the first "X v. Y" pair.
+      // including their own "v." anchors (#222). Recovery has two stages:
+      //   1. Section-heading boundary first: if the defendant contains a
+      //      standalone to-be verb (`Is`/`Are`/`Was`/`Were`), the backward
+      //      search crossed a section heading. Real party names don't
+      //      contain these verbs — truncate there. This must run BEFORE
+      //      comma-trim because heading-boundary truncation preserves
+      //      entity-suffix commas like `Anthem, Inc.`.
+      //   2. Comma-trim: for consolidated captions without a heading verb,
+      //      truncate the defendant at its first comma — but only when the
+      //      text after the comma does NOT start with a corporate entity
+      //      suffix (`Inc.`, `LLC`, `Corp.`, etc.), which are part of the
+      //      defendant name itself.
       const vAnchorMatches = vMatch[0].match(/\bv(?:s)?\.\s/g)
       let defendantText = vMatch[2].trim()
       if (vAnchorMatches && vAnchorMatches.length >= 2) {
-        const firstCommaInDefendant = vMatch[2].indexOf(",")
-        if (firstCommaInDefendant !== -1) {
-          defendantText = vMatch[2].substring(0, firstCommaInDefendant).trim()
+        // Heading-verb boundary first.
+        const headingVerbMatch = /\s(?:Is|Are|Was|Were)\s/.exec(defendantText)
+        if (headingVerbMatch) {
+          defendantText = defendantText.substring(0, headingVerbMatch.index).trim()
+        } else {
+          // Fall back to comma-trim, skipping entity-suffix commas.
+          let scanFrom = 0
+          while (scanFrom < vMatch[2].length) {
+            const commaIdx = vMatch[2].indexOf(",", scanFrom)
+            if (commaIdx === -1) break
+            const after = vMatch[2].substring(commaIdx + 1).trimStart()
+            if (
+              /^(?:Inc|LLC|Corp|Ltd|Co|LLP|LP|P\.?C|N\.?A|S\.?A|GmbH|S\.?p\.?A)\.?(?:\b|$)/.test(
+                after,
+              )
+            ) {
+              // Entity-suffix comma — skip and keep scanning.
+              scanFrom = commaIdx + 1
+              continue
+            }
+            defendantText = vMatch[2].substring(0, commaIdx).trim()
+            break
+          }
         }
-      }
-
-      // Section-heading boundary: when the defendant captured includes a
-      // standalone capitalized to-be verb (`Is`, `Are`, `Was`, `Were`), the
-      // backward search crossed a section heading like `Smith v. Jones Is
-      // Distinguishable\nIn Smith v. Jones, 100 F.2d 50 (1990)`. Real
-      // corporate / party names don't contain these verbs as standalone
-      // tokens — truncate the defendant at the verb to recover the real
-      // defendant name.
-      const headingVerbMatch = /\s(?:Is|Are|Was|Were)\s/.exec(defendantText)
-      if (headingVerbMatch) {
-        defendantText = defendantText.substring(0, headingVerbMatch.index).trim()
       }
 
       // Preserve the source's `v` punctuation form in `caseName`. New York
