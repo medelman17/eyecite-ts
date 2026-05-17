@@ -12,6 +12,7 @@
 
 import type {
   Citation,
+  CitationSignal,
   FullCaseCitation,
   IdCitation,
   ShortFormCaseCitation,
@@ -43,6 +44,123 @@ function getFullSpan(citation: Citation): Span | undefined {
 }
 
 /**
+ * Bluebook signal categories that mark a citation as an *aside* — supporting,
+ * comparative, or background — rather than a primary cited authority.
+ * Citations carrying a weak signal are skipped when picking an `Id.`
+ * antecedent unless no stronger candidate is in scope. Suggested-contradiction
+ * (`but cf.`) is weak; direct-contradiction (`contra`, `but see`) is strong
+ * because the writer is squarely engaging the cited authority.
+ */
+const WEAK_SIGNALS: ReadonlySet<CitationSignal> = new Set<CitationSignal>([
+  "see",
+  "see also",
+  "see generally",
+  "cf",
+  "but cf",
+  "compare",
+  "e.g.",
+  "see, e.g.",
+  "see also, e.g.",
+  "cf., e.g.",
+  "but cf., e.g.",
+])
+
+/**
+ * Family classification used when matching `Id.` to an antecedent. Page-style
+ * pincites (`Id. at 70`) point to `case`-family authorities (case, journal,
+ * neutral, court reporter). Section-style pincites (`Id. § 1983(c)`) point
+ * to `statute`-family authorities (statute, public-law, regulation).
+ */
+type CitationFamily = "case" | "statute" | "other"
+
+function citationFamily(citation: Citation): CitationFamily {
+  switch (citation.type) {
+    case "case":
+    case "journal":
+    case "neutral":
+      return "case"
+    case "statute":
+    case "publicLaw":
+    case "federalRegister":
+    case "statutesAtLarge":
+      return "statute"
+    default:
+      return "other"
+  }
+}
+
+/**
+ * Detects block-quote and inline-quote zones in **original** text and
+ * returns sorted, non-overlapping `{start, end}` ranges in original-text
+ * coordinates. Callers must look up citations via `span.originalStart`,
+ * not `cleanStart` — the clean pipeline collapses newlines so a markdown
+ * `> …` becomes inline with the surrounding sentence and the line-based
+ * blockquote shape is lost. Two zone shapes are recognized:
+ *
+ *   - Markdown blockquotes: contiguous lines whose first non-whitespace
+ *     character is `>`. The zone spans from the first such line's start to
+ *     the end of the last contiguous line.
+ *   - Inline paired double-quotes: greedy `"…"` regions on a single content
+ *     stretch. We only accept pairs that are at most ~600 chars apart, which
+ *     filters most cases of stray unbalanced quotes; longer "quotes" would
+ *     swallow unrelated citations and produce wrong skips.
+ */
+function detectQuoteZones(text: string): Array<{ start: number; end: number }> {
+  const zones: Array<{ start: number; end: number }> = []
+
+  // Markdown blockquotes (`>` lines).
+  let lineStart = 0
+  let zoneStart = -1
+  for (let i = 0; i <= text.length; i++) {
+    const atEnd = i === text.length
+    if (atEnd || text[i] === "\n") {
+      const line = text.substring(lineStart, i)
+      const trimmed = line.replace(/^[ \t]*/, "")
+      const isQuoteLine = trimmed.startsWith(">")
+      if (isQuoteLine) {
+        if (zoneStart === -1) zoneStart = lineStart
+      } else if (zoneStart !== -1) {
+        zones.push({ start: zoneStart, end: lineStart })
+        zoneStart = -1
+      }
+      lineStart = i + 1
+    }
+  }
+  if (zoneStart !== -1) zones.push({ start: zoneStart, end: text.length })
+
+  // Inline paired double-quotes.
+  const MAX_INLINE_QUOTE_LEN = 600
+  let openPos = -1
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] !== '"') continue
+    if (openPos === -1) {
+      openPos = i
+    } else {
+      const length = i - openPos + 1
+      if (length <= MAX_INLINE_QUOTE_LEN) {
+        zones.push({ start: openPos, end: i + 1 })
+      }
+      openPos = -1
+    }
+  }
+
+  zones.sort((a, b) => a.start - b.start)
+  return zones
+}
+
+function isInZone(
+  pos: number,
+  zones: ReadonlyArray<{ start: number; end: number }>,
+): { start: number; end: number } | undefined {
+  // Linear scan is fine; zone counts in real briefs are well under 50.
+  for (const zone of zones) {
+    if (pos < zone.start) return undefined
+    if (pos < zone.end) return zone
+  }
+  return undefined
+}
+
+/**
  * Document-scoped resolver that processes citations sequentially
  * and resolves short-form citations to their antecedents.
  */
@@ -54,6 +172,14 @@ export class DocumentResolver {
   }
   private readonly context: ResolutionContext
   private readonly partyNameTree: BKTree
+  private readonly quoteZones: ReadonlyArray<{ start: number; end: number }>
+  /** Parenthesis depth at each citation's start (filled lazily by resolve()). */
+  private parenDepths: number[] = []
+  /** Resolution results accumulated during the in-flight resolve() pass. */
+  private resolutions: Array<ResolutionResult | undefined> = []
+  /** Resolved citations accumulated during the in-flight resolve() pass; used
+   *  for fullSpan-based parenthetical-child detection on later candidates. */
+  private resolvedSoFar: ResolvedCitation[] = []
 
   /**
    * Creates a new DocumentResolver.
@@ -78,6 +204,7 @@ export class DocumentResolver {
     }
 
     this.partyNameTree = new BKTree(levenshteinDistance)
+    this.quoteZones = detectQuoteZones(text)
 
     // Initialize resolution context
     this.context = {
@@ -111,13 +238,12 @@ export class DocumentResolver {
   resolve(): ResolvedCitation[] {
     const resolved: ResolvedCitation[] = []
 
-    // Precompute, for each citation, its parenthesis depth at its start
-    // position relative to the raw document. A citation inside `(...)` is
-    // a parenthetical child of whatever opened that paren — typically the
-    // preceding citation's explanatory `(quoting X)` or `(citing Y)` block.
-    // This is more robust than relying on `fullSpan`, which is only computed
-    // for `case`/`docket` citations (shortFormCase, statute, etc. lack it).
-    const parenDepths = this.computeParenDepths()
+    // Reset per-call state so a single DocumentResolver can be reused (the
+    // public API currently constructs a fresh one per document, but the
+    // per-instance fields make the algorithm easier to follow).
+    this.parenDepths = this.computeParenDepths()
+    this.resolutions = new Array(this.citations.length).fill(undefined)
+    this.resolvedSoFar = resolved
 
     for (let i = 0; i < this.citations.length; i++) {
       this.context.citationIndex = i
@@ -137,43 +263,19 @@ export class DocumentResolver {
           resolution = this.resolveShortFormCase(citation)
           break
         default:
-          // Full citation - update context for future resolutions.
+          // Full citation. The new Id. resolver walks back over the citations
+          // list and consults `this.resolutions[i]` for short-form chains, so
+          // it no longer needs `context.lastResolvedIndex` as a fast path.
+          // We still need to register party names for `supra`.
           if (isFullCitation(citation)) {
-            // Bluebook Rule 4.1: Id. refers to the immediately preceding
-            // *cited authority*. A full citation parsed inside another
-            // citation's explanatory parenthetical (e.g. "(citing X)" or
-            // "(quoting Y)") is a sub-reference within the parent's
-            // citation, not the cited authority of that sentence — so it
-            // must not become Id.'s default antecedent. Detection uses
-            // paren depth (works for any prior citation type) with the
-            // legacy fullSpan check as fallback for case-name-prefixed
-            // citations whose `(...)` ends before the paren-depth model
-            // catches up.
-            const isParentheticalChild =
-              parenDepths[i] > 0 ||
-              resolved.some((prior) => {
-                const priorFullSpan = getFullSpan(prior)
-                if (!priorFullSpan) return false
-                return (
-                  priorFullSpan.cleanStart <= citation.span.cleanStart &&
-                  priorFullSpan.cleanEnd >= citation.span.cleanEnd
-                )
-              })
-            if (!isParentheticalChild) {
-              this.context.lastResolvedIndex = i
-            }
             this.trackFullCitation(citation, i)
           }
           break
       }
 
-      // After resolving a short-form citation, update lastResolvedIndex
-      // to the full citation it resolved to (transitive resolution).
-      // If resolution failed, lastResolvedIndex is NOT updated --
-      // a subsequent Id. will also fail (matching Python eyecite behavior).
-      if (resolution?.resolvedTo !== undefined) {
-        this.context.lastResolvedIndex = resolution.resolvedTo
-      }
+      // Record the resolution so a subsequent `Id.` walking backward can
+      // follow short-form chains (shortForm/supra/Id. → full antecedent).
+      this.resolutions[i] = resolution
 
       // Bluebook Rule 4.1: an `Id.` refers to the same authority and page(s)
       // cited in the antecedent. When the antecedent is a case citation,
@@ -208,8 +310,7 @@ export class DocumentResolver {
               idOut.plaintiffNormalized = antecedent.plaintiffNormalized
             if (antecedent.defendantNormalized)
               idOut.defendantNormalized = antecedent.defendantNormalized
-            if (antecedent.proceduralPrefix)
-              idOut.proceduralPrefix = antecedent.proceduralPrefix
+            if (antecedent.proceduralPrefix) idOut.proceduralPrefix = antecedent.proceduralPrefix
           }
 
           citationOut = idOut
@@ -255,27 +356,288 @@ export class DocumentResolver {
   }
 
   /**
-   * Resolves Id. citation to the most recently cited authority.
-   * Uses lastResolvedIndex which tracks the most recent successfully
-   * resolved citation (full, short-form, supra, or Id.).
+   * Resolves `Id.` to the most recent preceding *cited authority*, respecting
+   * Bluebook signal categories, block-/inline-quote zones, and the family
+   * (case vs. statute) implied by `Id.`'s pincite shape (#480).
+   *
+   * Algorithm:
+   *   1. Walk backward from `currentIndex`, normalizing short-form citations
+   *      (shortFormCase/supra/Id.) to their resolved antecedent. Dedupe by
+   *      effective primary index so a case mentioned via a short-form earlier
+   *      doesn't get double-counted with its full-cite further back.
+   *   2. Filter candidates that are parenthetical children (existing #214
+   *      behavior) or in a quote zone outside `Id.`'s own zone.
+   *   3. Score remaining candidates: family-match dominates, then signal
+   *      strength, then (implicitly) recency (first-added = most recent
+   *      effective mention).
+   *   4. Apply the case-name window check to surface ambiguity when the prose
+   *      immediately before `Id.` mentions a different case name.
    */
-  private resolveId(_citation: IdCitation): ResolutionResult | undefined {
+  private resolveId(citation: IdCitation): ResolutionResult | undefined {
     const currentIndex = this.context.citationIndex
-    const antecedentIndex = this.context.lastResolvedIndex
+    const preferredFamily = this.getIdPreferredFamily(citation)
+    const idQuoteZone = isInZone(citation.span.originalStart, this.quoteZones)
 
-    // No preceding citation has been resolved yet
-    if (antecedentIndex === undefined) {
-      return this.createFailureResult("No preceding citation found")
+    interface Candidate {
+      index: number
+      family: CitationFamily
+      weak: boolean
+    }
+    const candidates: Candidate[] = []
+    const seen = new Set<number>()
+
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      const c = this.citations[i]
+      let primaryIdx: number
+
+      if (isFullCitation(c)) {
+        primaryIdx = i
+      } else {
+        // shortForm/Id./supra — follow the resolution chain. If it failed to
+        // resolve we skip it: a broken short-form shouldn't pin Id. to a
+        // citation the writer didn't successfully cite.
+        const prev = this.resolutions[i]
+        if (!prev || prev.resolvedTo === undefined) continue
+        primaryIdx = prev.resolvedTo
+      }
+
+      if (seen.has(primaryIdx)) continue
+      seen.add(primaryIdx)
+
+      const cit = this.citations[primaryIdx]
+      if (!isFullCitation(cit)) continue
+      if (this.isParentheticalChild(primaryIdx)) continue
+      if (!this.isWithinScope(primaryIdx, currentIndex)) continue
+
+      // Quote-boundary respect: a citation inside a quote zone is not eligible
+      // as Id.'s antecedent unless the Id. itself is in the same zone.
+      const candidateZone = isInZone(cit.span.originalStart, this.quoteZones)
+      if (candidateZone && candidateZone !== idQuoteZone) continue
+
+      candidates.push({
+        index: primaryIdx,
+        family: citationFamily(cit),
+        weak: this.isCandidateWeakSignal(cit),
+      })
     }
 
-    // Check scope boundary
-    if (!this.isWithinScope(antecedentIndex, currentIndex)) {
-      return this.createFailureResult("Antecedent citation outside scope boundary")
+    if (candidates.length === 0) {
+      // Diagnose: did we have any preceding citation at all? If not, the
+      // legacy failure message helps consumers debug "Id. before any cite".
+      const anyPrior = currentIndex > 0
+      return this.createFailureResult(
+        anyPrior ? "Antecedent citation outside scope boundary" : "No preceding citation found",
+      )
     }
+
+    // Score each candidate. Family-match dominates (Id.'s pincite shape
+    // tells us which family of authority the writer intended). Strong
+    // (unsignaled or direct-engagement) candidates beat weak (aside)
+    // candidates. Recency breaks ties — candidates are pushed in reverse
+    // document order, so the first match at a given score is the most
+    // recent effective mention.
+    const score = (c: Candidate) => {
+      let s = 0
+      if (c.family === preferredFamily) s += 1000
+      if (!c.weak) s += 100
+      return s
+    }
+    let best = candidates[0]
+    let bestScore = score(best)
+    for (let i = 1; i < candidates.length; i++) {
+      const s = score(candidates[i])
+      if (s > bestScore) {
+        best = candidates[i]
+        bestScore = s
+      }
+    }
+
+    // Case-name window check: if the prose immediately before Id. names a
+    // case that doesn't match the picked antecedent, downgrade confidence and
+    // flag ambiguity (without refusing to commit).
+    const { confidence, warnings } = this.applyCaseNameWindowCheck(best.index, citation)
 
     return {
-      resolvedTo: antecedentIndex,
-      confidence: 1.0, // Id. resolution is unambiguous when successful
+      resolvedTo: best.index,
+      confidence,
+      warnings,
+    }
+  }
+
+  /**
+   * Determines whether `Id.`'s pincite shape implies a case or statute
+   * antecedent. We peek at the cleaned text immediately after `Id.`'s span
+   * end because the regex in `extractIdCitation` only captures page-style
+   * pincites (`at NNN`, `¶ NNN`); a section-style pincite (`§ NNN`) lives
+   * in the raw text but not on the IdCitation object.
+   */
+  private getIdPreferredFamily(citation: IdCitation): CitationFamily {
+    // Look at up to 20 chars after Id.'s span end for a `§` token.
+    const start = citation.span.cleanEnd
+    const end = Math.min(this.text.length, start + 20)
+    const tail = this.text.substring(start, end)
+    if (/^\s*[,]?\s*§§?\s*\d/.test(tail)) return "statute"
+    return "case"
+  }
+
+  /**
+   * Computes the "effective" signal for a citation. Citations inside a
+   * string-cite group inherit the leading signal of the group's first
+   * member when they have no signal of their own — the Bluebook rule that
+   * a leading signal governs the entire string cite.
+   */
+  private getEffectiveSignal(citation: Citation): CitationSignal | undefined {
+    if (citation.signal) return citation.signal
+    const groupId = citation.stringCitationGroupId
+    if (!groupId) return undefined
+    // First member of the group carries the leading signal.
+    for (const c of this.citations) {
+      if (c.stringCitationGroupId === groupId && c.stringCitationIndex === 0) {
+        return c.signal
+      }
+    }
+    return undefined
+  }
+
+  private isCandidateWeakSignal(citation: Citation): boolean {
+    const sig = this.getEffectiveSignal(citation)
+    return sig !== undefined && WEAK_SIGNALS.has(sig)
+  }
+
+  /**
+   * `(citing X)` / `(quoting Y)` detection (#214). Two strategies in OR:
+   *   - paren depth > 0 at the citation's start (works for any prior
+   *     citation type — statute, journal, etc.);
+   *   - the citation's clean-span is wholly inside a previously-resolved
+   *     citation's `fullSpan` (case-name-prefixed citations sometimes have
+   *     `(...)` ranges that close before the paren-depth scan catches up).
+   */
+  private isParentheticalChild(index: number): boolean {
+    if (this.parenDepths[index] > 0) return true
+    const cit = this.citations[index]
+    for (let i = 0; i < this.resolvedSoFar.length; i++) {
+      if (i === index) continue // a citation cannot be a paren child of itself
+      const prior = this.resolvedSoFar[i]
+      const priorFullSpan = getFullSpan(prior)
+      if (!priorFullSpan) continue
+      if (
+        priorFullSpan.cleanStart <= cit.span.cleanStart &&
+        priorFullSpan.cleanEnd >= cit.span.cleanEnd
+      ) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
+   * Scans the prose between the previous citation and `Id.` for a case-name
+   * mention. If a name is found and doesn't match the picked antecedent's
+   * caseName/plaintiff/defendant, returns a downgraded confidence and an
+   * ambiguity warning so consumers can surface it for review. Matching
+   * names (or no name in the window) return undefined → caller uses the
+   * default Id. confidence of 1.0.
+   */
+  private applyCaseNameWindowCheck(
+    antecedentIndex: number,
+    citation: IdCitation,
+  ): { confidence: number; warnings: string[] | undefined } {
+    const DEFAULT = { confidence: 1.0, warnings: undefined as string[] | undefined }
+    const antecedent = this.citations[antecedentIndex]
+    if (antecedent.type !== "case") return DEFAULT
+
+    // Window: prose between the *immediately preceding citation* and Id.,
+    // capped at 80 chars before Id. start. Bounding on the prior citation
+    // (not the antecedent) ensures intermediate case names — which the
+    // resolver may have deprioritized as asides — don't pollute the window
+    // and produce false-positive ambiguity warnings.
+    const idStart = citation.span.cleanStart
+    let windowStart = Math.max(0, idStart - 80)
+    const prevIndex = this.context.citationIndex - 1
+    if (prevIndex >= 0) {
+      const prev = this.citations[prevIndex]
+      windowStart = Math.max(windowStart, prev.span.cleanEnd)
+    }
+    if (windowStart >= idStart) return DEFAULT
+
+    const window = this.text.substring(windowStart, idStart)
+
+    // Match capitalized words that are case-name-like. Filter out common
+    // English/legal prose words that happen to be capitalized.
+    const STOPWORDS = new Set([
+      "As",
+      "The",
+      "This",
+      "That",
+      "These",
+      "Those",
+      "In",
+      "Here",
+      "There",
+      "Court",
+      "Courts",
+      "Supreme",
+      "Circuit",
+      "District",
+      "State",
+      "States",
+      "Federal",
+      "Plaintiff",
+      "Defendant",
+      "Petitioner",
+      "Respondent",
+      "Appellant",
+      "Appellee",
+      "Government",
+      "United",
+      "We",
+      "It",
+      "Id",
+      "See",
+      "Compare",
+      "Cf",
+      "But",
+      "Also",
+      "Held",
+      "Holds",
+      "Held,",
+    ])
+    const tokens = window.match(/(?<![a-zA-Z])[A-Z][a-z]+(?:'s)?/g)
+    if (!tokens) return DEFAULT
+    const names = tokens.filter((t) => !STOPWORDS.has(t.replace(/'s$/, "")))
+    if (names.length === 0) return DEFAULT
+
+    const target = new Set<string>()
+    if (antecedent.plaintiffNormalized) target.add(antecedent.plaintiffNormalized)
+    if (antecedent.defendantNormalized) target.add(antecedent.defendantNormalized)
+    if (antecedent.caseName) target.add(antecedent.caseName.toLowerCase())
+
+    let matched = false
+    let mismatchName: string | undefined
+    for (const n of names) {
+      const lc = n.replace(/'s$/, "").toLowerCase()
+      let hit = false
+      for (const t of target) {
+        if (t === lc || t.includes(lc) || lc.includes(t)) {
+          hit = true
+          break
+        }
+      }
+      if (hit) {
+        matched = true
+        break
+      }
+      if (!mismatchName) mismatchName = n.replace(/'s$/, "")
+    }
+
+    if (matched) return DEFAULT
+    if (!mismatchName) return DEFAULT
+
+    return {
+      confidence: 0.75,
+      warnings: [
+        `Ambiguous Id. antecedent: prose mentions "${mismatchName}" but resolved to "${antecedent.caseName ?? antecedent.defendantNormalized ?? antecedent.plaintiffNormalized ?? "(unknown)"}"`,
+      ],
     }
   }
 
@@ -389,9 +751,7 @@ export class DocumentResolver {
         const defendant = c.defendantNormalized
         const hit = (name: string | undefined) =>
           name !== undefined &&
-          (name === targetParty ||
-            name.includes(targetParty) ||
-            targetParty.includes(name))
+          (name === targetParty || name.includes(targetParty) || targetParty.includes(name))
         return hit(plaintiff) || hit(defendant)
       })
       if (namedMatch !== undefined) {

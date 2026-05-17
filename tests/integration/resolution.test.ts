@@ -228,19 +228,30 @@ describe("Resolution Integration Tests", () => {
       expect(id!.resolution?.failureReason).toBeDefined()
     })
 
-    it("resolves Id. after statute citation", () => {
+    it("Id. with no pincite after case → statute skips the statute (#480)", () => {
+      // Bluebook-aware behavior: `Id.` with a page-style (or absent) pincite
+      // refers to the most recent *case-family* authority. A statute in the
+      // gap is deprioritized when an earlier case is in scope.
       const text = "Smith v. Jones, 500 F.2d 123 (2020). " + "42 U.S.C. § 1983. " + "Id."
 
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
 
-      const statute = citations.find((c) => c.type === "statute")
+      const smith = citations.find((c) => c.type === "case")
       const id = citations.find((c) => c.type === "id")
 
-      expect(statute).toBeDefined()
+      expect(smith).toBeDefined()
       expect(id).toBeDefined()
 
-      const statuteIndex = citations.indexOf(statute!)
-      expect(id!.resolution?.resolvedTo).toBe(statuteIndex)
+      const smithIndex = citations.indexOf(smith!)
+      expect(id!.resolution?.resolvedTo).toBe(smithIndex)
+    })
+
+    it("Id. resolves to a statute when no case is in scope", () => {
+      const text = "42 U.S.C. § 1983. Id."
+      const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+      const statute = citations.find((c) => c.type === "statute")!
+      const id = citations.find((c) => c.type === "id")!
+      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(statute))
     })
 
     it("resolves chain of Id. through short-form", () => {
@@ -684,9 +695,11 @@ Second paragraph: Id. at 125.`
       expect(citations[1].type).toBe("statute")
       expect(citations[1].resolution).toBeUndefined()
 
-      // Id. resolves to statute (the most recently cited authority, index 1)
+      // Id. resolves to the case, not the intervening statute (#480 — non-case
+      // citations don't compete with the most recent case when Id.'s pincite
+      // shape (`at 125`) implies a case-family antecedent).
       expect(citations[2].type).toBe("id")
-      expect(citations[2].resolution?.resolvedTo).toBe(1)
+      expect(citations[2].resolution?.resolvedTo).toBe(0)
 
       // Supra resolves to case (index 0)
       expect(citations[3].type).toBe("supra")
