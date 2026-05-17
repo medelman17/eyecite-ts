@@ -85,12 +85,6 @@ export interface ResolutionResult {
    * Warnings about ambiguous or uncertain resolutions
    */
   warnings?: string[]
-
-  /**
-   * Confidence in the resolution (0-1)
-   * Factors: party name similarity, scope boundary, citation type match
-   */
-  confidence: number
 }
 
 /**
