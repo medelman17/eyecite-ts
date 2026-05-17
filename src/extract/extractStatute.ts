@@ -14,6 +14,8 @@
  * @module extract/extractStatute
  */
 
+import type { StatuteFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
 import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
@@ -69,7 +71,14 @@ function extractLegacy(token: Token, transformationMap: TransformationMap): Stat
       type: "statute",
       text,
       span: { cleanStart: span.cleanStart, cleanEnd: span.cleanEnd, originalStart, originalEnd },
-      confidence: 0.3,
+      confidence: scoreCitation({
+        type: "statute",
+        patternId: "legacy-unparseable",
+        knownCode: false,
+        titlePresent: false,
+        subsectionPresent: false,
+        parseable: false,
+      }),
       matchedText: text,
       processTimeMs: 0,
       patternsChecked: 1,
@@ -84,7 +93,6 @@ function extractLegacy(token: Token, transformationMap: TransformationMap): Stat
 
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-  let confidence = 0.5
   const knownCodes = [
     "U.S.C.",
     "C.F.R.",
@@ -93,12 +101,15 @@ function extractLegacy(token: Token, transformationMap: TransformationMap): Stat
     "N.Y. Civ. Prac. L. & R.",
     "Tex. Civ. Prac. & Rem. Code",
   ]
-
-  if (knownCodes.some((c) => code.includes(c))) {
-    confidence += 0.3
+  const features: StatuteFeatures = {
+    type: "statute",
+    patternId: "legacy-statute",
+    knownCode: knownCodes.some((c) => code.includes(c)),
+    titlePresent: title !== undefined,
+    subsectionPresent: false,
+    parseable: true,
   }
-
-  confidence = Math.min(confidence, 1.0)
+  const confidence = scoreCitation(features)
 
   return {
     type: "statute",

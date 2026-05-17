@@ -7,6 +7,8 @@
  * @module extract/statutes/extractFederal
  */
 
+import type { StatuteFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
 import type { StatuteComponentSpans } from "@/types/componentSpans"
@@ -69,8 +71,10 @@ export function extractFederal(
   let spans: StatuteComponentSpans | undefined
   if (bodyMatch?.indices) {
     spans = {}
-    if (bodyMatch.indices[1]) spans.title = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[1], transformationMap)
-    if (bodyMatch.indices[2]) spans.code = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[2], transformationMap)
+    if (bodyMatch.indices[1])
+      spans.title = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[1], transformationMap)
+    if (bodyMatch.indices[2])
+      spans.code = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[2], transformationMap)
     if (bodyMatch.indices[3] && section) {
       const bodyStart = bodyMatch.indices[3][0]
       // Use section without trailing sentence punctuation for span boundary.
@@ -93,11 +97,15 @@ export function extractFederal(
     }
   }
 
-  // Confidence: known federal code + § = 0.95 base
-  let confidence = 0.95
-  if (title !== undefined) confidence += 0.05
-  if (subsection) confidence += 0.05
-  confidence = Math.min(confidence, 1.0)
+  const features: StatuteFeatures = {
+    type: "statute",
+    patternId: token.patternId, // 'usc', 'cfr', or 'irc'
+    knownCode: true,
+    titlePresent: title !== undefined,
+    subsectionPresent: !!subsection,
+    parseable: true,
+  }
+  const confidence = scoreCitation(features)
 
   return {
     type: "statute",
