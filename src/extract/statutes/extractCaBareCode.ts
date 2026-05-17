@@ -14,6 +14,8 @@
  */
 
 import { findCaBareCode } from "@/data/caBareCodes"
+import type { StatuteFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
 import type { StatuteComponentSpans } from "@/types/componentSpans"
@@ -69,12 +71,15 @@ export function extractCaBareCode(
     }
   }
 
-  // Confidence: bare-code matches come from a closed alternation, so the
-  // jurisdiction inference is reliable. Match the existing named-code
-  // baseline (0.95 when a known code resolves) and bump for subsection.
-  let confidence = 0.95
-  if (subsection) confidence += 0.05
-  confidence = Math.min(confidence, 1.0)
+  const features: StatuteFeatures = {
+    type: "statute",
+    patternId: token.patternId,
+    knownCode: true, // all state-specific extractors operate on known codes
+    titlePresent: false,
+    subsectionPresent: false,
+    parseable: true,
+  }
+  const confidence = scoreCitation(features)
 
   return {
     type: "statute",

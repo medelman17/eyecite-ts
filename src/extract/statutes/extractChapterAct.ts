@@ -7,6 +7,8 @@
  * @module extract/statutes/extractChapterAct
  */
 
+import type { StatuteFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
 import type { StatuteComponentSpans } from "@/types/componentSpans"
@@ -57,8 +59,10 @@ export function extractChapterAct(
   let spans: StatuteComponentSpans | undefined
   if (match?.indices) {
     spans = {}
-    if (match.indices[1]) spans.title = spanFromGroupIndex(span.cleanStart, match.indices[1], transformationMap)
-    if (match.indices[2]) spans.code = spanFromGroupIndex(span.cleanStart, match.indices[2], transformationMap)
+    if (match.indices[1])
+      spans.title = spanFromGroupIndex(span.cleanStart, match.indices[1], transformationMap)
+    if (match.indices[2])
+      spans.code = spanFromGroupIndex(span.cleanStart, match.indices[2], transformationMap)
     if (match.indices[3] && section) {
       const bodyStart = match.indices[3][0]
       spans.section = spanFromGroupIndex(
@@ -77,11 +81,15 @@ export function extractChapterAct(
     }
   }
 
-  // Title (chapter) is always present on a successful ILCS match — no bonus needed.
-  // Only subsection presence provides a confidence boost.
-  let confidence = match ? 0.95 : 0.3
-  if (subsection) confidence += 0.05
-  confidence = Math.min(confidence, 1.0)
+  const features: StatuteFeatures = {
+    type: "statute",
+    patternId: token.patternId,
+    knownCode: true, // all state-specific extractors operate on known codes
+    titlePresent: false,
+    subsectionPresent: false,
+    parseable: true,
+  }
+  const confidence = scoreCitation(features)
 
   return {
     type: "statute",

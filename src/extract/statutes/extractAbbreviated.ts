@@ -11,6 +11,8 @@
  */
 
 import { findAbbreviatedCode } from "@/data/knownCodes"
+import type { StatuteFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
 import type { StatuteComponentSpans } from "@/types/componentSpans"
@@ -95,20 +97,15 @@ export function extractAbbreviated(
     }
   }
 
-  const hasSection = text.includes("§")
-  let confidence: number
-  if (codeEntry && hasSection) {
-    confidence = 0.95
-  } else if (codeEntry) {
-    confidence = 0.85
-  } else if (hasSection) {
-    confidence = 0.6
-  } else {
-    confidence = 0.4
+  const features: StatuteFeatures = {
+    type: "statute",
+    patternId: token.patternId,
+    knownCode: true, // all state-specific extractors operate on known codes
+    titlePresent: false,
+    subsectionPresent: false,
+    parseable: true,
   }
-  if (title !== undefined) confidence += 0.05
-  if (subsection) confidence += 0.05
-  confidence = Math.min(confidence, 1.0)
+  const confidence = scoreCitation(features)
 
   return {
     type: "statute",
