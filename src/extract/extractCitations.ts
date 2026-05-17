@@ -46,6 +46,8 @@ import { detectParallelCitations } from "./detectParallel"
 import { detectStringCitations, detectLeadingSignals } from "./detectStringCites"
 import { extractId, extractShortFormCase, extractSupra } from "./extractShortForms"
 import { applyFalsePositiveFilters } from "./filterFalsePositives"
+import type { ShortFormCaseFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import { parsePincite } from "./pincite"
 import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 
@@ -1081,11 +1083,17 @@ function detectBarePartyBackReferences(
           ? anchor.cite.page
           : Number.parseInt(String(anchor.cite.page), 10) || undefined
 
+      const barePartyFeatures: ShortFormCaseFeatures = {
+        type: "shortFormCase",
+        patternId: "bare-party-back-ref",
+        knownReporter: false,
+        partyNameMatch: true,
+      }
       newCitations.push({
         type: "shortFormCase",
         text: match[0],
         matchedText: match[0],
-        confidence: 0.85,
+        confidence: scoreCitation(barePartyFeatures),
         processTimeMs: 0,
         patternsChecked: 0,
         span: { cleanStart: start, cleanEnd: end, originalStart, originalEnd },
