@@ -13,6 +13,8 @@
  */
 
 import { CONSTITUTIONAL_BODY_RE } from "@/patterns/constitutionalPatterns"
+import type { ConstitutionalFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { ConstitutionalCitation } from "@/types/citation"
 import type { ConstitutionalComponentSpans } from "@/types/componentSpans"
@@ -195,16 +197,12 @@ export function extractConstitutional(
 
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-  let confidence: number
-  if (token.patternId === "bare-article") {
-    confidence = 0.5
-  } else if (token.patternId === "bare-constitution") {
-    confidence = 0.7
-  } else if (section) {
-    confidence = 0.95
-  } else {
-    confidence = 0.9
+  const features: ConstitutionalFeatures = {
+    type: "constitutional",
+    patternId: token.patternId as ConstitutionalFeatures["patternId"],
+    hasSection: !!section,
   }
+  const confidence = scoreCitation(features)
 
   // The section regex may greedily consume a sentence-terminating period ("§ 1.")
   const matchedText = text.endsWith(".") ? text.slice(0, -1) : text
@@ -216,7 +214,11 @@ export function extractConstitutional(
   if (jurisdiction === "US") {
     const usIdx = text.indexOf("U.S.")
     if (usIdx !== -1) {
-      spans.jurisdiction = spanFromGroupIndex(span.cleanStart, [usIdx, usIdx + 4], transformationMap)
+      spans.jurisdiction = spanFromGroupIndex(
+        span.cleanStart,
+        [usIdx, usIdx + 4],
+        transformationMap,
+      )
     }
   } else if (jurisdiction && token.patternId === "state-constitution") {
     // State prefix is at the start of the token text
@@ -233,7 +235,11 @@ export function extractConstitutional(
   if (bodyMatch?.indices) {
     if (IS_AMENDMENT_RE.test(bodyMatch[0])) {
       if (bodyMatch.indices[1]) {
-        spans.amendment = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[1], transformationMap)
+        spans.amendment = spanFromGroupIndex(
+          span.cleanStart,
+          bodyMatch.indices[1],
+          transformationMap,
+        )
       }
     } else {
       if (bodyMatch.indices[1]) {
