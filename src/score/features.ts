@@ -48,6 +48,13 @@ export interface StatuteFeatures {
   titlePresent: boolean
   subsectionPresent: boolean
   parseable: boolean // false → unparseable fallback path
+  /**
+   * Whether the source text contains a `§` symbol. Used by extractors that
+   * historically discriminated between "known code with §" (0.95), "known code
+   * without §" (0.85), "unknown code with §" (0.6), and "unknown code without
+   * §" (0.4). Optional — most extractors don't care.
+   */
+  hasSectionSymbol?: boolean
 }
 
 export interface ConstitutionalFeatures {

@@ -72,7 +72,35 @@ function shortFormCaseExtraction(
 }
 
 function statuteExtraction(f: Extract<ExtractionFeatures, { type: "statute" }>): number {
+  // Chapter-act (Illinois ILCS): parseable → 0.95, else → 0.3; +0.05 subsection.
+  if (f.patternId === "chapter-act") {
+    let s: number = f.parseable
+      ? STATUTE_WEIGHTS.chapterActParseable
+      : STATUTE_WEIGHTS.chapterActUnparseable
+    if (f.subsectionPresent) s += STATUTE_WEIGHTS.subsectionPresent
+    return round2(clamp01(s))
+  }
+  // Unparseable fallback for all other state-statute patterns.
   if (!f.parseable) return STATUTE_WEIGHTS.unparseable
+  // Abbreviated-code: branches on (knownCode × hasSectionSymbol); +0.05 title; +0.05 subsection.
+  if (f.patternId === "abbreviated-code") {
+    let s: number
+    if (f.knownCode && f.hasSectionSymbol) s = STATUTE_WEIGHTS.knownCodeWithSymbol
+    else if (f.knownCode) s = STATUTE_WEIGHTS.knownCodeNoSymbol
+    else if (f.hasSectionSymbol) s = STATUTE_WEIGHTS.unknownCodeWithSymbol
+    else s = STATUTE_WEIGHTS.unknownCodeNoSymbol
+    if (f.titlePresent) s += STATUTE_WEIGHTS.titlePresent
+    if (f.subsectionPresent) s += STATUTE_WEIGHTS.subsectionPresent
+    return round2(clamp01(s))
+  }
+  // Named-code / mass-chapter: branches on knownCode (proxy for jurisdiction match); +0.05 subsection.
+  if (f.patternId === "named-code" || f.patternId === "mass-chapter") {
+    let s: number = f.knownCode
+      ? STATUTE_WEIGHTS.jurisdictionKnown
+      : STATUTE_WEIGHTS.jurisdictionUnknown
+    if (f.subsectionPresent) s += STATUTE_WEIGHTS.subsectionPresent
+    return round2(clamp01(s))
+  }
   const override = STATUTE_PATTERN_OVERRIDES[f.patternId]
   if (override !== undefined) return override
   if (f.patternId === "usc" || f.patternId === "cfr" || f.patternId === "irc") {

@@ -49,6 +49,20 @@ export const STATUTE_WEIGHTS = {
   federalBase: 0.95,
   titlePresent: 0.05,
   subsectionPresent: 0.05,
+  // Conditional state-statute paths (abbreviated-code, named-code,
+  // mass-chapter, chapter-act). These mirror the pre-migration branching:
+  //   abbreviated: codeEntry+§ → 0.95, codeEntry → 0.85, § → 0.6, neither → 0.4
+  //   named-code/mass-chapter: jurisdiction → 0.95, else → 0.5
+  //   chapter-act: parseable → 0.95, else → 0.3
+  // `subsectionPresent` (+0.05) and `titlePresent` (+0.05) layered on top.
+  knownCodeWithSymbol: 0.95,
+  knownCodeNoSymbol: 0.85,
+  unknownCodeWithSymbol: 0.6,
+  unknownCodeNoSymbol: 0.4,
+  jurisdictionKnown: 0.95,
+  jurisdictionUnknown: 0.5,
+  chapterActParseable: 0.95,
+  chapterActUnparseable: 0.3,
 } as const
 
 /**
@@ -60,11 +74,11 @@ export const STATUTE_WEIGHTS = {
  * Phase 3 will replace these with calibrated values from labeled data.
  */
 export const STATUTE_PATTERN_OVERRIDES: Record<string, number> = {
-  // Abbreviated codes (extractAbbreviated.ts) — historically dynamic
-  // (codeEntry × hasSection branching). Use 0.95 baseline matching the
-  // most-common parseable case (known code + §); unparseable still routes
-  // through the unparseable weight via `parseable: false`.
-  "abbreviated-code": 0.95,
+  // NOTE: `abbreviated-code`, `named-code`, `mass-chapter`, and `chapter-act`
+  // intentionally OMITTED — those extractors emit conditional features
+  // (knownCode, hasSectionSymbol, parseable, subsectionPresent) and are
+  // scored discriminatively in axes.ts. Adding overrides here would
+  // short-circuit that branching.
 
   // Alabama pre-1975 Code (extractAlaCode1940.ts) — shared 0.95 base
   // across all three patternIds.
@@ -74,9 +88,6 @@ export const STATUTE_PATTERN_OVERRIDES: Record<string, number> = {
 
   // California bare-code (extractCaBareCode.ts).
   "ca-bare-code": 0.95,
-
-  // Illinois Compiled Statutes (extractChapterAct.ts).
-  "chapter-act": 0.95,
 
   // Colorado Revised Statutes prose form (extractColoradoProse.ts).
   "colorado-prose": 0.9,
@@ -108,11 +119,6 @@ export const STATUTE_PATTERN_OVERRIDES: Record<string, number> = {
 
   // Minnesota Statutes year-edition (extractMinnStYearEdition.ts).
   "minn-st-year-edition": 0.95,
-
-  // Named-code state citations (extractNamedCode.ts) — both patternIds.
-  // Historical: `jurisdiction ? 0.95 : 0.5` — using 0.95 (parseable path).
-  "named-code": 0.95,
-  "mass-chapter": 0.95,
 
   // New Mexico bare-section (extractNmBareSection.ts).
   "nm-bare-section": 0.9,

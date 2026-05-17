@@ -201,12 +201,17 @@ export function extractNamedCode(
     }
   }
 
+  // Thread the actual jurisdiction lookup through to the scorer. Pre-migration
+  // the formula was `jurisdiction ? 0.95 : 0.5` (+0.05 subsection), so we
+  // signal `knownCode` based on jurisdiction resolution. Named-code never had
+  // an unparseable fallback path (the malformed branch still returned 0.5),
+  // so `parseable` stays true; the scorer's named-code branch handles both.
   const features: StatuteFeatures = {
     type: "statute",
     patternId: token.patternId,
-    knownCode: true, // all state-specific extractors operate on known codes
+    knownCode: jurisdiction !== undefined,
     titlePresent: false,
-    subsectionPresent: false,
+    subsectionPresent: !!subsection,
     parseable: true,
   }
   const confidence = scoreCitation(features)

@@ -97,13 +97,17 @@ export function extractAbbreviated(
     }
   }
 
+  // Thread the actual lookup/match outcomes through to the scorer so
+  // axes.ts can discriminate known/unknown codes and parseable/fallback paths.
+  // Mirrors the pre-migration branching: codeEntry × hasSection × title × subsection.
   const features: StatuteFeatures = {
     type: "statute",
     patternId: token.patternId,
-    knownCode: true, // all state-specific extractors operate on known codes
-    titlePresent: false,
-    subsectionPresent: false,
-    parseable: true,
+    knownCode: !!codeEntry,
+    titlePresent: title !== undefined,
+    subsectionPresent: !!subsection,
+    parseable: match !== null,
+    hasSectionSymbol: text.includes("§"),
   }
   const confidence = scoreCitation(features)
 

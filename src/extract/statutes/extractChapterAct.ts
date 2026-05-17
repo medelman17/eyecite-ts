@@ -81,13 +81,16 @@ export function extractChapterAct(
     }
   }
 
+  // Thread the actual ILCS-match outcome to the scorer. Pre-migration formula:
+  // `match ? 0.95 : 0.3` (+0.05 subsection). Chapter-act always identifies
+  // Illinois when it parses, so `knownCode` mirrors `parseable`.
   const features: StatuteFeatures = {
     type: "statute",
     patternId: token.patternId,
-    knownCode: true, // all state-specific extractors operate on known codes
+    knownCode: match !== null,
     titlePresent: false,
-    subsectionPresent: false,
-    parseable: true,
+    subsectionPresent: !!subsection,
+    parseable: match !== null,
   }
   const confidence = scoreCitation(features)
 
