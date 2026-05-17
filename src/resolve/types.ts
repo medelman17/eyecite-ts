@@ -6,6 +6,7 @@
  */
 
 import type { FootnoteMap } from "../footnotes/types"
+import type { ResolutionFeatures } from "../score/features"
 import type { Citation, ShortFormCitation } from "../types/citation"
 
 /**
@@ -85,6 +86,13 @@ export interface ResolutionResult {
    * Warnings about ambiguous or uncertain resolutions
    */
   warnings?: string[]
+
+  /**
+   * Resolution features used by the central scorer to compute axes.resolution.
+   * Populated by DocumentResolver and consumed by `scoreCitation()` when the
+   * citation's confidence is re-scored post-resolution.
+   */
+  features?: ResolutionFeatures
 }
 
 /**

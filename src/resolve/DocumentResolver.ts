@@ -10,6 +10,8 @@
  * - Short-form case resolves to full case with matching volume/reporter (within scope)
  */
 
+import type { ExtractionFeatures, ResolutionFeatures } from "../score/features"
+import { scoreCitation } from "../score/scorer"
 import type {
   Citation,
   CitationSignal,
@@ -317,6 +319,26 @@ export class DocumentResolver {
         }
       }
 
+      // Re-score short-form citations through the central scorer so that
+      // `confidence.axes.resolution` reflects this pass's resolution outcome.
+      // Failure results (resolvedTo undefined) skip rescoring — the existing
+      // extraction confidence is the authoritative signal in that case.
+      if (
+        resolution?.features &&
+        resolution.resolvedTo !== undefined &&
+        (citationOut.type === "id" ||
+          citationOut.type === "supra" ||
+          citationOut.type === "shortFormCase")
+      ) {
+        const extractionFeatures = this.reconstructExtractionFeatures(citationOut)
+        if (extractionFeatures) {
+          citationOut = {
+            ...citationOut,
+            confidence: scoreCitation(extractionFeatures, resolution.features),
+          }
+        }
+      }
+
       // Add citation with resolution metadata
       // Type assertion is safe: runtime logic only sets resolution on short-form citations
       resolved.push({
@@ -459,8 +481,14 @@ export class DocumentResolver {
 
     return {
       resolvedTo: best.index,
-      confidence,
       warnings,
+      features: this.buildResolutionFeatures(
+        "id-resolution",
+        true,
+        1.0,
+        confidence < 1.0, // windowMismatch derived from downgraded confidence
+        true,
+      ),
     }
   }
 
@@ -697,8 +725,14 @@ export class DocumentResolver {
 
     return {
       resolvedTo: bestMatch.index,
-      confidence: bestMatch.similarity,
       warnings: warnings.length > 0 ? warnings : undefined,
+      features: this.buildResolutionFeatures(
+        "supra-resolution",
+        bestMatch.similarity === 1.0,
+        bestMatch.similarity,
+        false,
+        true,
+      ),
     }
   }
 
@@ -757,7 +791,7 @@ export class DocumentResolver {
       if (namedMatch !== undefined) {
         return {
           resolvedTo: namedMatch,
-          confidence: 0.98, // Higher than bare vol+reporter — party-name disambiguation tightens.
+          features: this.buildResolutionFeatures("shortform-resolution", true, 1.0, false, true),
         }
       }
     }
@@ -765,7 +799,7 @@ export class DocumentResolver {
     // No party name (or no name match): pick most recent candidate.
     return {
       resolvedTo: candidates[0],
-      confidence: 0.95,
+      features: this.buildResolutionFeatures("shortform-resolution", false, 0.5, false, true),
     }
   }
 
@@ -889,9 +923,69 @@ export class DocumentResolver {
       return {
         resolvedTo: undefined,
         failureReason: reason,
-        confidence: 0.0,
+        features: this.buildResolutionFeatures(
+          "id-resolution", // placeholder; caller doesn't use features when resolvedTo is undefined
+          false,
+          0,
+          false,
+          false,
+        ),
       }
     }
     return undefined
+  }
+
+  /**
+   * Builds a `ResolutionFeatures` record for the central scorer. Centralized
+   * so each resolver branch (`Id.`, `supra`, short-form case) emits a shape
+   * the scorer can consume to populate `axes.resolution`.
+   */
+  private buildResolutionFeatures(
+    patternId: ResolutionFeatures["patternId"],
+    exactMatch: boolean,
+    similarity: number,
+    windowMismatch = false,
+    inScope = true,
+  ): ResolutionFeatures {
+    return { patternId, exactMatch, similarity, windowMismatch, inScope }
+  }
+
+  /**
+   * Reconstructs `ExtractionFeatures` for a short-form citation by reading
+   * back the reason codes the extractor previously emitted. This is a
+   * known workaround — Phase 3 will store features on citations directly so
+   * the resolver can re-score without reverse-engineering the original
+   * extraction signals.
+   */
+  private reconstructExtractionFeatures(citation: Citation): ExtractionFeatures | undefined {
+    switch (citation.type) {
+      case "id":
+        return {
+          type: "id",
+          patternId: "id-citation",
+          // Reconstruct from existing reasons so Phase 1 scoring is preserved.
+          lowercase: citation.confidence.reasons.includes("lowercase_id"),
+          hasComma: false, // not derivable post-extraction; safe default
+          typoComma: citation.confidence.reasons.includes("typo_punctuation"),
+          inCitationContext: !citation.confidence.reasons.includes("mid_sentence_id"),
+        }
+      case "supra":
+        return {
+          type: "supra",
+          patternId: "supra",
+          partyName: !!citation.partyName,
+          bracketed: citation.matchedText.includes("[supra"),
+          standalone: !citation.partyName,
+        }
+      case "shortFormCase":
+        return {
+          type: "shortFormCase",
+          patternId: "short-form-case",
+          knownReporter: citation.confidence.reasons.includes("known_reporter"),
+          partyNameMatch: !!citation.partyName,
+        }
+      default:
+        return undefined
+    }
   }
 }
