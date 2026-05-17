@@ -7,6 +7,8 @@
  * @module extract/extractNeutral
  */
 
+import type { NeutralFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { NeutralCitation } from "@/types/citation"
 import type { NeutralComponentSpans } from "@/types/componentSpans"
@@ -31,8 +33,7 @@ const NEUTRAL_PINCITE_LOOKAHEAD =
  *  Allows optional intervening pincite (`, at *3`) per #191. The body
  *  is anything inside one set of parens. Parsing is delegated to
  *  `parseParenthetical`. #294 */
-const NEUTRAL_PAREN_LOOKAHEAD =
-  /^(?:\s*,?\s*(?:at\s+)?\*?\d+(?:[-–—]\*?\d+)?)?\s*\(([^)]+)\)/
+const NEUTRAL_PAREN_LOOKAHEAD = /^(?:\s*,?\s*(?:at\s+)?\*?\d+(?:[-–—]\*?\d+)?)?\s*\(([^)]+)\)/
 
 /** Identifies whether a captured "court" string is actually a database
  *  identifier (WL/LEXIS/BL) rather than a real jurisdictional code. #294 */
@@ -108,11 +109,7 @@ export function extractNeutral(
       spans = {
         year: spanFromGroupIndex(span.cleanStart, msMatch.indices[1]!, transformationMap),
         court: spanFromGroupIndex(span.cleanStart, courtIndices, transformationMap),
-        documentNumber: spanFromGroupIndex(
-          span.cleanStart,
-          msMatch.indices[3]!,
-          transformationMap,
-        ),
+        documentNumber: spanFromGroupIndex(span.cleanStart, msMatch.indices[3]!, transformationMap),
       }
     }
   } else {
@@ -134,11 +131,7 @@ export function extractNeutral(
       spans = {
         year: spanFromGroupIndex(span.cleanStart, match.indices[1]!, transformationMap),
         court: spanFromGroupIndex(span.cleanStart, match.indices[2]!, transformationMap),
-        documentNumber: spanFromGroupIndex(
-          span.cleanStart,
-          match.indices[3]!,
-          transformationMap,
-        ),
+        documentNumber: spanFromGroupIndex(span.cleanStart, match.indices[3]!, transformationMap),
       }
     }
   }
@@ -161,11 +154,7 @@ export function extractNeutral(
       // which starts at span.cleanEnd in cleanedText.
       if (laMatch.indices?.[1]) {
         if (!spans) spans = {}
-        spans.pincite = spanFromGroupIndex(
-          span.cleanEnd,
-          laMatch.indices[1],
-          transformationMap,
-        )
+        spans.pincite = spanFromGroupIndex(span.cleanEnd, laMatch.indices[1], transformationMap)
       }
     }
   }
@@ -209,7 +198,8 @@ export function extractNeutral(
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
   // Confidence: 1.0 (neutral format is unambiguous)
-  const confidence = 1.0
+  const features: NeutralFeatures = { type: "neutral", patternId: token.patternId }
+  const confidence = scoreCitation(features)
 
   // Case-name backward search — the canonical neutral form is
   // `<caseName>, YYYY ST NNN` (`Christian v. Atl. Richfield Co., 2015 MT
@@ -234,9 +224,7 @@ export function extractNeutral(
         // Apply the same trailing-token cleanup as full-case extraction so
         // parallel-cite starts and year parens aren't absorbed (#436).
         caseName = caseName.replace(/\s*\((?:[^()]*\s)?\d{4}\)\s*$/, "").trim()
-        caseName = caseName
-          .replace(/,\s+\d+\s+[A-Z][A-Za-z.&'\d\s]*\d+\s*$/, "")
-          .trim()
+        caseName = caseName.replace(/,\s+\d+\s+[A-Z][A-Za-z.&'\d\s]*\d+\s*$/, "").trim()
         caseName = caseName.replace(/,\s+\d{4}\s+[A-Z]+\s+\d+\s*$/, "").trim()
       }
     }

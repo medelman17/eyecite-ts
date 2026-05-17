@@ -10,6 +10,8 @@
  * @module extract/extractStatutesAtLarge
  */
 
+import type { StatutesAtLargeFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize/tokenizer"
 import type { StatutesAtLargeCitation } from "@/types/citation"
 import type { StatutesAtLargeComponentSpans } from "@/types/componentSpans"
@@ -50,7 +52,11 @@ export function extractStatutesAtLarge(
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
   // Confidence: 0.9 (Statutes at Large format is standardized)
-  const confidence = 0.9
+  const features: StatutesAtLargeFeatures = {
+    type: "statutesAtLarge",
+    patternId: "statutes-at-large",
+  }
+  const confidence = scoreCitation(features)
 
   return {
     type: "statutesAtLarge",

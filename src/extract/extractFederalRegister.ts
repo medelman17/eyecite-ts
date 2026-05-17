@@ -7,6 +7,8 @@
  * @module extract/extractFederalRegister
  */
 
+import type { FederalRegisterFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { FederalRegisterCitation } from "@/types/citation"
 import type { FederalRegisterComponentSpans } from "@/types/componentSpans"
@@ -82,7 +84,11 @@ export function extractFederalRegister(
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
   // Confidence: 0.9 (Federal Register format is standardized)
-  const confidence = 0.9
+  const features: FederalRegisterFeatures = {
+    type: "federalRegister",
+    patternId: "federal-register",
+  }
+  const confidence = scoreCitation(features)
 
   return {
     type: "federalRegister",

@@ -7,6 +7,8 @@
  * @module extract/extractPublicLaw
  */
 
+import type { PublicLawFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { PublicLawCitation } from "@/types/citation"
 import type { PublicLawComponentSpans } from "@/types/componentSpans"
@@ -77,7 +79,8 @@ export function extractPublicLaw(
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
   // Confidence: 0.9 (public law format is fairly standard)
-  const confidence = 0.9
+  const features: PublicLawFeatures = { type: "publicLaw", patternId: "public-law" }
+  const confidence = scoreCitation(features)
 
   return {
     type: "publicLaw",

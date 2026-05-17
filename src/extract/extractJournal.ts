@@ -7,6 +7,8 @@
  * @module extract/extractJournal
  */
 
+import type { JournalFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { JournalCitation } from "@/types/citation"
 import type { JournalComponentSpans } from "@/types/componentSpans"
@@ -145,7 +147,8 @@ export function extractJournal(
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
   // Confidence: 0.6 base (journal validation against database happens in Phase 3)
-  const confidence = 0.6
+  const features: JournalFeatures = { type: "journal", patternId: "journal" }
+  const confidence = scoreCitation(features)
 
   return {
     type: "journal",

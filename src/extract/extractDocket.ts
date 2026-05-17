@@ -13,6 +13,8 @@
  * @module extract/extractDocket
  */
 
+import type { DocketFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { DocketCitation } from "@/types/citation"
 import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
@@ -98,6 +100,9 @@ export function extractDocket(
   // Resolve clean → original positions for the citation core.
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
+  const features: DocketFeatures = { type: "docket", patternId: token.patternId }
+  const confidence = scoreCitation(features)
+
   // fullSpan: case-name start through closing paren. cleanEnd is the end
   // of the matched token (after the closing `)`). When extractPartyNames
   // strips a signal word ("See", "But see", etc.) from the plaintiff,
@@ -126,7 +131,7 @@ export function extractDocket(
       originalStart,
       originalEnd,
     },
-    confidence: 0.7,
+    confidence,
     processTimeMs: 0,
     patternsChecked: 1,
     docketNumber,
