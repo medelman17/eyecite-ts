@@ -10,6 +10,8 @@
  * @module extract/statutes/extractRcwChapterPostfix
  */
 
+import type { StatuteFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
 import type { StatuteComponentSpans } from "@/types/componentSpans"
@@ -34,11 +36,21 @@ export function extractRcwChapterPostfix(
       spans.section = spanFromGroupIndex(span.cleanStart, match.indices[1], transformationMap)
   }
 
+  const features: StatuteFeatures = {
+    type: "statute",
+    patternId: token.patternId,
+    knownCode: true, // all state-specific extractors operate on known codes
+    titlePresent: false,
+    subsectionPresent: false,
+    parseable: true,
+  }
+  const confidence = scoreCitation(features)
+
   return {
     type: "statute",
     text,
     span: { cleanStart: span.cleanStart, cleanEnd: span.cleanEnd, originalStart, originalEnd },
-    confidence: 0.95,
+    confidence,
     matchedText: text,
     processTimeMs: 0,
     patternsChecked: 1,

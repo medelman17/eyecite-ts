@@ -15,6 +15,8 @@
  * @module extract/statutes/extractRlh
  */
 
+import type { StatuteFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
 import type { StatuteComponentSpans } from "@/types/componentSpans"
@@ -24,10 +26,7 @@ import { parseBody } from "./parseBody"
 const RLH_RE =
   /^RLH\s+(\d{4})\s+§\s+(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/d
 
-export function extractRlh(
-  token: Token,
-  transformationMap: TransformationMap,
-): StatuteCitation {
+export function extractRlh(token: Token, transformationMap: TransformationMap): StatuteCitation {
   const { text, span } = token
   const match = RLH_RE.exec(text)!
   const year = Number.parseInt(match[1], 10)
@@ -59,10 +58,15 @@ export function extractRlh(
     }
   }
 
-  // Confidence: 0.95 baseline; +0.05 with subsection.
-  let confidence = 0.95
-  if (subsection) confidence += 0.05
-  confidence = Math.min(confidence, 1.0)
+  const features: StatuteFeatures = {
+    type: "statute",
+    patternId: token.patternId,
+    knownCode: true, // all state-specific extractors operate on known codes
+    titlePresent: false,
+    subsectionPresent: false,
+    parseable: true,
+  }
+  const confidence = scoreCitation(features)
 
   return {
     type: "statute",
