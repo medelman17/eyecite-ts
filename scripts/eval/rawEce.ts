@@ -2,9 +2,6 @@
  * Reports raw (uncalibrated) ECE per pattern from the labeled test corpora.
  * Run via `pnpm eval:raw-ece`. Provides the baseline that Phase 3 calibration
  * is supposed to improve.
- *
- * NOTE: This works in Phase 1 by reading `c.confidence` (the legacy number).
- * Phase 2 will need to update it to read `c.confidence.score`.
  */
 
 import { readFileSync } from "node:fs"
@@ -61,8 +58,7 @@ function main() {
       const matched = matchPredictionsToGold(preds, gold)
       for (const m of matched) {
         const patternId = (m.prediction as { patternsChecked?: number; type: string }).type
-        // Phase 1: read legacy number field
-        const score = (m.prediction as unknown as { confidence: number }).confidence
+        const score = m.prediction.confidence.score
         if (!perPattern.has(patternId)) perPattern.set(patternId, [])
         perPattern.get(patternId)!.push({ score, correct: m.correct })
         totalSamples++
