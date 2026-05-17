@@ -31,7 +31,6 @@ interface Fixture {
 
 const F = FIXTURES as Record<string, Fixture[]>
 
-
 /** Verify the case-name prefix appears at the start of the extracted caseName. */
 function expectCaseNameStartsWith(text: string, prefix: string): void {
   const cits = extractCitations(text)

@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest"
 import { detectStringCitations } from "@/extract/detectStringCites"
 import type { Citation, FullCaseCitation, StatuteCitation } from "@/types/citation"
 import type { Span } from "@/types/span"
+import { fakeConfidence } from "../helpers/confidence"
 
 /** Helper to create a minimal case citation for testing */
 function makeCase(overrides: {
@@ -37,7 +38,7 @@ function makeCase(overrides: {
     type: "case",
     text: "",
     span,
-    confidence: 0.8,
+    confidence: fakeConfidence(0.8),
     matchedText: "",
     processTimeMs: 0,
     patternsChecked: 1,
@@ -383,7 +384,7 @@ describe("detectStringCitations", () => {
         type: "statute",
         text: "42 U.S.C. 1983",
         span: { cleanStart: 4, cleanEnd: 18, originalStart: 4, originalEnd: 18 },
-        confidence: 0.8,
+        confidence: fakeConfidence(0.8),
         matchedText: "42 U.S.C. 1983",
         processTimeMs: 0,
         patternsChecked: 1,

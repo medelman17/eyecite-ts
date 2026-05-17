@@ -9,11 +9,20 @@ describe("single-digit volume false positive fix (issue #128)", () => {
 
   describe("false positives: paragraph/footnote markers", () => {
     const fps = [
-      { text: "2 Court dismissed the complaint for failure to state a claim under Rule 12", reporter: "Court" },
+      {
+        text: "2 Court dismissed the complaint for failure to state a claim under Rule 12",
+        reporter: "Court",
+      },
       { text: "2 In July 2016, Clark filed a motion.", reporter: "In July" },
       { text: "6 But Clark began to experience problems in 2017.", reporter: "But" },
-      { text: "3 The district court granted summary judgment on 4 of the claims.", reporter: "The" },
-      { text: "1 On March 15, 2020, the defendant filed a notice of appeal.", reporter: "On March" },
+      {
+        text: "3 The district court granted summary judgment on 4 of the claims.",
+        reporter: "The",
+      },
+      {
+        text: "1 On March 15, 2020, the defendant filed a notice of appeal.",
+        reporter: "On March",
+      },
     ]
 
     for (const { text, reporter } of fps) {
@@ -21,7 +30,7 @@ describe("single-digit volume false positive fix (issue #128)", () => {
         const cits = extractCitations(text)
         for (const c of cits) {
           if (c.type === "case") {
-            expect(c.confidence).toBeLessThanOrEqual(0.1)
+            expect(c.confidence.score).toBeLessThanOrEqual(0.1)
             expect(c.warnings?.length).toBeGreaterThan(0)
           }
         }
@@ -40,9 +49,9 @@ describe("single-digit volume false positive fix (issue #128)", () => {
     for (const { text, reporter, minConf } of tps) {
       it(`preserves ${reporter} citation with confidence ≥ ${minConf}`, () => {
         const cits = extractCitations(text)
-        const caseCits = cits.filter(c => c.type === "case")
+        const caseCits = cits.filter((c) => c.type === "case")
         expect(caseCits.length).toBeGreaterThan(0)
-        expect(caseCits[0].confidence).toBeGreaterThanOrEqual(minConf)
+        expect(caseCits[0].confidence.score).toBeGreaterThanOrEqual(minConf)
       })
     }
   })

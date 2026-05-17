@@ -3,10 +3,9 @@ import { extractCitations } from "../../src"
 
 describe("issue #203: neutral star-page range pincite", () => {
   it("captures range end with star on both ends (*3-*5)", () => {
-    const cites = extractCitations(
-      "See 2020 WL 1234567, at *3-*5 (S.D.N.Y. Jan. 15, 2020).",
-      { resolve: true },
-    )
+    const cites = extractCitations("See 2020 WL 1234567, at *3-*5 (S.D.N.Y. Jan. 15, 2020).", {
+      resolve: true,
+    })
     const neutral = cites.find((c) => c.type === "neutral")
     expect(neutral).toBeDefined()
     const info = neutral?.type === "neutral" ? neutral.pinciteInfo : undefined
@@ -20,10 +19,9 @@ describe("issue #203: neutral star-page range pincite", () => {
   })
 
   it("captures range end with star on first only (*3-5)", () => {
-    const cites = extractCitations(
-      "See 2020 WL 1234567, at *3-5 (S.D.N.Y. 2020).",
-      { resolve: true },
-    )
+    const cites = extractCitations("See 2020 WL 1234567, at *3-5 (S.D.N.Y. 2020).", {
+      resolve: true,
+    })
     const neutral = cites.find((c) => c.type === "neutral")
     expect(neutral).toBeDefined()
     const info = neutral?.type === "neutral" ? neutral.pinciteInfo : undefined

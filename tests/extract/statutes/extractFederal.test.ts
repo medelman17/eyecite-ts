@@ -21,7 +21,7 @@ describe("extractFederal", () => {
       expect(c.code).toBe("U.S.C.")
       expect(c.section).toBe("1983")
       expect(c.jurisdiction).toBe("US")
-      expect(c.confidence).toBeGreaterThanOrEqual(0.95)
+      expect(c.confidence.score).toBeGreaterThanOrEqual(0.95)
     })
 
     it("should extract USC without periods (canonicalized to U.S.C.)", () => {
@@ -77,7 +77,7 @@ describe("extractFederal", () => {
 
     it("should set confidence with subsection bonus", () => {
       const c = extractFederal(makeToken("42 U.S.C. § 1983(a)", "usc"), map)
-      expect(c.confidence).toBe(1.0)
+      expect(c.confidence.score).toBe(1.0)
     })
   })
 

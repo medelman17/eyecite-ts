@@ -5,7 +5,7 @@ describe("Id. citation confidence scoring (issue #129)", () => {
   function getIdConfidence(text: string): number | undefined {
     const cits = extractCitations(text)
     const id = cits.find((c) => c.type === "id")
-    return id?.confidence
+    return id?.confidence.score
   }
 
   describe("standard form — confidence 1.0", () => {

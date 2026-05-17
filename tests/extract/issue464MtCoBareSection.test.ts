@@ -66,8 +66,7 @@ describe("issue #464 — MT/CO bare-section context routing", () => {
 
   describe("WV (#432) regression preserved", () => {
     it("`W.Va. Code § 55-7B-1. § 55-7B-7` still routes both to WV", () => {
-      const text =
-        "W.Va. Code § 55-7B-1 establishes the rule. § 55-7B-7 mandates that..."
+      const text = "W.Va. Code § 55-7B-1 establishes the rule. § 55-7B-7 mandates that..."
       const cites = extractCitations(text)
       const sts = statutes(cites)
       expect(sts).toHaveLength(2)
@@ -77,8 +76,7 @@ describe("issue #464 — MT/CO bare-section context routing", () => {
 
   describe("NM default preserved when no other context", () => {
     it("`NMSA 1978, § 32A-2-1. § 32A-2-7(A)` stays NM (regression)", () => {
-      const text =
-        "NMSA 1978, § 32A-2-1 provides. Section 32A-2-7(A) further states..."
+      const text = "NMSA 1978, § 32A-2-1 provides. Section 32A-2-7(A) further states..."
       const cites = extractCitations(text)
       const sts = statutes(cites)
       expect(sts).toHaveLength(2)

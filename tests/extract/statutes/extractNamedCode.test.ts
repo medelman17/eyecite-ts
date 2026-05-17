@@ -17,7 +17,7 @@ describe("extractNamedCode", () => {
       const c = extractNamedCode(makeToken("N.Y. Penal Law § 125.25"), map)
       expect(c.jurisdiction).toBe("NY")
       expect(c.section).toBe("125.25")
-      expect(c.confidence).toBeGreaterThanOrEqual(0.95)
+      expect(c.confidence.score).toBeGreaterThanOrEqual(0.95)
     })
     it("should extract N.Y. C.P.L.R. § 211", () => {
       const c = extractNamedCode(makeToken("N.Y. C.P.L.R. § 211"), map)
@@ -117,7 +117,7 @@ describe("extractNamedCode", () => {
   describe("fallback", () => {
     it("should handle unrecognized jurisdiction prefix", () => {
       const c = extractNamedCode(makeToken("Xyz. Code § 123"), map)
-      expect(c.confidence).toBeLessThanOrEqual(0.6)
+      expect(c.confidence.score).toBeLessThanOrEqual(0.6)
     })
 
     it("should handle malformed named-code token", () => {
@@ -131,7 +131,7 @@ describe("extractNamedCode", () => {
       expect(c.type).toBe("statute")
       expect(c.section).toBe("")
       expect(c.jurisdiction).toBeUndefined()
-      expect(c.confidence).toBeLessThanOrEqual(0.5)
+      expect(c.confidence.score).toBeLessThanOrEqual(0.5)
     })
   })
 })

@@ -23,7 +23,7 @@ describe("extractCase", () => {
       expect(citation.page).toBe(123)
       expect(citation.text).toBe("500 F.2d 123")
       expect(citation.matchedText).toBe("500 F.2d 123")
-      expect(citation.confidence).toBeGreaterThanOrEqual(0.5)
+      expect(citation.confidence.score).toBeGreaterThanOrEqual(0.5)
     })
 
     it("should handle different reporter formats", () => {
@@ -272,7 +272,7 @@ describe("extractCase", () => {
         const citation = extractCase(token, transformationMap)
 
         // Base 0.2 + common reporter 0.3 = 0.5 (may be higher with court inference)
-        expect(citation.confidence).toBeGreaterThanOrEqual(0.5)
+        expect(citation.confidence.score).toBeGreaterThanOrEqual(0.5)
       }
     })
 
@@ -288,7 +288,7 @@ describe("extractCase", () => {
       const citation = extractCase(token, transformationMap)
 
       // Base (0.2) + common reporter (+0.3) + valid year (+0.2) = 0.7
-      expect(citation.confidence).toBe(0.7)
+      expect(citation.confidence.score).toBe(0.7)
     })
 
     it("should not boost confidence for future year", () => {
@@ -304,7 +304,7 @@ describe("extractCase", () => {
       const citation = extractCase(token, transformationMap)
 
       // Base (0.2) + common reporter (+0.3) but no year boost = 0.5
-      expect(citation.confidence).toBe(0.5)
+      expect(citation.confidence.score).toBe(0.5)
     })
 
     it("should have lower confidence for unknown reporter", () => {
@@ -319,7 +319,7 @@ describe("extractCase", () => {
       const citation = extractCase(token, transformationMap)
 
       // Base confidence only (unknown reporter, no year, no case name)
-      expect(citation.confidence).toBe(0.2)
+      expect(citation.confidence.score).toBe(0.2)
     })
   })
 
@@ -664,7 +664,7 @@ describe("backward compatibility (QUAL-01)", () => {
       expect(citations[0].court).toBe("scotus")
       expect(citations[0].text).toBeDefined()
       expect(citations[0].span).toBeDefined()
-      expect(citations[0].confidence).toBeGreaterThan(0)
+      expect(citations[0].confidence.score).toBeGreaterThan(0)
       expect(citations[0].matchedText).toBeDefined()
     }
   })
@@ -730,9 +730,7 @@ describe("case name extraction (Phase 6)", () => {
 
   describe("sentence context trimming (#168, #169)", () => {
     it("trims short sentence context from plaintiff", () => {
-      const citations = extractCitations(
-        "The court cited Smith v. Jones, 500 F.2d 123 (2020).",
-      )
+      const citations = extractCitations("The court cited Smith v. Jones, 500 F.2d 123 (2020).")
       expect(citations).toHaveLength(1)
       if (citations[0].type === "case") {
         expect(citations[0].caseName).toBe("Smith v. Jones")
@@ -762,9 +760,7 @@ describe("case name extraction (Phase 6)", () => {
     })
 
     it("preserves multi-word party names", () => {
-      const citations = extractCitations(
-        "United States v. Jones, 500 F.2d 123 (2020).",
-      )
+      const citations = extractCitations("United States v. Jones, 500 F.2d 123 (2020).")
       expect(citations).toHaveLength(1)
       if (citations[0].type === "case") {
         expect(citations[0].caseName).toBe("United States v. Jones")
@@ -789,16 +785,12 @@ describe("case name extraction (Phase 6)", () => {
       )
       expect(citations).toHaveLength(1)
       if (citations[0].type === "case") {
-        expect(citations[0].caseName).toBe(
-          "Heart of Atlanta Motel, Inc. v. United States",
-        )
+        expect(citations[0].caseName).toBe("Heart of Atlanta Motel, Inc. v. United States")
       }
     })
 
     it("preserves signal words for downstream extraction", () => {
-      const citations = extractCitations(
-        "See also Smith v. Jones, 500 F.3d 100 (9th Cir. 2007).",
-      )
+      const citations = extractCitations("See also Smith v. Jones, 500 F.3d 100 (9th Cir. 2007).")
       const cite = citations.find((c) => c.type === "case")
       expect(cite).toBeDefined()
       if (cite?.type === "case") {
@@ -808,9 +800,7 @@ describe("case name extraction (Phase 6)", () => {
     })
 
     it("trims context but preserves signal when both present", () => {
-      const citations = extractCitations(
-        "See Smith v. Jones, 500 F.2d 123 (2020).",
-      )
+      const citations = extractCitations("See Smith v. Jones, 500 F.2d 123 (2020).")
       const cite = citations.find((c) => c.type === "case")
       expect(cite).toBeDefined()
       if (cite?.type === "case") {
@@ -878,9 +868,7 @@ describe("case name extraction (Phase 6)", () => {
     })
 
     it("preserves party names with numbers", () => {
-      const citations = extractCitations(
-        "Doe No. 2 v. Smith, 500 F.2d 123 (2020).",
-      )
+      const citations = extractCitations("Doe No. 2 v. Smith, 500 F.2d 123 (2020).")
       expect(citations).toHaveLength(1)
       if (citations[0].type === "case") {
         expect(citations[0].caseName).toBe("Doe No. 2 v. Smith")
@@ -913,16 +901,12 @@ describe("case name extraction (Phase 6)", () => {
     })
 
     it("adjusts fullSpan.originalStart after trimming", () => {
-      const text =
-        "The court cited Smith v. Jones, 500 F.2d 123 (2020)."
+      const text = "The court cited Smith v. Jones, 500 F.2d 123 (2020)."
       const citations = extractCitations(text)
       const cite = citations.find((c) => c.type === "case")
       expect(cite).toBeDefined()
       if (cite?.type === "case" && cite.fullSpan) {
-        const highlighted = text.slice(
-          cite.fullSpan.originalStart,
-          cite.fullSpan.originalEnd,
-        )
+        const highlighted = text.slice(cite.fullSpan.originalStart, cite.fullSpan.originalEnd)
         expect(highlighted).toMatch(/^Smith v\. Jones/)
         expect(highlighted).not.toMatch(/^The court/)
       }
@@ -1168,7 +1152,9 @@ describe("explanatory parentheticals (#76)", () => {
     expect(citations).toHaveLength(1)
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
-      expect(citations[0].parentheticals).toMatchObject([{ text: "the court found X", type: "other" }])
+      expect(citations[0].parentheticals).toMatchObject([
+        { text: "the court found X", type: "other" },
+      ])
     }
   })
 
@@ -1190,7 +1176,9 @@ describe("explanatory parentheticals (#76)", () => {
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
       expect(citations[0].disposition).toBe("en banc")
-      expect(citations[0].parentheticals).toMatchObject([{ text: "holding that X", type: "holding" }])
+      expect(citations[0].parentheticals).toMatchObject([
+        { text: "holding that X", type: "holding" },
+      ])
     }
   })
 
@@ -1321,7 +1309,9 @@ describe("backward compatibility (Phase 6)", () => {
     )
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
-      expect(citations[0].parentheticals).toMatchObject([{ text: "holding that X", type: "holding" }])
+      expect(citations[0].parentheticals).toMatchObject([
+        { text: "holding that X", type: "holding" },
+      ])
       expect(citations[0].subsequentHistoryEntries).toHaveLength(1)
       expect(citations[0].subsequentHistoryEntries?.[0].signal).toBe("affirmed")
     }
@@ -1349,7 +1339,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].reporter).toBe("F.2d")
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
-        expect(citations[0].confidence).toBe(0.5)
+        expect(citations[0].confidence.score).toBe(0.5)
       }
     })
 
@@ -1362,7 +1352,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
         // 0.2 base + 0.3 reporter + 0.1 court (U.S. → scotus inference) = 0.6
-        expect(citations[0].confidence).toBe(0.6)
+        expect(citations[0].confidence.score).toBe(0.6)
       }
     })
 
@@ -1374,7 +1364,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].reporter).toBe("Cal.App.4th")
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
-        expect(citations[0].confidence).toBe(0.5)
+        expect(citations[0].confidence.score).toBe(0.5)
       }
     })
 
@@ -1386,7 +1376,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].reporter).toBe("U.S.")
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
-        expect(citations[0].confidence).toBe(0.6)
+        expect(citations[0].confidence.score).toBe(0.6)
       }
     })
   })
@@ -1400,7 +1390,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].reporter).toBe("F.2d")
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
-        expect(citations[0].confidence).toBe(0.5)
+        expect(citations[0].confidence.score).toBe(0.5)
       }
     })
 
@@ -1412,7 +1402,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].reporter).toBe("U.S.")
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
-        expect(citations[0].confidence).toBe(0.6)
+        expect(citations[0].confidence.score).toBe(0.6)
       }
     })
   })
@@ -1427,7 +1417,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
         expect(citations[0].year).toBe(2020)
-        expect(citations[0].confidence).toBe(0.7)
+        expect(citations[0].confidence.score).toBe(0.7)
       }
     })
 
@@ -1441,7 +1431,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].hasBlankPage).toBe(true)
         expect(citations[0].court).toBe("9th Cir.")
         expect(citations[0].year).toBe(2020)
-        expect(citations[0].confidence).toBe(0.8)
+        expect(citations[0].confidence.score).toBe(0.8)
       }
     })
   })
@@ -1471,7 +1461,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
       if (citations[0].type === "case") {
         expect(citations[0].page).toBe(123)
         expect(citations[0].hasBlankPage).toBeUndefined()
-        expect(citations[0].confidence).toBeGreaterThanOrEqual(0.5)
+        expect(citations[0].confidence.score).toBeGreaterThanOrEqual(0.5)
       }
     })
   })
@@ -1497,7 +1487,7 @@ describe("blank page placeholders (BLANK-01 through BLANK-04)", () => {
         expect(citations[0].page).toBeUndefined()
         expect(citations[0].hasBlankPage).toBe(true)
         expect(citations[0].year).toBe(2024)
-        expect(citations[0].confidence).toBe(0.7)
+        expect(citations[0].confidence.score).toBe(0.7)
       }
     })
 
@@ -1737,9 +1727,7 @@ describe("party name extraction (Phase 7)", () => {
       })
 
       it('preserves "d/b/a" in caseName and strips it in plaintiffNormalized', () => {
-        const citations = extractCitations(
-          "Smith d/b/a Old Bob's Diner v. Roe, 100 U.S. 1 (2020)",
-        )
+        const citations = extractCitations("Smith d/b/a Old Bob's Diner v. Roe, 100 U.S. 1 (2020)")
         expect(citations).toHaveLength(1)
         if (citations[0].type === "case") {
           expect(citations[0].caseName).toBe("Smith d/b/a Old Bob's Diner v. Roe")
@@ -1749,9 +1737,7 @@ describe("party name extraction (Phase 7)", () => {
       })
 
       it('preserves "n/k/a" in caseName and strips it in plaintiffNormalized', () => {
-        const citations = extractCitations(
-          "Doe n/k/a Doe-Smith v. State, 200 U.S. 2 (2020)",
-        )
+        const citations = extractCitations("Doe n/k/a Doe-Smith v. State, 200 U.S. 2 (2020)")
         expect(citations).toHaveLength(1)
         if (citations[0].type === "case") {
           expect(citations[0].caseName).toBe("Doe n/k/a Doe-Smith v. State")
@@ -2007,8 +1993,7 @@ describe("signal word extraction", () => {
     })
 
     it("captures 'but see, e.g.' as the signal", () => {
-      const text =
-        "But see, e.g., Acme Corp. v. Beta Inc., 100 U.S. 1 (2020)."
+      const text = "But see, e.g., Acme Corp. v. Beta Inc., 100 U.S. 1 (2020)."
       const citations = extractCitations(text)
       const caseCite = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
       expect(caseCite).toBeDefined()
@@ -2017,8 +2002,7 @@ describe("signal word extraction", () => {
     })
 
     it("captures 'see also, e.g.' as the signal", () => {
-      const text =
-        "See also, e.g., Gamma LLC v. Delta Co., 200 U.S. 2 (2021)."
+      const text = "See also, e.g., Gamma LLC v. Delta Co., 200 U.S. 2 (2021)."
       const citations = extractCitations(text)
       const caseCite = citations.find((c) => c.type === "case") as FullCaseCitation | undefined
       expect(caseCite).toBeDefined()
@@ -2061,9 +2045,7 @@ describe("nominative reporter support (#49, #16)", () => {
     })
 
     it("extracts Marbury v. Madison, 5 U.S. (1 Cranch) 137 (1803)", () => {
-      const citations = extractCitations(
-        "Marbury v. Madison, 5 U.S. (1 Cranch) 137 (1803)",
-      )
+      const citations = extractCitations("Marbury v. Madison, 5 U.S. (1 Cranch) 137 (1803)")
       expect(citations.length).toBeGreaterThanOrEqual(1)
       const cite = citations[0] as FullCaseCitation
       expect(cite.volume).toBe(5)
@@ -2202,8 +2184,7 @@ describe("nominative reporter support (#49, #16)", () => {
     // ── Issue #184: caseName undefined when plaintiff has abbreviation/initials ──
 
     it("#184: plaintiff with trailing Inc. before v.", () => {
-      const text =
-        "Men Women N.Y. Model Mgt., Inc. v. Elite Model Mgt. LLC, 183 A.D.3d 501 (2020)."
+      const text = "Men Women N.Y. Model Mgt., Inc. v. Elite Model Mgt. LLC, 183 A.D.3d 501 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2214,8 +2195,7 @@ describe("nominative reporter support (#49, #16)", () => {
     })
 
     it("#184: plaintiff with simpler Inc. before v.", () => {
-      const text =
-        "Men Women Model Mgt., Inc. v. Elite Model Mgt. LLC, 183 A.D.3d 501 (2020)."
+      const text = "Men Women Model Mgt., Inc. v. Elite Model Mgt. LLC, 183 A.D.3d 501 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2264,14 +2244,10 @@ describe("nominative reporter support (#49, #16)", () => {
       const text =
         "Id. at 19-20 (quoting Northeast Gen. Corp. v. Wellington Adv., 82 N.Y.2d 158, 162 [1993])."
       const cites = extractCitations(text)
-      const fullCite = cites.find(
-        (c) => c.type === "case" && c.reporter === "N.Y.2d",
-      )
+      const fullCite = cites.find((c) => c.type === "case" && c.reporter === "N.Y.2d")
       expect(fullCite).toBeDefined()
       if (fullCite?.type === "case") {
-        expect(fullCite.caseName).toBe(
-          "Northeast Gen. Corp. v. Wellington Adv.",
-        )
+        expect(fullCite.caseName).toBe("Northeast Gen. Corp. v. Wellington Adv.")
         expect(fullCite.caseName).not.toContain("Id.")
       }
     })
@@ -2280,9 +2256,7 @@ describe("nominative reporter support (#49, #16)", () => {
       const text =
         "Clark-Fitzpatrick, Inc. v. Long Is. R.R. Co., 70 N.Y.2d 382, 388 (1987) (cited in Polaris Venture Partners VI L.P. v. AD-Venture Capital Partners L.P., 179 A.D.3d 548, 548 (1st Dep't 2020))."
       const cites = extractCitations(text)
-      const innerCite = cites.find(
-        (c) => c.type === "case" && c.reporter === "A.D.3d",
-      )
+      const innerCite = cites.find((c) => c.type === "case" && c.reporter === "A.D.3d")
       expect(innerCite).toBeDefined()
       if (innerCite?.type === "case") {
         expect(innerCite.caseName).toContain("Polaris Venture Partners")
@@ -2294,8 +2268,7 @@ describe("nominative reporter support (#49, #16)", () => {
     // ── Additional edge cases from the research ──
 
     it("handles Corp. Sec. Litig. abbreviation chain", () => {
-      const text =
-        "In re ABC Corp. Sec. Litig., 500 F. Supp. 2d 100 (S.D.N.Y. 2007)."
+      const text = "In re ABC Corp. Sec. Litig., 500 F. Supp. 2d 100 (S.D.N.Y. 2007)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2313,8 +2286,7 @@ describe("nominative reporter support (#49, #16)", () => {
     })
 
     it("handles Mun. Util. Dist. abbreviation chain", () => {
-      const text =
-        "Nw. Austin Mun. Util. Dist. No. 1 v. Holder, 557 U.S. 193 (2009)."
+      const text = "Nw. Austin Mun. Util. Dist. No. 1 v. Holder, 557 U.S. 193 (2009)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2330,15 +2302,12 @@ describe("nominative reporter support (#49, #16)", () => {
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Fields Enters. Inc. v. Bristol Harbour Vil. Assn., Inc.",
-        )
+        expect(cite.caseName).toBe("Fields Enters. Inc. v. Bristol Harbour Vil. Assn., Inc.")
       }
     })
 
     it("#288: handles Smithtown Vil. Bd.", () => {
-      const text =
-        "See Williams Mfg. Co. v. Smithtown Vil. Bd., 100 N.Y.2d 1 (2003)."
+      const text = "See Williams Mfg. Co. v. Smithtown Vil. Bd., 100 N.Y.2d 1 (2003)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2362,12 +2331,9 @@ describe("case name boundary bugs (#187, #188)", () => {
 
   describe("#187: paren signal boundaries", () => {
     it("stops at `(quoted in `", () => {
-      const text =
-        "Prior v. Case, 100 U.S. 1 (2020) (quoted in Target v. Name, 200 U.S. 2 [2000])."
+      const text = "Prior v. Case, 100 U.S. 1 (2020) (quoted in Target v. Name, 200 U.S. 2 [2000])."
       const cites = extractCitations(text)
-      const target = cites.find(
-        (c) => c.type === "case" && c.text.includes("200 U.S. 2"),
-      )
+      const target = cites.find((c) => c.type === "case" && c.text.includes("200 U.S. 2"))
       expect(target?.type).toBe("case")
       if (target?.type === "case") {
         expect(target.caseName).toBe("Target v. Name")
@@ -2375,12 +2341,9 @@ describe("case name boundary bugs (#187, #188)", () => {
     })
 
     it("stops at `(accord `", () => {
-      const text =
-        "Prior v. Case, 100 U.S. 1 (2020) (accord Target v. Name, 200 U.S. 2 [2000])."
+      const text = "Prior v. Case, 100 U.S. 1 (2020) (accord Target v. Name, 200 U.S. 2 [2000])."
       const cites = extractCitations(text)
-      const target = cites.find(
-        (c) => c.type === "case" && c.text.includes("200 U.S. 2"),
-      )
+      const target = cites.find((c) => c.type === "case" && c.text.includes("200 U.S. 2"))
       expect(target?.type).toBe("case")
       if (target?.type === "case") {
         expect(target.caseName).toBe("Target v. Name")
@@ -2391,9 +2354,7 @@ describe("case name boundary bugs (#187, #188)", () => {
       const text =
         "Prior v. Case, 100 U.S. 1 (2020) (citing, e.g., Target v. Name, 200 U.S. 2 [2000])."
       const cites = extractCitations(text)
-      const target = cites.find(
-        (c) => c.type === "case" && c.text.includes("200 U.S. 2"),
-      )
+      const target = cites.find((c) => c.type === "case" && c.text.includes("200 U.S. 2"))
       expect(target?.type).toBe("case")
       if (target?.type === "case") {
         expect(target.caseName).toBe("Target v. Name")
@@ -2405,14 +2366,11 @@ describe("case name boundary bugs (#187, #188)", () => {
 
   describe("#188: geographic abbreviations in party names", () => {
     it("handles `Long Is.` inside party name (NY2d, Inc. plaintiff)", () => {
-      const text =
-        "See Clark-Fitzpatrick, Inc. v. Long Is. R.R. Co., 70 NY2d 382, 388 [1987]."
+      const text = "See Clark-Fitzpatrick, Inc. v. Long Is. R.R. Co., 70 NY2d 382, 388 [1987]."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Clark-Fitzpatrick, Inc. v. Long Is. R.R. Co.",
-        )
+        expect(cite.caseName).toBe("Clark-Fitzpatrick, Inc. v. Long Is. R.R. Co.")
       }
     })
 
@@ -2422,9 +2380,7 @@ describe("case name boundary bugs (#187, #188)", () => {
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Matter of Long Is. Power Auth. Hurricane Sandy Litig.",
-        )
+        expect(cite.caseName).toBe("Matter of Long Is. Power Auth. Hurricane Sandy Litig.")
       }
     })
 
@@ -2447,8 +2403,7 @@ describe("case name boundary bugs (#187, #188)", () => {
     })
 
     it("handles `Pt.` (Point) in party name", () => {
-      const text =
-        "See Smith v. Stony Pt. Realty Corp., 500 F.3d 100 (2d Cir. 2020)."
+      const text = "See Smith v. Stony Pt. Realty Corp., 500 F.3d 100 (2d Cir. 2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2457,8 +2412,7 @@ describe("case name boundary bugs (#187, #188)", () => {
     })
 
     it("handles `St.` (Saint/Street) in party name", () => {
-      const text =
-        "See St. Paul Fire & Marine Ins. Co. v. Jones, 500 F.3d 100 (8th Cir. 2020)."
+      const text = "See St. Paul Fire & Marine Ins. Co. v. Jones, 500 F.3d 100 (8th Cir. 2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2476,9 +2430,7 @@ describe("case name boundary bugs (#187, #188)", () => {
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Dormitory Auth. of the State of N.Y. v. Samson Constr. Co.",
-        )
+        expect(cite.caseName).toBe("Dormitory Auth. of the State of N.Y. v. Samson Constr. Co.")
       }
     })
 
@@ -2492,8 +2444,7 @@ describe("case name boundary bugs (#187, #188)", () => {
     })
 
     it("handles party with internal abbreviations + commas", () => {
-      const text =
-        "See Dembeck v. 220 Cent. Park S., LLC, 33 A.D.3d 491, 492 [1st Dep't 2006]."
+      const text = "See Dembeck v. 220 Cent. Park S., LLC, 33 A.D.3d 491, 492 [1st Dep't 2006]."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2510,14 +2461,11 @@ describe("case name boundary bugs (#193)", () => {
 
   describe("#193: single-party corporate captions", () => {
     it("captures 'Board of Mgrs. of X' (abbreviated)", () => {
-      const text =
-        "See Board of Mgrs. of the St. Tropez Condominium, 2021 NY Slip Op 00520, at *1."
+      const text = "See Board of Mgrs. of the St. Tropez Condominium, 2021 NY Slip Op 00520, at *1."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Board of Mgrs. of the St. Tropez Condominium",
-        )
+        expect(cite.caseName).toBe("Board of Mgrs. of the St. Tropez Condominium")
       }
     })
 
@@ -2527,15 +2475,12 @@ describe("case name boundary bugs (#193)", () => {
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Board of Managers of the St. Tropez Condominium",
-        )
+        expect(cite.caseName).toBe("Board of Managers of the St. Tropez Condominium")
       }
     })
 
     it("captures 'Board of Directors of X'", () => {
-      const text =
-        "See Board of Directors of Hill Park, 2021 NY Slip Op 00520."
+      const text = "See Board of Directors of Hill Park, 2021 NY Slip Op 00520."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2555,14 +2500,11 @@ describe("case name boundary bugs (#193)", () => {
 
   describe("#193: procedural prefix long form", () => {
     it("prefers 'In the Matter of' over 'Matter of' when present", () => {
-      const text =
-        "See In the Matter of Long Is. Power Auth. Litig., 2021 NY Slip Op 00520."
+      const text = "See In the Matter of Long Is. Power Auth. Litig., 2021 NY Slip Op 00520."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "In the Matter of Long Is. Power Auth. Litig.",
-        )
+        expect(cite.caseName).toBe("In the Matter of Long Is. Power Auth. Litig.")
       }
     })
 
@@ -2630,8 +2572,7 @@ describe("reporters-db alignment + ampersand support", () => {
 
   describe("period-form abbreviations (Co./Company etc.)", () => {
     it("handles 'Co.' mid-caption (previously truncated to suffix)", () => {
-      const text =
-        "Smith & Co. United States Corp., 100 U.S. 1 (2020)."
+      const text = "Smith & Co. United States Corp., 100 U.S. 1 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2709,9 +2650,7 @@ describe("Cornell § 4-100 / state-practice abbreviations (Tp., Tax'n, Enf't, Rt
     const [cite] = extractCitations(text)
     expect(cite.type).toBe("case")
     if (cite.type === "case") {
-      expect(cite.caseName).toBe(
-        "Troy Hills Village v. Parsippany-Troy Hills Tp. Council",
-      )
+      expect(cite.caseName).toBe("Troy Hills Village v. Parsippany-Troy Hills Tp. Council")
     }
   })
 
@@ -2758,8 +2697,7 @@ describe("2026-05-10 jurisdiction-survey abbreviations", () => {
 
   describe("universal apostrophe-form + Bluebook party designations", () => {
     it("captures `Att'y Gen.` in federal captions (8+ agent consensus)", () => {
-      const text =
-        "See N.J. Bankers Ass'n v. Att'y Gen. of N.J., 49 F.4th 849 (3d Cir. 2022)."
+      const text = "See N.J. Bankers Ass'n v. Att'y Gen. of N.J., 49 F.4th 849 (3d Cir. 2022)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2786,22 +2724,18 @@ describe("2026-05-10 jurisdiction-survey abbreviations", () => {
     })
 
     it("captures `Comm'rs` (plural of Comm'r) mid-caption", () => {
-      const text =
-        "Marrek v. Cleveland Metroparks Bd. of Comm'rs, 9 Ohio St.3d 194 (1984)."
+      const text = "Marrek v. Cleveland Metroparks Bd. of Comm'rs, 9 Ohio St.3d 194 (1984)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Marrek v. Cleveland Metroparks Bd. of Comm'rs",
-        )
+        expect(cite.caseName).toBe("Marrek v. Cleveland Metroparks Bd. of Comm'rs")
       }
     })
   })
 
   describe("plurals of existing singular stems", () => {
     it("captures `Hldgs.` in LLC captions (DE Chancery, NY 1st Dep't)", () => {
-      const text =
-        "See In re Lost Lake Hldgs. LLC v. Hogue, 100 N.Y.S.3d 1 (3d Dep't 2024)."
+      const text = "See In re Lost Lake Hldgs. LLC v. Hogue, 100 N.Y.S.3d 1 (3d Dep't 2024)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2814,9 +2748,7 @@ describe("2026-05-10 jurisdiction-survey abbreviations", () => {
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Lanvale Props., LLC v. Cnty. of Cabarrus",
-        )
+        expect(cite.caseName).toBe("Lanvale Props., LLC v. Cnty. of Cabarrus")
       }
     })
 
@@ -2830,34 +2762,27 @@ describe("2026-05-10 jurisdiction-survey abbreviations", () => {
     })
 
     it("captures `Emps.` (Employees plural) in agency captions", () => {
-      const text =
-        "See Okla. Pub. Emps. Ret. Sys. v. Smith, 100 U.S. 1 (2020)."
+      const text = "See Okla. Pub. Emps. Ret. Sys. v. Smith, 100 U.S. 1 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Okla. Pub. Emps. Ret. Sys. v. Smith",
-        )
+        expect(cite.caseName).toBe("Okla. Pub. Emps. Ret. Sys. v. Smith")
       }
     })
 
     it("captures `Corrs.` and `Telecomms.` (plurals)", () => {
-      const text =
-        "See Ark. Bd. of Corrs. v. BellSouth Telecomms., Inc., 100 U.S. 1 (2020)."
+      const text = "See Ark. Bd. of Corrs. v. BellSouth Telecomms., Inc., 100 U.S. 1 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Ark. Bd. of Corrs. v. BellSouth Telecomms., Inc.",
-        )
+        expect(cite.caseName).toBe("Ark. Bd. of Corrs. v. BellSouth Telecomms., Inc.")
       }
     })
   })
 
   describe("standard institutional / agency abbreviations", () => {
     it("captures `Civ.` (Civil) — Ala. Civ. App. and Civ. Rts. Div.", () => {
-      const text =
-        "See Civ. Rts. Div. v. Smith, 100 U.S. 1 (2020)."
+      const text = "See Civ. Rts. Div. v. Smith, 100 U.S. 1 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2866,50 +2791,38 @@ describe("2026-05-10 jurisdiction-survey abbreviations", () => {
     })
 
     it("captures `Lic.` (License) — Bd. of License Comm'rs (R.I.)", () => {
-      const text =
-        "See Tiverton Bd. of License Comm'rs v. Pastore, 469 U.S. 238 (1985)."
+      const text = "See Tiverton Bd. of License Comm'rs v. Pastore, 469 U.S. 238 (1985)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Tiverton Bd. of License Comm'rs v. Pastore",
-        )
+        expect(cite.caseName).toBe("Tiverton Bd. of License Comm'rs v. Pastore")
       }
     })
 
     it("captures `Bur.` (Bureau) and `Insp.` (Inspection)", () => {
-      const text =
-        "See Bur. of Driver Lic. & Insp. Review v. Smith, 100 U.S. 1 (2020)."
+      const text = "See Bur. of Driver Lic. & Insp. Review v. Smith, 100 U.S. 1 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Bur. of Driver Lic. & Insp. Review v. Smith",
-        )
+        expect(cite.caseName).toBe("Bur. of Driver Lic. & Insp. Review v. Smith")
       }
     })
 
     it("captures `Supers.` (Supervisors) — PA Twp. Bd. of Supers.", () => {
-      const text =
-        "See Cranberry Twp. Bd. of Supers. v. Smith, 100 Pa. Commw. 1 (2020)."
+      const text = "See Cranberry Twp. Bd. of Supers. v. Smith, 100 Pa. Commw. 1 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Cranberry Twp. Bd. of Supers. v. Smith",
-        )
+        expect(cite.caseName).toBe("Cranberry Twp. Bd. of Supers. v. Smith")
       }
     })
 
     it("captures `Retire.` (Retirement) — WV consolidated board", () => {
-      const text =
-        "See W. Va. Consol. Pub. Retire. Bd. v. Smith, 100 W. Va. 1 (2020)."
+      const text = "See W. Va. Consol. Pub. Retire. Bd. v. Smith, 100 W. Va. 1 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "W. Va. Consol. Pub. Retire. Bd. v. Smith",
-        )
+        expect(cite.caseName).toBe("W. Va. Consol. Pub. Retire. Bd. v. Smith")
       }
     })
   })
@@ -2921,15 +2834,12 @@ describe("2026-05-10 jurisdiction-survey abbreviations", () => {
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Male v. Pompton Lakes Boro. Mun. Util. Auth.",
-        )
+        expect(cite.caseName).toBe("Male v. Pompton Lakes Boro. Mun. Util. Auth.")
       }
     })
 
     it("captures `Vol.` (Volunteer) — PA Vol. Fire Dept.", () => {
-      const text =
-        "See Univ. Vol. Fire Dept. v. Smith, 100 Pa. Commw. 1 (2020)."
+      const text = "See Univ. Vol. Fire Dept. v. Smith, 100 Pa. Commw. 1 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2938,8 +2848,7 @@ describe("2026-05-10 jurisdiction-survey abbreviations", () => {
     })
 
     it("captures `Vet.` (Veterans) — Sec'y of Vet. Aff.", () => {
-      const text =
-        "See Sec'y of Vet. Aff. v. Smith, 100 Vet. App. 1 (2020)."
+      const text = "See Sec'y of Vet. Aff. v. Smith, 100 Vet. App. 1 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2948,8 +2857,7 @@ describe("2026-05-10 jurisdiction-survey abbreviations", () => {
     })
 
     it("captures `Irrig.` (Irrigation) in water-rights captions", () => {
-      const text =
-        "See Pioneer Irrig. Dist. v. Smith, 100 Idaho 1 (2020)."
+      const text = "See Pioneer Irrig. Dist. v. Smith, 100 Idaho 1 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2960,8 +2868,7 @@ describe("2026-05-10 jurisdiction-survey abbreviations", () => {
 
   describe("Bluebook 21st ed. (2020) T6/T13.2 merger", () => {
     it("captures `Lab'y` (Laboratory) — distinct from existing Lab. (Labor)", () => {
-      const text =
-        "See Smith Lab'y, Inc. v. Jones, 100 U.S. 1 (2020)."
+      const text = "See Smith Lab'y, Inc. v. Jones, 100 U.S. 1 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
@@ -2970,14 +2877,11 @@ describe("2026-05-10 jurisdiction-survey abbreviations", () => {
     })
 
     it("captures `Pol'y` (Policy) and `Stud.` (Studies)", () => {
-      const text =
-        "See Ctr. for Health Pol'y & Stud. v. Smith, 100 U.S. 1 (2020)."
+      const text = "See Ctr. for Health Pol'y & Stud. v. Smith, 100 U.S. 1 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Ctr. for Health Pol'y & Stud. v. Smith",
-        )
+        expect(cite.caseName).toBe("Ctr. for Health Pol'y & Stud. v. Smith")
       }
     })
 
@@ -2993,26 +2897,20 @@ describe("2026-05-10 jurisdiction-survey abbreviations", () => {
 
   describe("Plains + Upper Midwest (NE apostrophe-dropping, ND insurance)", () => {
     it("captures `Comrs.` — NE Bd. of Comrs. (single-m, no apostrophe)", () => {
-      const text =
-        "See Cherry Cty. Bd. of Comrs. v. Smith, 100 Neb. 1 (2020)."
+      const text = "See Cherry Cty. Bd. of Comrs. v. Smith, 100 Neb. 1 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Cherry Cty. Bd. of Comrs. v. Smith",
-        )
+        expect(cite.caseName).toBe("Cherry Cty. Bd. of Comrs. v. Smith")
       }
     })
 
     it("captures `Reins.` (Reinsurance) in insurance captions", () => {
-      const text =
-        "See Grinnell Mut. Reins. Co. v. Farm & City Ins. Co., 100 N.W.2d 1 (2020)."
+      const text = "See Grinnell Mut. Reins. Co. v. Farm & City Ins. Co., 100 N.W.2d 1 (2020)."
       const [cite] = extractCitations(text)
       expect(cite.type).toBe("case")
       if (cite.type === "case") {
-        expect(cite.caseName).toBe(
-          "Grinnell Mut. Reins. Co. v. Farm & City Ins. Co.",
-        )
+        expect(cite.caseName).toBe("Grinnell Mut. Reins. Co. v. Farm & City Ins. Co.")
       }
     })
   })
@@ -3214,9 +3112,7 @@ describe("California research Tier 1 additions (2026-05-11)", () => {
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
-        expect(cases[0].proceduralPrefix).toBe(
-          "Conservatorship of the Person and Estate of",
-        )
+        expect(cases[0].proceduralPrefix).toBe("Conservatorship of the Person and Estate of")
       }
     })
   })
@@ -3245,9 +3141,7 @@ describe("California research Tier 1 additions (2026-05-11)", () => {
     })
 
     it("captures 'In re Adoption of Kelsey S.'", () => {
-      const cits = extractCitations(
-        "See In re Adoption of Kelsey S., 1 Cal.4th 816 (Cal. 1992).",
-      )
+      const cits = extractCitations("See In re Adoption of Kelsey S., 1 Cal.4th 816 (Cal. 1992).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -3284,9 +3178,7 @@ describe("California research Tier 1 additions (2026-05-11)", () => {
 
   describe("(in bank) disposition", () => {
     it("captures '(in bank)' as disposition='in bank'", () => {
-      const cits = extractCitations(
-        "Smith v. Jones, 50 Cal.3d 100 (Cal. 1990) (in bank).",
-      )
+      const cits = extractCitations("Smith v. Jones, 50 Cal.3d 100 (Cal. 1990) (in bank).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -3336,9 +3228,7 @@ describe("California research Tier 1 additions (2026-05-11)", () => {
       const cases = cits.filter((c) => c.type === "case")
       expect(cases.length).toBeGreaterThanOrEqual(1)
       if (cases[0].type === "case") {
-        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe(
-          "superseded_by_grant_of_review",
-        )
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe("superseded_by_grant_of_review")
       }
     })
 
@@ -3366,9 +3256,7 @@ describe("California research Tier 1 additions (2026-05-11)", () => {
     })
 
     it("review denied (from #238) still maps to review_denied", () => {
-      const cits = extractCitations(
-        "Smith v. Jones, 50 Cal.3d 100 (Cal. 1990), review denied.",
-      )
+      const cits = extractCitations("Smith v. Jones, 50 Cal.3d 100 (Cal. 1990), review denied.")
       const cases = cits.filter((c) => c.type === "case")
       if (cases[0].type === "case") {
         expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe("review_denied")
@@ -3387,9 +3275,7 @@ describe("California bracketed parallel citations (#237)", () => {
 
   describe("bracketed cite extraction", () => {
     it("extracts '[266 Cal.Rptr. 569]' as a case citation (Bluebook-form leading cite)", () => {
-      const cits = extractCitations(
-        "Smith v. Jones, 50 Cal.3d 100 (Cal. 1990) [266 Cal.Rptr. 569]",
-      )
+      const cits = extractCitations("Smith v. Jones, 50 Cal.3d 100 (Cal. 1990) [266 Cal.Rptr. 569]")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(2)
       const bracketed = cases.find((c) => c.type === "case" && c.reporter === "Cal.Rptr.")
@@ -3406,9 +3292,7 @@ describe("California bracketed parallel citations (#237)", () => {
       )
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(2)
-      const bracketed = cases.find(
-        (c) => c.type === "case" && c.reporter === "Cal.Rptr.2d",
-      )
+      const bracketed = cases.find((c) => c.type === "case" && c.reporter === "Cal.Rptr.2d")
       expect(bracketed).toBeDefined()
     })
 
@@ -3426,9 +3310,7 @@ describe("California bracketed parallel citations (#237)", () => {
     })
 
     it("extracts '[100 P.3d 1]' (Cal.4th + P.3d parallel)", () => {
-      const cits = extractCitations(
-        "Doe v. Roe, 1 Cal.4th 50 (Cal. 2010) [100 P.3d 1]",
-      )
+      const cits = extractCitations("Doe v. Roe, 1 Cal.4th 50 (Cal. 2010) [100 P.3d 1]")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(2)
       const bracketed = cases.find((c) => c.type === "case" && c.reporter === "P.3d")
@@ -3438,9 +3320,7 @@ describe("California bracketed parallel citations (#237)", () => {
 
   describe("parallel linking", () => {
     it("links primary 'Cal.3d' with bracketed 'Cal.Rptr.' via parallelCitations", () => {
-      const cits = extractCitations(
-        "Smith v. Jones, 50 Cal.3d 100 (Cal. 1990) [266 Cal.Rptr. 569]",
-      )
+      const cits = extractCitations("Smith v. Jones, 50 Cal.3d 100 (Cal. 1990) [266 Cal.Rptr. 569]")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases.length).toBeGreaterThanOrEqual(2)
       // Both citations should share a groupId set by parallel detection
@@ -3463,9 +3343,7 @@ describe("California bracketed parallel citations (#237)", () => {
     })
 
     it("non-bracketed Cal.Rptr. parallel still works (comma-separated)", () => {
-      const cits = extractCitations(
-        "Smith v. Jones, 50 Cal.3d 100, 266 Cal.Rptr. 569 (Cal. 1990)",
-      )
+      const cits = extractCitations("Smith v. Jones, 50 Cal.3d 100, 266 Cal.Rptr. 569 (Cal. 1990)")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(2)
     })
@@ -3747,9 +3625,7 @@ describe("NY Slip Op (U)/[U] unpublished markers (#231)", () => {
     })
 
     it("captures case name preceding (U)-suffixed Slip Op", () => {
-      const cits = extractCitations(
-        "Doe v. Roe, 2024 NY Slip Op 51192[U] (Sup. Ct. 2024)",
-      )
+      const cits = extractCitations("Doe v. Roe, 2024 NY Slip Op 51192[U] (Sup. Ct. 2024)")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -3791,9 +3667,7 @@ describe("California review history signals (#238)", () => {
 
   describe("review denied / granted", () => {
     it("captures 'review denied' as review_denied", () => {
-      const cits = extractCitations(
-        "People v. Smith, 50 Cal. 3d 100 (Cal. 1990), review denied.",
-      )
+      const cits = extractCitations("People v. Smith, 50 Cal. 3d 100 (Cal. 1990), review denied.")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases.length).toBeGreaterThanOrEqual(1)
       if (cases[0].type === "case") {
@@ -3802,9 +3676,7 @@ describe("California review history signals (#238)", () => {
     })
 
     it("captures 'review den.' (abbreviated) as review_denied", () => {
-      const cits = extractCitations(
-        "People v. Smith, 50 Cal. 3d 100 (Cal. 1990), review den.",
-      )
+      const cits = extractCitations("People v. Smith, 50 Cal. 3d 100 (Cal. 1990), review den.")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases.length).toBeGreaterThanOrEqual(1)
       if (cases[0].type === "case") {
@@ -3813,9 +3685,7 @@ describe("California review history signals (#238)", () => {
     })
 
     it("captures 'review granted' as review_granted", () => {
-      const cits = extractCitations(
-        "Doe v. Roe, 1 Cal. 4th 50 (Cal. 2010), review granted.",
-      )
+      const cits = extractCitations("Doe v. Roe, 1 Cal. 4th 50 (Cal. 2010), review granted.")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases.length).toBeGreaterThanOrEqual(1)
       if (cases[0].type === "case") {
@@ -3826,9 +3696,7 @@ describe("California review history signals (#238)", () => {
 
   describe("opinion vacated", () => {
     it("captures 'opinion vacated' as opinion_vacated", () => {
-      const cits = extractCitations(
-        "Doe v. Roe, 1 Cal. 4th 50 (Cal. 2010), opinion vacated.",
-      )
+      const cits = extractCitations("Doe v. Roe, 1 Cal. 4th 50 (Cal. 2010), opinion vacated.")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases.length).toBeGreaterThanOrEqual(1)
       if (cases[0].type === "case") {
@@ -3845,9 +3713,7 @@ describe("California review history signals (#238)", () => {
       const cases = cits.filter((c) => c.type === "case")
       expect(cases.length).toBeGreaterThanOrEqual(1)
       if (cases[0].type === "case") {
-        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe(
-          "disapproved_other_grounds",
-        )
+        expect(cases[0].subsequentHistoryEntries?.[0]?.signal).toBe("disapproved_other_grounds")
       }
     })
   })
@@ -4111,9 +3977,7 @@ describe("BIA hyphenated-initials respondent names (#244)", () => {
 
   describe("two-letter hyphenated-initials respondents", () => {
     it("captures 'Matter of A-B-' (Sessions's asylum decision)", () => {
-      const cits = extractCitations(
-        "See Matter of A-B-, 27 I&N Dec. 316 (BIA 2018).",
-      )
+      const cits = extractCitations("See Matter of A-B-, 27 I&N Dec. 316 (BIA 2018).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4125,9 +3989,7 @@ describe("BIA hyphenated-initials respondent names (#244)", () => {
 
   describe("three-letter hyphenated-initials respondents", () => {
     it("captures 'Matter of L-E-A-' (family-based asylum)", () => {
-      const cits = extractCitations(
-        "See Matter of L-E-A-, 27 I&N Dec. 581 (A.G. 2019).",
-      )
+      const cits = extractCitations("See Matter of L-E-A-, 27 I&N Dec. 581 (A.G. 2019).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4136,9 +3998,7 @@ describe("BIA hyphenated-initials respondent names (#244)", () => {
     })
 
     it("captures 'Matter of W-G-R-' (PSG class)", () => {
-      const cits = extractCitations(
-        "See Matter of W-G-R-, 26 I&N Dec. 208 (BIA 2014).",
-      )
+      const cits = extractCitations("See Matter of W-G-R-, 26 I&N Dec. 208 (BIA 2014).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4149,9 +4009,7 @@ describe("BIA hyphenated-initials respondent names (#244)", () => {
 
   describe("four-letter hyphenated-initials respondents", () => {
     it("captures 'Matter of A-R-C-G-' (domestic violence asylum precedent)", () => {
-      const cits = extractCitations(
-        "See Matter of A-R-C-G-, 26 I&N Dec. 388 (BIA 2014).",
-      )
+      const cits = extractCitations("See Matter of A-R-C-G-, 26 I&N Dec. 388 (BIA 2014).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4160,9 +4018,7 @@ describe("BIA hyphenated-initials respondent names (#244)", () => {
     })
 
     it("captures 'Matter of M-E-V-G-' (PSG analysis)", () => {
-      const cits = extractCitations(
-        "See Matter of M-E-V-G-, 26 I&N Dec. 227 (BIA 2014).",
-      )
+      const cits = extractCitations("See Matter of M-E-V-G-, 26 I&N Dec. 227 (BIA 2014).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4171,9 +4027,7 @@ describe("BIA hyphenated-initials respondent names (#244)", () => {
     })
 
     it("captures 'Matter of E-F-H-L-' (El Salvadoran asylum)", () => {
-      const cits = extractCitations(
-        "See Matter of E-F-H-L-, 26 I&N Dec. 319 (BIA 2014).",
-      )
+      const cits = extractCitations("See Matter of E-F-H-L-, 26 I&N Dec. 319 (BIA 2014).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4182,9 +4036,7 @@ describe("BIA hyphenated-initials respondent names (#244)", () => {
     })
 
     it("captures 'Matter of M-R-M-S-' (modern PSG)", () => {
-      const cits = extractCitations(
-        "See Matter of M-R-M-S-, 28 I&N Dec. 757 (BIA 2023).",
-      )
+      const cits = extractCitations("See Matter of M-R-M-S-, 28 I&N Dec. 757 (BIA 2023).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4195,9 +4047,7 @@ describe("BIA hyphenated-initials respondent names (#244)", () => {
 
   describe("non-anonymized BIA captions", () => {
     it("captures 'Matter of Garcia' (regular surname)", () => {
-      const cits = extractCitations(
-        "See Matter of Garcia, 25 I&N Dec. 332 (BIA 2010).",
-      )
+      const cits = extractCitations("See Matter of Garcia, 25 I&N Dec. 332 (BIA 2010).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4206,9 +4056,7 @@ describe("BIA hyphenated-initials respondent names (#244)", () => {
     })
 
     it("captures 'Matter of Jurado-Delgado' (hyphenated real surname)", () => {
-      const cits = extractCitations(
-        "See Matter of Jurado-Delgado, 24 I&N Dec. 29 (BIA 2006).",
-      )
+      const cits = extractCitations("See Matter of Jurado-Delgado, 24 I&N Dec. 29 (BIA 2006).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4217,9 +4065,7 @@ describe("BIA hyphenated-initials respondent names (#244)", () => {
     })
 
     it("captures 'Matter of THAKKER' (ALL-CAPS surname)", () => {
-      const cits = extractCitations(
-        "See Matter of THAKKER, 28 I&N Dec. 843 (BIA 2024).",
-      )
+      const cits = extractCitations("See Matter of THAKKER, 28 I&N Dec. 843 (BIA 2024).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4228,9 +4074,7 @@ describe("BIA hyphenated-initials respondent names (#244)", () => {
     })
 
     it("captures 'Matter of CRUZ-VALDEZ' (ALL-CAPS hyphenated)", () => {
-      const cits = extractCitations(
-        "See Matter of CRUZ-VALDEZ, 28 I&N Dec. 326 (A.G. 2021).",
-      )
+      const cits = extractCitations("See Matter of CRUZ-VALDEZ, 28 I&N Dec. 326 (A.G. 2021).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4241,9 +4085,7 @@ describe("BIA hyphenated-initials respondent names (#244)", () => {
 
   describe("In re form for hyphenated surname", () => {
     it("captures 'In re Rivera-Valencia' (federal-court re-cite)", () => {
-      const cits = extractCitations(
-        "See In re Rivera-Valencia, 24 I&N Dec. 484 (BIA 2008).",
-      )
+      const cits = extractCitations("See In re Rivera-Valencia, 24 I&N Dec. 484 (BIA 2008).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4368,9 +4210,7 @@ describe("procedural prefix research expansion (2026-05-11)", () => {
     })
 
     it("recognizes 'In re Dependency of' (WA)", () => {
-      const cits = extractCitations(
-        "See In re Dependency of A.B., 100 Wn.2d 1 (2020).",
-      )
+      const cits = extractCitations("See In re Dependency of A.B., 100 Wn.2d 1 (2020).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4428,9 +4268,7 @@ describe("procedural prefix research expansion (2026-05-11)", () => {
     })
 
     it("recognizes 'In re Parentage of' (CA/IL)", () => {
-      const cits = extractCitations(
-        "See In re Parentage of Scarlett Z.-D., 100 Ill. 2d 1 (2015).",
-      )
+      const cits = extractCitations("See In re Parentage of Scarlett Z.-D., 100 Ill. 2d 1 (2015).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4440,9 +4278,7 @@ describe("procedural prefix research expansion (2026-05-11)", () => {
     })
 
     it("recognizes 'Care and Protection of' (MA bare form)", () => {
-      const cits = extractCitations(
-        "See Care and Protection of Jaylen, 493 Mass. 798 (2024).",
-      )
+      const cits = extractCitations("See Care and Protection of Jaylen, 493 Mass. 798 (2024).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4524,9 +4360,7 @@ describe("procedural prefix research expansion (2026-05-11)", () => {
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
-        expect(cases[0].caseName).toBe(
-          "Matter of Liquidation of Union Indemnity Insurance Co.",
-        )
+        expect(cases[0].caseName).toBe("Matter of Liquidation of Union Indemnity Insurance Co.")
         expect(cases[0].proceduralPrefix).toBe("Matter of Liquidation of")
       }
     })
@@ -4584,9 +4418,7 @@ describe("procedural prefix research expansion (2026-05-11)", () => {
 
   describe("criminal / habeas / extradition prefixes", () => {
     it("recognizes 'In re Extradition of'", () => {
-      const cits = extractCitations(
-        "See In re Extradition of Kirby, 106 F.3d 855 (9th Cir. 1996).",
-      )
+      const cits = extractCitations("See In re Extradition of Kirby, 106 F.3d 855 (9th Cir. 1996).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4643,9 +4475,7 @@ describe("procedural prefix research expansion (2026-05-11)", () => {
     })
 
     it("still recognizes 'Commonwealth ex rel.' (without Puerto Rico)", () => {
-      const cits = extractCitations(
-        "See Commonwealth ex rel. Smith v. Jones, 100 Pa. 1 (2020).",
-      )
+      const cits = extractCitations("See Commonwealth ex rel. Smith v. Jones, 100 Pa. 1 (2020).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4654,9 +4484,7 @@ describe("procedural prefix research expansion (2026-05-11)", () => {
     })
 
     it("still recognizes bare 'Application of'", () => {
-      const cits = extractCitations(
-        "See Application of Jones, 100 U.S. 1 (2020).",
-      )
+      const cits = extractCitations("See Application of Jones, 100 U.S. 1 (2020).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4686,9 +4514,7 @@ describe("procedural prefix expansion (#242)", () => {
   // below appear in real opinions across PA, NJ, CA, MA, NY, VT.
 
   it("recognizes 'Commonwealth ex rel.' as a procedural plaintiff (PA)", () => {
-    const cits = extractCitations(
-      "See Commonwealth ex rel. Smith v. Jones, 100 Pa. 1 (2020).",
-    )
+    const cits = extractCitations("See Commonwealth ex rel. Smith v. Jones, 100 Pa. 1 (2020).")
     const cases = cits.filter((c) => c.type === "case")
     expect(cases).toHaveLength(1)
     if (cases[0].type === "case") {
@@ -4697,9 +4523,7 @@ describe("procedural prefix expansion (#242)", () => {
   })
 
   it("recognizes 'In the Interest of' with initials-only party (juvenile)", () => {
-    const cits = extractCitations(
-      "See In the Interest of A.B., a Minor, 200 N.J. 1 (2020).",
-    )
+    const cits = extractCitations("See In the Interest of A.B., a Minor, 200 N.J. 1 (2020).")
     const cases = cits.filter((c) => c.type === "case")
     expect(cases).toHaveLength(1)
     if (cases[0].type === "case") {
@@ -4708,9 +4532,7 @@ describe("procedural prefix expansion (#242)", () => {
   })
 
   it("recognizes 'In re Marriage of' (CA family) — beats 'In re' alone", () => {
-    const cits = extractCitations(
-      "See In re Marriage of Smith, 50 Cal.4th 100 (2010).",
-    )
+    const cits = extractCitations("See In re Marriage of Smith, 50 Cal.4th 100 (2010).")
     const cases = cits.filter((c) => c.type === "case")
     expect(cases).toHaveLength(1)
     if (cases[0].type === "case") {
@@ -4730,9 +4552,7 @@ describe("procedural prefix expansion (#242)", () => {
   })
 
   it("recognizes 'Conservatorship of' with initials-only party (CA probate)", () => {
-    const cits = extractCitations(
-      "See Conservatorship of L.M., 1 Cal.5th 50 (2018).",
-    )
+    const cits = extractCitations("See Conservatorship of L.M., 1 Cal.5th 50 (2018).")
     const cases = cits.filter((c) => c.type === "case")
     expect(cases).toHaveLength(1)
     if (cases[0].type === "case") {
@@ -4742,9 +4562,7 @@ describe("procedural prefix expansion (#242)", () => {
   })
 
   it("recognizes 'Guardianship of' with initials-only party", () => {
-    const cits = extractCitations(
-      "See Guardianship of N.O., 300 N.Y.S.2d 100 (2020).",
-    )
+    const cits = extractCitations("See Guardianship of N.O., 300 N.Y.S.2d 100 (2020).")
     const cases = cits.filter((c) => c.type === "case")
     expect(cases).toHaveLength(1)
     if (cases[0].type === "case") {
@@ -4754,9 +4572,7 @@ describe("procedural prefix expansion (#242)", () => {
   })
 
   it("recognizes 'On Petition of' (older form) — beats 'Petition of' alone", () => {
-    const cits = extractCitations(
-      "See On Petition of P.Q., 100 Vt. 1 (2020).",
-    )
+    const cits = extractCitations("See On Petition of P.Q., 100 Vt. 1 (2020).")
     const cases = cits.filter((c) => c.type === "case")
     expect(cases).toHaveLength(1)
     if (cases[0].type === "case") {
@@ -4776,9 +4592,7 @@ describe("procedural prefix expansion (#242)", () => {
     })
 
     it("still recognizes 'Petition of' (without 'On')", () => {
-      const cits = extractCitations(
-        "See Petition of Smith, 100 U.S. 1 (2020).",
-      )
+      const cits = extractCitations("See Petition of Smith, 100 U.S. 1 (2020).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4787,9 +4601,7 @@ describe("procedural prefix expansion (#242)", () => {
     })
 
     it("still recognizes 'Estate of'", () => {
-      const cits = extractCitations(
-        "See Estate of Smith, 100 U.S. 1 (2020).",
-      )
+      const cits = extractCitations("See Estate of Smith, 100 U.S. 1 (2020).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4819,7 +4631,7 @@ describe("reporter edition future-proofing (#234)", () => {
         expect(f5Cases[0].volume).toBe(100)
         expect(f5Cases[0].reporter).toBe("F.5th")
         expect(f5Cases[0].page).toBe(200)
-        expect(f5Cases[0].confidence).toBe(f4Cases[0].confidence)
+        expect(f5Cases[0].confidence.score).toBe(f4Cases[0].confidence.score)
       }
     })
 
@@ -4834,7 +4646,7 @@ describe("reporter edition future-proofing (#234)", () => {
         expect(f6Cases[0].volume).toBe(50)
         expect(f6Cases[0].reporter).toBe("F.6th")
         expect(f6Cases[0].page).toBe(999)
-        expect(f6Cases[0].confidence).toBe(f4Cases[0].confidence)
+        expect(f6Cases[0].confidence.score).toBe(f4Cases[0].confidence.score)
       }
     })
   })
@@ -4865,9 +4677,7 @@ describe("reporter edition future-proofing (#234)", () => {
 
   describe("regression controls — existing editions still work", () => {
     it("extracts F.4th (existing)", () => {
-      const cits = extractCitations(
-        "Smith v. Jones, 50 F.4th 1234 (D.C. Cir. 2024).",
-      )
+      const cits = extractCitations("Smith v. Jones, 50 F.4th 1234 (D.C. Cir. 2024).")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -4926,10 +4736,7 @@ describe("California year-first citation format (#19)", () => {
         expect(cases[0].spans?.year).toBeDefined()
         if (cases[0].spans?.year) {
           expect(
-            text.substring(
-              cases[0].spans.year.originalStart,
-              cases[0].spans.year.originalEnd,
-            ),
+            text.substring(cases[0].spans.year.originalStart, cases[0].spans.year.originalEnd),
           ).toBe("2009")
         }
       }
@@ -4982,9 +4789,7 @@ describe("California year-first citation format (#19)", () => {
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
-        expect(cases[0].caseName).toBe(
-          "Yield Dynamics, Inc. v. TEA Systems Corp.",
-        )
+        expect(cases[0].caseName).toBe("Yield Dynamics, Inc. v. TEA Systems Corp.")
         expect(cases[0].year).toBe(2007)
         expect(cases[0].pincite).toBe(558)
       }
@@ -4993,8 +4798,7 @@ describe("California year-first citation format (#19)", () => {
 
   describe("CSM year-first with court (#293)", () => {
     it("extracts court from `(11th Cir. 1991)` in v. form", () => {
-      const text =
-        "Camden I Condominium Assn. v. Dunkle (11th Cir. 1991) 946 F.2d 768, 774."
+      const text = "Camden I Condominium Assn. v. Dunkle (11th Cir. 1991) 946 F.2d 768, 774."
       const cits = extractCitations(text)
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
@@ -5007,8 +4811,7 @@ describe("California year-first citation format (#19)", () => {
     })
 
     it("extracts court from `(2d Cir. 2005)` in v. form", () => {
-      const text =
-        "Wal-Mart Stores, Inc. v. Visa U.S.A., Inc. (2d Cir. 2005) 396 F.3d 96, 103."
+      const text = "Wal-Mart Stores, Inc. v. Visa U.S.A., Inc. (2d Cir. 2005) 396 F.3d 96, 103."
       const cits = extractCitations(text)
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
@@ -5019,8 +4822,7 @@ describe("California year-first citation format (#19)", () => {
     })
 
     it("extracts court from `(9th Cir. 2014)` in procedural-prefix form", () => {
-      const text =
-        "See In re Cellphone Termination Fee Cases (9th Cir. 2014) 731 F.3d 968."
+      const text = "See In re Cellphone Termination Fee Cases (9th Cir. 2014) 731 F.3d 968."
       const cits = extractCitations(text)
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
@@ -5070,8 +4872,7 @@ describe("California year-first citation format (#19)", () => {
     })
 
     it("`In re K.F., 173 Cal.App.4th 655 (Cal. Ct. App. 2009)` (Bluebook)", () => {
-      const text =
-        "See In re K.F., 173 Cal.App.4th 655 (Cal. Ct. App. 2009) for it."
+      const text = "See In re K.F., 173 Cal.App.4th 655 (Cal. Ct. App. 2009) for it."
       const cits = extractCitations(text)
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
@@ -5105,9 +4906,7 @@ describe("California year-first citation format (#19)", () => {
     })
 
     it("preserves signal on `See People v. Tillman (2000) 22 Cal.4th 300`", () => {
-      const cits = extractCitations(
-        "See People v. Tillman (2000) 22 Cal.4th 300.",
-      )
+      const cits = extractCitations("See People v. Tillman (2000) 22 Cal.4th 300.")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -5117,9 +4916,7 @@ describe("California year-first citation format (#19)", () => {
     })
 
     it("extracts caption inside parens: `(People v. Tillman (2000) 22 Cal.4th 300, 303.)`", () => {
-      const cits = extractCitations(
-        "(People v. Tillman (2000) 22 Cal.4th 300, 303.)",
-      )
+      const cits = extractCitations("(People v. Tillman (2000) 22 Cal.4th 300, 303.)")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -5128,9 +4925,7 @@ describe("California year-first citation format (#19)", () => {
     })
 
     it("extracts `In re Marriage of Bower (2002) 96 Cal.App.4th 893`", () => {
-      const cits = extractCitations(
-        "See In re Marriage of Bower (2002) 96 Cal.App.4th 893.",
-      )
+      const cits = extractCitations("See In re Marriage of Bower (2002) 96 Cal.App.4th 893.")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -5140,9 +4935,7 @@ describe("California year-first citation format (#19)", () => {
     })
 
     it("extracts `(People v. Rubalcava (2000) 23 Cal.4th 322, 328, ...)`", () => {
-      const cits = extractCitations(
-        "(People v. Rubalcava (2000) 23 Cal.4th 322, 328, here.)",
-      )
+      const cits = extractCitations("(People v. Rubalcava (2000) 23 Cal.4th 322, 328, here.)")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -5151,9 +4944,7 @@ describe("California year-first citation format (#19)", () => {
     })
 
     it("extracts initial-letter party: `In re Sophia B. (1988) 203 Cal.App.3d 1436, 1439`", () => {
-      const cits = extractCitations(
-        "See In re Sophia B. (1988) 203 Cal.App.3d 1436, 1439, here.",
-      )
+      const cits = extractCitations("See In re Sophia B. (1988) 203 Cal.App.3d 1436, 1439, here.")
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(1)
       if (cases[0].type === "case") {
@@ -5182,9 +4973,7 @@ describe("California year-first citation format (#19)", () => {
       )
       const cases = cits.filter((c) => c.type === "case")
       expect(cases.length).toBeGreaterThanOrEqual(1)
-      const primary = cases.find(
-        (c) => c.type === "case" && c.reporter === "Cal.4th",
-      )
+      const primary = cases.find((c) => c.type === "case" && c.reporter === "Cal.4th")
       expect(primary).toBeDefined()
       if (primary && primary.type === "case") {
         expect(primary.caseName).toBe("People v. Smith")
@@ -5221,11 +5010,7 @@ describe("multi-stage subsequent history chains (#246)", () => {
       const parent = cases[0]
       const link2 = cases[1]
       const link3 = cases[2]
-      if (
-        parent.type === "case" &&
-        link2.type === "case" &&
-        link3.type === "case"
-      ) {
+      if (parent.type === "case" && link2.type === "case" && link3.type === "case") {
         expect(parent.text).toBe("100 F.2d 100")
         expect(parent.subsequentHistoryEntries?.length).toBe(2)
         expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe("affirmed")
@@ -5258,12 +5043,8 @@ describe("multi-stage subsequent history chains (#246)", () => {
       const parent = cases[0]
       if (parent.type === "case") {
         expect(parent.subsequentHistoryEntries?.length).toBe(2)
-        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe(
-          "rehearing_denied",
-        )
-        expect(parent.subsequentHistoryEntries?.[1]?.signal).toBe(
-          "cert_granted",
-        )
+        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe("rehearing_denied")
+        expect(parent.subsequentHistoryEntries?.[1]?.signal).toBe("cert_granted")
       }
     })
   })
@@ -5275,9 +5056,7 @@ describe("multi-stage subsequent history chains (#246)", () => {
       const parent = cits.find((c) => c.type === "case")
       expect(parent?.type).toBe("case")
       if (parent?.type === "case") {
-        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe(
-          "rehearing_denied",
-        )
+        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe("rehearing_denied")
       }
     })
 
@@ -5286,9 +5065,7 @@ describe("multi-stage subsequent history chains (#246)", () => {
       const cits = extractCitations(text)
       const parent = cits.find((c) => c.type === "case")
       if (parent?.type === "case") {
-        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe(
-          "rehearing_denied",
-        )
+        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe("rehearing_denied")
       }
     })
 
@@ -5297,9 +5074,7 @@ describe("multi-stage subsequent history chains (#246)", () => {
       const cits = extractCitations(text)
       const parent = cits.find((c) => c.type === "case")
       if (parent?.type === "case") {
-        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe(
-          "rehearing_granted",
-        )
+        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe("rehearing_granted")
       }
     })
 
@@ -5308,17 +5083,14 @@ describe("multi-stage subsequent history chains (#246)", () => {
       const cits = extractCitations(text)
       const parent = cits.find((c) => c.type === "case")
       if (parent?.type === "case") {
-        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe(
-          "rehearing_granted",
-        )
+        expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe("rehearing_granted")
       }
     })
   })
 
   describe("regression controls — single-link chains still work", () => {
     it("`aff'd, X` (single link) still produces one entry", () => {
-      const text =
-        "Smith v. Jones, 100 F.2d 100 (2d Cir. 1990), aff'd, 200 U.S. 1 (1992)."
+      const text = "Smith v. Jones, 100 F.2d 100 (2d Cir. 1990), aff'd, 200 U.S. 1 (1992)."
       const cits = extractCitations(text)
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(2)
@@ -5330,8 +5102,7 @@ describe("multi-stage subsequent history chains (#246)", () => {
     })
 
     it("`review granted, opinion vacated` (no-paren chain) still works", () => {
-      const text =
-        "People v. Smith, 50 Cal.3d 100 (Cal. 1990), review granted, opinion vacated."
+      const text = "People v. Smith, 50 Cal.3d 100 (Cal. 1990), review granted, opinion vacated."
       const cits = extractCitations(text)
       const parent = cits.find((c) => c.type === "case")
       if (parent?.type === "case") {
@@ -5555,9 +5326,7 @@ describe("Louisiana date-in-number citations (#232)", () => {
       "Herff Jones, Inc. v. Girouard, 07-393, p. 2 (La. App. 3d Cir. 10/3/07), 966 So. 2d 1127, 1130."
     const cits = extractCitations(text)
     const cases = cits.filter((c) => c.type === "case")
-    const primary = cases.find(
-      (c) => c.type === "case" && c.reporter?.startsWith("So."),
-    )
+    const primary = cases.find((c) => c.type === "case" && c.reporter?.startsWith("So."))
     expect(primary).toBeDefined()
     if (primary?.type === "case") {
       expect(primary.caseName).toBe("Herff Jones, Inc. v. Girouard")
@@ -5571,8 +5340,7 @@ describe("Louisiana date-in-number citations (#232)", () => {
   })
 
   it("`Boudreaux v. Doe, 09-1234 (La. App. 1st Cir. 2/15/10), 100 So. 3d 1`", () => {
-    const text =
-      "Boudreaux v. Doe, 09-1234 (La. App. 1st Cir. 2/15/10), 100 So. 3d 1."
+    const text = "Boudreaux v. Doe, 09-1234 (La. App. 1st Cir. 2/15/10), 100 So. 3d 1."
     const cits = extractCitations(text)
     const primary = cits
       .filter((c) => c.type === "case")
@@ -5615,8 +5383,7 @@ describe("Louisiana date-in-number citations (#232)", () => {
     })
 
     it("non-LA citation with month-name date still parses", () => {
-      const text =
-        "Doe v. Roe, 100 F.3d 200, 205 (2d Cir. Jan. 15, 2020)."
+      const text = "Doe v. Roe, 100 F.3d 200, 205 (2d Cir. Jan. 15, 2020)."
       const cits = extractCitations(text)
       const cases = cits.filter((c) => c.type === "case")
       if (cases[0].type === "case") {
@@ -5679,8 +5446,7 @@ describe("parallel-cite pincite disambiguation (regression)", () => {
   })
 
   describe("three-reporter parallel cite — Roe v. Wade", () => {
-    const text =
-      "Roe v. Wade, 410 U.S. 113, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973)."
+    const text = "Roe v. Wade, 410 U.S. 113, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973)."
 
     it("none of the three cites have a (false) pincite", () => {
       const cases = extractCitations(text).filter((c) => c.type === "case")
@@ -5703,8 +5469,7 @@ describe("parallel-cite pincite disambiguation (regression)", () => {
   })
 
   describe("pincite WITH a following parallel cite — `410 U.S. 113, 117, 93 S. Ct. 705 (1973)`", () => {
-    const text =
-      "Roe v. Wade, 410 U.S. 113, 117, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973)."
+    const text = "Roe v. Wade, 410 U.S. 113, 117, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973)."
 
     it("first cite has pincite=117 (real pincite before the parallel)", () => {
       const cases = extractCitations(text).filter((c) => c.type === "case")
@@ -5730,9 +5495,9 @@ describe("parallel-cite pincite disambiguation (regression)", () => {
 
   describe("regression: discrete multi-pincite chains still work (no parallel cite)", () => {
     it("`410 U.S. 113, 115, 153 (1973)` — pincite=115, additionalPincites=[153]", () => {
-      const cases = extractCitations(
-        "Smith, 410 U.S. 113, 115, 153 (1973).",
-      ).filter((c) => c.type === "case")
+      const cases = extractCitations("Smith, 410 U.S. 113, 115, 153 (1973).").filter(
+        (c) => c.type === "case",
+      )
       if (cases[0]?.type === "case") {
         expect(cases[0].pincite).toBe(115)
         expect(cases[0].pinciteInfo?.additionalPincites).toHaveLength(1)
@@ -5745,9 +5510,9 @@ describe("parallel-cite pincite disambiguation (regression)", () => {
 
 describe("California `, fn. 3` footnote pincite variant (#311)", () => {
   it("captures `45 Cal.3d 744, 768, fn. 3` footnote", () => {
-    const cases = extractCitations(
-      "Smith v. Jones, 45 Cal.3d 744, 768, fn. 3 (1988).",
-    ).filter((c) => c.type === "case")
+    const cases = extractCitations("Smith v. Jones, 45 Cal.3d 744, 768, fn. 3 (1988).").filter(
+      (c) => c.type === "case",
+    )
     expect(cases).toHaveLength(1)
     if (cases[0]?.type === "case") {
       expect(cases[0].pincite).toBe(768)
@@ -5756,9 +5521,9 @@ describe("California `, fn. 3` footnote pincite variant (#311)", () => {
   })
 
   it("captures `, fns. 3-5` multi-footnote range", () => {
-    const cases = extractCitations(
-      "Smith v. Jones, 45 Cal.3d 744, 768, fns. 3-5 (1988).",
-    ).filter((c) => c.type === "case")
+    const cases = extractCitations("Smith v. Jones, 45 Cal.3d 744, 768, fns. 3-5 (1988).").filter(
+      (c) => c.type === "case",
+    )
     if (cases[0]?.type === "case") {
       expect(cases[0].pincite).toBe(768)
       expect(cases[0].pinciteInfo?.footnote).toBe(3)
@@ -5767,9 +5532,9 @@ describe("California `, fn. 3` footnote pincite variant (#311)", () => {
   })
 
   it("regression: canonical `768 n.3` form still works", () => {
-    const cases = extractCitations(
-      "Smith v. Jones, 45 Cal.3d 744, 768 n.3 (1988).",
-    ).filter((c) => c.type === "case")
+    const cases = extractCitations("Smith v. Jones, 45 Cal.3d 744, 768 n.3 (1988).").filter(
+      (c) => c.type === "case",
+    )
     if (cases[0]?.type === "case") {
       expect(cases[0].pincite).toBe(768)
       expect(cases[0].pinciteInfo?.footnote).toBe(3)
@@ -5789,9 +5554,9 @@ describe("plaintiff field over-capture — transition words + sentence-paren bou
   })
 
   it("strips `Citing` transition word from plaintiff", () => {
-    const cases = extractCitations(
-      "Citing Pederson v. Smith, 219 Va. 1061 (1979).",
-    ).filter((c) => c.type === "case")
+    const cases = extractCitations("Citing Pederson v. Smith, 219 Va. 1061 (1979).").filter(
+      (c) => c.type === "case",
+    )
     if (cases[0]?.type === "case") {
       expect(cases[0].plaintiff).toBe("Pederson")
     }
@@ -5856,9 +5621,9 @@ describe("`v` punctuation fidelity in caseName (#326)", () => {
   })
 
   it("preserves NY-style `v` on second example", () => {
-    const cases = extractCitations(
-      "Romano v Hotel Carlyle Owners Corp., 19 N.Y.2d 1",
-    ).filter((c) => c.type === "case")
+    const cases = extractCitations("Romano v Hotel Carlyle Owners Corp., 19 N.Y.2d 1").filter(
+      (c) => c.type === "case",
+    )
     if (cases[0]?.type === "case") {
       expect(cases[0].caseName).toBe("Romano v Hotel Carlyle Owners Corp.")
     }
@@ -5945,9 +5710,7 @@ describe("Illinois rule-marker boundary in state-reporter pattern (#332)", () =>
   })
 
   it("regression: `Ill. App.` reporter unaffected", () => {
-    const cases = extractCitations("123 Ill. App. 3d 456 (1984)").filter(
-      (c) => c.type === "case",
-    )
+    const cases = extractCitations("123 Ill. App. 3d 456 (1984)").filter((c) => c.type === "case")
     expect(cases).toHaveLength(1)
     if (cases[0]?.type === "case") {
       expect(cases[0].volume).toBe(123)
@@ -5977,9 +5740,9 @@ describe("parallel-cite case-name propagation (high-volume regression — #423)"
   })
 
   it("`Marren v. Gamble, 246 S.E.2d 736, 295 N.C. 162 (1978)`: both cites get caseName", () => {
-    const cases = extractCitations(
-      "Marren v. Gamble, 246 S.E.2d 736, 295 N.C. 162 (1978).",
-    ).filter((c) => c.type === "case")
+    const cases = extractCitations("Marren v. Gamble, 246 S.E.2d 736, 295 N.C. 162 (1978).").filter(
+      (c) => c.type === "case",
+    )
     expect(cases).toHaveLength(2)
     if (cases[0]?.type === "case" && cases[1]?.type === "case") {
       expect(cases[0].caseName).toBe("Marren v. Gamble")
@@ -6043,9 +5806,9 @@ describe("signal field not falsely attached from distant prose (#430)", () => {
 
 describe("explanatory parentheticals not routed to court field (#431)", () => {
   it("`(holding that...)` not routed to court; populated as parenthetical", () => {
-    const cs = extractCitations(
-      "336 Mont. 225 (holding that we review de novo).",
-    ).filter((c) => c.type === "case")
+    const cs = extractCitations("336 Mont. 225 (holding that we review de novo).").filter(
+      (c) => c.type === "case",
+    )
     expect(cs).toHaveLength(1)
     if (cs[0]?.type === "case") {
       expect(cs[0].court).toBeUndefined()
@@ -6076,9 +5839,7 @@ describe("explanatory parentheticals not routed to court field (#431)", () => {
   })
 
   it("regression: `(D.C. Cir. 1980)` still routes court correctly", () => {
-    const cs = extractCitations("100 U.S. 200 (D.C. Cir. 1980).").filter(
-      (c) => c.type === "case",
-    )
+    const cs = extractCitations("100 U.S. 200 (D.C. Cir. 1980).").filter((c) => c.type === "case")
     expect(cs).toHaveLength(1)
     if (cs[0]?.type === "case") {
       expect(cs[0].court).toBe("D.C. Cir.")
@@ -6087,9 +5848,7 @@ describe("explanatory parentheticals not routed to court field (#431)", () => {
   })
 
   it("regression: `(1980)` year-only paren still works", () => {
-    const cs = extractCitations("100 U.S. 200 (1980).").filter(
-      (c) => c.type === "case",
-    )
+    const cs = extractCitations("100 U.S. 200 (1980).").filter((c) => c.type === "case")
     expect(cs).toHaveLength(1)
     if (cs[0]?.type === "case") {
       expect(cs[0].year).toBe(1980)
@@ -6119,13 +5878,11 @@ describe("caseName trailing-token absorption (#436)", () => {
   })
 
   it("trailing `, NNNN <reporter> NN` parallel-cite start stripped", () => {
-    const cs = extractCitations(
-      "State v. Lane, 1998 MT 76, 962 P.2d 1190 (1998).",
-    ).filter((c) => c.type === "case")
-    // The case-citation (962 P.2d 1190) should have clean caseName
-    const caseCite = cs.find(
-      (c) => (c as { reporter?: string }).reporter === "P.2d",
+    const cs = extractCitations("State v. Lane, 1998 MT 76, 962 P.2d 1190 (1998).").filter(
+      (c) => c.type === "case",
     )
+    // The case-citation (962 P.2d 1190) should have clean caseName
+    const caseCite = cs.find((c) => (c as { reporter?: string }).reporter === "P.2d")
     expect(caseCite).toBeDefined()
     if (caseCite?.type === "case") {
       expect(caseCite.caseName).toBe("State v. Lane")
@@ -6156,9 +5913,9 @@ describe("institutional / special-prefix case names (#437 regression)", () => {
   })
 
   it("`Commissioner of Revenue v. Acme` keeps full plaintiff", () => {
-    const cs = extractCitations(
-      "Commissioner of Revenue v. Acme, 100 U.S. 200.",
-    ).filter((c) => c.type === "case")
+    const cs = extractCitations("Commissioner of Revenue v. Acme, 100 U.S. 200.").filter(
+      (c) => c.type === "case",
+    )
     expect(cs).toHaveLength(1)
     if (cs[0]?.type === "case") {
       expect(cs[0].plaintiff).toBe("Commissioner of Revenue")
@@ -6232,16 +5989,14 @@ describe("neutral-citation caseName backward search (#441)", () => {
     ).filter((c) => c.type === "neutral")
     expect(cs).toHaveLength(1)
     if (cs[0]?.type === "neutral") {
-      expect((cs[0] as { caseName?: string }).caseName).toBe(
-        "Christian v. Atl. Richfield Co.",
-      )
+      expect((cs[0] as { caseName?: string }).caseName).toBe("Christian v. Atl. Richfield Co.")
     }
   })
 
   it("`Farmers Union Mut. Ins. Co. v. Staples, 2004 MT 108` (leading See stripped)", () => {
-    const cs = extractCitations(
-      "See Farmers Union Mut. Ins. Co. v. Staples, 2004 MT 108.",
-    ).filter((c) => c.type === "neutral")
+    const cs = extractCitations("See Farmers Union Mut. Ins. Co. v. Staples, 2004 MT 108.").filter(
+      (c) => c.type === "neutral",
+    )
     expect(cs).toHaveLength(1)
     if (cs[0]?.type === "neutral") {
       expect((cs[0] as { caseName?: string }).caseName).toBe(
@@ -6256,10 +6011,7 @@ describe("neutral-citation caseName backward search (#441)", () => {
     )
     expect(cs).toHaveLength(1)
     if (cs[0]?.type === "neutral") {
-      expect((cs[0] as { caseName?: string }).caseName).toBe(
-        "Blair v. Mid-Continent Cas. Co.",
-      )
+      expect((cs[0] as { caseName?: string }).caseName).toBe("Blair v. Mid-Continent Cas. Co.")
     }
   })
 })
-

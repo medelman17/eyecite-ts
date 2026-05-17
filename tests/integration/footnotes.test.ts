@@ -70,8 +70,7 @@ describe("Footnote Integration Tests", () => {
 
   describe("opt-in behavior", () => {
     it("does not annotate when detectFootnotes is false (default)", () => {
-      const html =
-        '<p>500 F.2d 123 (2020).</p><footnote label="1">300 U.S. 45 (1990).</footnote>'
+      const html = '<p>500 F.2d 123 (2020).</p><footnote label="1">300 U.S. 45 (1990).</footnote>'
 
       const citations = extractCitations(html)
       for (const c of citations) {

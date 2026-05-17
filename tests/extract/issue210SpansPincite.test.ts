@@ -8,8 +8,7 @@ function textAtSpan(text: string, s: { originalStart: number; originalEnd: numbe
 
 describe("issue #210: spans.pincite on short-form / id / supra / neutral", () => {
   it("ShortFormCaseCitation — spans.pincite covers '462-65'", () => {
-    const text =
-      "See Smith v. Jones, 100 F.3d 456, 460 (2d Cir. 2020). Smith, 100 F.3d at 462-65."
+    const text = "See Smith v. Jones, 100 F.3d 456, 460 (2d Cir. 2020). Smith, 100 F.3d at 462-65."
     const cites = extractCitations(text)
     const sf = cites.find((c) => c.type === "shortFormCase")
     expect(sf).toBeDefined()

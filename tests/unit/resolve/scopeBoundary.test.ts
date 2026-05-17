@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { detectParagraphBoundaries, isWithinBoundary } from "@/resolve/scopeBoundary"
 import type { Citation } from "@/types/citation"
+import { fakeConfidence } from "../../helpers/confidence"
 
 describe("detectParagraphBoundaries", () => {
   it("detects paragraphs separated by double newline", () => {
@@ -12,7 +13,7 @@ describe("detectParagraphBoundaries", () => {
         text: "citation1",
         span: { originalStart: 5, originalEnd: 10, cleanStart: 5, cleanEnd: 10 },
         matchedText: "cite1",
-        confidence: 1.0,
+        confidence: fakeConfidence(1.0),
         processTimeMs: 0,
         patternsChecked: 0,
         volume: 100,
@@ -24,7 +25,7 @@ describe("detectParagraphBoundaries", () => {
         text: "citation2",
         span: { originalStart: 25, originalEnd: 30, cleanStart: 25, cleanEnd: 30 },
         matchedText: "cite2",
-        confidence: 1.0,
+        confidence: fakeConfidence(1.0),
         processTimeMs: 0,
         patternsChecked: 0,
         volume: 200,
@@ -36,7 +37,7 @@ describe("detectParagraphBoundaries", () => {
         text: "citation3",
         span: { originalStart: 50, originalEnd: 55, cleanStart: 50, cleanEnd: 55 },
         matchedText: "cite3",
-        confidence: 1.0,
+        confidence: fakeConfidence(1.0),
         processTimeMs: 0,
         patternsChecked: 0,
         volume: 300,
@@ -61,7 +62,7 @@ describe("detectParagraphBoundaries", () => {
         text: "citation1",
         span: { originalStart: 5, originalEnd: 10, cleanStart: 5, cleanEnd: 10 },
         matchedText: "cite1",
-        confidence: 1.0,
+        confidence: fakeConfidence(1.0),
         processTimeMs: 0,
         patternsChecked: 0,
         volume: 100,
@@ -73,7 +74,7 @@ describe("detectParagraphBoundaries", () => {
         text: "citation2",
         span: { originalStart: 20, originalEnd: 25, cleanStart: 20, cleanEnd: 25 },
         matchedText: "cite2",
-        confidence: 1.0,
+        confidence: fakeConfidence(1.0),
         processTimeMs: 0,
         patternsChecked: 0,
         volume: 200,
@@ -97,7 +98,7 @@ describe("detectParagraphBoundaries", () => {
         text: "citation1",
         span: { originalStart: 5, originalEnd: 10, cleanStart: 5, cleanEnd: 10 },
         matchedText: "cite1",
-        confidence: 1.0,
+        confidence: fakeConfidence(1.0),
         processTimeMs: 0,
         patternsChecked: 0,
         volume: 100,
@@ -109,7 +110,7 @@ describe("detectParagraphBoundaries", () => {
         text: "citation2",
         span: { originalStart: 15, originalEnd: 20, cleanStart: 15, cleanEnd: 20 },
         matchedText: "cite2",
-        confidence: 1.0,
+        confidence: fakeConfidence(1.0),
         processTimeMs: 0,
         patternsChecked: 0,
         volume: 200,
@@ -130,9 +131,14 @@ describe("detectParagraphBoundaries — binary search edge cases", () => {
     return {
       type: "case",
       text: "cite",
-      span: { originalStart, originalEnd: originalStart + 4, cleanStart: originalStart, cleanEnd: originalStart + 4 },
+      span: {
+        originalStart,
+        originalEnd: originalStart + 4,
+        cleanStart: originalStart,
+        cleanEnd: originalStart + 4,
+      },
       matchedText: "cite",
-      confidence: 1.0,
+      confidence: fakeConfidence(1.0),
       processTimeMs: 0,
       patternsChecked: 0,
       volume: 100,

@@ -17,16 +17,14 @@ describe("issue #146: short-form false positives", () => {
       )
       const sf = cits.find((c) => c.type === "shortFormCase")
       expect(sf).toBeDefined()
-      expect(sf!.confidence).toBeLessThanOrEqual(0.1)
+      expect(sf!.confidence.score).toBeLessThanOrEqual(0.1)
     })
 
     it("flags numbered list item with 'at' in prose", () => {
-      const cits = extractCitations(
-        "10 Members of the Committee objected at 2 of the hearings.",
-      )
+      const cits = extractCitations("10 Members of the Committee objected at 2 of the hearings.")
       const sf = cits.find((c) => c.type === "shortFormCase")
       expect(sf).toBeDefined()
-      expect(sf!.confidence).toBeLessThanOrEqual(0.1)
+      expect(sf!.confidence.score).toBeLessThanOrEqual(0.1)
     })
 
     it("removes prose short-form FPs with filterFalsePositives: true", () => {
@@ -44,14 +42,14 @@ describe("issue #146: short-form false positives", () => {
       const cits = extractCitations("597 U.S., at 721")
       const sf = cits.find((c) => c.type === "shortFormCase")
       expect(sf).toBeDefined()
-      expect(sf!.confidence).toBeGreaterThanOrEqual(0.6)
+      expect(sf!.confidence.score).toBeGreaterThanOrEqual(0.6)
     })
 
     it("preserves real short-form with federal reporter", () => {
       const cits = extractCitations("500 F.3d at 130")
       const sf = cits.find((c) => c.type === "shortFormCase")
       expect(sf).toBeDefined()
-      expect(sf!.confidence).toBeGreaterThanOrEqual(0.6)
+      expect(sf!.confidence.score).toBeGreaterThanOrEqual(0.6)
     })
   })
 })

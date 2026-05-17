@@ -18,7 +18,7 @@ describe("extractAbbreviated", () => {
       const c = extractAbbreviated(makeToken("Fla. Stat. § 768.81"), map)
       expect(c.jurisdiction).toBe("FL")
       expect(c.section).toBe("768.81")
-      expect(c.confidence).toBeGreaterThanOrEqual(0.95)
+      expect(c.confidence.score).toBeGreaterThanOrEqual(0.95)
     })
     it("should extract F.S. 768.81", () => {
       const c = extractAbbreviated(makeToken("F.S. 768.81"), map)
@@ -163,13 +163,13 @@ describe("extractAbbreviated", () => {
   describe("unknown abbreviation", () => {
     it("should return low confidence for unrecognized abbreviation", () => {
       const c = extractAbbreviated(makeToken("Unknown 123.45"), map)
-      expect(c.confidence).toBeLessThanOrEqual(0.6)
+      expect(c.confidence.score).toBeLessThanOrEqual(0.6)
       expect(c.jurisdiction).toBeUndefined()
     })
 
     it("should return 0.6 confidence for unknown code with § symbol", () => {
       const c = extractAbbreviated(makeToken("Xyz. § 999"), map)
-      expect(c.confidence).toBe(0.6)
+      expect(c.confidence.score).toBe(0.6)
       expect(c.jurisdiction).toBeUndefined()
     })
   })
@@ -180,7 +180,7 @@ describe("extractAbbreviated", () => {
       const c = extractAbbreviated(makeToken("just text"), map)
       expect(c.type).toBe("statute")
       expect(c.section).toBe("")
-      expect(c.confidence).toBeLessThanOrEqual(0.4)
+      expect(c.confidence.score).toBeLessThanOrEqual(0.4)
     })
   })
 
@@ -247,9 +247,9 @@ describe("extractAbbreviated", () => {
     // The edition-parenthetical post-pass runs in `extractCitations`, not in
     // `extractAbbreviated`, so these tests use `extractCitations` end-to-end.
     it("`Ark. Code Ann. § 11-9-514(a)(1) (Repl. 1996)` → year + editionLabel", () => {
-      const cs = extractCitations(
-        "violates Ark. Code Ann. § 11-9-514(a)(1) (Repl. 1996).",
-      ).filter((x) => x.type === "statute")
+      const cs = extractCitations("violates Ark. Code Ann. § 11-9-514(a)(1) (Repl. 1996).").filter(
+        (x) => x.type === "statute",
+      )
       expect(cs).toHaveLength(1)
       if (cs[0]?.type === "statute") {
         expect(cs[0].code).toBe("Ark. Code Ann.")
@@ -262,9 +262,9 @@ describe("extractAbbreviated", () => {
     })
 
     it("`Arkansas Code Annotated § 16-89-111(e)(1) (1987)` (spelled-out form)", () => {
-      const cs = extractCitations(
-        "Per Arkansas Code Annotated § 16-89-111(e)(1) (1987).",
-      ).filter((x) => x.type === "statute")
+      const cs = extractCitations("Per Arkansas Code Annotated § 16-89-111(e)(1) (1987).").filter(
+        (x) => x.type === "statute",
+      )
       expect(cs).toHaveLength(1)
       if (cs[0]?.type === "statute") {
         expect(cs[0].code).toBe("Arkansas Code Annotated")
@@ -325,9 +325,7 @@ describe("extractAbbreviated", () => {
     })
 
     it("regression: bare `(1976)` year still works", () => {
-      const cs = extractCitations("42 U.S.C. § 1983 (1976).").filter(
-        (x) => x.type === "statute",
-      )
+      const cs = extractCitations("42 U.S.C. § 1983 (1976).").filter((x) => x.type === "statute")
       expect(cs).toHaveLength(1)
       if (cs[0]?.type === "statute") {
         expect(cs[0].year).toBe(1976)

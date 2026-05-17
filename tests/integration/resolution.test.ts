@@ -25,7 +25,7 @@ describe("Resolution Integration Tests", () => {
       expect(citations[1].type).toBe("id")
       expect(citations[1].resolution).toBeDefined()
       expect(citations[1].resolution?.resolvedTo).toBe(0) // Points to first citation
-      expect(citations[1].resolution?.confidence).toBeGreaterThan(0.9)
+      expect(citations[1].confidence.axes.resolution!).toBeGreaterThan(0.9)
       expect(citations[1].resolution?.failureReason).toBeUndefined()
     })
 
@@ -190,7 +190,7 @@ describe("Resolution Integration Tests", () => {
 
       expect(shortForm!.resolution?.resolvedTo).toBe(smithIndex)
       expect(id!.resolution?.resolvedTo).toBe(smithIndex)
-      expect(id!.resolution?.confidence).toBe(1.0)
+      expect(id!.confidence.axes.resolution!).toBe(1.0)
     })
 
     it("resolves Id. through preceding supra citation", () => {
@@ -347,7 +347,7 @@ Second paragraph: Id. at 125.`
       // Supra citation
       expect(citations[1].type).toBe("supra")
       expect(citations[1].resolution?.resolvedTo).toBe(0)
-      expect(citations[1].resolution?.confidence).toBeGreaterThan(0.8)
+      expect(citations[1].confidence.axes.resolution!).toBeGreaterThan(0.8)
     })
 
     it("resolves supra with fuzzy party name matching (default)", () => {
@@ -400,7 +400,7 @@ Second paragraph: Id. at 125.`
       // Short-form case citation
       expect(citations[1].type).toBe("shortFormCase")
       expect(citations[1].resolution?.resolvedTo).toBe(0)
-      expect(citations[1].resolution?.confidence).toBeGreaterThan(0.6)
+      expect(citations[1].confidence.axes.resolution!).toBeGreaterThan(0.6)
     })
 
     it("normalizes reporter abbreviations for flexible matching", () => {
@@ -585,7 +585,7 @@ Second paragraph: Id. at 125.`
       expect(citations).toHaveLength(2)
       expect(citations[1].type).toBe("supra")
       expect(citations[1].resolution?.resolvedTo).toBe(0)
-      expect(citations[1].resolution?.confidence).toBeGreaterThanOrEqual(0.95)
+      expect(citations[1].confidence.axes.resolution!).toBeGreaterThanOrEqual(0.95)
     })
 
     it("resolves supra using plaintiff name (exact match)", () => {
@@ -596,7 +596,7 @@ Second paragraph: Id. at 125.`
       expect(citations).toHaveLength(2)
       expect(citations[1].type).toBe("supra")
       expect(citations[1].resolution?.resolvedTo).toBe(0)
-      expect(citations[1].resolution?.confidence).toBeGreaterThanOrEqual(0.95)
+      expect(citations[1].confidence.axes.resolution!).toBeGreaterThanOrEqual(0.95)
     })
 
     it("resolves supra for government entity defendant", () => {
@@ -638,7 +638,7 @@ Second paragraph: Id. at 125.`
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
 
       expect(citations).toHaveLength(2)
-      expect(citations[1].resolution?.confidence).toBeGreaterThanOrEqual(0.95)
+      expect(citations[1].confidence.axes.resolution!).toBeGreaterThanOrEqual(0.95)
     })
 
     it("fuzzy match has lower confidence", () => {
@@ -648,8 +648,8 @@ Second paragraph: Id. at 125.`
 
       expect(citations).toHaveLength(2)
       expect(citations[1].resolution?.resolvedTo).toBe(0)
-      expect(citations[1].resolution?.confidence).toBeLessThan(1.0)
-      expect(citations[1].resolution?.confidence).toBeGreaterThanOrEqual(0.8)
+      expect(citations[1].confidence.axes.resolution!).toBeLessThan(1.0)
+      expect(citations[1].confidence.axes.resolution!).toBeGreaterThanOrEqual(0.8)
     })
 
     it("resolves supra to correct citation among multiple", () => {

@@ -28,7 +28,7 @@ describe("Other extraction functions", () => {
       expect(citation.journal).toBe("Harv. L. Rev.")
       expect(citation.abbreviation).toBe("Harv. L. Rev.")
       expect(citation.page).toBe(456)
-      expect(citation.confidence).toBe(0.6)
+      expect(citation.confidence.score).toBe(0.6)
     })
 
     it("should extract pincite from journal citation with page reference", () => {
@@ -86,7 +86,7 @@ describe("Other extraction functions", () => {
       expect(citation.database).toBe("WL")
       expect(citation.court).toBeUndefined()
       expect(citation.documentNumber).toBe("123456")
-      expect(citation.confidence).toBe(1.0)
+      expect(citation.confidence.score).toBe(1.0)
     })
 
     it("should extract LEXIS citation", () => {
@@ -118,7 +118,7 @@ describe("Other extraction functions", () => {
 
       const citation = extractNeutral(token, transformationMap)
 
-      expect(citation.confidence).toBe(1.0)
+      expect(citation.confidence.score).toBe(1.0)
     })
   })
 
@@ -137,7 +137,7 @@ describe("Other extraction functions", () => {
       expect(citation.type).toBe("publicLaw")
       expect(citation.congress).toBe(116)
       expect(citation.lawNumber).toBe(283)
-      expect(citation.confidence).toBe(0.9)
+      expect(citation.confidence.score).toBe(0.9)
     })
 
     it('should handle public law without "No."', () => {
@@ -166,7 +166,7 @@ describe("Other extraction functions", () => {
 
       const citation = extractPublicLaw(token, transformationMap)
 
-      expect(citation.confidence).toBe(0.9)
+      expect(citation.confidence.score).toBe(0.9)
     })
   })
 
@@ -185,7 +185,7 @@ describe("Other extraction functions", () => {
       expect(citation.type).toBe("federalRegister")
       expect(citation.volume).toBe(85)
       expect(citation.page).toBe(12345)
-      expect(citation.confidence).toBe(0.9)
+      expect(citation.confidence.score).toBe(0.9)
     })
 
     it("should extract year from Federal Register citation with date", () => {
@@ -229,7 +229,7 @@ describe("Other extraction functions", () => {
 
       const citation = extractFederalRegister(token, transformationMap)
 
-      expect(citation.confidence).toBe(0.9)
+      expect(citation.confidence.score).toBe(0.9)
     })
   })
 

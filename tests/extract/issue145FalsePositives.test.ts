@@ -15,6 +15,7 @@ import { applyFalsePositiveFilters } from "@/extract/filterFalsePositives"
 import { loadReporters } from "@/data/reporters"
 import type { FullCaseCitation } from "@/types/citation"
 import type { Span } from "@/types/span"
+import { fakeConfidence } from "../helpers/confidence"
 
 /** Helper to create a minimal case citation for unit tests */
 function makeCase(
@@ -27,7 +28,7 @@ function makeCase(
     type: "case",
     text: "",
     span,
-    confidence: 0.8,
+    confidence: fakeConfidence(0.8),
     matchedText: "",
     processTimeMs: 0,
     patternsChecked: 1,
@@ -51,14 +52,14 @@ describe("issue #145: false positive case citations", () => {
       const cite = cits[0]
       expect(cite).toBeDefined()
       // Should NOT get the +0.3 boost from "common reporter" match
-      expect(cite.confidence).toBeLessThanOrEqual(0.5)
+      expect(cite.confidence.score).toBeLessThanOrEqual(0.5)
     })
 
     it("does not boost confidence for 'R. Civ. P.' matching 'P.' substring", () => {
       const cits = extractCitations("15 R. Civ. P. 54")
       const cite = cits[0]
       expect(cite).toBeDefined()
-      expect(cite.confidence).toBeLessThanOrEqual(0.5)
+      expect(cite.confidence.score).toBeLessThanOrEqual(0.5)
     })
 
     it("still boosts confidence for actual common reporters", () => {
@@ -66,7 +67,7 @@ describe("issue #145: false positive case citations", () => {
       const cite = cits[0]
       expect(cite).toBeDefined()
       // Base 0.2 + common reporter 0.3 = 0.5
-      expect(cite.confidence).toBeGreaterThanOrEqual(0.5)
+      expect(cite.confidence.score).toBeGreaterThanOrEqual(0.5)
     })
 
     it("still boosts confidence for actual P. reporter", () => {
@@ -74,7 +75,7 @@ describe("issue #145: false positive case citations", () => {
       const cite = cits[0]
       expect(cite).toBeDefined()
       // Base 0.2 + common reporter 0.3 = 0.5
-      expect(cite.confidence).toBeGreaterThanOrEqual(0.5)
+      expect(cite.confidence.score).toBeGreaterThanOrEqual(0.5)
     })
   })
 
@@ -84,33 +85,33 @@ describe("issue #145: false positive case citations", () => {
       // Volume 3, reporter "Fed. R. Civ. P." — not a real reporter
       const cite = makeCase("Fed. R. Civ. P.", 3)
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
     })
 
     it("flags 'R. Civ. P.' as false positive despite containing periods", () => {
       const cite = makeCase("R. Civ. P.", 15)
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
     })
 
     it("flags small volume with unrecognized period-containing reporter", () => {
       // Volume 6, reporter "The FCC ... TCPA." is not a real reporter
       const cite = makeCase("The FCC is the implementing agency of TCPA.", 6)
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
     })
 
     it("does NOT flag small volume with real period-containing reporter", () => {
       // Volume 5, reporter "F.2d" — a real reporter
       const cite = makeCase("F.2d", 5)
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.8) // unchanged
+      expect(result[0].confidence.score).toBe(0.8) // unchanged
     })
 
     it("does NOT flag small volume with real P. reporter", () => {
       const cite = makeCase("P.", 3)
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.8) // unchanged
+      expect(result[0].confidence.score).toBe(0.8) // unchanged
     })
   })
 
@@ -119,25 +120,25 @@ describe("issue #145: false positive case citations", () => {
     it("flags 5-digit volume as false positive (zip code pattern)", () => {
       const cite = makeCase("Counsel for Appellants", 20006)
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
     })
 
     it("flags another 5-digit volume even with period-containing reporter", () => {
       const cite = makeCase("Cal. App.", 17120)
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
     })
 
     it("does NOT flag volume 999 (plausible)", () => {
       const cite = makeCase("F.3d", 999)
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.8)
+      expect(result[0].confidence.score).toBe(0.8)
     })
 
     it("does NOT flag volume 600 (common for F. Supp. 3d)", () => {
       const cite = makeCase("F. Supp. 3d", 600)
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.8)
+      expect(result[0].confidence.score).toBe(0.8)
     })
   })
 
@@ -146,25 +147,25 @@ describe("issue #145: false positive case citations", () => {
     it("flags '24-30706' as docket-number false positive", () => {
       const cite = makeCase("Cal. App.", "24-30706")
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
     })
 
     it("flags '23-12345' as docket-number false positive", () => {
       const cite = makeCase("Cal. App.", "23-12345")
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
     })
 
     it("does NOT flag real hyphenated volume '1984-1'", () => {
       const cite = makeCase("Cal. App.", "1984-1")
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.8)
+      expect(result[0].confidence.score).toBe(0.8)
     })
 
     it("does NOT flag real hyphenated volume '2004-2'", () => {
       const cite = makeCase("Cal. App.", "2004-2")
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.8)
+      expect(result[0].confidence.score).toBe(0.8)
     })
   })
 
@@ -172,12 +173,12 @@ describe("issue #145: false positive case citations", () => {
   describe("full pipeline integration", () => {
     it("flags zip code text as false positive", () => {
       const cits = extractCitations("Washington, DC 20006 Counsel for Appellants 20004")
-      expect(cits.every((c) => c.confidence <= 0.1)).toBe(true)
+      expect(cits.every((c) => c.confidence.score <= 0.1)).toBe(true)
     })
 
     it("flags footnote marker 'Fed. R. Civ. P.' as false positive", () => {
       const cits = extractCitations("3 Fed. R. Civ. P. 50")
-      expect(cits.every((c) => c.confidence <= 0.1)).toBe(true)
+      expect(cits.every((c) => c.confidence.score <= 0.1)).toBe(true)
     })
 
     it("removes footnote markers with filterFalsePositives: true", () => {
@@ -189,7 +190,7 @@ describe("issue #145: false positive case citations", () => {
       const text =
         "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020). Washington, DC 20006 Counsel 20004."
       const cits = extractCitations(text, { filterFalsePositives: true })
-      const real = cits.filter((c) => c.type === "case" && c.confidence > 0.1)
+      const real = cits.filter((c) => c.type === "case" && c.confidence.score > 0.1)
       expect(real.length).toBeGreaterThanOrEqual(1)
     })
   })

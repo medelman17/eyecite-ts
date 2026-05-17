@@ -150,12 +150,12 @@ describe("Expanded Corpus — 165 Real-World Samples", () => {
         const citations = extractCitations(sample.text)
         for (const c of citations) {
           expect(
-            c.confidence,
-            `Invalid confidence ${c.confidence} in "${sample.id}"`,
+            c.confidence.score,
+            `Invalid confidence ${c.confidence.score} in "${sample.id}"`,
           ).toBeGreaterThanOrEqual(0)
           expect(
-            c.confidence,
-            `Invalid confidence ${c.confidence} in "${sample.id}"`,
+            c.confidence.score,
+            `Invalid confidence ${c.confidence.score} in "${sample.id}"`,
           ).toBeLessThanOrEqual(1)
         }
       }

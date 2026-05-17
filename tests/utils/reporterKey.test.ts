@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
-import { toReporterKey, toReporterKeys } from "../../src/utils"
 import type { FullCaseCitation } from "../../src/types/citation"
+import { toReporterKey, toReporterKeys } from "../../src/utils"
+import { fakeConfidence } from "../helpers/confidence"
 
 /**
  * Helper to build a minimal FullCaseCitation for testing.
@@ -14,7 +15,7 @@ function makeCitation(
     text: "",
     matchedText: "",
     span: { cleanStart: 0, cleanEnd: 0, originalStart: 0, originalEnd: 0 },
-    confidence: 1,
+    confidence: fakeConfidence(1),
     processTimeMs: 0,
     patternsChecked: 0,
     ...overrides,

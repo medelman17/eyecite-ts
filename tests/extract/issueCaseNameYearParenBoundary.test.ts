@@ -2,14 +2,10 @@ import { describe, expect, it } from "vitest"
 import { extractCitations } from "@/extract"
 import type { FullCaseCitation } from "@/types/citation"
 
-const findByPage = (
-  text: string,
-  page: number | string,
-): FullCaseCitation | undefined => {
+const findByPage = (text: string, page: number | string): FullCaseCitation | undefined => {
   const cites = extractCitations(text)
   return cites.find(
-    (c): c is FullCaseCitation =>
-      c.type === "case" && String(c.page) === String(page),
+    (c): c is FullCaseCitation => c.type === "case" && String(c.page) === String(page),
   )
 }
 
@@ -26,8 +22,7 @@ describe("caseName backward search bounded by prior citation's (YYYY) paren", ()
     })
 
     it("second citation in `A, and B` pair — caseName isolated to B", () => {
-      const text =
-        "See Foo v. Bar, 100 F.2d 50 (1990), and Baz v. Qux, 200 F.3d 100 (2000)."
+      const text = "See Foo v. Bar, 100 F.2d 50 (1990), and Baz v. Qux, 200 F.3d 100 (2000)."
       const second = findByPage(text, 100)
       expect(second).toBeDefined()
       expect(second?.caseName).toBe("Baz v. Qux")
@@ -35,16 +30,14 @@ describe("caseName backward search bounded by prior citation's (YYYY) paren", ()
     })
 
     it("semicolon connector: `A; B` — second caseName isolated", () => {
-      const text =
-        "See Foo v. Bar, 100 F.2d 50 (1990); Baz v. Qux, 200 F.3d 100 (2000)."
+      const text = "See Foo v. Bar, 100 F.2d 50 (1990); Baz v. Qux, 200 F.3d 100 (2000)."
       const second = findByPage(text, 100)
       expect(second).toBeDefined()
       expect(second?.caseName).toBe("Baz v. Qux")
     })
 
     it("`see also` connector: `A; see also B` — second caseName isolated", () => {
-      const text =
-        "Foo v. Bar, 100 F.2d 50 (1990); see also Baz v. Qux, 200 F.3d 100 (2000)."
+      const text = "Foo v. Bar, 100 F.2d 50 (1990); see also Baz v. Qux, 200 F.3d 100 (2000)."
       const second = findByPage(text, 100)
       expect(second).toBeDefined()
       expect(second?.caseName).toBe("Baz v. Qux")
@@ -72,9 +65,7 @@ describe("caseName backward search bounded by prior citation's (YYYY) paren", ()
       const text =
         "In United Food & Commercial Workers Union v. Zuckerberg, 262 A.3d 1034 (Del. 2021), the rule applies."
       const first = findByPage(text, 1034)
-      expect(first?.caseName).toBe(
-        "United Food & Commercial Workers Union v. Zuckerberg",
-      )
+      expect(first?.caseName).toBe("United Food & Commercial Workers Union v. Zuckerberg")
     })
   })
 })

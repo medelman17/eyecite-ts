@@ -36,7 +36,13 @@ function matchesExpected(actual: Citation, expected: Record<string, unknown>): b
       continue
     }
 
-    const actualValue = (actual as Record<string, unknown>)[key]
+    let actualValue = (actual as Record<string, unknown>)[key]
+
+    // Compare on confidence.score when fixture stores a numeric confidence
+    // (the runtime shape is the full Confidence struct).
+    if (key === "confidence" && typeof expectedValue === "number") {
+      actualValue = (actualValue as { score?: number } | undefined)?.score
+    }
 
     // Deep equality for objects/arrays
     if (typeof expectedValue === "object" && expectedValue !== null) {
@@ -152,8 +158,8 @@ describe("Golden Corpus Extraction Accuracy", () => {
         const citations = extractCitations(sample.text)
 
         for (const citation of citations) {
-          expect(citation.confidence).toBeGreaterThanOrEqual(0)
-          expect(citation.confidence).toBeLessThanOrEqual(1)
+          expect(citation.confidence.score).toBeGreaterThanOrEqual(0)
+          expect(citation.confidence.score).toBeLessThanOrEqual(1)
         }
       }
     })

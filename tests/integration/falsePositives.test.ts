@@ -13,7 +13,7 @@ describe("false positive filtering (integration)", () => {
       const citations = extractCitations(text)
       expect(citations.length).toBeGreaterThanOrEqual(1)
 
-      const flagged = citations.find((c) => c.confidence <= 0.1)
+      const flagged = citations.find((c) => c.confidence.score <= 0.1)
       expect(flagged).toBeDefined()
       expect(flagged?.warnings).toBeDefined()
       expect(flagged?.warnings?.some((w) => w.message.includes("non-US"))).toBe(true)
@@ -22,7 +22,7 @@ describe("false positive filtering (integration)", () => {
     it("penalizes historical citation with old year", () => {
       const text = "3 Edw. 1, ch. 29 (1297)"
       const citations = extractCitations(text)
-      const flagged = citations.find((c) => c.confidence <= 0.1)
+      const flagged = citations.find((c) => c.confidence.score <= 0.1)
       expect(flagged).toBeDefined()
     })
 
@@ -31,7 +31,7 @@ describe("false positive filtering (integration)", () => {
       const citations = extractCitations(text)
       const caseCite = citations.find((c) => c.type === "case")
       expect(caseCite).toBeDefined()
-      expect(caseCite?.confidence).toBeGreaterThan(0.1)
+      expect(caseCite?.confidence.score).toBeGreaterThan(0.1)
     })
   })
 
@@ -58,7 +58,7 @@ describe("false positive filtering (integration)", () => {
       const text = "See Smith v. Jones, 500 F.2d 123 (9th Cir. 2020); 1986 I.C.J. 14 (June 27)."
       const citations = extractCitations(text, { filterFalsePositives: true })
       expect(citations.length).toBeGreaterThanOrEqual(1)
-      expect(citations.every((c) => c.confidence > 0.1)).toBe(true)
+      expect(citations.every((c) => c.confidence.score > 0.1)).toBe(true)
     })
   })
 

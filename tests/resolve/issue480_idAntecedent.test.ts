@@ -173,7 +173,7 @@ describe("Issue #480: Id./short-form antecedent resolution", () => {
       const henderson = citations.find((c) => c.type === "case" && c.volume === 28)!
       const id = citations.find((c) => c.type === "id")!
       expect(id.resolution?.resolvedTo).toBe(citations.indexOf(henderson))
-      expect(id.resolution?.confidence).toBeGreaterThanOrEqual(0.95)
+      expect(id.confidence.axes.resolution!).toBeGreaterThanOrEqual(0.95)
       const hasAmbiguity = id.resolution?.warnings?.some((w: string) => /ambig/i.test(w)) ?? false
       expect(hasAmbiguity).toBe(false)
     })
@@ -191,7 +191,7 @@ describe("Issue #480: Id./short-form antecedent resolution", () => {
       // Still resolved (we don't refuse to commit), but with lower confidence
       // and an ambiguity warning.
       expect(id.resolution?.resolvedTo).not.toBeUndefined()
-      expect(id.resolution?.confidence).toBeLessThan(1.0)
+      expect(id.confidence.axes.resolution!).toBeLessThan(1.0)
       const hasAmbiguity = id.resolution?.warnings?.some((w: string) => /ambig/i.test(w)) ?? false
       expect(hasAmbiguity).toBe(true)
     })

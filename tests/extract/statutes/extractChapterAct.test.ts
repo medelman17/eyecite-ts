@@ -19,7 +19,7 @@ describe("extractChapterAct", () => {
     expect(c.title).toBe(735)
     expect(c.code).toBe("5")
     expect(c.section).toBe("2-1001")
-    expect(c.confidence).toBe(0.95)
+    expect(c.confidence.score).toBe(0.95)
   })
 
   it("should extract 720 ILCS 5/12-3.05", () => {
@@ -47,7 +47,7 @@ describe("extractChapterAct", () => {
     expect(c.section).toBe("2-1001")
     expect(c.subsection).toBe("(a)")
     expect(c.pincite).toBe("(a)")
-    expect(c.confidence).toBe(1.0)
+    expect(c.confidence.score).toBe(1.0)
   })
 
   it("should detect et seq.", () => {
@@ -59,7 +59,7 @@ describe("extractChapterAct", () => {
   it("should handle fallback for malformed token", () => {
     const c = extractChapterAct(makeToken("malformed text"), map)
     expect(c.jurisdiction).toBeUndefined()
-    expect(c.confidence).toBeLessThanOrEqual(0.3)
+    expect(c.confidence.score).toBeLessThanOrEqual(0.3)
   })
 
   describe("end-to-end pipeline", () => {

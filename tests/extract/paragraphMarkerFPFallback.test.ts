@@ -19,7 +19,7 @@ describe("single-digit volume FP fix — fallback heuristic (no reporters-db)", 
         const cits = extractCitations(text)
         const caseCits = cits.filter((c) => c.type === "case")
         for (const c of caseCits) {
-          expect(c.confidence).toBeLessThanOrEqual(0.1)
+          expect(c.confidence.score).toBeLessThanOrEqual(0.1)
         }
       })
     }
@@ -30,14 +30,14 @@ describe("single-digit volume FP fix — fallback heuristic (no reporters-db)", 
       const cits = extractCitations("See 1 U.S. 1 (1791).")
       const caseCits = cits.filter((c) => c.type === "case")
       expect(caseCits.length).toBeGreaterThan(0)
-      expect(caseCits[0].confidence).toBeGreaterThanOrEqual(0.5)
+      expect(caseCits[0].confidence.score).toBeGreaterThanOrEqual(0.5)
     })
 
     it("preserves 500 F.2d 123 (multi-digit volume, unaffected)", () => {
       const cits = extractCitations("Smith v. Jones, 500 F.2d 123 (2d Cir. 1974).")
       const caseCits = cits.filter((c) => c.type === "case")
       expect(caseCits.length).toBeGreaterThan(0)
-      expect(caseCits[0].confidence).toBeGreaterThanOrEqual(0.5)
+      expect(caseCits[0].confidence.score).toBeGreaterThanOrEqual(0.5)
     })
   })
 })

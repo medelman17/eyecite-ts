@@ -13,13 +13,14 @@ import type {
   StatutesAtLargeCitation,
   SupraCitation,
 } from "../../src/types/citation"
+import { fakeConfidence } from "../helpers/confidence"
 
 /** Minimal CitationBase fields for test fixtures */
 const BASE = {
   text: "",
   matchedText: "",
   span: { cleanStart: 0, cleanEnd: 0, originalStart: 0, originalEnd: 0 },
-  confidence: 1,
+  confidence: fakeConfidence(1),
   processTimeMs: 0,
   patternsChecked: 0,
 } as const

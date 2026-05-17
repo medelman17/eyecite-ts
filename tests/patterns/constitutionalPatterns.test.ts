@@ -147,9 +147,7 @@ describe("constitutionalPatterns", () => {
     it("matches Art. with Roman numeral and section", () => {
       const matches = findMatches("under Art. I, §8, cl. 3 which grants")
       expect(matches.some((m) => m.patternId === "bare-article")).toBe(true)
-      expect(matches.find((m) => m.patternId === "bare-article")!.text).toBe(
-        "Art. I, §8, cl. 3",
-      )
+      expect(matches.find((m) => m.patternId === "bare-article")!.text).toBe("Art. I, §8, cl. 3")
     })
 
     it("matches Art. with section only", () => {

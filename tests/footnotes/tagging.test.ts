@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { tagCitationsWithFootnotes } from "@/footnotes/tagging"
 import type { FullCaseCitation } from "@/types/citation"
 import type { FootnoteMap } from "@/footnotes/types"
+import { fakeConfidence } from "../helpers/confidence"
 
 function mockCitation(cleanStart: number, cleanEnd: number): FullCaseCitation {
   return {
@@ -9,7 +10,7 @@ function mockCitation(cleanStart: number, cleanEnd: number): FullCaseCitation {
     text: "cite",
     span: { cleanStart, cleanEnd, originalStart: cleanStart, originalEnd: cleanEnd },
     matchedText: "cite",
-    confidence: 1.0,
+    confidence: fakeConfidence(1.0),
     processTimeMs: 0,
     patternsChecked: 0,
     volume: 100,

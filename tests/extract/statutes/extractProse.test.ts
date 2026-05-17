@@ -42,6 +42,6 @@ describe("extractProse", () => {
 
   it("should have high confidence for prose with title", () => {
     const c = extractProse(makeToken("section 1983 of title 42"), map)
-    expect(c.confidence).toBeGreaterThanOrEqual(0.85)
+    expect(c.confidence.score).toBeGreaterThanOrEqual(0.85)
   })
 })

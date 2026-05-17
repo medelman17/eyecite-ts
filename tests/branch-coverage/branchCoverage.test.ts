@@ -25,6 +25,7 @@ import type { Token } from "@/tokenize"
 import { tokenize } from "@/tokenize"
 import type { Citation, FullCaseCitation } from "@/types/citation"
 import type { TransformationMap } from "@/types/span"
+import { fakeConfidence } from "../helpers/confidence"
 import { createIdentityMap } from "../helpers/transformationMap"
 
 // Helper: empty TransformationMap (no entries → fallback branches)
@@ -191,7 +192,7 @@ describe("extractStatute.ts — throw branch and known code branch", () => {
     // Legacy path no longer throws — returns low-confidence fallback instead
     const citation = extractStatute(token, createIdentityMap())
     expect(citation.type).toBe("statute")
-    expect(citation.confidence).toBe(0.3)
+    expect(citation.confidence.score).toBe(0.3)
   })
 
   it("should have high confidence for usc patternId (routed to extractFederal)", () => {
@@ -203,7 +204,7 @@ describe("extractStatute.ts — throw branch and known code branch", () => {
     }
     const citation = extractStatute(token, createIdentityMap())
     // extractFederal returns 0.95 base + 0.05 for title = 1.0
-    expect(citation.confidence).toBeGreaterThanOrEqual(0.95)
+    expect(citation.confidence.score).toBeGreaterThanOrEqual(0.95)
   })
 
   it("should not boost confidence for unknown code", () => {
@@ -214,7 +215,7 @@ describe("extractStatute.ts — throw branch and known code branch", () => {
       patternId: "test",
     }
     const citation = extractStatute(token, createIdentityMap())
-    expect(citation.confidence).toBe(0.5) // base only
+    expect(citation.confidence.score).toBe(0.5) // base only
   })
 
   it("should extract statute without title number", () => {
@@ -372,7 +373,7 @@ describe("validation.ts — ambiguous reporter and degraded mode", () => {
         page: 200,
         text: `100 ${ambiguousAbbr} 200`,
         matchedText: `100 ${ambiguousAbbr} 200`,
-        confidence: 0.8,
+        confidence: fakeConfidence(0.8),
         span: { cleanStart: 0, cleanEnd: 20, originalStart: 0, originalEnd: 20 },
         processTimeMs: 0,
         patternsChecked: 1,
@@ -382,7 +383,7 @@ describe("validation.ts — ambiguous reporter and degraded mode", () => {
 
       // Should get ambiguity penalty and warning
       const expectedPenalty = -0.1 * (ambiguousMatches - 1)
-      expect(validated.confidence).toBeCloseTo(Math.max(0, 0.8 + expectedPenalty), 2)
+      expect(validated.confidence.score).toBeCloseTo(Math.max(0, 0.8 + expectedPenalty), 2)
       expect(validated.reporterMatches).toBeDefined()
       expect(validated.reporterMatches?.length).toBe(ambiguousMatches)
       expect(validated.warnings).toBeDefined()
@@ -399,7 +400,7 @@ describe("validation.ts — ambiguous reporter and degraded mode", () => {
       page: 200,
       text: "100 200",
       matchedText: "100 200",
-      confidence: 0.8,
+      confidence: fakeConfidence(0.8),
       span: { cleanStart: 0, cleanEnd: 7, originalStart: 0, originalEnd: 7 },
       processTimeMs: 0,
       patternsChecked: 1,
@@ -409,7 +410,7 @@ describe("validation.ts — ambiguous reporter and degraded mode", () => {
     const validated = await validateAndScore(citation, db)
 
     // Empty reporter string is falsy → falls through the 'reporter' in citation check
-    expect(validated.confidence).toBe(0.8) // unchanged
+    expect(validated.confidence.score).toBe(0.8) // unchanged
   })
 })
 
@@ -553,7 +554,7 @@ describe("annotate.ts — callback surrounding text boundary", () => {
       text: "500 F.2d 123",
       span: { cleanStart: 0, cleanEnd: 12, originalStart: 0, originalEnd: 12 },
       matchedText: "500 F.2d 123",
-      confidence: 0.9,
+      confidence: fakeConfidence(0.9),
       processTimeMs: 0,
       patternsChecked: 1,
       volume: 500,
@@ -580,7 +581,7 @@ describe("annotate.ts — callback surrounding text boundary", () => {
       text: "500 F.2d 123",
       span: { cleanStart: 7, cleanEnd: 19, originalStart: 7, originalEnd: 19 },
       matchedText: "500 F.2d 123",
-      confidence: 0.9,
+      confidence: fakeConfidence(0.9),
       processTimeMs: 0,
       patternsChecked: 1,
       volume: 500,
@@ -607,7 +608,7 @@ describe("annotate.ts — callback surrounding text boundary", () => {
       text: "500 F.2d 123",
       span: { cleanStart: 4, cleanEnd: 16, originalStart: 10, originalEnd: 22 },
       matchedText: "500 F.2d 123",
-      confidence: 0.9,
+      confidence: fakeConfidence(0.9),
       processTimeMs: 0,
       patternsChecked: 1,
       volume: 500,

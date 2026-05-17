@@ -20,7 +20,7 @@ describe("extractConstitutional", () => {
       expect(citation.amendment).toBeUndefined()
       expect(citation.section).toBe("2")
       expect(citation.clause).toBeUndefined()
-      expect(citation.confidence).toBe(0.95)
+      expect(citation.confidence.score).toBe(0.95)
     })
 
     it("extracts article with section and clause", () => {
@@ -48,7 +48,7 @@ describe("extractConstitutional", () => {
 
       expect(citation.article).toBe(3)
       expect(citation.section).toBeUndefined()
-      expect(citation.confidence).toBe(0.9)
+      expect(citation.confidence.score).toBe(0.9)
     })
   })
 
@@ -79,7 +79,7 @@ describe("extractConstitutional", () => {
 
       expect(citation.amendment).toBe(1)
       expect(citation.section).toBeUndefined()
-      expect(citation.confidence).toBe(0.9)
+      expect(citation.confidence.score).toBe(0.9)
     })
 
     it("extracts amendment XXVII (highest)", () => {
@@ -161,7 +161,7 @@ describe("extractConstitutional", () => {
       expect(citation.jurisdiction).toBe("CA")
       expect(citation.article).toBe(1)
       expect(citation.section).toBe("7")
-      expect(citation.confidence).toBe(0.95)
+      expect(citation.confidence.score).toBe(0.95)
     })
 
     it("extracts New York constitution", () => {
@@ -269,7 +269,7 @@ describe("extractConstitutional", () => {
       expect(citation.article).toBe(1)
       expect(citation.section).toBe("8")
       expect(citation.clause).toBe(3)
-      expect(citation.confidence).toBe(0.7)
+      expect(citation.confidence.score).toBe(0.7)
     })
   })
 
@@ -287,7 +287,7 @@ describe("extractConstitutional", () => {
       expect(citation.article).toBe(1)
       expect(citation.section).toBe("8")
       expect(citation.clause).toBe(3)
-      expect(citation.confidence).toBe(0.5)
+      expect(citation.confidence.score).toBe(0.5)
     })
   })
 

@@ -180,7 +180,7 @@ describe("Phase 3 Integration Tests", () => {
     expect(caseCitation).toHaveProperty("reporterMatch")
 
     // Confidence should be adjusted (either boosted or penalized)
-    expect(caseCitation?.confidence).toBeGreaterThan(0)
-    expect(caseCitation?.confidence).toBeLessThanOrEqual(1.0)
+    expect(caseCitation?.confidence.score).toBeGreaterThan(0)
+    expect(caseCitation?.confidence.score).toBeLessThanOrEqual(1.0)
   })
 })

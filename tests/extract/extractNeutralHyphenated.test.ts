@@ -144,9 +144,7 @@ describe("hyphenated neutral citations (#233)", () => {
 
   describe("database identifier routing + trailing court paren (#294)", () => {
     it("routes WL to database and recovers court+date from trailing paren", () => {
-      const cits = extractCitations(
-        "See Smith, 2001 WL 1077846 (N.D. Cal. Sept. 4, 2001).",
-      )
+      const cits = extractCitations("See Smith, 2001 WL 1077846 (N.D. Cal. Sept. 4, 2001).")
       const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
       expect(neutrals).toHaveLength(1)
       expect(neutrals[0].database).toBe("WL")

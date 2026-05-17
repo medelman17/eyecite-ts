@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { annotate } from "@/annotate/annotate"
 import type { Citation } from "@/types/citation"
 import type { Span } from "@/types/span"
+import { fakeConfidence } from "../helpers/confidence"
 
 /**
  * Helper to create a basic case citation for testing.
@@ -19,7 +20,7 @@ function createCaseCitation(start: number, end: number, text: string): Citation 
     text,
     span,
     matchedText: text,
-    confidence: 0.9,
+    confidence: fakeConfidence(0.9),
     processTimeMs: 0,
     patternsChecked: 1,
     volume: 500,
@@ -221,7 +222,7 @@ describe("annotate", () => {
           originalEnd: 22,
         },
         matchedText: "500 F.2d 123",
-        confidence: 0.9,
+        confidence: fakeConfidence(0.9),
         processTimeMs: 0,
         patternsChecked: 1,
         volume: 500,
@@ -282,7 +283,7 @@ describe("annotate", () => {
           originalEnd: 51,
         },
         matchedText: "41011 N. H. 459",
-        confidence: 0.8,
+        confidence: fakeConfidence(0.8),
         processTimeMs: 0,
         patternsChecked: 1,
         volume: 41011,
@@ -315,7 +316,7 @@ describe("annotate", () => {
           originalEnd: 16, // Inside the <em> opening tag
         },
         matchedText: "500 F.2d 123",
-        confidence: 0.8,
+        confidence: fakeConfidence(0.8),
         processTimeMs: 0,
         patternsChecked: 1,
         volume: 500,
@@ -359,7 +360,7 @@ describe("annotate", () => {
           originalEnd: 31, // Still inside <div> tag attribute
         },
         matchedText: "500 F.2d 123",
-        confidence: 0.8,
+        confidence: fakeConfidence(0.8),
         processTimeMs: 0,
         patternsChecked: 1,
         volume: 500,
@@ -399,7 +400,7 @@ describe("annotate", () => {
           originalEnd: 4, // Same position — after snap both go to tag boundaries
         },
         matchedText: "500 F.2d 123",
-        confidence: 0.8,
+        confidence: fakeConfidence(0.8),
         processTimeMs: 0,
         patternsChecked: 1,
         volume: 500,
@@ -432,7 +433,7 @@ describe("annotate", () => {
           originalEnd: 3, // Inside <span> opening (pos 3 = 's')
         },
         matchedText: "x",
-        confidence: 0.5,
+        confidence: fakeConfidence(0.5),
         processTimeMs: 0,
         patternsChecked: 1,
         volume: 1,
@@ -463,7 +464,7 @@ describe("annotate", () => {
           originalEnd: 24,
         },
         matchedText: "500 F.2d 123",
-        confidence: 0.8,
+        confidence: fakeConfidence(0.8),
         processTimeMs: 0,
         patternsChecked: 1,
         volume: 500,
@@ -543,7 +544,7 @@ describe("annotate", () => {
           originalEnd: 32,
         },
         matchedText: "500 F.2d 123",
-        confidence: 0.9,
+        confidence: fakeConfidence(0.9),
         processTimeMs: 0,
         patternsChecked: 1,
         volume: 500,
@@ -597,7 +598,7 @@ describe("annotate", () => {
           originalEnd: 32,
         },
         matchedText: "500 F.2d 123",
-        confidence: 0.9,
+        confidence: fakeConfidence(0.9),
         processTimeMs: 0,
         patternsChecked: 1,
         volume: 500,
@@ -634,7 +635,7 @@ describe("annotate", () => {
           originalEnd: 32,
         },
         matchedText: "500 F.2d 123",
-        confidence: 0.9,
+        confidence: fakeConfidence(0.9),
         processTimeMs: 0,
         patternsChecked: 1,
         volume: 500,

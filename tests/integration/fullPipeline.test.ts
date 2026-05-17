@@ -182,8 +182,8 @@ describe("Full Pipeline Integration Tests", () => {
 
       // Verify no false positives (all citations should be valid)
       for (const citation of citations) {
-        expect(citation.confidence).toBeGreaterThan(0)
-        expect(citation.confidence).toBeLessThanOrEqual(1)
+        expect(citation.confidence.score).toBeGreaterThan(0)
+        expect(citation.confidence.score).toBeLessThanOrEqual(1)
 
         // Should have valid positions
         expect(citation.span.originalStart).toBeGreaterThanOrEqual(0)
@@ -235,7 +235,7 @@ describe("Full Pipeline Integration Tests", () => {
         expect(neutral.database).toBe("WL")
         expect(neutral.court).toBeUndefined()
         expect(neutral.documentNumber).toBe("123456")
-        expect(neutral.confidence).toBe(1.0) // Neutral citations have max confidence
+        expect(neutral.confidence.score).toBe(1.0) // Neutral citations have max confidence
       }
     })
 
@@ -730,17 +730,13 @@ describe("Full Pipeline Integration Tests", () => {
       const html =
         "<p>" +
         Array(50)
-          .fill(
-            '<em>See</em> <span class="citation">500 F.2d 123</span> (9th Cir. 2020); ',
-          )
+          .fill('<em>See</em> <span class="citation">500 F.2d 123</span> (9th Cir. 2020); ')
           .join("") +
         "</p>"
 
       const citations = extractCitations(html)
 
-      const zeroLength = citations.filter(
-        (c) => c.span.originalStart === c.span.originalEnd,
-      )
+      const zeroLength = citations.filter((c) => c.span.originalStart === c.span.originalEnd)
       expect(zeroLength).toHaveLength(0)
     })
   })
@@ -780,9 +776,7 @@ describe("Full Pipeline Integration Tests", () => {
 
       const citations = extractCitations(text, { resolve: true })
 
-      const zeroLength = citations.filter(
-        (c) => c.span.originalStart === c.span.originalEnd,
-      )
+      const zeroLength = citations.filter((c) => c.span.originalStart === c.span.originalEnd)
       expect(zeroLength).toHaveLength(0)
       expect(citations.length).toBeGreaterThanOrEqual(25)
     })

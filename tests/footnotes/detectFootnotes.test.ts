@@ -7,8 +7,7 @@ describe("detectFootnotes", () => {
   })
 
   it("uses HTML detection when input contains HTML tags", () => {
-    const html =
-      '<p>Body text.</p><footnote label="1">See Smith v. Jones, 500 F.2d 123.</footnote>'
+    const html = '<p>Body text.</p><footnote label="1">See Smith v. Jones, 500 F.2d 123.</footnote>'
     const zones = detectFootnotes(html)
     expect(zones).toHaveLength(1)
     expect(zones[0].footnoteNumber).toBe(1)
@@ -22,12 +21,7 @@ describe("detectFootnotes", () => {
   })
 
   it("falls back to plain-text when HTML has no footnote elements", () => {
-    const text = [
-      "<p>Body text.</p>",
-      "",
-      "----------",
-      "1. See 500 F.2d 123.",
-    ].join("\n")
+    const text = ["<p>Body text.</p>", "", "----------", "1. See 500 F.2d 123."].join("\n")
     const zones = detectFootnotes(text)
     expect(zones).toHaveLength(1)
     expect(zones[0].footnoteNumber).toBe(1)

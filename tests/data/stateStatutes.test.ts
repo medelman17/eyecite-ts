@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { escapeForRegex, buildAbbreviatedCodeRegex, stateStatuteEntries } from "@/data/stateStatutes"
+import {
+  escapeForRegex,
+  buildAbbreviatedCodeRegex,
+  stateStatuteEntries,
+} from "@/data/stateStatutes"
 import type { StateStatuteEntry } from "@/data/stateStatutes"
 
 describe("escapeForRegex", () => {

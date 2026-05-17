@@ -27,8 +27,7 @@ describe("issue #439 — bare-party shortform back-reference", () => {
     })
 
     it("inherits volume / reporter / page from anchor citation", () => {
-      const text =
-        "Smith v. Jones, 500 F.2d 100, 105 (9th Cir. 1990). Smith, at 110, held that..."
+      const text = "Smith v. Jones, 500 F.2d 100, 105 (9th Cir. 1990). Smith, at 110, held that..."
       const cites = extractCitations(text)
       const short = shortForms(cites)
       expect(short).toHaveLength(1)
@@ -122,8 +121,7 @@ describe("issue #439 — bare-party shortform back-reference", () => {
 
   describe("multiple references", () => {
     it("multiple bare-refs to same anchor", () => {
-      const text =
-        "Smith v. Jones, 100 F.2d 50 (1990). Smith, at 12. Later, Smith, at 14."
+      const text = "Smith v. Jones, 100 F.2d 50 (1990). Smith, at 12. Later, Smith, at 14."
       const cites = extractCitations(text)
       const short = shortForms(cites)
       expect(short).toHaveLength(2)
@@ -175,8 +173,7 @@ describe("issue #439 — bare-party shortform back-reference", () => {
     })
 
     it("originalStart / originalEnd map past stripped HTML tags", () => {
-      const text =
-        "Smith v. Jones, 100 F.2d 50 (1990). <em>Smith</em>, at 12, held."
+      const text = "Smith v. Jones, 100 F.2d 50 (1990). <em>Smith</em>, at 12, held."
       const cites = extractCitations(text, { cleaners: [stripHtmlTags] })
       const short = shortForms(cites)
       expect(short).toHaveLength(1)
@@ -250,8 +247,8 @@ describe("issue #439 — bare-party shortform back-reference", () => {
     it("`Smith, supra, at 12` is supra, not bare-party (no FP)", () => {
       const text = "Smith v. Jones, 100 F.2d 50 (1990). See Smith, supra, at 12."
       const cites = extractCitations(text)
-      const bareParty = shortForms(cites).filter(
-        (c) => /^[A-Z][\w']*, at \d+$/.test(c.matchedText.trim()),
+      const bareParty = shortForms(cites).filter((c) =>
+        /^[A-Z][\w']*, at \d+$/.test(c.matchedText.trim()),
       )
       // `Smith, supra, at 12` already routes to supra extraction — our bare-
       // party pass must NOT also emit a duplicate `Smith, at 12` citation.
@@ -279,12 +276,9 @@ describe("issue #439 — bare-party shortform back-reference", () => {
     })
 
     it("blocked anchor `United States, at 5` does not back-reference", () => {
-      const text =
-        "United States v. Smith, 100 F.2d 50 (1990). United States, at 5, argued."
+      const text = "United States v. Smith, 100 F.2d 50 (1990). United States, at 5, argued."
       const cites = extractCitations(text)
-      const short = shortForms(cites).filter(
-        (c) => c.partyName?.toLowerCase() === "united states",
-      )
+      const short = shortForms(cites).filter((c) => c.partyName?.toLowerCase() === "united states")
       expect(short).toHaveLength(0)
     })
   })
@@ -308,8 +302,7 @@ describe("issue #439 — bare-party shortform back-reference", () => {
     })
 
     it("`Hutchison, at 887-88`", () => {
-      const text =
-        "Hutchison v. Doe, 600 F.3d 880 (5th Cir. 2010). Hutchison, at 887-88, held."
+      const text = "Hutchison v. Doe, 600 F.3d 880 (5th Cir. 2010). Hutchison, at 887-88, held."
       const cites = extractCitations(text)
       const short = shortForms(cites)
       expect(short).toHaveLength(1)
@@ -345,8 +338,8 @@ describe("issue #439 — bare-party shortform back-reference", () => {
       const text = "Smith v. Jones, 100 F.2d 50 (1990). Smith, at 12."
       const cites = extractCitations(text)
       const short = shortForms(cites)
-      expect(short[0].confidence).toBeGreaterThan(0)
-      expect(short[0].confidence).toBeLessThanOrEqual(1)
+      expect(short[0].confidence.score).toBeGreaterThan(0)
+      expect(short[0].confidence.score).toBeLessThanOrEqual(1)
     })
 
     it("matchedText equals text and contains both party name and pincite", () => {
@@ -378,8 +371,7 @@ describe("issue #439 — bare-party shortform back-reference", () => {
     })
 
     it("ref inside a parenthetical phrase", () => {
-      const text =
-        "See Smith v. Jones, 100 F.2d 50 (1990) (overruling, in part, Smith, at 12)."
+      const text = "See Smith v. Jones, 100 F.2d 50 (1990) (overruling, in part, Smith, at 12)."
       const cites = extractCitations(text)
       const short = shortForms(cites)
       expect(short).toHaveLength(1)
@@ -401,8 +393,7 @@ describe("issue #439 — bare-party shortform back-reference", () => {
       // full case citation: 200 F.3d 100. Both should be extracted as 'case'.
       // Our pass should not also emit a bare-party citation overlapping the
       // second cite.
-      const text =
-        "Smith v. Jones, 100 F.2d 50 (1990). Then Smith v. Doe, 200 F.3d 100 (2000)."
+      const text = "Smith v. Jones, 100 F.2d 50 (1990). Then Smith v. Doe, 200 F.3d 100 (2000)."
       const cites = extractCitations(text)
       const short = shortForms(cites)
       // Neither full cite is bare-party — both have "v." structure.
@@ -421,9 +412,7 @@ describe("issue #439 — bare-party shortform back-reference", () => {
     it("bare-party shortform has resolution metadata when `resolve: true`", () => {
       const text = "Smith v. Jones, 100 F.2d 50 (1990). Smith, at 12, held."
       const resolved = extractCitations(text, { resolve: true })
-      const bareShort = resolved.find(
-        (r) => r.type === "shortFormCase" && r.partyName === "Smith",
-      )
+      const bareShort = resolved.find((r) => r.type === "shortFormCase" && r.partyName === "Smith")
       expect(bareShort).toBeDefined()
       if (bareShort && bareShort.type === "shortFormCase") {
         // Resolver attaches a `resolution` field on short-form citations.
@@ -494,8 +483,7 @@ describe("issue #439 — bare-party shortform back-reference", () => {
     })
 
     it("Massachusetts back-ref", () => {
-      const text =
-        "Athas v. Commonwealth, 200 Mass. 78 (1990). Athas, at 79, held that..."
+      const text = "Athas v. Commonwealth, 200 Mass. 78 (1990). Athas, at 79, held that..."
       const cites = extractCitations(text)
       const short = shortForms(cites)
       expect(short.length).toBeGreaterThanOrEqual(1)
@@ -518,8 +506,7 @@ describe("issue #439 — bare-party shortform back-reference", () => {
       // Documents the current (lenient) behavior. The pincite-then-letter
       // pattern is rare in real opinions but possible. Reviewers can tighten
       // later if FP rate climbs. Asserted as a regression sentinel.
-      const text =
-        "Smith v. Jones, 100 F.2d 50 (1990). Smith, at 5 we have a different rule."
+      const text = "Smith v. Jones, 100 F.2d 50 (1990). Smith, at 5 we have a different rule."
       const cites = extractCitations(text)
       const short = shortForms(cites)
       // Either 0 or 1 is acceptable — primary check is no exceptions thrown.
@@ -528,8 +515,7 @@ describe("issue #439 — bare-party shortform back-reference", () => {
     })
 
     it("`Smith, at the start` — non-numeric pincite rejected", () => {
-      const text =
-        "Smith v. Jones, 100 F.2d 50 (1990). Smith, at the start of trial..."
+      const text = "Smith v. Jones, 100 F.2d 50 (1990). Smith, at the start of trial..."
       const cites = extractCitations(text)
       const short = shortForms(cites)
       expect(short).toHaveLength(0)
@@ -558,8 +544,7 @@ describe("issue #439 — bare-party shortform back-reference", () => {
     })
 
     it("multi-word plaintiff with p. prefix", () => {
-      const text =
-        "Woodland Hills v. City, 23 Cal. 3d 917 (1979). Woodland Hills, at p. 947."
+      const text = "Woodland Hills v. City, 23 Cal. 3d 917 (1979). Woodland Hills, at p. 947."
       const cites = extractCitations(text)
       const short = shortForms(cites)
       expect(short).toHaveLength(1)
@@ -567,8 +552,7 @@ describe("issue #439 — bare-party shortform back-reference", () => {
     })
 
     it("`Lexin, at pp. 1085-1092` with pp. (plural) prefix and range", () => {
-      const text =
-        "Lexin v. Superior Court, 47 Cal. 4th 1050 (2010). Lexin, at pp. 1085-1092."
+      const text = "Lexin v. Superior Court, 47 Cal. 4th 1050 (2010). Lexin, at pp. 1085-1092."
       const cites = extractCitations(text)
       const short = shortForms(cites)
       expect(short).toHaveLength(1)

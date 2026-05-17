@@ -156,7 +156,7 @@ describe("extractStatute", () => {
 
         const citation = extractStatute(token, transformationMap)
 
-        expect(citation.confidence).toBeGreaterThanOrEqual(0.8)
+        expect(citation.confidence.score).toBeGreaterThanOrEqual(0.8)
       }
     })
 
@@ -171,7 +171,7 @@ describe("extractStatute", () => {
 
       const citation = extractStatute(token, transformationMap)
 
-      expect(citation.confidence).toBe(0.5)
+      expect(citation.confidence.score).toBe(0.5)
     })
   })
 
@@ -320,7 +320,9 @@ describe("extractStatute", () => {
     })
 
     it("extracts `Code Civ. Proc., § 1021.5` (comma + leading 'Code')", () => {
-      const cits = extractCitations("Plaintiff seeks attorney fees under Code Civ. Proc., § 1021.5.")
+      const cits = extractCitations(
+        "Plaintiff seeks attorney fees under Code Civ. Proc., § 1021.5.",
+      )
       expect(cits).toHaveLength(1)
       if (cits[0].type === "statute") {
         expect(cits[0].code).toBe("Code Civ. Proc.")
@@ -775,9 +777,7 @@ describe("extractStatute", () => {
         expect(cites[0].section).toBe("549")
         // matchedText must equal the slice from span coordinates
         const span = cites[0].span
-        expect(text.slice(span.originalStart, span.originalEnd)).toBe(
-          cites[0].matchedText,
-        )
+        expect(text.slice(span.originalStart, span.originalEnd)).toBe(cites[0].matchedText)
       }
     })
 
@@ -814,9 +814,9 @@ describe("extractStatute", () => {
 
   describe("Illinois Revised Statutes (pre-1993) (#330)", () => {
     it("extracts `Ill. Rev. Stat. 1985, ch. 40, par. 504(a)`", () => {
-      const cites = extractCitations(
-        "violates Ill. Rev. Stat. 1985, ch. 40, par. 504(a).",
-      ).filter((c) => c.type === "statute")
+      const cites = extractCitations("violates Ill. Rev. Stat. 1985, ch. 40, par. 504(a).").filter(
+        (c) => c.type === "statute",
+      )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("Ill. Rev. Stat.")
@@ -866,9 +866,9 @@ describe("extractStatute", () => {
     })
 
     it("extracts with stray comma + `et seq.`", () => {
-      const cites = extractCitations(
-        "Ill.Rev.Stat., 1983, Ch. 37, par. 439.1 et seq.",
-      ).filter((c) => c.type === "statute")
+      const cites = extractCitations("Ill.Rev.Stat., 1983, Ch. 37, par. 439.1 et seq.").filter(
+        (c) => c.type === "statute",
+      )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].title).toBe(37)
@@ -923,9 +923,7 @@ describe("extractStatute", () => {
     })
 
     it("preserves subsection while stripping sentence period: `750 ILCS 36/305(b).`", () => {
-      const cites = extractCitations("See 750 ILCS 36/305(b).").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See 750 ILCS 36/305(b).").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].title).toBe(750)
@@ -975,12 +973,12 @@ describe("extractStatute", () => {
     })
 
     it("extracts equivalent output for em-dash and hyphen variants", () => {
-      const emDash = extractCitations(
-        "Ill. Rev. Stat. 1983, ch. 110, par. 13—214(a).",
-      ).filter((c) => c.type === "statute")
-      const hyphen = extractCitations(
-        "Ill. Rev. Stat. 1983, ch. 110, par. 13-214(a).",
-      ).filter((c) => c.type === "statute")
+      const emDash = extractCitations("Ill. Rev. Stat. 1983, ch. 110, par. 13—214(a).").filter(
+        (c) => c.type === "statute",
+      )
+      const hyphen = extractCitations("Ill. Rev. Stat. 1983, ch. 110, par. 13-214(a).").filter(
+        (c) => c.type === "statute",
+      )
       expect(emDash).toHaveLength(1)
       expect(hyphen).toHaveLength(1)
       if (emDash[0]?.type === "statute" && hyphen[0]?.type === "statute") {
@@ -1113,9 +1111,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: modern `Ala. Code § 6-2-39` continues to route through the abbreviated extractor", () => {
-      const cites = extractCitations("Ala. Code § 6-2-39.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("Ala. Code § 6-2-39.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].section).toBe("6-2-39")
@@ -1174,9 +1170,9 @@ describe("extractStatute", () => {
     })
 
     it("prose form with subsection: `Section 82-4-8(8)(f), Colo. Rev. Stat. 1963`", () => {
-      const cites = extractCitations(
-        "Per Section 82-4-8(8)(f), Colo. Rev. Stat. 1963.",
-      ).filter((c) => c.type === "statute")
+      const cites = extractCitations("Per Section 82-4-8(8)(f), Colo. Rev. Stat. 1963.").filter(
+        (c) => c.type === "statute",
+      )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("Colo. Rev. Stat. 1963")
@@ -1209,9 +1205,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: federal `42 U.S.C. § 1983 (1976)` unaffected", () => {
-      const cites = extractCitations("42 U.S.C. § 1983 (1976).").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("42 U.S.C. § 1983 (1976).").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].section).toBe("1983")
@@ -1222,9 +1216,9 @@ describe("extractStatute", () => {
 
   describe("Florida postfix + spelled-out-prefix statute forms (#356)", () => {
     it("postfix word-section: `section 812.035(7), Florida Statutes`", () => {
-      const cites = extractCitations(
-        "violates section 812.035(7), Florida Statutes.",
-      ).filter((c) => c.type === "statute")
+      const cites = extractCitations("violates section 812.035(7), Florida Statutes.").filter(
+        (c) => c.type === "statute",
+      )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("Fla. Stat.")
@@ -1281,9 +1275,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: canonical Bluebook `Fla. Stat. § 812.035(7)` unaffected", () => {
-      const cites = extractCitations("Fla. Stat. § 812.035(7).").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("Fla. Stat. § 812.035(7).").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("Fla. Stat.")
@@ -1292,9 +1284,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: `F.S. § 812.035` abbreviated form unaffected", () => {
-      const cites = extractCitations("F.S. § 812.035 governs.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("F.S. § 812.035 governs.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("FL")
@@ -1304,9 +1294,7 @@ describe("extractStatute", () => {
 
   describe("Revised Laws of Hawaii (pre-1955) (#359)", () => {
     it("extracts `RLH 1935 § 2545`", () => {
-      const cites = extractCitations("Per RLH 1935 § 2545.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("Per RLH 1935 § 2545.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("RLH")
@@ -1317,9 +1305,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `RLH 1945 § 7186`", () => {
-      const cites = extractCitations("Per RLH 1945 § 7186.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("Per RLH 1945 § 7186.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("RLH")
@@ -1329,9 +1315,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts hyphenated section: `RLH 1955 § 100-1`", () => {
-      const cites = extractCitations("Per RLH 1955 § 100-1.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("Per RLH 1955 § 100-1.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].section).toBe("100-1")
@@ -1340,9 +1324,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: modern `HRS § 658-8 (1976)` continues to work", () => {
-      const cites = extractCitations("HRS § 658-8 (1976).").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("HRS § 658-8 (1976).").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("HRS")
@@ -1404,9 +1386,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `I.C. § 61-623` (canonical dotted abbreviation)", () => {
-      const cites = extractCitations("See I.C. § 61-623.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See I.C. § 61-623.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("I.C.")
@@ -1416,9 +1396,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `I. C. § 61-623` (inter-letter spaced abbreviation)", () => {
-      const cites = extractCitations("See I. C. § 61-623.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See I. C. § 61-623.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("I.C.")
@@ -1428,9 +1406,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: Indiana `IC 35-42-1-1` still routes to Indiana", () => {
-      const cites = extractCitations("See IC 35-42-1-1.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See IC 35-42-1-1.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("IN")
@@ -1451,9 +1427,7 @@ describe("extractStatute", () => {
 
   describe("Michigan MSA jurisdiction + bracket subscripts (#370)", () => {
     it("extracts `MSA 23.710(254)` as Michigan (not Minnesota)", () => {
-      const cites = extractCitations("See MSA 23.710(254).").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See MSA 23.710(254).").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("MSA")
@@ -1464,9 +1438,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `MSA 23.710[252]` with bracket subscript", () => {
-      const cites = extractCitations("See MSA 23.710[252].").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See MSA 23.710[252].").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("MSA")
@@ -1487,9 +1459,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: dotted `M.S.A. § 480A.06` still routes to Minnesota", () => {
-      const cites = extractCitations("See M.S.A. § 480A.06.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See M.S.A. § 480A.06.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("M.S.A.")
@@ -1509,9 +1479,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: `MCL 801.258` still routes to Michigan with code=MCL", () => {
-      const cites = extractCitations("See MCL 801.258.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See MCL 801.258.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("MCL")
@@ -1523,9 +1491,7 @@ describe("extractStatute", () => {
 
   describe("Minnesota `Minn. St.` short form and year-edition (#371)", () => {
     it("extracts modern `Minn. St. 48.30`", () => {
-      const cites = extractCitations("See Minn. St. 48.30.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See Minn. St. 48.30.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("Minn. St.")
@@ -1535,9 +1501,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `Minn. St. 609.035` (criminal section)", () => {
-      const cites = extractCitations("See Minn. St. 609.035.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See Minn. St. 609.035.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("MN")
@@ -1595,9 +1559,7 @@ describe("extractStatute", () => {
 
   describe("Montana Code Annotated postfix form (#372)", () => {
     it("extracts `§ 77-6-205(2), MCA`", () => {
-      const cites = extractCitations("See § 77-6-205(2), MCA.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See § 77-6-205(2), MCA.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("MCA")
@@ -1643,9 +1605,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: prefix `MCA § 77-6-205` continues to work", () => {
-      const cites = extractCitations("See MCA § 77-6-205.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See MCA § 77-6-205.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("MCA")
@@ -1734,9 +1694,7 @@ describe("extractStatute", () => {
     })
 
     it("comma-section: `K.S.A. 23-9,101` preserves internal comma", () => {
-      const cites = extractCitations("See K.S.A. 23-9,101.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See K.S.A. 23-9,101.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("K.S.A.")
@@ -1745,9 +1703,7 @@ describe("extractStatute", () => {
     })
 
     it("comma-section: `K.S.A. 23-9,316`", () => {
-      const cites = extractCitations("See K.S.A. 23-9,316.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See K.S.A. 23-9,316.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].section).toBe("23-9,316")
@@ -1755,9 +1711,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: bare `K.S.A. 44-501` continues to work", () => {
-      const cites = extractCitations("See K.S.A. 44-501.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See K.S.A. 44-501.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("K.S.A.")
@@ -1769,9 +1723,7 @@ describe("extractStatute", () => {
 
   describe("Maryland article-letter codes (#368)", () => {
     it("extracts `HG § 19-906` (Health-General)", () => {
-      const cites = extractCitations("See HG § 19-906.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See HG § 19-906.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("HG")
@@ -1793,9 +1745,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `R.P. § 8-211` (dotted variant)", () => {
-      const cites = extractCitations("See R.P. § 8-211.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See R.P. § 8-211.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("R.P.")
@@ -1804,9 +1754,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `BR § 1-101` (Business Regulation)", () => {
-      const cites = extractCitations("See BR § 1-101.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See BR § 1-101.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("BR")
@@ -1815,9 +1763,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `FL § 5-1027` (Family Law) — doesn't collide with Florida", () => {
-      const cites = extractCitations("See FL § 5-1027.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See FL § 5-1027.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("FL")
@@ -1826,9 +1772,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: Florida `Fla. Stat. § 119.07` continues to route to Florida", () => {
-      const cites = extractCitations("See Fla. Stat. § 119.07.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See Fla. Stat. § 119.07.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("FL")
@@ -1850,9 +1794,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `G.L.c. 93A` (no space between G.L. and c.)", () => {
-      const cites = extractCitations("See G.L.c. 93A.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See G.L.c. 93A.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("93A")
@@ -1861,9 +1803,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `G. L. c. 93A` chapter-only (spaced abbreviation, no section)", () => {
-      const cites = extractCitations("See G. L. c. 93A.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See G. L. c. 93A.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("93A")
@@ -1873,9 +1813,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `G.L.c. 90, §34M` (combined no-space + § + section)", () => {
-      const cites = extractCitations("See G.L.c. 90, §34M.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See G.L.c. 90, §34M.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("90")
@@ -1884,9 +1822,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `G.L.c. 272, §99E(3)` with subsection", () => {
-      const cites = extractCitations("See G.L.c. 272, §99E(3).").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See G.L.c. 272, §99E(3).").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("272")
@@ -1922,9 +1858,7 @@ describe("extractStatute", () => {
 
   describe("Indiana pre-1976 Burns + IC year-edition + IND. CODE (#363)", () => {
     it("year-edition: `IC 1971, 35-13-4-4` → year=1971, section=35-13-4-4", () => {
-      const cites = extractCitations("See IC 1971, 35-13-4-4.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See IC 1971, 35-13-4-4.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("IC")
@@ -1935,9 +1869,7 @@ describe("extractStatute", () => {
     })
 
     it("uppercase: `IND. CODE 6-5-1-7`", () => {
-      const cites = extractCitations("See IND. CODE 6-5-1-7.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See IND. CODE 6-5-1-7.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("IN")
@@ -1994,9 +1926,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: bare `IC 35-42-1-1` continues to work", () => {
-      const cites = extractCitations("See IC 35-42-1-1.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See IC 35-42-1-1.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("IC")
@@ -2008,9 +1938,7 @@ describe("extractStatute", () => {
 
   describe("Internal Revenue Code I.R.C. — federal, not Ohio (#376)", () => {
     it("extracts `I.R.C. § 1367` as federal", () => {
-      const cites = extractCitations("See I.R.C. § 1367.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See I.R.C. § 1367.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("I.R.C.")
@@ -2020,9 +1948,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `I.R.C. § 1366(a)(1)` with subsection", () => {
-      const cites = extractCitations("See I.R.C. § 1366(a)(1).").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See I.R.C. § 1366(a)(1).").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].section).toBe("1366")
@@ -2031,9 +1957,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts bare `IRC § 1341` as federal (normalized to I.R.C.)", () => {
-      const cites = extractCitations("See IRC § 1341.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See IRC § 1341.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("I.R.C.")
@@ -2052,9 +1976,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: bare Ohio `R.C. § 2925.03` still routes to Ohio", () => {
-      const cites = extractCitations("See R.C. § 2925.03.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See R.C. § 2925.03.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("R.C.")
@@ -2065,9 +1987,7 @@ describe("extractStatute", () => {
 
   describe("New Hampshire RSA chapter form (#378)", () => {
     it("extracts `RSA chapter 169-D` (chapter-only)", () => {
-      const cites = extractCitations("See RSA chapter 169-D.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See RSA chapter 169-D.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("RSA")
@@ -2077,9 +1997,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `RSA chapter 597`", () => {
-      const cites = extractCitations("See RSA chapter 597.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See RSA chapter 597.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].section).toBe("597")
@@ -2087,9 +2005,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `RSA ch. 458-C` (abbreviated chapter)", () => {
-      const cites = extractCitations("See RSA ch. 458-C.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See RSA ch. 458-C.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("RSA")
@@ -2098,9 +2014,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `RSA [chapter] 173-B` (bracketed-chapter form)", () => {
-      const cites = extractCitations("See RSA [chapter] 173-B.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See RSA [chapter] 173-B.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("RSA")
@@ -2109,9 +2023,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: colon-section `RSA 511:2` continues to work", () => {
-      const cites = extractCitations("See RSA 511:2.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See RSA 511:2.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("RSA")
@@ -2156,9 +2068,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `§ 41-2-2` (symbol form, no subsection)", () => {
-      const cites = extractCitations("See § 41-2-2.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See § 41-2-2.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("NMSA 1978")
@@ -2168,9 +2078,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: `NMSA 1978, § 41-2-2` produces exactly one citation (no duplicate)", () => {
-      const cites = extractCitations("See NMSA 1978, § 41-2-2.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See NMSA 1978, § 41-2-2.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("NMSA 1978")
@@ -2180,9 +2088,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: Maryland `CP § 10-105(e)` (two-hyphen) doesn't collide", () => {
-      const cites = extractCitations("See CP § 10-105(e).").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See CP § 10-105(e).").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("MD")
@@ -2192,9 +2098,7 @@ describe("extractStatute", () => {
 
   describe("Ohio R. C. spacing variant + R.C. Chapter form (#388)", () => {
     it("extracts spaced `R. C. 713.15`", () => {
-      const cites = extractCitations("See R. C. 713.15.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See R. C. 713.15.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("R.C.")
@@ -2204,9 +2108,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts spaced `R. C. 5321.15(C)` with subsection", () => {
-      const cites = extractCitations("See R. C. 5321.15(C).").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See R. C. 5321.15(C).").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("R.C.")
@@ -2216,9 +2118,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts spaced chapter `R. C. Chapter 1702`", () => {
-      const cites = extractCitations("See R. C. Chapter 1702.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See R. C. Chapter 1702.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("R.C.")
@@ -2228,9 +2128,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts no-space chapter `R.C. Chapter 4509`", () => {
-      const cites = extractCitations("See R.C. Chapter 4509.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See R.C. Chapter 4509.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].section).toBe("4509")
@@ -2238,9 +2136,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: `R.C. 5302.20` (no space) continues to work", () => {
-      const cites = extractCitations("See R.C. 5302.20.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See R.C. 5302.20.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("R.C.")
@@ -2249,9 +2145,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: federal `I.R.C. § 1367` still routes to federal (not Ohio)", () => {
-      const cites = extractCitations("See I.R.C. § 1367.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See I.R.C. § 1367.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("I.R.C.")
@@ -2262,9 +2156,7 @@ describe("extractStatute", () => {
 
   describe("Oregon ORS chapter-only form (#387)", () => {
     it("extracts `ORS chapter 34`", () => {
-      const cites = extractCitations("See ORS chapter 34.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See ORS chapter 34.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("ORS")
@@ -2274,9 +2166,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: `ORS 131.315(7)` (modern form) continues to work", () => {
-      const cites = extractCitations("See ORS 131.315(7).").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See ORS 131.315(7).").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("ORS")
@@ -2288,9 +2178,7 @@ describe("extractStatute", () => {
 
   describe("New York bare named-code + bracket subdivisions (#386)", () => {
     it("extracts bare `Penal Law § 130.52`", () => {
-      const cites = extractCitations("See Penal Law § 130.52.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See Penal Law § 130.52.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("Penal Law")
@@ -2347,9 +2235,7 @@ describe("extractStatute", () => {
 
   describe("Tennessee T.C.A. variants + postfix (#398)", () => {
     it("extracts `T.C.A. sec. 40-2407` (sec. connector)", () => {
-      const cites = extractCitations("See T.C.A. sec. 40-2407.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See T.C.A. sec. 40-2407.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("T.C.A.")
@@ -2359,9 +2245,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `T.C.A. Sec. 40-3809` (capital Sec.)", () => {
-      const cites = extractCitations("See T.C.A. Sec. 40-3809.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See T.C.A. Sec. 40-3809.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].section).toBe("40-3809")
@@ -2369,9 +2253,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `TCA sec. 40-2528` (dotless, canonicalized to T.C.A.)", () => {
-      const cites = extractCitations("See TCA sec. 40-2528.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See TCA sec. 40-2528.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("T.C.A.")
@@ -2381,9 +2263,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts postfix `§ 39-904, T.C.A.`", () => {
-      const cites = extractCitations("See § 39-904, T.C.A.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See § 39-904, T.C.A.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("T.C.A.")
@@ -2393,9 +2273,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: `T.C.A. § 39-2404` continues to work", () => {
-      const cites = extractCitations("See T.C.A. § 39-2404.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See T.C.A. § 39-2404.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("TN")
@@ -2508,9 +2386,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `G. L. 1956, §10-7-1` (no reenactment paren)", () => {
-      const cites = extractCitations("See G. L. 1956, §10-7-1.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See G. L. 1956, §10-7-1.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("RI")
@@ -2520,9 +2396,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `G.L. 1956 §11-23-1` (no comma, no reenactment)", () => {
-      const cites = extractCitations("See G.L. 1956 §11-23-1.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See G.L. 1956 §11-23-1.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("RI")
@@ -2531,9 +2405,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: Massachusetts `G.L. c. 93A` still routes to MA", () => {
-      const cites = extractCitations("See G.L. c. 93A.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See G.L. c. 93A.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("MA")
@@ -2543,9 +2415,7 @@ describe("extractStatute", () => {
 
   describe("Pennsylvania P.S. / Pa.C.S. spacing variants (#392)", () => {
     it("extracts spaced `75 P. S. § 1037` (canonicalized to P.S.)", () => {
-      const cites = extractCitations("See 75 P. S. § 1037.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See 75 P. S. § 1037.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("P.S.")
@@ -2556,9 +2426,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts spaced `42 Pa. C. S. § 7341` (canonicalized to Pa.C.S.)", () => {
-      const cites = extractCitations("See 42 Pa. C. S. § 7341.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See 42 Pa. C. S. § 7341.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("Pa.C.S.")
@@ -2569,9 +2437,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: `40 P.S. § 991.1801` (no space) continues to work", () => {
-      const cites = extractCitations("See 40 P.S. § 991.1801.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See 40 P.S. § 991.1801.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("P.S.")
@@ -2580,9 +2446,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: `42 Pa.C.S. § 7341` (no space) continues to work", () => {
-      const cites = extractCitations("See 42 Pa.C.S. § 7341.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See 42 Pa.C.S. § 7341.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("Pa.C.S.")
@@ -2593,9 +2457,7 @@ describe("extractStatute", () => {
 
   describe("Georgia pre-1983 Code (#358)", () => {
     it("extracts `Code Ann. § 26-2101` (bare, Georgia pre-1983)", () => {
-      const cites = extractCitations("See Code Ann. § 26-2101.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See Code Ann. § 26-2101.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("Code Ann.")
@@ -2605,9 +2467,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `Code § 27-2501` (bare, no Ann.)", () => {
-      const cites = extractCitations("See Code § 27-2501.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See Code § 27-2501.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("Code")
@@ -2617,9 +2477,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `Code § 110-501` (longer title)", () => {
-      const cites = extractCitations("See Code § 110-501.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See Code § 110-501.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].section).toBe("110-501")
@@ -2637,9 +2495,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: modern OCGA `OCGA § 15-11-26(b)` (3-part) doesn't collide", () => {
-      const cites = extractCitations("See OCGA § 15-11-26(b).").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See OCGA § 15-11-26(b).").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("OCGA")
@@ -2661,9 +2517,7 @@ describe("extractStatute", () => {
 
   describe("Virginia bare Code form (#405)", () => {
     it("extracts `Code § 18.2-308.2` (canonical VA)", () => {
-      const cites = extractCitations("See Code § 18.2-308.2.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See Code § 18.2-308.2.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("Code")
@@ -2673,9 +2527,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `Code § 46.2-1571` (period in title only)", () => {
-      const cites = extractCitations("See Code § 46.2-1571.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See Code § 46.2-1571.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].section).toBe("46.2-1571")
@@ -2684,9 +2536,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `Code § 20-107.3(D)` (period in section only, with subsection)", () => {
-      const cites = extractCitations("See Code § 20-107.3(D).").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See Code § 20-107.3(D).").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("VA")
@@ -2708,9 +2558,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: Georgia `Code § 27-2501` (no periods) still routes to GA", () => {
-      const cites = extractCitations("See Code § 27-2501.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See Code § 27-2501.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("GA")
@@ -2730,9 +2578,7 @@ describe("extractStatute", () => {
 
   describe("West Virginia W.Va. Code + historical Code 1931 (#406)", () => {
     it("extracts `W.Va.Code § 8-24-28` (no space — no longer mis-routes to NM)", () => {
-      const cites = extractCitations("See W.Va.Code § 8-24-28.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See W.Va.Code § 8-24-28.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("WV")
@@ -2754,9 +2600,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts historical `Code, 1931, 49-6-3` (comma-separated)", () => {
-      const cites = extractCitations("See Code, 1931, 49-6-3.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See Code, 1931, 49-6-3.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].section).toBe("49-6-3")
@@ -2765,9 +2609,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts bare `Code, 14-2-13` (no year — implicit 1931)", () => {
-      const cites = extractCitations("See Code, 14-2-13.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See Code, 14-2-13.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("WV")
@@ -2814,9 +2656,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `32 V.S.A. § 9741` (bare)", () => {
-      const cites = extractCitations("See 32 V.S.A. § 9741.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See 32 V.S.A. § 9741.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].title).toBe(32)
@@ -2827,9 +2667,7 @@ describe("extractStatute", () => {
 
   describe("Washington RCW chapter-postfix form (#408)", () => {
     it("extracts `chapter 49.60 RCW` (lowercase)", () => {
-      const cites = extractCitations("See chapter 49.60 RCW.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See chapter 49.60 RCW.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("RCW")
@@ -2839,9 +2677,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `Chapter 41.26 RCW` (capitalized)", () => {
-      const cites = extractCitations("See Chapter 41.26 RCW.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See Chapter 41.26 RCW.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].section).toBe("41.26")
@@ -2849,9 +2685,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: `RCW 10.88.330` (prefix form) continues to work", () => {
-      const cites = extractCitations("See RCW 10.88.330.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See RCW 10.88.330.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("RCW")
@@ -2862,9 +2696,7 @@ describe("extractStatute", () => {
 
   describe("Wisconsin Stats. postfix form (#414)", () => {
     it("extracts `§ 76.09, Stats.` (canonical lowercase)", () => {
-      const cites = extractCitations("See § 76.09, Stats.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See § 76.09, Stats.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("Wis. Stat.")
@@ -2919,9 +2751,7 @@ describe("extractStatute", () => {
 
   describe("Louisiana `La.R.S.` no-space variant (#415)", () => {
     it("extracts `La.R.S. 48:453` (no space, colon title:section)", () => {
-      const cites = extractCitations("See La.R.S. 48:453.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See La.R.S. 48:453.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("La. R.S.")
@@ -2931,9 +2761,7 @@ describe("extractStatute", () => {
     })
 
     it("extracts `La.R.S. 23:1032` (canonical court style)", () => {
-      const cites = extractCitations("See La.R.S. 23:1032.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See La.R.S. 23:1032.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].section).toBe("23:1032")
@@ -2942,9 +2770,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: `La. R.S. 48:453` (with space) continues to work", () => {
-      const cites = extractCitations("See La. R.S. 48:453.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See La. R.S. 48:453.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("LA")
@@ -3011,9 +2837,9 @@ describe("extractStatute", () => {
     })
 
     it("regression: abbreviated-code form `Ark. Code Ann. § 9-27-301 et seq. (Supp. 1989)`", () => {
-      const cites = extractCitations(
-        "See Ark. Code Ann. § 9-27-301 et seq. (Supp. 1989).",
-      ).filter((c) => c.type === "statute")
+      const cites = extractCitations("See Ark. Code Ann. § 9-27-301 et seq. (Supp. 1989).").filter(
+        (c) => c.type === "statute",
+      )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].hasEtSeq).toBe(true)
@@ -3070,9 +2896,7 @@ describe("extractStatute", () => {
 
   describe("Idaho I.C. routing (high-volume regression — #422)", () => {
     it("`I.C. § 19-2719` routes to Idaho (×11 in 50-opinion sample)", () => {
-      const cites = extractCitations("See I.C. § 19-2719.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See I.C. § 19-2719.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("I.C.")
@@ -3082,9 +2906,7 @@ describe("extractStatute", () => {
     })
 
     it("`I.C. § 12-121` routes to Idaho", () => {
-      const cites = extractCitations("See I.C. § 12-121.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See I.C. § 12-121.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("ID")
@@ -3114,9 +2936,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: `IC 35-42-1-1` (no dots) still routes to Indiana", () => {
-      const cites = extractCitations("See IC 35-42-1-1.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("See IC 35-42-1-1.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("IN")
@@ -3126,9 +2946,7 @@ describe("extractStatute", () => {
 
   describe("Federal USC / CFR variants (#428)", () => {
     it("`42 USC 1983` (no periods, no §) → canonical U.S.C.", () => {
-      const cites = extractCitations("under 42 USC 1983.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("under 42 USC 1983.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("U.S.C.")
@@ -3138,9 +2956,7 @@ describe("extractStatute", () => {
     })
 
     it("`23 USC 409` (no periods, no §) → U.S.C.", () => {
-      const cites = extractCitations("violates 23 USC 409.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("violates 23 USC 409.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("U.S.C.")
@@ -3149,9 +2965,7 @@ describe("extractStatute", () => {
     })
 
     it("`42 CFR 447` (no §) → C.F.R.", () => {
-      const cites = extractCitations("see 42 CFR 447.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("see 42 CFR 447.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("C.F.R.")
@@ -3161,9 +2975,7 @@ describe("extractStatute", () => {
     })
 
     it("`11 USCA § 544(a)(3)` (West annotated) → U.S.C.", () => {
-      const cites = extractCitations("11 USCA § 544(a)(3).").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("11 USCA § 544(a)(3).").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("U.S.C.")
@@ -3174,9 +2986,7 @@ describe("extractStatute", () => {
     })
 
     it("`49 U.S.C. Section 1513` (word Section) → U.S.C.", () => {
-      const cites = extractCitations("49 U.S.C. Section 1513.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("49 U.S.C. Section 1513.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("U.S.C.")
@@ -3198,9 +3008,7 @@ describe("extractStatute", () => {
     })
 
     it("regression: canonical `42 U.S.C. § 1983` continues to work", () => {
-      const cites = extractCitations("42 U.S.C. § 1983.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("42 U.S.C. § 1983.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("U.S.C.")
@@ -3224,9 +3032,7 @@ describe("extractStatute", () => {
     })
 
     it("OAR prefix: `OAR 734-050-0050` → jur=OR", () => {
-      const cites = extractCitations("under OAR 734-050-0050.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("under OAR 734-050-0050.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("OAR")
@@ -3235,9 +3041,7 @@ describe("extractStatute", () => {
     })
 
     it("COMAR prefix: `COMAR 20.32.01.04F` → jur=MD", () => {
-      const cites = extractCitations("see COMAR 20.32.01.04F.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("see COMAR 20.32.01.04F.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("COMAR")
@@ -3246,9 +3050,7 @@ describe("extractStatute", () => {
     })
 
     it("IDAPA prefix: `IDAPA 58.01.03.004.03` → jur=ID", () => {
-      const cites = extractCitations("IDAPA 58.01.03.004.03.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("IDAPA 58.01.03.004.03.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("IDAPA")
@@ -3257,9 +3059,7 @@ describe("extractStatute", () => {
     })
 
     it("ARM postfix: `26.3.142(6), ARM` → jur=MT", () => {
-      const cites = extractCitations("26.3.142(6), ARM.").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("26.3.142(6), ARM.").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("ARM")
@@ -3271,8 +3071,7 @@ describe("extractStatute", () => {
 
   describe("WV bare-section context propagation (#432)", () => {
     it("bare `§ 55-7B-7` after `W.Va. Code` context → jurisdiction=WV", () => {
-      const text =
-        "W.Va. Code § 55-7B-1 establishes the rule. § 55-7B-7 mandates that..."
+      const text = "W.Va. Code § 55-7B-1 establishes the rule. § 55-7B-7 mandates that..."
       const cites = extractCitations(text).filter((c) => c.type === "statute")
       expect(cites).toHaveLength(2)
       if (cites[0]?.type === "statute") expect(cites[0].jurisdiction).toBe("WV")
@@ -3294,8 +3093,7 @@ describe("extractStatute", () => {
     })
 
     it("multiple bare sections after one WV context all inherit WV", () => {
-      const text =
-        "Under W.Va. Code § 55-7B-1, the rule applies. See § 61-3-12 and § 8-24-1."
+      const text = "Under W.Va. Code § 55-7B-1, the rule applies. See § 61-3-12 and § 8-24-1."
       const cites = extractCitations(text).filter((c) => c.type === "statute")
       expect(cites).toHaveLength(3)
       for (const cite of cites) {
@@ -3304,9 +3102,7 @@ describe("extractStatute", () => {
     })
 
     it("bare-section with NO preceding context stays NM (default)", () => {
-      const cites = extractCitations("Section 32A-2-7(A).").filter(
-        (c) => c.type === "statute",
-      )
+      const cites = extractCitations("Section 32A-2-7(A).").filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("NM")
@@ -3315,8 +3111,7 @@ describe("extractStatute", () => {
     })
 
     it("bare-section after NM context stays NM (regression)", () => {
-      const text =
-        "NMSA 1978, § 32A-2-1 provides. Section 32A-2-7(A) further states..."
+      const text = "NMSA 1978, § 32A-2-1 provides. Section 32A-2-7(A) further states..."
       const cites = extractCitations(text).filter((c) => c.type === "statute")
       expect(cites).toHaveLength(2)
       for (const cite of cites) {
@@ -3325,8 +3120,7 @@ describe("extractStatute", () => {
     })
 
     it("WV context then later NM context — subsequent bare follows NM", () => {
-      const text =
-        "W.Va. Code § 55-7B-1 first. NMSA 1978, § 32A-2-1 next. § 7-1-3 last."
+      const text = "W.Va. Code § 55-7B-1 first. NMSA 1978, § 32A-2-1 next. § 7-1-3 last."
       const cites = extractCitations(text).filter((c) => c.type === "statute")
       expect(cites).toHaveLength(3)
       if (cites[2]?.type === "statute") expect(cites[2].jurisdiction).toBe("NM")

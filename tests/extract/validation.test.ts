@@ -6,6 +6,7 @@ import {
   validateAndScore,
 } from "@/extract/validation"
 import type { FullCaseCitation, StatuteCitation } from "@/types/citation"
+import { fakeConfidence } from "../helpers/confidence"
 
 describe("citation validation", () => {
   describe("validateAndScore", () => {
@@ -22,7 +23,7 @@ describe("citation validation", () => {
         page: 123,
         text: "500 F.2d 123",
         matchedText: "500 F.2d 123",
-        confidence: 0.7,
+        confidence: fakeConfidence(0.7),
         span: {
           cleanStart: 0,
           cleanEnd: 12,
@@ -37,7 +38,7 @@ describe("citation validation", () => {
       const validated = await validateAndScore(citation, db)
 
       // Confidence should be boosted by +0.2
-      expect(validated.confidence).toBeCloseTo(0.9, 2)
+      expect(validated.confidence.score).toBeCloseTo(0.9, 2)
       expect(validated.reporterMatch).toBeDefined()
       expect(validated.reporterMatch?.name).toContain("Federal Reporter")
       expect(validated.warnings).toBeUndefined()
@@ -51,7 +52,7 @@ describe("citation validation", () => {
         page: 456,
         text: "100 FAKE 456",
         matchedText: "100 FAKE 456",
-        confidence: 0.8,
+        confidence: fakeConfidence(0.8),
         span: {
           cleanStart: 0,
           cleanEnd: 12,
@@ -66,7 +67,7 @@ describe("citation validation", () => {
       const validated = await validateAndScore(citation, db)
 
       // Confidence should be penalized by -0.3
-      expect(validated.confidence).toBeCloseTo(0.5, 2)
+      expect(validated.confidence.score).toBeCloseTo(0.5, 2)
       expect(validated.reporterMatch).toBeNull()
       expect(validated.warnings).toBeDefined()
       expect(validated.warnings).toHaveLength(1)
@@ -85,7 +86,7 @@ describe("citation validation", () => {
         page: 789,
         text: "200 A. 789",
         matchedText: "200 A. 789",
-        confidence: 0.8,
+        confidence: fakeConfidence(0.8),
         span: {
           cleanStart: 0,
           cleanEnd: 10,
@@ -103,7 +104,7 @@ describe("citation validation", () => {
       if (validated.reporterMatches && validated.reporterMatches.length > 1) {
         // Confidence should be penalized by -0.1 per extra match
         const expectedPenalty = -0.1 * (validated.reporterMatches.length - 1)
-        expect(validated.confidence).toBeCloseTo(0.8 + expectedPenalty, 2)
+        expect(validated.confidence.score).toBeCloseTo(0.8 + expectedPenalty, 2)
         expect(validated.warnings).toBeDefined()
         expect(validated.warnings?.[0].level).toBe("warning")
         expect(validated.warnings?.[0].message).toContain("Ambiguous reporter")
@@ -118,7 +119,7 @@ describe("citation validation", () => {
         title: 42,
         text: "42 U.S.C. § 1983",
         matchedText: "42 U.S.C. § 1983",
-        confidence: 0.9,
+        confidence: fakeConfidence(0.9),
         span: {
           cleanStart: 0,
           cleanEnd: 16,
@@ -133,7 +134,7 @@ describe("citation validation", () => {
       const validated = await validateAndScore(citation, db)
 
       // Should return unchanged
-      expect(validated.confidence).toBe(0.9)
+      expect(validated.confidence.score).toBe(0.9)
       expect(validated.reporterMatch).toBeUndefined()
       expect(validated.warnings).toBeUndefined()
     })
@@ -146,7 +147,7 @@ describe("citation validation", () => {
         page: 123,
         text: "500 F.2d 123",
         matchedText: "500 F.2d 123",
-        confidence: 0.7,
+        confidence: fakeConfidence(0.7),
         span: {
           cleanStart: 0,
           cleanEnd: 12,
@@ -161,7 +162,7 @@ describe("citation validation", () => {
       const validated = await validateAndScore(citation, null)
 
       // Should return unchanged
-      expect(validated.confidence).toBe(0.7)
+      expect(validated.confidence.score).toBe(0.7)
       expect(validated.reporterMatch).toBeUndefined()
       expect(validated.warnings).toBeUndefined()
     })
@@ -174,7 +175,7 @@ describe("citation validation", () => {
         page: 123,
         text: "500 F.2d 123",
         matchedText: "500 F.2d 123",
-        confidence: 0.95, // Already high
+        confidence: fakeConfidence(0.95), // Already high
         span: {
           cleanStart: 0,
           cleanEnd: 12,
@@ -189,8 +190,8 @@ describe("citation validation", () => {
       const validated = await validateAndScore(citation, db)
 
       // Should be capped at 1.0, not exceed it
-      expect(validated.confidence).toBeLessThanOrEqual(1.0)
-      expect(validated.confidence).toBe(1.0)
+      expect(validated.confidence.score).toBeLessThanOrEqual(1.0)
+      expect(validated.confidence.score).toBe(1.0)
     })
 
     it("should floor confidence at 0.0 when penalizing", async () => {
@@ -201,7 +202,7 @@ describe("citation validation", () => {
         page: 456,
         text: "100 FAKE 456",
         matchedText: "100 FAKE 456",
-        confidence: 0.2, // Low confidence
+        confidence: fakeConfidence(0.2), // Low confidence
         span: {
           cleanStart: 0,
           cleanEnd: 12,
@@ -216,8 +217,8 @@ describe("citation validation", () => {
       const validated = await validateAndScore(citation, db)
 
       // Should be floored at 0.0, not go negative
-      expect(validated.confidence).toBeGreaterThanOrEqual(0.0)
-      expect(validated.confidence).toBe(0.0)
+      expect(validated.confidence.score).toBeGreaterThanOrEqual(0.0)
+      expect(validated.confidence.score).toBe(0.0)
     })
   })
 
@@ -331,7 +332,7 @@ describe("citation validation", () => {
       expect(caseCitation).toBeDefined()
 
       // Get the base confidence
-      const baseConfidence = caseCitation?.confidence
+      const baseConfidence = caseCitation?.confidence.score
 
       // Now test with custom scoring (this would require passing options through)
       // For now, we verify that default scoring was applied

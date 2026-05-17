@@ -38,7 +38,8 @@ describe("isolated citation signal detection", () => {
   })
 
   it('detects "See also" before a case citation', () => {
-    const text = "This principle extends further. See also Davis v. Lee, 200 F.3d 100 (5th Cir. 2018)."
+    const text =
+      "This principle extends further. See also Davis v. Lee, 200 F.3d 100 (5th Cir. 2018)."
     const citations = extractCitations(text)
     const caseCite = citations.find((c) => c.type === "case")
     expect(caseCite!.signal).toBe("see also")
@@ -66,7 +67,8 @@ describe("isolated citation signal detection", () => {
   })
 
   it('detects "Compare" before a case citation', () => {
-    const text = "Compare Roe v. Wade, 410 U.S. 113 (1973), with Dobbs v. Jackson, 597 U.S. 215 (2022)."
+    const text =
+      "Compare Roe v. Wade, 410 U.S. 113 (1973), with Dobbs v. Jackson, 597 U.S. 215 (2022)."
     const citations = extractCitations(text)
     const caseCites = citations.filter((c) => c.type === "case")
     expect(caseCites[0]!.signal).toBe("compare")
@@ -122,7 +124,8 @@ describe("isolated citation signal detection", () => {
   })
 
   it("does not override signal already set by string cite detection", () => {
-    const text = "See Smith v. Jones, 500 F.2d 123 (2020); see also Doe v. Roe, 600 F.3d 456 (2021)."
+    const text =
+      "See Smith v. Jones, 500 F.2d 123 (2020); see also Doe v. Roe, 600 F.3d 456 (2021)."
     const citations = extractCitations(text)
     const caseCites = citations.filter((c) => c.type === "case")
 

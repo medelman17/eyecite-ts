@@ -20,7 +20,7 @@ describe("extractShortForms", () => {
       expect(citation.text).toBe("Id.")
       expect(citation.matchedText).toBe("Id.")
       expect(citation.pincite).toBeUndefined()
-      expect(citation.confidence).toBe(1.0)
+      expect(citation.confidence.score).toBe(1.0)
       expect(citation.span.cleanStart).toBe(10)
       expect(citation.span.cleanEnd).toBe(13)
       expect(citation.span.originalStart).toBe(10)
@@ -40,7 +40,7 @@ describe("extractShortForms", () => {
 
       expect(citation.type).toBe("id")
       expect(citation.pincite).toBe(253)
-      expect(citation.confidence).toBe(1.0)
+      expect(citation.confidence.score).toBe(1.0)
     })
 
     it("should extract Ibid. without pincite", () => {
@@ -57,7 +57,7 @@ describe("extractShortForms", () => {
       expect(citation.type).toBe("id")
       expect(citation.text).toBe("Ibid.")
       expect(citation.pincite).toBeUndefined()
-      expect(citation.confidence).toBe(1.0)
+      expect(citation.confidence.score).toBe(1.0)
     })
 
     it("should extract Ibid. with pincite", () => {
@@ -73,7 +73,7 @@ describe("extractShortForms", () => {
 
       expect(citation.type).toBe("id")
       expect(citation.pincite).toBe(125)
-      expect(citation.confidence).toBe(1.0)
+      expect(citation.confidence.score).toBe(1.0)
     })
 
     it("should handle lowercase id.", () => {
@@ -138,7 +138,7 @@ describe("extractShortForms", () => {
       expect(citation.matchedText).toBe("Smith, supra")
       expect(citation.partyName).toBe("Smith")
       expect(citation.pincite).toBeUndefined()
-      expect(citation.confidence).toBe(0.9)
+      expect(citation.confidence.score).toBe(0.9)
       expect(citation.span.cleanStart).toBe(10)
       expect(citation.span.cleanEnd).toBe(22)
     })
@@ -157,7 +157,7 @@ describe("extractShortForms", () => {
       expect(citation.type).toBe("supra")
       expect(citation.partyName).toBe("Smith")
       expect(citation.pincite).toBe(460)
-      expect(citation.confidence).toBe(0.9)
+      expect(citation.confidence.score).toBe(0.9)
     })
 
     it("should extract supra without comma before at", () => {
@@ -341,7 +341,7 @@ describe("extractShortForms", () => {
       expect(citation.volume).toBe(500)
       expect(citation.reporter).toBe("F.2d")
       expect(citation.pincite).toBe(125)
-      expect(citation.confidence).toBe(0.7)
+      expect(citation.confidence.score).toBe(0.7)
       expect(citation.span.cleanStart).toBe(10)
       expect(citation.span.cleanEnd).toBe(25)
     })
@@ -472,22 +472,18 @@ describe("extractShortForms", () => {
     })
 
     it("tokenizes `Id, at p. 1483` (comma instead of period — typo)", () => {
-      const cites = extractCitations(
-        "See Smith, 100 U.S. 1 (1990). Id, at p. 1483.",
-      )
+      const cites = extractCitations("See Smith, 100 U.S. 1 (1990). Id, at p. 1483.")
       const id = cites.find((c) => c.type === "id")
       expect(id?.type).toBe("id")
       if (id?.type === "id") {
         expect(id.pincite).toBe(1483)
         // Typo form gets reduced confidence
-        expect(id.confidence).toBeLessThan(0.95)
+        expect(id.confidence.score).toBeLessThan(0.95)
       }
     })
 
     it("tokenizes `Id . at p. 1192` (space before period + CSM p. prefix)", () => {
-      const cites = extractCitations(
-        "See Smith, 100 U.S. 1 (1990). Id . at p. 1192.",
-      )
+      const cites = extractCitations("See Smith, 100 U.S. 1 (1990). Id . at p. 1192.")
       const id = cites.find((c) => c.type === "id")
       expect(id?.type).toBe("id")
       if (id?.type === "id") {
@@ -498,9 +494,7 @@ describe("extractShortForms", () => {
     it("does NOT match bare `Id,` in prose (no `at` follows)", () => {
       // `Id` appearing as a word in sentence prose, followed by comma but
       // not by `at` — should not match the typo form.
-      const cites = extractCitations(
-        "She showed her Id, but the guard waved her through.",
-      )
+      const cites = extractCitations("She showed her Id, but the guard waved her through.")
       const id = cites.find((c) => c.type === "id")
       expect(id).toBeUndefined()
     })
@@ -511,7 +505,7 @@ describe("extractShortForms", () => {
       expect(id?.type).toBe("id")
       if (id?.type === "id") {
         expect(id.pincite).toBe(326)
-        expect(id.confidence).toBe(1.0)
+        expect(id.confidence.score).toBe(1.0)
       }
     })
 
@@ -534,7 +528,7 @@ describe("extractShortForms", () => {
       const citation = extractId(token, createIdentityMap())
       expect(citation.type).toBe("id")
       expect(citation.pincite).toBe(1483)
-      expect(citation.confidence).toBeLessThanOrEqual(0.7)
+      expect(citation.confidence.score).toBeLessThanOrEqual(0.7)
     })
 
     it("extractId direct call on `Id .` (space-before-period, no pincite)", () => {
@@ -561,7 +555,7 @@ describe("extractShortForms", () => {
       expect(citation.pincite).toBe(100)
       // Post-period comma reduces confidence to 0.9 (not the more-aggressive
       // 0.7 reserved for the typo `Id,` form).
-      expect(citation.confidence).toBe(0.9)
+      expect(citation.confidence.score).toBe(0.9)
     })
 
     describe("bracketed `[supra]` forms (#306)", () => {
@@ -588,9 +582,7 @@ describe("extractShortForms", () => {
       })
 
       it("extracts standalone `[supra at 78-82]` (range pincite)", () => {
-        const cites = extractCitations(
-          "The court applied [supra at 78-82] in its analysis.",
-        )
+        const cites = extractCitations("The court applied [supra at 78-82] in its analysis.")
         const supra = cites.find((c) => c.type === "supra")
         expect(supra?.type).toBe("supra")
         if (supra?.type === "supra") {
@@ -625,7 +617,7 @@ describe("extractShortForms", () => {
       }
       const citation = extractId(token, createIdentityMap(), cleanedText)
       // Lowercase prose word before Id. → not a citation context → 0.4 cap
-      expect(citation.confidence).toBeLessThanOrEqual(0.4)
+      expect(citation.confidence.score).toBeLessThanOrEqual(0.4)
     })
   })
 
@@ -724,7 +716,7 @@ describe("extractShortForms", () => {
         patternId: "id",
       }
       const citation = extractId(token, createIdentityMap())
-      expect(citation.confidence).toBe(1.0)
+      expect(citation.confidence.score).toBe(1.0)
     })
 
     it("should assign confidence 0.9 to supra citations", () => {
@@ -735,7 +727,7 @@ describe("extractShortForms", () => {
         patternId: "supra",
       }
       const citation = extractSupra(token, createIdentityMap())
-      expect(citation.confidence).toBe(0.9)
+      expect(citation.confidence.score).toBe(0.9)
     })
 
     it("should assign confidence 0.7 to short-form case citations", () => {
@@ -746,7 +738,7 @@ describe("extractShortForms", () => {
         patternId: "short-form-case",
       }
       const citation = extractShortFormCase(token, createIdentityMap())
-      expect(citation.confidence).toBe(0.7)
+      expect(citation.confidence.score).toBe(0.7)
     })
   })
 
@@ -1016,9 +1008,7 @@ describe("star-pagination pincite (#191)", () => {
       // shortFormCase pattern (which forbids a page between reporter and "at"),
       // so both occurrences come back as `case`. The pincite data is still
       // captured correctly on the second occurrence.
-      const seconds = cits.filter(
-        (c) => c.type === "case" && c.span.cleanStart > 40,
-      )
+      const seconds = cits.filter((c) => c.type === "case" && c.span.cleanStart > 40)
       expect(seconds.length).toBeGreaterThanOrEqual(1)
       const second = seconds[0]
       if (second.type === "case") {
@@ -1105,8 +1095,7 @@ describe("star-pagination pincite (#191)", () => {
 
     describe("Id.", () => {
       it("`Id. at p. 125`", () => {
-        const text =
-          "Smith v. Jones, 50 Cal.3d 100, 110 (Cal. 1990). Id. at p. 125."
+        const text = "Smith v. Jones, 50 Cal.3d 100, 110 (Cal. 1990). Id. at p. 125."
         const cits = extractCitations(text)
         const id = cits.find((c) => c.type === "id")
         expect(id).toBeDefined()
@@ -1116,8 +1105,7 @@ describe("star-pagination pincite (#191)", () => {
       })
 
       it("`Id. at pp. 125-130` (range)", () => {
-        const text =
-          "Smith v. Jones, 50 Cal.3d 100, 110 (Cal. 1990). Id. at pp. 125-130."
+        const text = "Smith v. Jones, 50 Cal.3d 100, 110 (Cal. 1990). Id. at pp. 125-130."
         const cits = extractCitations(text)
         const id = cits.find((c) => c.type === "id")
         expect(id).toBeDefined()
@@ -1143,9 +1131,7 @@ describe("star-pagination pincite (#191)", () => {
       })
 
       it("`50 Cal.3d at pp. 115-117` range", () => {
-        const cits = extractCitations(
-          "(Smith, supra, 50 Cal.3d at pp. 115-117 held.)",
-        )
+        const cits = extractCitations("(Smith, supra, 50 Cal.3d at pp. 115-117 held.)")
         const sf = cits.find((c) => c.type === "shortFormCase")
         expect(sf).toBeDefined()
         if (sf?.type === "shortFormCase") {
@@ -1159,9 +1145,7 @@ describe("star-pagination pincite (#191)", () => {
 
     describe("full case with trailing at p. pincite", () => {
       it("`People v. Smith (1990) 50 Cal.3d 100, at p. 115`", () => {
-        const cits = extractCitations(
-          "People v. Smith (1990) 50 Cal.3d 100, at p. 115.",
-        )
+        const cits = extractCitations("People v. Smith (1990) 50 Cal.3d 100, at p. 115.")
         const cases = cits.filter((c) => c.type === "case")
         expect(cases).toHaveLength(1)
         if (cases[0].type === "case") {
@@ -1170,9 +1154,7 @@ describe("star-pagination pincite (#191)", () => {
       })
 
       it("`People v. Smith (1990) 50 Cal.3d 100, at pp. 115-118` range", () => {
-        const cits = extractCitations(
-          "People v. Smith (1990) 50 Cal.3d 100, at pp. 115-118.",
-        )
+        const cits = extractCitations("People v. Smith (1990) 50 Cal.3d 100, at pp. 115-118.")
         const cases = cits.filter((c) => c.type === "case")
         expect(cases).toHaveLength(1)
         if (cases[0].type === "case") {
@@ -1184,8 +1166,7 @@ describe("star-pagination pincite (#191)", () => {
 
     describe("regression controls — Bluebook `at N` still works", () => {
       it("`Id. at 125` (Bluebook)", () => {
-        const text =
-          "Smith v. Jones, 50 F.3d 100, 110 (2d Cir. 1995). Id. at 125."
+        const text = "Smith v. Jones, 50 F.3d 100, 110 (2d Cir. 1995). Id. at 125."
         const cits = extractCitations(text)
         const id = cits.find((c) => c.type === "id")
         expect(id).toBeDefined()
@@ -1300,8 +1281,7 @@ describe("star-pagination pincite (#191)", () => {
 describe("supra party-name signal-leak (#216)", () => {
   describe("citation signals stripped from partyName", () => {
     it("`See Gall, supra` → partyName = 'Gall'", () => {
-      const text =
-        "Bd. v. FirstService, 193 A.D.3d 672 (2d Dep't 2021). See Gall, supra, at 700."
+      const text = "Bd. v. FirstService, 193 A.D.3d 672 (2d Dep't 2021). See Gall, supra, at 700."
       const cits = extractCitations(text)
       const sup = cits.find((c) => c.type === "supra")
       expect(sup).toBeDefined()
@@ -1311,9 +1291,7 @@ describe("supra party-name signal-leak (#216)", () => {
     })
 
     it("`See also Gall, supra` → partyName = 'Gall'", () => {
-      const cits = extractCitations(
-        "Foo v. Bar, 1 F.3d 2 (1990). See also Gall, supra, at 700.",
-      )
+      const cits = extractCitations("Foo v. Bar, 1 F.3d 2 (1990). See also Gall, supra, at 700.")
       const sup = cits.find((c) => c.type === "supra")
       expect(sup).toBeDefined()
       if (sup?.type === "supra") {
@@ -1322,9 +1300,7 @@ describe("supra party-name signal-leak (#216)", () => {
     })
 
     it("`Compare Gall, supra` → partyName = 'Gall'", () => {
-      const cits = extractCitations(
-        "Foo v. Bar, 1 F.3d 2 (1990). Compare Gall, supra, at 700.",
-      )
+      const cits = extractCitations("Foo v. Bar, 1 F.3d 2 (1990). Compare Gall, supra, at 700.")
       const sup = cits.find((c) => c.type === "supra")
       expect(sup).toBeDefined()
       if (sup?.type === "supra") {
@@ -1333,9 +1309,7 @@ describe("supra party-name signal-leak (#216)", () => {
     })
 
     it("`Cf. Gall, supra` → partyName = 'Gall'", () => {
-      const cits = extractCitations(
-        "Foo v. Bar, 1 F.3d 2 (1990). Cf. Gall, supra, at 700.",
-      )
+      const cits = extractCitations("Foo v. Bar, 1 F.3d 2 (1990). Cf. Gall, supra, at 700.")
       const sup = cits.find((c) => c.type === "supra")
       expect(sup).toBeDefined()
       if (sup?.type === "supra") {
@@ -1344,9 +1318,7 @@ describe("supra party-name signal-leak (#216)", () => {
     })
 
     it("`Accord Gall, supra` → partyName = 'Gall'", () => {
-      const cits = extractCitations(
-        "Foo v. Bar, 1 F.3d 2 (1990). Accord Gall, supra, at 700.",
-      )
+      const cits = extractCitations("Foo v. Bar, 1 F.3d 2 (1990). Accord Gall, supra, at 700.")
       const sup = cits.find((c) => c.type === "supra")
       expect(sup).toBeDefined()
       if (sup?.type === "supra") {
@@ -1357,8 +1329,7 @@ describe("supra party-name signal-leak (#216)", () => {
 
   describe("sentence-initial connectors stripped from partyName", () => {
     it("`Then Gall, supra` → partyName = 'Gall'", () => {
-      const text =
-        "Bd. v. FirstService, 193 A.D.3d 672 (2d Dep't 2021). Then Gall, supra, at 700."
+      const text = "Bd. v. FirstService, 193 A.D.3d 672 (2d Dep't 2021). Then Gall, supra, at 700."
       const cits = extractCitations(text)
       const sup = cits.find((c) => c.type === "supra")
       expect(sup).toBeDefined()
@@ -1368,9 +1339,7 @@ describe("supra party-name signal-leak (#216)", () => {
     })
 
     it("`Also Gall, supra` → partyName = 'Gall'", () => {
-      const cits = extractCitations(
-        "Foo v. Bar, 1 F.3d 2 (1990). Also Gall, supra, at 700.",
-      )
+      const cits = extractCitations("Foo v. Bar, 1 F.3d 2 (1990). Also Gall, supra, at 700.")
       const sup = cits.find((c) => c.type === "supra")
       expect(sup).toBeDefined()
       if (sup?.type === "supra") {
@@ -1379,9 +1348,7 @@ describe("supra party-name signal-leak (#216)", () => {
     })
 
     it("`In Gall, supra` → partyName = 'Gall' (but NOT 'In Gall')", () => {
-      const cits = extractCitations(
-        "Foo v. Bar, 1 F.3d 2 (1990). In Gall, supra, at 700.",
-      )
+      const cits = extractCitations("Foo v. Bar, 1 F.3d 2 (1990). In Gall, supra, at 700.")
       const sup = cits.find((c) => c.type === "supra")
       expect(sup).toBeDefined()
       if (sup?.type === "supra") {
@@ -1392,9 +1359,7 @@ describe("supra party-name signal-leak (#216)", () => {
 
   describe("regression controls — must preserve real party names", () => {
     it("`In re Smith, supra` → partyName = 'Smith'", () => {
-      const cits = extractCitations(
-        "Foo v. Bar, 1 F.3d 2 (1990). In re Smith, supra, at 700.",
-      )
+      const cits = extractCitations("Foo v. Bar, 1 F.3d 2 (1990). In re Smith, supra, at 700.")
       const sup = cits.find((c) => c.type === "supra")
       expect(sup).toBeDefined()
       if (sup?.type === "supra") {
@@ -1403,9 +1368,7 @@ describe("supra party-name signal-leak (#216)", () => {
     })
 
     it("`Gall, supra` (no prefix) → partyName = 'Gall'", () => {
-      const cits = extractCitations(
-        "Foo v. Bar, 1 F.3d 2 (1990). Gall, supra, at 700.",
-      )
+      const cits = extractCitations("Foo v. Bar, 1 F.3d 2 (1990). Gall, supra, at 700.")
       const sup = cits.find((c) => c.type === "supra")
       expect(sup).toBeDefined()
       if (sup?.type === "supra") {
@@ -1414,9 +1377,7 @@ describe("supra party-name signal-leak (#216)", () => {
     })
 
     it("`Smith v. Jones, supra` (multi-word) → partyName = 'Smith v. Jones'", () => {
-      const cits = extractCitations(
-        "Foo v. Bar, 1 F.3d 2 (1990). Smith v. Jones, supra, at 460.",
-      )
+      const cits = extractCitations("Foo v. Bar, 1 F.3d 2 (1990). Smith v. Jones, supra, at 460.")
       const sup = cits.find((c) => c.type === "supra")
       expect(sup).toBeDefined()
       if (sup?.type === "supra") {
@@ -1497,8 +1458,7 @@ describe("paragraph-marker pincites on short-forms (#204)", () => {
     })
 
     it("`Smith, supra, paras. 12-14`", () => {
-      const text =
-        "Foo v. Bar, 1 F.3d 2 (1990). Smith, supra, paras. 12-14."
+      const text = "Foo v. Bar, 1 F.3d 2 (1990). Smith, supra, paras. 12-14."
       const cits = extractCitations(text)
       const sup = cits.find((c) => c.type === "supra")
       if (sup?.type === "supra") {
@@ -1531,8 +1491,7 @@ describe("paragraph-marker pincites on short-forms (#204)", () => {
 describe("short-form case party-name back-reference (#278)", () => {
   describe("regex captures leading party name", () => {
     it("`Smith, 500 F.2d at 125` → partyName='Smith'", () => {
-      const text =
-        "Smith v. Jones, 500 F.2d 100 (9th Cir. 1990). Smith, 500 F.2d at 125."
+      const text = "Smith v. Jones, 500 F.2d 100 (9th Cir. 1990). Smith, 500 F.2d at 125."
       const cits = extractCitations(text)
       const sf = cits.find((c) => c.type === "shortFormCase")
       expect(sf).toBeDefined()
@@ -1545,8 +1504,7 @@ describe("short-form case party-name back-reference (#278)", () => {
     })
 
     it("`See Smith, 500 F.2d at 125` strips `See` from partyName", () => {
-      const text =
-        "Smith v. Jones, 500 F.2d 100 (9th Cir. 1990). See Smith, 500 F.2d at 125."
+      const text = "Smith v. Jones, 500 F.2d 100 (9th Cir. 1990). See Smith, 500 F.2d at 125."
       const cits = extractCitations(text)
       const sf = cits.find((c) => c.type === "shortFormCase")
       expect(sf).toBeDefined()
@@ -1556,8 +1514,7 @@ describe("short-form case party-name back-reference (#278)", () => {
     })
 
     it("`Smith v. Jones, 500 F.2d at 125` captures both parties", () => {
-      const text =
-        "Smith v. Jones, 500 F.2d 100 (9th Cir. 1990). Smith v. Jones, 500 F.2d at 125."
+      const text = "Smith v. Jones, 500 F.2d 100 (9th Cir. 1990). Smith v. Jones, 500 F.2d at 125."
       const cits = extractCitations(text)
       const sf = cits.find((c) => c.type === "shortFormCase")
       expect(sf).toBeDefined()
@@ -1592,10 +1549,7 @@ describe("short-form case party-name back-reference (#278)", () => {
       if (sf?.type === "shortFormCase") {
         // Find the Smith v. Jones full-cite index
         const smithIdx = cits.findIndex(
-          (c) =>
-            c.type === "case" &&
-            c.plaintiff === "Smith" &&
-            c.defendant === "Jones",
+          (c) => c.type === "case" && c.plaintiff === "Smith" && c.defendant === "Jones",
         )
         expect(smithIdx).toBeGreaterThanOrEqual(0)
         expect(sf.resolution?.resolvedTo).toBe(smithIdx)
@@ -1614,10 +1568,7 @@ describe("short-form case party-name back-reference (#278)", () => {
       if (sf?.type === "shortFormCase") {
         // No partyName → recency: most recent matching full is Brown v. Doe
         const brownIdx = cits.findIndex(
-          (c) =>
-            c.type === "case" &&
-            c.plaintiff === "Brown" &&
-            c.defendant === "Doe",
+          (c) => c.type === "case" && c.plaintiff === "Brown" && c.defendant === "Doe",
         )
         expect(sf.resolution?.resolvedTo).toBe(brownIdx)
       }
@@ -1628,8 +1579,7 @@ describe("short-form case party-name back-reference (#278)", () => {
 describe("trailing parenthetical capture on short-form cites (#303)", () => {
   describe("Id.", () => {
     it("captures `Id. at 770 (Marsh)` — short-form case identifier", () => {
-      const text =
-        "We followed In re Marriage Cases (Marsh), 43 Cal.4th 757. Id. at 770 (Marsh)."
+      const text = "We followed In re Marriage Cases (Marsh), 43 Cal.4th 757. Id. at 770 (Marsh)."
       const cites = extractCitations(text)
       const id = cites.find((c) => c.type === "id")
       expect(id?.type).toBe("id")
@@ -1671,9 +1621,7 @@ describe("trailing parenthetical capture on short-form cites (#303)", () => {
     })
 
     it("regression: `Smith, supra, at 460` (no paren) has no parenthetical field", () => {
-      const cites = extractCitations(
-        "See Smith v. Jones, 100 F.3d 200. Smith, supra, at 460.",
-      )
+      const cites = extractCitations("See Smith v. Jones, 100 F.3d 200. Smith, supra, at 460.")
       const supra = cites.find((c) => c.type === "supra")
       expect(supra?.type).toBe("supra")
       if (supra?.type === "supra") {
@@ -1756,7 +1704,7 @@ describe("Connecticut comma-pincite for Id./Ibid./supra (#353)", () => {
     expect(id?.type).toBe("id")
     if (id?.type === "id") {
       expect(id.pincite).toBe(822)
-      expect(id.confidence).toBe(1.0)
+      expect(id.confidence.score).toBe(1.0)
     }
   })
 
@@ -1787,7 +1735,7 @@ describe("Connecticut comma-pincite for Id./Ibid./supra (#353)", () => {
     expect(id?.type).toBe("id")
     if (id?.type === "id") {
       expect(id.pincite).toBe(1483)
-      expect(id.confidence).toBeLessThanOrEqual(0.7)
+      expect(id.confidence.score).toBeLessThanOrEqual(0.7)
     }
   })
 })

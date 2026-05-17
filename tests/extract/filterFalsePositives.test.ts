@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest"
 import { applyFalsePositiveFilters } from "@/extract/filterFalsePositives"
 import type { FullCaseCitation, JournalCitation } from "@/types/citation"
 import type { Span } from "@/types/span"
+import { fakeConfidence } from "../helpers/confidence"
 
 /** Helper to create a minimal case citation */
 function makeCase(reporter: string, year?: number): FullCaseCitation {
@@ -17,7 +18,7 @@ function makeCase(reporter: string, year?: number): FullCaseCitation {
     type: "case",
     text: "",
     span,
-    confidence: 0.8,
+    confidence: fakeConfidence(0.8),
     matchedText: "",
     processTimeMs: 0,
     patternsChecked: 1,
@@ -35,7 +36,7 @@ function makeJournal(abbreviation: string, year?: number): JournalCitation {
     type: "journal",
     text: "",
     span,
-    confidence: 0.6,
+    confidence: fakeConfidence(0.6),
     matchedText: "",
     processTimeMs: 0,
     patternsChecked: 1,
@@ -51,7 +52,7 @@ describe("applyFalsePositiveFilters", () => {
       const cit = makeCase("I.C.J.")
       const result = applyFalsePositiveFilters([cit], false)
       expect(result).toHaveLength(1)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
       expect(result[0].warnings).toBeDefined()
       expect(result[0].warnings?.[0].message).toContain("non-US")
     })
@@ -59,25 +60,25 @@ describe("applyFalsePositiveFilters", () => {
     it("flags U.N.T.S. as false positive", () => {
       const cit = makeCase("U.N.T.S.")
       const result = applyFalsePositiveFilters([cit], false)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
     })
 
     it("flags Co. Rep. as false positive", () => {
       const cit = makeCase("Co. Rep.")
       const result = applyFalsePositiveFilters([cit], false)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
     })
 
     it("flags Edw. as false positive", () => {
       const cit = makeCase("Edw.")
       const result = applyFalsePositiveFilters([cit], false)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
     })
 
     it("does NOT flag Edw. Ch. (valid US reporter)", () => {
       const cit = makeCase("Edw. Ch.")
       const result = applyFalsePositiveFilters([cit], false)
-      expect(result[0].confidence).toBe(0.8) // unchanged
+      expect(result[0].confidence.score).toBe(0.8) // unchanged
       expect(result[0].warnings).toBeUndefined()
     })
 
@@ -86,21 +87,21 @@ describe("applyFalsePositiveFilters", () => {
       const cit2 = makeCase("U.S.")
       const cit3 = makeCase("S. Ct.")
       const result = applyFalsePositiveFilters([cit1, cit2, cit3], false)
-      expect(result[0].confidence).toBe(0.8)
-      expect(result[1].confidence).toBe(0.8)
-      expect(result[2].confidence).toBe(0.8)
+      expect(result[0].confidence.score).toBe(0.8)
+      expect(result[1].confidence.score).toBe(0.8)
+      expect(result[2].confidence.score).toBe(0.8)
     })
 
     it("flags journal citations by abbreviation", () => {
       const cit = makeJournal("All E.R.")
       const result = applyFalsePositiveFilters([cit], false)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
     })
 
     it("blocklist is case-insensitive", () => {
       const cit = makeCase("i.c.j.")
       const result = applyFalsePositiveFilters([cit], false)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
     })
   })
 
@@ -108,7 +109,7 @@ describe("applyFalsePositiveFilters", () => {
     it("flags year 1297 as implausible", () => {
       const cit = makeCase("Edw.", 1297)
       const result = applyFalsePositiveFilters([cit], false)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
       // "Edw." also hits the blocklist, so the year warning may not be first
       const yearWarning = result[0].warnings?.find((w) => w.message.includes("1750"))
       expect(yearWarning).toBeDefined()
@@ -117,19 +118,19 @@ describe("applyFalsePositiveFilters", () => {
     it("flags year 1610 as implausible", () => {
       const cit = makeCase("Some Rep.", 1610)
       const result = applyFalsePositiveFilters([cit], false)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
     })
 
     it("does NOT flag year 1850", () => {
       const cit = makeCase("Some Rep.", 1850)
       const result = applyFalsePositiveFilters([cit], false)
-      expect(result[0].confidence).toBe(0.8)
+      expect(result[0].confidence.score).toBe(0.8)
     })
 
     it("does NOT flag citations without a year", () => {
       const cit = makeCase("Some Rep.")
       const result = applyFalsePositiveFilters([cit], false)
-      expect(result[0].confidence).toBe(0.8)
+      expect(result[0].confidence.score).toBe(0.8)
     })
   })
 
@@ -181,12 +182,12 @@ describe("applyFalsePositiveFilters", () => {
       const cit = makeCase("I.C.J.")
       applyFalsePositiveFilters([cit], false)
       expect(cit.warnings).toHaveLength(1)
-      expect(cit.confidence).toBe(0.1)
+      expect(cit.confidence.score).toBe(0.1)
 
       // Run again — should not add another warning
       applyFalsePositiveFilters([cit], false)
       expect(cit.warnings).toHaveLength(1)
-      expect(cit.confidence).toBe(0.1)
+      expect(cit.confidence.score).toBe(0.1)
     })
   })
 
@@ -196,7 +197,7 @@ describe("applyFalsePositiveFilters", () => {
         type: "shortFormCase" as const,
         text: "",
         span: { cleanStart: 0, cleanEnd: 10, originalStart: 0, originalEnd: 10 },
-        confidence: 0.7,
+        confidence: fakeConfidence(0.7),
         matchedText: "",
         processTimeMs: 0,
         patternsChecked: 1,
@@ -206,7 +207,7 @@ describe("applyFalsePositiveFilters", () => {
         antecedent: undefined,
       }
       const result = applyFalsePositiveFilters([shortForm], false)
-      expect(result[0].confidence).toBe(0.1) // flagged as non-US reporter
+      expect(result[0].confidence.score).toBe(0.1) // flagged as non-US reporter
     })
 
     it("flags shortFormCase with implausible prose reporter (#146)", () => {
@@ -214,7 +215,7 @@ describe("applyFalsePositiveFilters", () => {
         type: "shortFormCase" as const,
         text: "",
         span: { cleanStart: 0, cleanEnd: 10, originalStart: 0, originalEnd: 10 },
-        confidence: 0.7,
+        confidence: fakeConfidence(0.7),
         matchedText: "",
         processTimeMs: 0,
         patternsChecked: 1,
@@ -223,7 +224,7 @@ describe("applyFalsePositiveFilters", () => {
         pincite: 3,
       }
       const result = applyFalsePositiveFilters([shortForm], false)
-      expect(result[0].confidence).toBe(0.1) // flagged as implausible reporter
+      expect(result[0].confidence.score).toBe(0.1) // flagged as implausible reporter
     })
 
     it("does not filter shortFormCase with valid reporter", () => {
@@ -231,7 +232,7 @@ describe("applyFalsePositiveFilters", () => {
         type: "shortFormCase" as const,
         text: "",
         span: { cleanStart: 0, cleanEnd: 10, originalStart: 0, originalEnd: 10 },
-        confidence: 0.7,
+        confidence: fakeConfidence(0.7),
         matchedText: "",
         processTimeMs: 0,
         patternsChecked: 1,
@@ -240,23 +241,19 @@ describe("applyFalsePositiveFilters", () => {
         pincite: 130,
       }
       const result = applyFalsePositiveFilters([shortForm], false)
-      expect(result[0].confidence).toBe(0.7) // unchanged
+      expect(result[0].confidence.score).toBe(0.7) // unchanged
     })
   })
 
   describe("implausible reporter detection (#121)", () => {
     it("flags reporter containing blocklisted word 'Court'", () => {
-      const cite = makeCase(
-        "Court dismissed the complaint for failure to state a claim under Rule",
-      )
+      const cite = makeCase("Court dismissed the complaint for failure to state a claim under Rule")
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.1)
+      expect(result[0].confidence.score).toBe(0.1)
     })
 
     it("removes implausible reporter in remove mode", () => {
-      const cite = makeCase(
-        "Court dismissed the complaint for failure to state a claim under Rule",
-      )
+      const cite = makeCase("Court dismissed the complaint for failure to state a claim under Rule")
       const result = applyFalsePositiveFilters([cite], true)
       expect(result).toHaveLength(0)
     })
@@ -264,28 +261,24 @@ describe("applyFalsePositiveFilters", () => {
     it("does not flag real reporters with periods", () => {
       const cite = makeCase("Cal. App. 4th")
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.8)
+      expect(result[0].confidence.score).toBe(0.8)
     })
 
     it("does not flag short period-less reporters", () => {
       const cite = makeCase("Cal")
       const result = applyFalsePositiveFilters([cite], false)
-      expect(result[0].confidence).toBe(0.8)
+      expect(result[0].confidence.score).toBe(0.8)
     })
   })
 
   describe("month-name date misparse hard-reject (#302)", () => {
-    function makeDateMisparse(
-      day: number,
-      monthName: string,
-      year: number,
-    ): FullCaseCitation {
+    function makeDateMisparse(day: number, monthName: string, year: number): FullCaseCitation {
       const span: Span = { cleanStart: 0, cleanEnd: 12, originalStart: 0, originalEnd: 12 }
       return {
         type: "case",
         text: `${day} ${monthName} ${year}`,
         span,
-        confidence: 0.6,
+        confidence: fakeConfidence(0.6),
         matchedText: `${day} ${monthName} ${year}`,
         processTimeMs: 0,
         patternsChecked: 1,
@@ -309,8 +302,18 @@ describe("applyFalsePositiveFilters", () => {
 
     it("removes all 12 month names with plausible day/year shape", () => {
       const months = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December",
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
       ]
       for (const m of months) {
         const cite = makeDateMisparse(10, m, 2000)
@@ -341,6 +344,5 @@ describe("applyFalsePositiveFilters", () => {
       // the standard filter (still a fake reporter).
       expect(result).toHaveLength(1)
     })
-
   })
 })

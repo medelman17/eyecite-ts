@@ -105,13 +105,9 @@ describe("detectTextFootnotes", () => {
   })
 
   it("handles mixed marker styles after separator", () => {
-    const text = [
-      "Body.",
-      "",
-      "----------",
-      "FN1. First footnote.",
-      "FN2. Second footnote.",
-    ].join("\n")
+    const text = ["Body.", "", "----------", "FN1. First footnote.", "FN2. Second footnote."].join(
+      "\n",
+    )
     const zones = detectTextFootnotes(text)
     expect(zones).toHaveLength(2)
   })

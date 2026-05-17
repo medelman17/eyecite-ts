@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { extractCitations } from "@/extract/extractCitations"
 
-function expectSpan(text: string, span: { originalStart: number; originalEnd: number } | undefined, expected: string) {
+function expectSpan(
+  text: string,
+  span: { originalStart: number; originalEnd: number } | undefined,
+  expected: string,
+) {
   expect(span).toBeDefined()
   expect(text.substring(span!.originalStart, span!.originalEnd)).toBe(expected)
 }

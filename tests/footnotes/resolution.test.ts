@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { DocumentResolver } from "@/resolve/DocumentResolver"
 import type { FullCaseCitation, IdCitation, SupraCitation } from "@/types/citation"
+import { fakeConfidence } from "../helpers/confidence"
 
 function mockCase(
   start: number,
@@ -12,7 +13,7 @@ function mockCase(
     text: `cite-${start}`,
     span: { cleanStart: start, cleanEnd: end, originalStart: start, originalEnd: end },
     matchedText: `cite-${start}`,
-    confidence: 1.0,
+    confidence: fakeConfidence(1.0),
     processTimeMs: 0,
     patternsChecked: 0,
     volume: 500,
@@ -28,7 +29,7 @@ function mockId(start: number, end: number): IdCitation {
     text: "Id.",
     span: { cleanStart: start, cleanEnd: end, originalStart: start, originalEnd: end },
     matchedText: "Id.",
-    confidence: 1.0,
+    confidence: fakeConfidence(1.0),
     processTimeMs: 0,
     patternsChecked: 0,
   }
@@ -40,7 +41,7 @@ function mockSupra(start: number, end: number, partyName: string): SupraCitation
     text: `${partyName}, supra`,
     span: { cleanStart: start, cleanEnd: end, originalStart: start, originalEnd: end },
     matchedText: `${partyName}, supra`,
-    confidence: 1.0,
+    confidence: fakeConfidence(1.0),
     processTimeMs: 0,
     patternsChecked: 0,
     partyName,

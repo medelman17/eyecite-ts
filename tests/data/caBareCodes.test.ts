@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest"
-import {
-  buildCaBareCodeRegex,
-  caBareCodeEntries,
-  findCaBareCode,
-} from "../../src/data/caBareCodes"
+import { buildCaBareCodeRegex, caBareCodeEntries, findCaBareCode } from "../../src/data/caBareCodes"
 
 describe("caBareCodes data module", () => {
   describe("findCaBareCode", () => {

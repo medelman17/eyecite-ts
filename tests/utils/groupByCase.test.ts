@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { groupByCase } from "../../src/utils"
+import type { ResolvedCitation } from "../../src/resolve/types"
 import type {
   FullCaseCitation,
   IdCitation,
@@ -7,13 +7,14 @@ import type {
   StatuteCitation,
   SupraCitation,
 } from "../../src/types/citation"
-import type { ResolvedCitation } from "../../src/resolve/types"
+import { groupByCase } from "../../src/utils"
+import { fakeConfidence } from "../helpers/confidence"
 
 /** Minimal CitationBase fields */
 const BASE = {
   text: "",
   matchedText: "",
-  confidence: 1,
+  confidence: fakeConfidence(1),
   processTimeMs: 0,
   patternsChecked: 0,
 } as const
@@ -120,7 +121,7 @@ describe("groupByCase", () => {
       page: 123,
       pincite: 125,
       span: span(100),
-      resolution: { resolvedTo: 0, confidence: 1 },
+      resolution: { resolvedTo: 0 },
     }
     const groups = groupByCase([full, short])
     expect(groups).toHaveLength(1)
@@ -142,7 +143,7 @@ describe("groupByCase", () => {
       type: "id",
       pincite: 125,
       span: span(100),
-      resolution: { resolvedTo: 0, confidence: 1 },
+      resolution: { resolvedTo: 0 },
     }
     const groups = groupByCase([full, id])
     expect(groups).toHaveLength(1)
@@ -165,7 +166,7 @@ describe("groupByCase", () => {
       partyName: "Smith",
       pincite: 130,
       span: span(200),
-      resolution: { resolvedTo: 0, confidence: 1 },
+      resolution: { resolvedTo: 0 },
     }
     const groups = groupByCase([full, supra])
     expect(groups).toHaveLength(1)
@@ -186,7 +187,7 @@ describe("groupByCase", () => {
       ...BASE,
       type: "id",
       span: span(100),
-      resolution: { confidence: 0, failureReason: "no antecedent" },
+      resolution: { failureReason: "no antecedent" },
     }
     const groups = groupByCase([full, unresolved])
     expect(groups).toHaveLength(1)
@@ -239,13 +240,13 @@ describe("groupByCase", () => {
       ...BASE,
       type: "id",
       span: span(100),
-      resolution: { resolvedTo: 1, confidence: 1 },
+      resolution: { resolvedTo: 1 },
     }
     const id2: ResolvedCitation<IdCitation> = {
       ...BASE,
       type: "id",
       span: span(150),
-      resolution: { resolvedTo: 0, confidence: 1 },
+      resolution: { resolvedTo: 0 },
     }
     const groups = groupByCase([cite1, cite2, id1, id2])
     expect(groups).toHaveLength(2)
@@ -306,7 +307,7 @@ describe("groupByCase", () => {
       ...BASE,
       type: "id",
       span: span(100),
-      resolution: { resolvedTo: 1, confidence: 1 },
+      resolution: { resolvedTo: 1 },
     }
     const groups = groupByCase([primary, secondary, id])
     expect(groups).toHaveLength(1)

@@ -149,8 +149,8 @@ describe("Thorny Corpus — 94 Edge-Case Samples", () => {
         if (sample.knownLimitation) continue
         const citations = extractCitations(sample.text)
         for (const c of citations) {
-          expect(c.confidence).toBeGreaterThanOrEqual(0)
-          expect(c.confidence).toBeLessThanOrEqual(1)
+          expect(c.confidence.score).toBeGreaterThanOrEqual(0)
+          expect(c.confidence.score).toBeLessThanOrEqual(1)
           if (sample.text) {
             expect(c.span.originalStart).toBeGreaterThanOrEqual(0)
             expect(c.span.originalEnd).toBeLessThanOrEqual(sample.text.length)

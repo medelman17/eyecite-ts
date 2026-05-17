@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest"
 import { extractCitations } from "@/extract/extractCitations"
 
 /** Assert a component span brackets the expected text in the original input */
-function expectSpan(text: string, span: { originalStart: number; originalEnd: number } | undefined, expected: string) {
+function expectSpan(
+  text: string,
+  span: { originalStart: number; originalEnd: number } | undefined,
+  expected: string,
+) {
   expect(span).toBeDefined()
   expect(text.substring(span!.originalStart, span!.originalEnd)).toBe(expected)
 }

@@ -18,7 +18,7 @@ describe("extractStatutesAtLarge", () => {
     expect(result.volume).toBe(124)
     expect(result.page).toBe(119)
     expect(result.year).toBeUndefined()
-    expect(result.confidence).toBe(0.9)
+    expect(result.confidence.score).toBe(0.9)
   })
 
   it("should extract year from parenthetical", () => {

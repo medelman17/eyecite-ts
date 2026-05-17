@@ -215,10 +215,8 @@ describe("cleanText position tracking", () => {
     // Full pipeline regression: repeated citations inside long HTML tags must
     // produce originalStart < originalEnd, never zero-length.
     const html =
-      '<p>' +
-      Array(10)
-        .fill('<span class="citation" data-id="x">500 F.2d 123</span> (2020); ')
-        .join("") +
+      "<p>" +
+      Array(10).fill('<span class="citation" data-id="x">500 F.2d 123</span> (2020); ').join("") +
       "</p>"
 
     const result = cleanText(html, [stripHtmlTags])
@@ -302,9 +300,9 @@ describe("normalizeDashes (issue #54)", () => {
   })
 
   it("mixed input: in-word em-dash hyphenated, standalone preserved", () => {
-    expect(
-      normalizeDashes("par. 13\u2014214 and 500 F.4th \u2014 (2024)"),
-    ).toBe("par. 13-214 and 500 F.4th --- (2024)")
+    expect(normalizeDashes("par. 13\u2014214 and 500 F.4th \u2014 (2024)")).toBe(
+      "par. 13-214 and 500 F.4th --- (2024)",
+    )
   })
 
   it("in-word horizontal bar (U+2015) also converts to hyphen", () => {
