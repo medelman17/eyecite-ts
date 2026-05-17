@@ -22,6 +22,7 @@ import type {
   Warning,
 } from "@/types/citation"
 import { getReportersSync } from "@/data/reportersCache"
+import type { ReasonCode } from "@/score/types"
 
 /** Year threshold: US legal reporting starts ~1790 (Dallas Reports). 1750 gives headroom. */
 const MIN_PLAUSIBLE_YEAR = 1750
@@ -209,18 +210,85 @@ function isImplausibleReporter(reporter: string): boolean {
  */
 const SINGLE_DIGIT_PROSE_WORDS: ReadonlySet<string> = new Set([
   // Prepositions / conjunctions / articles
-  "the", "a", "an", "in", "on", "at", "but", "and", "for", "by", "to",
-  "with", "from", "as", "if", "so", "nor", "yet", "not", "no", "then",
-  "when", "where", "who", "what", "how", "that", "this", "these", "those",
+  "the",
+  "a",
+  "an",
+  "in",
+  "on",
+  "at",
+  "but",
+  "and",
+  "for",
+  "by",
+  "to",
+  "with",
+  "from",
+  "as",
+  "if",
+  "so",
+  "nor",
+  "yet",
+  "not",
+  "no",
+  "then",
+  "when",
+  "where",
+  "who",
+  "what",
+  "how",
+  "that",
+  "this",
+  "these",
+  "those",
   // Pronouns
-  "he", "she", "it", "they", "we", "his", "her", "its", "their", "our",
+  "he",
+  "she",
+  "it",
+  "they",
+  "we",
+  "his",
+  "her",
+  "its",
+  "their",
+  "our",
   // Common verbs
-  "was", "were", "is", "are", "has", "had", "been", "being",
-  "did", "does", "do", "may", "shall", "will", "would", "could", "should",
-  "held", "said", "found", "made", "took", "gave", "see", "also",
+  "was",
+  "were",
+  "is",
+  "are",
+  "has",
+  "had",
+  "been",
+  "being",
+  "did",
+  "does",
+  "do",
+  "may",
+  "shall",
+  "will",
+  "would",
+  "could",
+  "should",
+  "held",
+  "said",
+  "found",
+  "made",
+  "took",
+  "gave",
+  "see",
+  "also",
   // Month names (after HTML stripping, "¶2 In July 2016" → "2 In July 2016")
-  "january", "february", "march", "april", "june",
-  "july", "august", "september", "october", "november", "december",
+  "january",
+  "february",
+  "march",
+  "april",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
 ])
 
 /** Maximum plausible volume number for US reporters.
@@ -259,10 +327,7 @@ function isImplausibleVolume(citation: Citation): boolean {
   // `2024 WL 12345`) routinely exceed the reporter-volume cap. Treat
   // values in the plausible-year window as legitimate volumes; truly
   // large numbers (zip codes ≥ 10000, future-year noise) still flag.
-  if (
-    caseCit.volume >= MIN_PLAUSIBLE_YEAR_VOLUME &&
-    caseCit.volume <= MAX_PLAUSIBLE_YEAR_VOLUME
-  ) {
+  if (caseCit.volume >= MIN_PLAUSIBLE_YEAR_VOLUME && caseCit.volume <= MAX_PLAUSIBLE_YEAR_VOLUME) {
     return false
   }
   return true
@@ -329,7 +394,12 @@ function isSuspiciousSmallVolume(citation: Citation): boolean {
 function isFalsePositive(citation: Citation): boolean {
   const reporter = getReporter(citation)
   if (reporter && BLOCKED_REPORTERS.has(reporter.toLowerCase().trim())) return true
-  if (reporter && (citation.type === "case" || citation.type === "shortFormCase") && isImplausibleReporter(reporter)) return true
+  if (
+    reporter &&
+    (citation.type === "case" || citation.type === "shortFormCase") &&
+    isImplausibleReporter(reporter)
+  )
+    return true
   if (isImplausibleVolume(citation)) return true
   if (isDocketNumberVolume(citation)) return true
   if (isSuspiciousSmallVolume(citation)) return true
@@ -354,7 +424,10 @@ function collectFalsePositiveReasons(citation: Citation): string[] {
     if (BLOCKED_REPORTERS.has(normalized)) {
       reasons.push(`Reporter "${reporter}" is a known non-US source`)
     }
-    if ((citation.type === "case" || citation.type === "shortFormCase") && isImplausibleReporter(reporter)) {
+    if (
+      (citation.type === "case" || citation.type === "shortFormCase") &&
+      isImplausibleReporter(reporter)
+    ) {
       reasons.push(`Reporter "${reporter}" contains prose words or is implausibly long`)
     }
   }
@@ -388,6 +461,14 @@ function collectFalsePositiveReasons(citation: Citation): string[] {
   return reasons
 }
 
+function mapFilterReasonToCode(message: string): ReasonCode[] {
+  if (message.includes("hyphenated volume")) return ["suspicious_volume"]
+  if (message.includes("Small volume")) return ["small_volume"]
+  if (message.startsWith("Year ") && message.includes("predates")) return ["year_implausible"]
+  if (message.includes("non-US")) return ["blocked_reporter"]
+  return []
+}
+
 /**
  * Apply false positive filters to extracted citations.
  *
@@ -408,11 +489,21 @@ export function applyFalsePositiveFilters(citations: Citation[], remove: boolean
 
   for (const citation of hardFiltered) {
     // Skip if already penalized (idempotency guard)
-    if (citation.confidence === FLAGGED_CONFIDENCE && citation.warnings?.length) continue
+    if (citation.confidence.score === FLAGGED_CONFIDENCE && citation.warnings?.length) continue
 
     const reasons = collectFalsePositiveReasons(citation)
     if (reasons.length > 0) {
-      citation.confidence = FLAGGED_CONFIDENCE
+      // Penalize by clamping the score floor AND appending reason codes
+      // so downstream consumers can filter on `reasons` instead of magic 0.1.
+      citation.confidence = {
+        ...citation.confidence,
+        score: Math.min(citation.confidence.score, FLAGGED_CONFIDENCE),
+        level: "low",
+        reasons: [
+          ...citation.confidence.reasons,
+          ...reasons.flatMap((r) => mapFilterReasonToCode(r)),
+        ],
+      }
       const warnings: Warning[] = reasons.map((message) => ({
         level: "warning" as const,
         message,
