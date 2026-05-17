@@ -15,6 +15,7 @@
 
 import type { ReporterEntry, ReportersDatabase } from "@/data/reporters"
 import { getReportersSync } from "@/data/reporters"
+import { deriveLevel } from "@/score/level"
 import type { Citation, Warning } from "@/types/citation"
 import type { ExtractOptions } from "./extractCitations"
 import { extractCitations } from "./extractCitations"
@@ -111,6 +112,7 @@ export async function validateAndScore(
         confidence: {
           ...citation.confidence,
           score: adjustedScore,
+          level: deriveLevel(adjustedScore),
           reasons: [...baseReasons, "reporter_unknown"],
         },
         reporterMatch: null,
@@ -125,6 +127,7 @@ export async function validateAndScore(
         confidence: {
           ...citation.confidence,
           score: adjustedScore,
+          level: deriveLevel(adjustedScore),
           reasons: [...baseReasons, "known_reporter"],
         },
         reporterMatch: matches[0],
@@ -143,6 +146,7 @@ export async function validateAndScore(
       confidence: {
         ...citation.confidence,
         score: adjustedScore,
+        level: deriveLevel(adjustedScore),
         reasons: [...baseReasons, "reporter_ambiguous"],
       },
       reporterMatches: matches,

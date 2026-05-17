@@ -22,6 +22,7 @@ import type {
   Warning,
 } from "@/types/citation"
 import { getReportersSync } from "@/data/reportersCache"
+import { deriveLevel } from "@/score/level"
 import type { ReasonCode } from "@/score/types"
 
 /** Year threshold: US legal reporting starts ~1790 (Dallas Reports). 1750 gives headroom. */
@@ -495,10 +496,11 @@ export function applyFalsePositiveFilters(citations: Citation[], remove: boolean
     if (reasons.length > 0) {
       // Penalize by clamping the score floor AND appending reason codes
       // so downstream consumers can filter on `reasons` instead of magic 0.1.
+      const flaggedScore = Math.min(citation.confidence.score, FLAGGED_CONFIDENCE)
       citation.confidence = {
         ...citation.confidence,
-        score: Math.min(citation.confidence.score, FLAGGED_CONFIDENCE),
-        level: "low",
+        score: flaggedScore,
+        level: deriveLevel(flaggedScore),
         reasons: [
           ...citation.confidence.reasons,
           ...reasons.flatMap((r) => mapFilterReasonToCode(r)),
