@@ -153,15 +153,19 @@ XSS auto-escape is enabled by default. Use `useFullSpan: true` to annotate from 
 
 ### Confidence & Signals
 
-Each citation carries a `confidence` score (0-1) based on pattern match quality and reporter validation. Citations preceded by legal signals are tagged:
+Each citation carries a structured `confidence` value based on pattern match quality and reporter validation. Citations preceded by legal signals are tagged:
 
 ```typescript
 const text = "See also Smith v. Jones, 500 F.2d 123 (2020)."
 const [cite] = extractCitations(text)
 
-cite.confidence // 0.85
-cite.signal     // "see also"
+cite.confidence.score    // 0.85
+cite.confidence.level    // "high"
+cite.confidence.reasons  // ["known_reporter", "year_plausible", "case_name_present"]
+cite.signal              // "see also"
 ```
+
+See `confidence.level` for the categorical bucket (`"certain" | "high" | "medium" | "low"`) and `confidence.axes` for the per-dimension breakdown (`extraction`, `metadata`, `resolution`). See the [Migration Guide](docs/migration/0.18-to-0.19.md) for the 0.18 → 0.19 changes.
 
 ### Footnote Detection
 
