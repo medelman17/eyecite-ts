@@ -1,3 +1,4 @@
+import type { Confidence } from "@/score/types"
 import type {
   CaseComponentSpans,
   ConstitutionalComponentSpans,
@@ -75,13 +76,12 @@ export interface CitationBase {
   span: Span
 
   /**
-   * Confidence score indicating match certainty (0-1).
-   * - 1.0: Certain match (e.g., exact reporter abbreviation in reporters-db)
-   * - 0.8-0.99: High confidence (e.g., common pattern, missing pincite)
-   * - 0.5-0.79: Medium confidence (e.g., ambiguous reporter abbreviation)
-   * - <0.5: Low confidence (e.g., unusual formatting)
+   * Calibrated confidence in this extraction. See `Confidence` for the full shape
+   * (score, level, axes, reasons, optional explanation). Replaces the legacy
+   * `confidence: number` field as of 0.19.0; see migration guide
+   * `docs/migration/0.18-to-0.19.md`.
    */
-  confidence: number
+  confidence: Confidence
 
   /** Exact substring matched from the original text */
   matchedText: string
