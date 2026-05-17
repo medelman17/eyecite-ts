@@ -7,6 +7,8 @@
  * @module extract/extractShortForms
  */
 
+import type { IdFeatures, ShortFormCaseFeatures, SupraFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { IdCitation, ShortFormCaseCitation, SupraCitation } from "@/types/citation"
 import type {
@@ -129,7 +131,8 @@ export function extractId(
   // `p.` / `pp.` prefix for CSM form (`Id. at p. 125`; see #236), and
   // `¶` / `¶¶` / `para.` / `paras.` paragraph markers (#204). When the
   // pincite is a paragraph form, `at` is optional (`Id. ¶ 12`).
-  const idRegex = /([Ii])(?:d|bid)\s*(?:(\.)|(,)(?=\s+at\s))(?:(,\s+|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
+  const idRegex =
+    /([Ii])(?:d|bid)\s*(?:(\.)|(,)(?=\s+at\s))(?:(,\s+|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
   const match = idRegex.exec(text)
 
   if (!match) {
@@ -158,30 +161,26 @@ export function extractId(
     }
   }
 
-  // Confidence scoring based on variant
-  let confidence = 1.0
+  // Build feature vector and delegate to central scorer.
   const isLowercase = firstChar === "i"
-  if (isLowercase) confidence = 0.85 // Lowercase id. is non-standard
-  if (hasComma) confidence = Math.min(confidence, 0.9) // Comma variant (Id., at N)
-  if (isTypoComma) confidence = Math.min(confidence, 0.7) // `Id, at N` typo (#305)
-
-  // Context validation: check whether Id. appears in a citation context.
-  // Real Id. citations follow sentence-ending punctuation, semicolons,
-  // or paragraph breaks — not mid-sentence prose like "The Id. card".
+  let inCitationContext = true
   if (cleanedText && span.cleanStart > 0) {
     const preceding = cleanedText.slice(Math.max(0, span.cleanStart - 20), span.cleanStart)
-    // Look for the last non-whitespace character before Id.
     const trimmed = preceding.trimEnd()
     if (trimmed.length > 0) {
-      const lastChar = trimmed[trimmed.length - 1]
-      // Citation contexts end with: . ; ) ] — or follow certain patterns
-      const isCitationContext = /[.;)\]—:]$/.test(trimmed)
-      if (!isCitationContext) {
-        // Mid-sentence Id. (e.g., "The Id. card") — likely not a citation
-        confidence = Math.min(confidence, 0.4)
-      }
+      inCitationContext = /[.;)\]—:]$/.test(trimmed)
     }
   }
+
+  const features: IdFeatures = {
+    type: "id",
+    patternId: "id-citation",
+    lowercase: isLowercase,
+    hasComma: !!hasComma,
+    typoComma: isTypoComma,
+    inCitationContext,
+  }
+  const confidence = scoreCitation(features)
 
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
@@ -288,23 +287,16 @@ export function extractSupra(
 
   let partyName: string | undefined
   let pinciteInfo: PinciteInfo | undefined
-  let confidence: number
   let pinciteGroupIdx: number | undefined
 
   if (bracketedMatch) {
     // Bracketed form (#306): group 1 = optional party, group 2 = optional pincite.
     partyName = bracketedMatch[1] ? stripSupraPartyPrefix(bracketedMatch[1]) : undefined
-    pinciteInfo = bracketedMatch[2]
-      ? (parsePincite(bracketedMatch[2]) ?? undefined)
-      : undefined
-    confidence = partyName ? 0.9 : 0.8
+    pinciteInfo = bracketedMatch[2] ? (parsePincite(bracketedMatch[2]) ?? undefined) : undefined
     if (bracketedMatch[2]) pinciteGroupIdx = 2
   } else if (partyMatch) {
     partyName = stripSupraPartyPrefix(partyMatch[1])
-    pinciteInfo = partyMatch[3]
-      ? (parsePincite(partyMatch[3]) ?? undefined)
-      : undefined
-    confidence = 0.9
+    pinciteInfo = partyMatch[3] ? (parsePincite(partyMatch[3]) ?? undefined) : undefined
     if (partyMatch[3]) pinciteGroupIdx = 3
   } else {
     // Standalone supra — no party name
@@ -313,10 +305,19 @@ export function extractSupra(
     const atPage = match[3]
     const rawPin = noteAtPage ?? atPage
     pinciteInfo = rawPin ? (parsePincite(rawPin) ?? undefined) : undefined
-    confidence = 0.8 // Slightly lower — standalone supra is less specific
     if (noteAtPage) pinciteGroupIdx = 2
     else if (atPage) pinciteGroupIdx = 3
   }
+
+  // Build features and delegate to central scorer.
+  const features: SupraFeatures = {
+    type: "supra",
+    patternId: "supra",
+    partyName: !!partyName,
+    bracketed: !!bracketedMatch,
+    standalone: !bracketedMatch && !partyMatch,
+  }
+  const confidence = scoreCitation(features)
 
   const pincite = pinciteInfo?.page
 
@@ -458,11 +459,13 @@ export function extractShortFormCase(
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-  // Confidence: base 0.4, boosted for recognized reporters
-  let confidence = 0.4
-  if (COMMON_REPORTERS.has(reporter)) {
-    confidence += 0.3
+  const features: ShortFormCaseFeatures = {
+    type: "shortFormCase",
+    patternId: "short-form-case",
+    knownReporter: COMMON_REPORTERS.has(reporter),
+    partyNameMatch: false, // populated post-resolution; false at extraction time
   }
+  const confidence = scoreCitation(features)
 
   // Trailing parenthetical (#303): `Smith, 500 F.2d at 125 (citations omitted)`.
   const parenthetical = extractTrailingParenthetical(cleanedText, span.cleanEnd)
