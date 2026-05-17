@@ -18,6 +18,8 @@
  * @module extract/statutes/extractFloridaStatute
  */
 
+import type { StatuteFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
 import type { StatuteComponentSpans } from "@/types/componentSpans"
@@ -38,8 +40,7 @@ export function extractFloridaStatute(
 ): StatuteCitation {
   const { text, span } = token
 
-  const re =
-    token.patternId === "florida-postfix" ? FLORIDA_POSTFIX_RE : FLORIDA_PREFIX_SPELLED_RE
+  const re = token.patternId === "florida-postfix" ? FLORIDA_POSTFIX_RE : FLORIDA_PREFIX_SPELLED_RE
   const match = re.exec(text)!
 
   const rawBody = match[1]
@@ -70,11 +71,15 @@ export function extractFloridaStatute(
     }
   }
 
-  // Confidence: 0.95 for both shapes (closed Florida-specific patterns
-  // are unambiguous). +0.05 with a subsection.
-  let confidence = 0.95
-  if (subsection) confidence += 0.05
-  confidence = Math.min(confidence, 1.0)
+  const features: StatuteFeatures = {
+    type: "statute",
+    patternId: token.patternId,
+    knownCode: true, // all state-specific extractors operate on known codes
+    titlePresent: false,
+    subsectionPresent: false,
+    parseable: true,
+  }
+  const confidence = scoreCitation(features)
 
   return {
     type: "statute",
