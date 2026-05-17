@@ -19,6 +19,7 @@ import {
   PUBLIC_LAW_WEIGHTS,
   RESOLUTION_WEIGHTS,
   SHORTFORM_CASE_WEIGHTS,
+  STATUTE_PATTERN_OVERRIDES,
   STATUTE_WEIGHTS,
   STATUTES_AT_LARGE_WEIGHTS,
   SUPRA_WEIGHTS,
@@ -72,6 +73,8 @@ function shortFormCaseExtraction(
 
 function statuteExtraction(f: Extract<ExtractionFeatures, { type: "statute" }>): number {
   if (!f.parseable) return STATUTE_WEIGHTS.unparseable
+  const override = STATUTE_PATTERN_OVERRIDES[f.patternId]
+  if (override !== undefined) return override
   if (f.patternId === "usc" || f.patternId === "cfr" || f.patternId === "irc") {
     let s: number = STATUTE_WEIGHTS.federalBase
     if (f.titlePresent) s += STATUTE_WEIGHTS.titlePresent

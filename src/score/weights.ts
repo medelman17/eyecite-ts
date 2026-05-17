@@ -51,6 +51,115 @@ export const STATUTE_WEIGHTS = {
   subsectionPresent: 0.05,
 } as const
 
+/**
+ * Per-pattern statute confidence overrides. Many state-statute extractors
+ * historically assigned a single hard-coded confidence value (e.g., 0.9 for
+ * fl-statute, 0.95 for ca-bare-code). To preserve exact behavior during the
+ * Phase 2 migration, those values live here, keyed by patternId.
+ *
+ * Phase 3 will replace these with calibrated values from labeled data.
+ */
+export const STATUTE_PATTERN_OVERRIDES: Record<string, number> = {
+  // Abbreviated codes (extractAbbreviated.ts) — historically dynamic
+  // (codeEntry × hasSection branching). Use 0.95 baseline matching the
+  // most-common parseable case (known code + §); unparseable still routes
+  // through the unparseable weight via `parseable: false`.
+  "abbreviated-code": 0.95,
+
+  // Alabama pre-1975 Code (extractAlaCode1940.ts) — shared 0.95 base
+  // across all three patternIds.
+  "ala-code-prefix": 0.95,
+  "ala-title-trailer": 0.95,
+  "ala-tit-bare": 0.95,
+
+  // California bare-code (extractCaBareCode.ts).
+  "ca-bare-code": 0.95,
+
+  // Illinois Compiled Statutes (extractChapterAct.ts).
+  "chapter-act": 0.95,
+
+  // Colorado Revised Statutes prose form (extractColoradoProse.ts).
+  "colorado-prose": 0.9,
+
+  // Florida statutes (extractFloridaStatute.ts) — both patternIds share 0.95.
+  "florida-postfix": 0.95,
+  "florida-prefix-spelled": 0.95,
+
+  // Georgia pre-1983 Code (extractGaPre1983.ts).
+  "ga-pre-1983": 0.85,
+
+  // Indiana Code year-edition (extractIcYearEdition.ts).
+  "ic-year-edition": 0.95,
+
+  // Idaho postfix (extractIdahoPostfix.ts).
+  "idaho-postfix": 0.95,
+
+  // Illinois Revised Statutes (extractIllRevStat.ts).
+  "ill-rev-stat": 0.95,
+
+  // Kansas Statutes Annotated year-edition (extractKsaYearEdition.ts).
+  "ksa-year-edition": 0.95,
+
+  // Montana Code Annotated postfix (extractMcaPostfix.ts).
+  "mca-postfix": 0.95,
+
+  // Maryland article-letter codes (extractMdArticleLetter.ts).
+  "md-article-letter": 0.95,
+
+  // Minnesota Statutes year-edition (extractMinnStYearEdition.ts).
+  "minn-st-year-edition": 0.95,
+
+  // Named-code state citations (extractNamedCode.ts) — both patternIds.
+  // Historical: `jurisdiction ? 0.95 : 0.5` — using 0.95 (parseable path).
+  "named-code": 0.95,
+  "mass-chapter": 0.95,
+
+  // New Mexico bare-section (extractNmBareSection.ts).
+  "nm-bare-section": 0.9,
+
+  // New York bare named-code (extractNyBareLaw.ts).
+  "ny-bare-named-code": 0.9,
+
+  // Ohio Revised Code chapter form (extractOhChapter.ts).
+  "oh-chapter": 0.95,
+
+  // Oregon Revised Statutes chapter form (extractOrsChapter.ts).
+  "ors-chapter": 0.95,
+
+  // Prose-form federal citations (extractProse.ts).
+  prose: 0.85,
+
+  // Washington RCW chapter postfix (extractRcwChapterPostfix.ts).
+  "rcw-chapter-postfix": 0.95,
+
+  // Rhode Island General Laws 1956 (extractRigl1956.ts).
+  "rigl-1956": 0.95,
+
+  // Revised Laws of Hawaii (extractRlh.ts).
+  rlh: 0.95,
+
+  // Nebraska Reissue Revised Statutes 1943 (extractRrs1943.ts).
+  "rrs-1943": 0.95,
+
+  // New Hampshire RSA chapter (extractRsaChapter.ts).
+  "rsa-chapter": 0.95,
+
+  // State administrative codes (extractStateAdminCode.ts).
+  "state-admin-code": 0.95,
+
+  // Tennessee Code Annotated postfix (extractTcaPostfix.ts).
+  "tca-postfix": 0.95,
+
+  // Virginia bare Code (extractVaBareCode.ts).
+  "va-bare-code": 0.9,
+
+  // Wisconsin Statutes postfix (extractWiStatsPostfix.ts).
+  "wi-stats-postfix": 0.95,
+
+  // West Virginia historical Code 1931 (extractWvCode1931.ts).
+  "wv-code-1931": 0.9,
+}
+
 export const CONSTITUTIONAL_WEIGHTS = {
   bareArticle: 0.5,
   bareConstitution: 0.7,
