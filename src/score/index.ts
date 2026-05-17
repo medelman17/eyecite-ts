@@ -25,6 +25,8 @@ export type {
   StatutesAtLargeFeatures,
   SupraFeatures,
 } from "./features"
+export type { EceSample, GoldCitation, MatchedSample } from "./eval"
+export { computeEce, matchPredictionsToGold } from "./eval"
 export { deriveLevel } from "./level"
 export { collectReasonCodes } from "./reasons"
 export type { ScoreOptions } from "./scorer"

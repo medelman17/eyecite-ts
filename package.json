@@ -63,7 +63,8 @@
     "lint": "biome lint src tests",
     "format": "biome format --write src tests",
     "size": "size-limit",
-    "check:size": "npx tsx scripts/check-bundle-size.ts"
+    "check:size": "npx tsx scripts/check-bundle-size.ts",
+    "eval:raw-ece": "tsx scripts/eval/rawEce.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.0",
