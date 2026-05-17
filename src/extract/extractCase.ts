@@ -35,6 +35,8 @@ import { getReportersSync } from "@/data/reportersCache"
 import { inferCourtFromReporter } from "./courtInference"
 import { parsePincite, type PinciteInfo } from "./pincite"
 import { normalizeCourt } from "./courtNormalization"
+import type { CaseFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 
 /** Valid CitationSignal values for safe validation after regex capture + normalization. */
 const VALID_SIGNALS = new Set([
@@ -389,7 +391,7 @@ const V_CASE_NAME_REGEX =
  *  The court text must contain a period so loose forms like `(March 1991)`
  *  don't get misread as courts. The `d` flag enables `match.indices`. */
 const PROCEDURAL_PREFIX_REGEX =
-  /\b(In\s+the\s+Matter\s+of\s+the\s+Liquidation\s+of|In\s+the\s+Matter\s+of\s+the\s+Rehabilitation\s+of|In\s+the\s+Matter\s+of\s+the\s+Receivership\s+of|In\s+the\s+Matter\s+of\s+the\s+Extradition\s+of|In\s+the\s+Matter\s+of\s+the\s+Application\s+of|In\s+the\s+Matter\s+of\s+the\s+Welfare\s+of|In\s+the\s+Matter\s+of|In\s+re\s+Petition\s+for\s+Naturalization\s+of|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+as\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+of|In\s+re\s+Marriage\s+of|In\s+re\s+Liquidation\s+of|In\s+re\s+Rehabilitation\s+of|In\s+re\s+Receivership\s+of|In\s+re\s+Naturalization\s+of|In\s+re\s+Extradition\s+of|In\s+re\s+Application\s+of|In\s+re\s+Welfare\s+of|In\s+re\s+Dependency\s+of|In\s+re\s+Paternity\s+of|In\s+re\s+Parentage\s+of|In\s+re\s+Conservatorship\s+of|In\s+re\s+Guardianship\s+of|In\s+re\s+Adoption\s+of|In\s+the\s+Interest\s+of|Matter\s+of\s+Liquidation\s+of|Matter\s+of\s+Rehabilitation\s+of|Commonwealth\s+of\s+Puerto\s+Rico\s+ex\s+rel\.|Government\s+of\s+the\s+Virgin\s+Islands\s+ex\s+rel\.|Commonwealth\s+ex\s+rel\.|Petition\s+for\s+Naturalization\s+of|People\s+ex\s+rel\.|District\s+of\s+Columbia\s+ex\s+rel\.|Conservatorship\s+of\s+the\s+Person\s+and\s+Estate\s+of|Conservatorship\s+of\s+the\s+Person\s+of|Conservatorship\s+of\s+the\s+Estate\s+of|Inquiry\s+Concerning\s+Judge|Appeal\s+of|Care\s+and\s+Protection\s+of|Succession\s+of|In re|Ex parte|Matter of|Estate of|State ex rel\.|United States ex rel\.|Application of|On Petition of|Petition of|Adoption of|Conservatorship of|Guardianship of)\s+([A-Za-z0-9\s.,'&()/-]+?)\s*(?:,|\((?:([^)]*?\.[^)]*?)\s+)?(\d{4})\))\s*$/id
+  /\b(In\s+the\s+Matter\s+of\s+the\s+Liquidation\s+of|In\s+the\s+Matter\s+of\s+the\s+Rehabilitation\s+of|In\s+the\s+Matter\s+of\s+the\s+Receivership\s+of|In\s+the\s+Matter\s+of\s+the\s+Extradition\s+of|In\s+the\s+Matter\s+of\s+the\s+Application\s+of|In\s+the\s+Matter\s+of\s+the\s+Welfare\s+of|In\s+the\s+Matter\s+of|In\s+re\s+Petition\s+for\s+Naturalization\s+of|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+as\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+of|In\s+re\s+Marriage\s+of|In\s+re\s+Liquidation\s+of|In\s+re\s+Rehabilitation\s+of|In\s+re\s+Receivership\s+of|In\s+re\s+Naturalization\s+of|In\s+re\s+Extradition\s+of|In\s+re\s+Application\s+of|In\s+re\s+Welfare\s+of|In\s+re\s+Dependency\s+of|In\s+re\s+Paternity\s+of|In\s+re\s+Parentage\s+of|In\s+re\s+Conservatorship\s+of|In\s+re\s+Guardianship\s+of|In\s+re\s+Adoption\s+of|In\s+the\s+Interest\s+of|Matter\s+of\s+Liquidation\s+of|Matter\s+of\s+Rehabilitation\s+of|Commonwealth\s+of\s+Puerto\s+Rico\s+ex\s+rel\.|Government\s+of\s+the\s+Virgin\s+Islands\s+ex\s+rel\.|Commonwealth\s+ex\s+rel\.|Petition\s+for\s+Naturalization\s+of|People\s+ex\s+rel\.|District\s+of\s+Columbia\s+ex\s+rel\.|Conservatorship\s+of\s+the\s+Person\s+and\s+Estate\s+of|Conservatorship\s+of\s+the\s+Person\s+of|Conservatorship\s+of\s+the\s+Estate\s+of|Inquiry\s+Concerning\s+Judge|Appeal\s+of|Care\s+and\s+Protection\s+of|Succession\s+of|In re|Ex parte|Matter of|Estate of|State ex rel\.|United States ex rel\.|Application of|On Petition of|Petition of|Adoption of|Conservatorship of|Guardianship of)\s+([A-Za-z0-9\s.,'&()/-]+?)\s*(?:,|\((?:([^)]*?\.[^)]*?)\s+)?(\d{4})\))\s*$/di
 
 /**
  * Lowercase words that legitimately appear in legal party names.
@@ -538,11 +540,18 @@ function stripDateFromCourt(content: string): string | undefined {
   // #431
   if (!court.includes(".")) {
     const firstWord = court.match(/^[a-z]+/i)?.[0].toLowerCase()
-    if (firstWord && (SIGNAL_WORDS.has(firstWord) ||
-      firstWord === "emphasis" || firstWord === "internal" ||
-      firstWord === "citations" || firstWord === "footnote" ||
-      firstWord === "alteration" || firstWord === "alterations" ||
-      firstWord === "omitted" || firstWord === "see")) {
+    if (
+      firstWord &&
+      (SIGNAL_WORDS.has(firstWord) ||
+        firstWord === "emphasis" ||
+        firstWord === "internal" ||
+        firstWord === "citations" ||
+        firstWord === "footnote" ||
+        firstWord === "alteration" ||
+        firstWord === "alterations" ||
+        firstWord === "omitted" ||
+        firstWord === "see")
+    ) {
       return undefined
     }
     // Multi-word lowercase prose (>= 3 words) without any period is
@@ -1195,10 +1204,8 @@ export function extractCaseName(
   // the search window back to original coordinates.
   if (options?.originalText && options.transformationMap) {
     const { originalText, transformationMap } = options
-    const searchOriginalStart =
-      transformationMap.cleanToOriginal.get(searchStart) ?? searchStart
-    const coreOriginalStart =
-      transformationMap.cleanToOriginal.get(coreStart) ?? coreStart
+    const searchOriginalStart = transformationMap.cleanToOriginal.get(searchStart) ?? searchStart
+    const coreOriginalStart = transformationMap.cleanToOriginal.get(coreStart) ?? coreStart
     if (coreOriginalStart > searchOriginalStart) {
       const originalWindow = originalText.substring(searchOriginalStart, coreOriginalStart)
       const paragraphBreakRegex = /\n[ \t\r]*\n/g
@@ -1269,9 +1276,7 @@ export function extractCaseName(
   // boundaries, the segment is INTERIOR — stripping it from `precedingText`
   // preserves the caption to its left. Capture the docket paren's court +
   // date for metadata transfer onto the trailing reporter citation.
-  let precedingDocketMeta:
-    | { court: string; year: number; date: StructuredDate }
-    | undefined
+  let precedingDocketMeta: { court: string; year: number; date: StructuredDate } | undefined
   LA_DOCKET_BOUNDARY_REGEX.lastIndex = 0
   const laDocketMatch = LA_DOCKET_BOUNDARY_REGEX.exec(precedingText)
   if (laDocketMatch) {
@@ -1742,8 +1747,7 @@ export function parseParenthetical(content: string): {
             signal: normalized.signal,
             rawSignal,
             start: sigOffset !== -1 ? sigOffset : afterYearStart,
-            end:
-              (sigOffset !== -1 ? sigOffset : afterYearStart) + rawSignal.length,
+            end: (sigOffset !== -1 ? sigOffset : afterYearStart) + rawSignal.length,
           }
           workingContent = content.substring(0, afterYearStart)
         }
@@ -1779,9 +1783,10 @@ export function parseParenthetical(content: string): {
   // false-positive on the trailing `en banc` substring.
   //
   // Pattern: <Surname>(, <Surname>)*(?:,? and <Surname>)?,? (C\.J\.|J\.|JJ\.),? <role>
-  const justiceMatch = /^(?<surnames>[A-Z][a-z]+(?:(?:,\s+|\s+and\s+)[A-Z][a-z]+)*)\s*,?\s*(?<title>C\.J\.|J\.|JJ\.)\s*,?\s*(?<role>.+)$/.exec(
-    content.trim(),
-  )
+  const justiceMatch =
+    /^(?<surnames>[A-Z][a-z]+(?:(?:,\s+|\s+and\s+)[A-Z][a-z]+)*)\s*,?\s*(?<title>C\.J\.|J\.|JJ\.)\s*,?\s*(?<role>.+)$/.exec(
+      content.trim(),
+    )
   if (justiceMatch?.groups) {
     const surnameText = justiceMatch.groups.surnames
     const roleText = justiceMatch.groups.role.trim().replace(/[.,]+$/, "")
@@ -2346,9 +2351,7 @@ export function extractCase(
       const next = siblings.find(
         (s) =>
           s.cleanStart > postChainStart &&
-          CHAIN_BRIDGE_REGEX.test(
-            cleanedText.substring(postChainStart, s.cleanStart),
-          ),
+          CHAIN_BRIDGE_REGEX.test(cleanedText.substring(postChainStart, s.cleanStart)),
       )
       if (!next) break
       postChainStart = next.cleanEnd
@@ -2364,9 +2367,7 @@ export function extractCase(
     // pincite; the paren scan uses the post-chain window instead.
     const afterToken = cleanedText.substring(span.cleanEnd)
     let parenAfterToken =
-      postChainStart === span.cleanEnd
-        ? afterToken
-        : cleanedText.substring(postChainStart)
+      postChainStart === span.cleanEnd ? afterToken : cleanedText.substring(postChainStart)
     // Consume any leading (U)/[U] marker so the real court paren is found.
     const unpubMatch = /^\s*(?:\(U\)|\[U\])/.exec(parenAfterToken)
     if (unpubMatch) {
@@ -2414,8 +2415,7 @@ export function extractCase(
         // continues to point at the primary; consumers walk `additionalPincites`.
         if (pinciteInfo) {
           const additionalPincites: PinciteInfo[] = []
-          let scanStart =
-            (laPinciteMatch.index ?? 0) + laPinciteMatch[0].length
+          let scanStart = (laPinciteMatch.index ?? 0) + laPinciteMatch[0].length
           while (scanStart < afterToken.length) {
             const remainder = afterToken.substring(scanStart)
             const addMatch = ADDITIONAL_PINCITE_REGEX.exec(remainder)
@@ -2563,11 +2563,10 @@ export function extractCase(
       const ih = metaParenResult.internalHistory
       const sigCleanStart = contentStart + ih.start
       const sigCleanEnd = contentStart + ih.end
-      const { originalStart: sigOrigStart, originalEnd: sigOrigEnd } =
-        resolveOriginalSpan(
-          { cleanStart: sigCleanStart, cleanEnd: sigCleanEnd },
-          transformationMap,
-        )
+      const { originalStart: sigOrigStart, originalEnd: sigOrigEnd } = resolveOriginalSpan(
+        { cleanStart: sigCleanStart, cleanEnd: sigCleanEnd },
+        transformationMap,
+      )
       subsequentHistoryEntries ??= []
       subsequentHistoryEntries.push({
         signal: ih.signal,
@@ -2622,8 +2621,7 @@ export function extractCase(
     const prev = siblings
       .filter((s) => s.cleanEnd <= span.cleanStart)
       .reduce<{ cleanEnd: number } | undefined>(
-        (best, s) =>
-          !best || s.cleanEnd > best.cleanEnd ? s : best,
+        (best, s) => (!best || s.cleanEnd > best.cleanEnd ? s : best),
         undefined,
       )
     if (prev) {
@@ -2632,15 +2630,10 @@ export function extractCase(
   }
   let caseNameResult: ReturnType<typeof extractCaseName> | undefined
   if (cleanedText) {
-    caseNameResult = extractCaseName(
-      cleanedText,
-      span.cleanStart,
-      caseNameLookback,
-      {
-        originalText,
-        transformationMap,
-      },
-    )
+    caseNameResult = extractCaseName(cleanedText, span.cleanStart, caseNameLookback, {
+      originalText,
+      transformationMap,
+    })
     if (caseNameResult) {
       caseName = caseNameResult.caseName
 
@@ -2655,9 +2648,7 @@ export function extractCase(
         // Trailing parenthetical (year or court+year)
         caseName = caseName.replace(/\s*\((?:[^()]*\s)?\d{4}\)\s*$/, "").trim()
         // Trailing comma + parallel-cite start (volume + reporter + page-like)
-        caseName = caseName
-          .replace(/,\s+\d+\s+[A-Z][A-Za-z.&'\d\s]*\d+\s*$/, "")
-          .trim()
+        caseName = caseName.replace(/,\s+\d+\s+[A-Z][A-Za-z.&'\d\s]*\d+\s*$/, "").trim()
         // Trailing comma + neutral-cite shape (YYYY <state> NN)
         caseName = caseName.replace(/,\s+\d{4}\s+[A-Z]+\s+\d+\s*$/, "").trim()
       }
@@ -2746,14 +2737,8 @@ export function extractCase(
   // Cites without a preceding sibling (e.g., a standalone `500 F.2d 123 (2020)`
   // with no caption) intentionally do not get a fullSpan — that's existing
   // contract: "no case name → no fullSpan".
-  const hasCloseParallelPrev =
-    caseNameLookback !== undefined && caseNameLookback < 30
-  if (
-    !fullSpan &&
-    hasCloseParallelPrev &&
-    allParens &&
-    allParens.length > 0
-  ) {
+  const hasCloseParallelPrev = caseNameLookback !== undefined && caseNameLookback < 30
+  if (!fullSpan && hasCloseParallelPrev && allParens && allParens.length > 0) {
     const lastParen = allParens[allParens.length - 1]
     if (lastParen.end > span.cleanEnd) {
       const fullCleanStart = span.cleanStart
@@ -2761,11 +2746,8 @@ export function extractCase(
       fullSpan = {
         cleanStart: fullCleanStart,
         cleanEnd: fullCleanEnd,
-        originalStart:
-          transformationMap.cleanToOriginal.get(fullCleanStart) ??
-          fullCleanStart,
-        originalEnd:
-          transformationMap.cleanToOriginal.get(fullCleanEnd) ?? fullCleanEnd,
+        originalStart: transformationMap.cleanToOriginal.get(fullCleanStart) ?? fullCleanStart,
+        originalEnd: transformationMap.cleanToOriginal.get(fullCleanEnd) ?? fullCleanEnd,
       }
     }
   }
@@ -2929,46 +2911,36 @@ export function extractCase(
   // Translate positions from clean → original (citation core only - span unchanged)
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-  // Calculate confidence score using multi-factor model.
-  // Base is low — unvalidated matches are uncertain. Real signals earn confidence.
-  let confidence = 0.2
-
-  // Known reporter: strong signal.
-  // Check reporters-db first (precise), fall back to common reporter set.
+  // Build feature vector and delegate to central scorer.
   const reportersDb = getReportersSync()
-  const dbMatch = reportersDb?.byAbbreviation.get(reporter.toLowerCase())
-  if (dbMatch && dbMatch.length > 0) {
-    confidence += 0.3
-  } else if (COMMON_REPORTERS.has(reporter)) {
-    confidence += 0.3
-  }
+  const dbMatches = reportersDb?.byAbbreviation.get(reporter.toLowerCase()) ?? []
+  const knownReporter = dbMatches.length > 0 || COMMON_REPORTERS.has(reporter)
+  const reporterAmbiguous = dbMatches.length > 1
+  const yearPresent = year !== undefined
+  const yearPlausible = year !== undefined && year <= CURRENT_YEAR
 
-  // Year present and plausible: moderate signal
-  if (year !== undefined) {
-    if (year <= CURRENT_YEAR) {
-      confidence += 0.2
-    }
-  }
+  const expected = 7 // vol, reporter, page, year, court, caseName, pincite
+  let populated = 2 // volume + reporter always present at this point
+  if (page !== undefined) populated++
+  if (yearPresent) populated++
+  if (court) populated++
+  if (caseName) populated++
+  if (pincite !== undefined) populated++
 
-  // Case name found: moderate signal
-  if (caseName) {
-    confidence += 0.15
+  const features: CaseFeatures = {
+    type: "case",
+    patternId: token.patternId,
+    knownReporter,
+    reporterAmbiguous,
+    yearPresent,
+    yearPlausible,
+    caseNamePresent: !!caseName,
+    courtIdentified: !!court,
+    blankPage: !!hasBlankPage,
+    metadataExpected: expected,
+    metadataPopulated: populated,
   }
-
-  // Court identified: confirmatory signal
-  if (court) {
-    confidence += 0.1
-  }
-
-  // Cap at 1.0 and round to avoid floating point artifacts (e.g., 0.7999...9)
-  confidence = Math.round(Math.min(confidence, 1.0) * 100) / 100
-
-  // Blank page citations: intentional placeholders (3+ underscores/dashes in legal
-  // briefs). The pattern is very specific so they deserve at least moderate confidence,
-  // but don't let them exceed the signals they actually have.
-  if (hasBlankPage) {
-    confidence = Math.max(confidence, 0.5)
-  }
+  const confidence = scoreCitation(features)
 
   return {
     type: "case",
