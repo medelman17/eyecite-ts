@@ -7,6 +7,8 @@
  * @module extract/statutes/extractProse
  */
 
+import type { StatuteFeatures } from "@/score/features"
+import { scoreCitation } from "@/score/scorer"
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
 import type { StatuteComponentSpans } from "@/types/componentSpans"
@@ -41,17 +43,24 @@ export function extractProse(token: Token, transformationMap: TransformationMap)
   let spans: StatuteComponentSpans | undefined
   if (match?.indices) {
     spans = {}
-    if (match.indices[1]) spans.section = spanFromGroupIndex(span.cleanStart, match.indices[1], transformationMap)
-    if (match.indices[3]) spans.title = spanFromGroupIndex(span.cleanStart, match.indices[3], transformationMap)
+    if (match.indices[1])
+      spans.section = spanFromGroupIndex(span.cleanStart, match.indices[1], transformationMap)
+    if (match.indices[3])
+      spans.title = spanFromGroupIndex(span.cleanStart, match.indices[3], transformationMap)
     if (match.indices[2] && subsection) {
       spans.subsection = spanFromGroupIndex(span.cleanStart, match.indices[2], transformationMap)
     }
   }
 
-  let confidence = 0.85
-  if (title !== undefined) confidence += 0.05
-  if (subsection) confidence += 0.05
-  confidence = Math.min(confidence, 1.0)
+  const features: StatuteFeatures = {
+    type: "statute",
+    patternId: token.patternId,
+    knownCode: true, // all state-specific extractors operate on known codes
+    titlePresent: false,
+    subsectionPresent: false,
+    parseable: true,
+  }
+  const confidence = scoreCitation(features)
 
   return {
     type: "statute",
