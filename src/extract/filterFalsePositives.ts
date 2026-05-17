@@ -229,6 +229,15 @@ const SINGLE_DIGIT_PROSE_WORDS: ReadonlySet<string> = new Set([
  *  zip codes (5-digit numbers like 20006) and other non-citation numbers. */
 const MAX_PLAUSIBLE_VOLUME = 2000
 
+/** Plausible year range for citations whose "volume" is actually a year.
+ *  Vendor-neutral reporters — NY Slip Op, IL App, OK CIV APP, WL, LEXIS,
+ *  Ohio neutral, etc. — use the year of decision as the volume number,
+ *  routinely exceeding MAX_PLAUSIBLE_VOLUME. Cap at 2099 keeps the
+ *  heuristic deterministic and still catches truly garbage numeric
+ *  volumes (e.g., parsed zip codes ≥ 10000). */
+const MIN_PLAUSIBLE_YEAR_VOLUME = 1900
+const MAX_PLAUSIBLE_YEAR_VOLUME = 2099
+
 /** Docket number pattern: 1-2 digit prefix + hyphen + 4+ digit suffix.
  *  E.g., "24-30706", "23-12345". Real hyphenated citation volumes look
  *  like "1984-1" (4-digit year + short index). */
@@ -245,7 +254,18 @@ function isImplausibleVolume(citation: Citation): boolean {
   // Only check purely numeric volumes; hyphenated volumes (strings) are
   // handled by isDocketNumberVolume
   if (typeof caseCit.volume !== "number") return false
-  return caseCit.volume > MAX_PLAUSIBLE_VOLUME
+  if (caseCit.volume <= MAX_PLAUSIBLE_VOLUME) return false
+  // Year-as-volume neutral citations (e.g. `2026 NY Slip Op 01627`,
+  // `2024 WL 12345`) routinely exceed the reporter-volume cap. Treat
+  // values in the plausible-year window as legitimate volumes; truly
+  // large numbers (zip codes ≥ 10000, future-year noise) still flag.
+  if (
+    caseCit.volume >= MIN_PLAUSIBLE_YEAR_VOLUME &&
+    caseCit.volume <= MAX_PLAUSIBLE_YEAR_VOLUME
+  ) {
+    return false
+  }
+  return true
 }
 
 /**
