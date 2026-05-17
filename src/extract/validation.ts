@@ -93,60 +93,58 @@ export async function validateAndScore(
     return citation
   }
 
-  let adjustedConfidence = citation.confidence
+  let adjustedScore = citation.confidence.score
+  const baseReasons = citation.confidence.reasons
 
-  // Case citations have 'reporter' field (discriminated union)
   if ("reporter" in citation && citation.reporter) {
     const matches = reportersDb.byAbbreviation.get(citation.reporter.toLowerCase()) ?? []
 
     if (matches.length === 0) {
-      // No match - penalize confidence and add warning
-      adjustedConfidence = Math.max(0, adjustedConfidence + opts.reporterMissPenalty)
-
+      adjustedScore = Math.max(0, adjustedScore + opts.reporterMissPenalty)
       const warning: Warning = {
         level: "warning",
         message: `Reporter "${citation.reporter}" not found in database`,
-        position: {
-          start: citation.span.originalStart,
-          end: citation.span.originalEnd,
-        },
+        position: { start: citation.span.originalStart, end: citation.span.originalEnd },
       }
-
       return {
         ...citation,
-        confidence: adjustedConfidence,
+        confidence: {
+          ...citation.confidence,
+          score: adjustedScore,
+          reasons: [...baseReasons, "reporter_unknown"],
+        },
         reporterMatch: null,
         warnings: [...(citation.warnings ?? []), warning],
       }
     }
 
     if (matches.length === 1) {
-      // Exact match - boost confidence
-      adjustedConfidence = Math.min(1.0, adjustedConfidence + opts.reporterMatchBoost)
-
+      adjustedScore = Math.min(1.0, adjustedScore + opts.reporterMatchBoost)
       return {
         ...citation,
-        confidence: adjustedConfidence,
+        confidence: {
+          ...citation.confidence,
+          score: adjustedScore,
+          reasons: [...baseReasons, "known_reporter"],
+        },
         reporterMatch: matches[0],
       }
     }
 
-    // Ambiguous match (2+ reporters) - fractional penalty
     const penalty = opts.ambiguityPenalty * (matches.length - 1)
-    adjustedConfidence = Math.max(0, adjustedConfidence + penalty)
-
+    adjustedScore = Math.max(0, adjustedScore + penalty)
     const warning: Warning = {
       level: "warning",
       message: `Ambiguous reporter: ${matches.map((m) => m.name).join(", ")}`,
-      position: {
-        start: citation.span.originalStart,
-        end: citation.span.originalEnd,
-      },
+      position: { start: citation.span.originalStart, end: citation.span.originalEnd },
     }
-
     return {
       ...citation,
-      confidence: adjustedConfidence,
+      confidence: {
+        ...citation.confidence,
+        score: adjustedScore,
+        reasons: [...baseReasons, "reporter_ambiguous"],
+      },
       reporterMatches: matches,
       warnings: [...(citation.warnings ?? []), warning],
     }
