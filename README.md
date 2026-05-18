@@ -11,7 +11,7 @@
 
 TypeScript legal citation extraction — a port of Python [eyecite](https://github.com/freelawproject/eyecite) with extended capabilities.
 
-Extract structured data from legal citations in court opinions, briefs, and legal documents. A citation like `500 F.2d 123 (9th Cir. 2020)` encodes a volume (500), reporter (Federal Reporter, 2nd Series), page (123), court (Ninth Circuit), and year. This library parses all of that into typed objects, resolves short-form references like "Id." back to their antecedents, and can annotate the original text with HTML markup. Zero runtime dependencies, browser-compatible, ~20 KB brotli.
+Extract structured data from legal citations in court opinions, briefs, and legal documents. A citation like `500 F.2d 123 (9th Cir. 2020)` encodes a volume (500), reporter (Federal Reporter, 2nd Series), page (123), court (Ninth Circuit), and year. This library parses all of that into typed objects, resolves short-form references like "Id." back to their antecedents, and can annotate the original text with HTML markup. Zero runtime dependencies, browser-compatible, ~37 KB brotli.
 
 ## Installation
 
@@ -45,8 +45,8 @@ for (const cite of citations) {
       // 42 "U.S.C." "1983"
       break
     case "id":
-      console.log("Id. resolves to index", cite.resolution?.resolvedTo)
-      // Id. resolves to index 0
+      console.log("Id. resolves to:", cite.resolution?.resolvedTo)
+      // Id. resolves to: 0
       break
     case "journal":
       console.log(cite.journal, cite.volume, cite.page)
@@ -64,21 +64,37 @@ console.log(result.text)
 
 ## What It Extracts
 
+12 citation types, each with its own TypeScript interface:
+
 | Type | Example | Key Fields |
 |------|---------|------------|
 | `case` | `500 F.2d 123 (9th Cir. 2020)` | volume, reporter, page, court, year, caseName |
+| `docket` | `No. 12-3456 (S.D.N.Y. 2024)` | docketNumber, court, year, caseName |
 | `statute` | `42 U.S.C. § 1983(a)(1)` | title, code, section, subsection, jurisdiction |
 | `constitutional` | `U.S. Const. amend. XIV, § 1` | jurisdiction, amendment, section, clause |
 | `journal` | `123 Harv. L. Rev. 456` | volume, journal, page, year |
-| `neutral` | `2020 WL 123456` | year, court, documentNumber |
+| `neutral` | `2020 WL 123456` | year, database, documentNumber |
 | `publicLaw` | `Pub. L. No. 117-263` | congress, lawNumber |
 | `federalRegister` | `87 Fed. Reg. 1234` | volume, page, year |
 | `statutesAtLarge` | `136 Stat. 4459` | volume, page, year |
-| `id` | `Id. at 125` | pincite |
+| `id` | `Id. at 125` | pincite, caseName (inherited) |
 | `supra` | `Smith, supra, at 130` | partyName, pincite |
-| `shortFormCase` | `500 F.2d at 140` | volume, reporter, pincite |
+| `shortFormCase` | `500 F.2d at 140` | volume, reporter, pincite, partyName |
 
-Statute coverage spans 52 jurisdictions (50 states + DC + federal). See the [Advanced Extraction Guide](docs/guides/advanced-extraction.md) for jurisdiction details.
+## Statute & Administrative Code Coverage
+
+Statutes are extracted across 52 jurisdictions (50 states + DC + federal) using four pattern families:
+
+| Family | Jurisdictions | Example |
+|--------|--------------|---------|
+| Federal | USC, CFR, USCA, prose ("section X of title Y") | `42 U.S.C. § 1983(a)(1) et seq.` |
+| Named-code | NY (21 laws), CA (29 codes), TX (29 codes), MD (36 articles), VA, AL, MA | `N.Y. Penal Law § 125.25(1)(a)` |
+| Abbreviated-code | FL, OH, MI, UT, CO, WA, NC, GA, PA, IN, NJ, DE + 20 more states | `Fla. Stat. § 775.082` |
+| Chapter-act | IL (ILCS), IL (Ill. Rev. Stat.) | `735 ILCS 5/2-1001` |
+
+State-specific forms include: Alabama Code of 1940, California bare-code (`Penal Code § 187`), Georgia pre-1983 Code Ann., Hawaii Revised Laws (pre-1955), Idaho postfix (`I.C. § N`), Kansas year-edition (`K.S.A. 2019 Supp.`), Nebraska R.R.S. 1943, Oregon chapter-only (`ORS chapter 174`), Rhode Island General Laws 1956, Washington RCW chapter-postfix, West Virginia Code 1931, Wisconsin Stats. postfix, and more.
+
+Administrative codes: NMAC (New Mexico), OAR (Oregon), COMAR (Maryland), IDAPA (Idaho), ARM (Montana).
 
 ## Key Features
 
@@ -91,20 +107,37 @@ const text = "In Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc), the cou
 const [cite] = extractCitations(text)
 
 if (cite.type === "case") {
-  cite.caseName   // "Smith v. Jones"
-  cite.plaintiff  // "Smith"
-  cite.defendant  // "Jones"
+  cite.caseName    // "Smith v. Jones"
+  cite.plaintiff   // "Smith"
+  cite.defendant   // "Jones"
   cite.disposition // "en banc"
-  cite.span       // covers "500 F.2d 123" (citation core)
-  cite.fullSpan   // covers "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc)"
+  cite.span        // covers "500 F.2d 123" (citation core)
+  cite.fullSpan    // covers "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020) (en banc)"
 }
 ```
 
-Procedural prefixes like `In re`, `Ex parte`, and `Matter of` are recognized automatically.
+Procedural prefixes recognized: `In re`, `Ex parte`, `Matter of`, `Estate of`, `In the Matter of`, and bankruptcy adversary captions (`Spence v. Hintze (In re Hintze)`). Case name search also runs on neutral/vendor citations (`2020 WL 123456`).
+
+### Docket Citations
+
+Slip opinions and unreported decisions identified by docket number:
+
+```typescript
+const text = "IKB Int'l, S.A. v. Wells Fargo Bank, N.A., No. 51 (N.Y. 2023)"
+const [cite] = extractCitations(text)
+
+if (cite.type === "docket") {
+  cite.docketNumber // "51"
+  cite.court        // "N.Y."
+  cite.caseName     // "IKB Int'l, S.A. v. Wells Fargo Bank, N.A."
+}
+```
+
+Accepts PACER colon prefixes (`2:17-cv-00413`), space-separated parts (`18 C 7039`), and prefix variants (`C.A.`, `Civ.`, `Civil Action`, `Adv.`).
 
 ### Parallel Citations
 
-When multiple reporters cite the same case (common in older Supreme Court opinions), the library groups them automatically:
+When multiple reporters cite the same case, the library groups them automatically:
 
 ```typescript
 const text = "See 410 U.S. 113, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973)."
@@ -114,7 +147,6 @@ citations[0].groupId // "410-U.S.-113"
 citations[1].groupId // "410-U.S.-113" (same group)
 citations[2].groupId // "410-U.S.-113" (same group)
 
-// Primary citation carries the linked array
 if (citations[0].type === "case") {
   citations[0].parallelCitations
   // [{ volume: 93, reporter: 'S. Ct.', page: 705 },
@@ -127,14 +159,54 @@ if (citations[0].type === "case") {
 Pass `{ resolve: true }` to link Id., supra, and short-form case citations to their full antecedents:
 
 ```typescript
-const text = `Smith v. Jones, 500 F.2d 123 (2020). Id. at 125.`
+const text = `Smith v. Jones, 500 F.2d 123 (2020). Id. at 125. Smith, supra, at 130.`
 const citations = extractCitations(text, { resolve: true })
 
-citations[1].resolution
-// { resolvedTo: 0, confidence: 1.0 }
+// Id. resolves to most recent antecedent
+citations[1].resolution  // { resolvedTo: 0 }
+
+// Id. inherits case name from antecedent
+if (citations[1].type === "id") {
+  citations[1].caseName   // "Smith v. Jones" (inherited)
+  citations[1].plaintiff  // "Smith" (inherited)
+}
 ```
 
-The resolver supports paragraph/section/footnote scope boundaries, fuzzy party name matching, and configurable thresholds. See the [Resolution Guide](docs/guides/resolution.md) for the power-user API.
+The resolver supports paragraph/section/footnote scope boundaries, fuzzy party name matching via Levenshtein distance, bare-party shortform (`Smith, at 12`), and bracketed `[supra]` (Connecticut style). See the [Resolution Guide](docs/guides/resolution.md) for the power-user API.
+
+### Subsequent History & Dispositions
+
+Case citations automatically extract subsequent history chains and disposition parentheticals:
+
+```typescript
+const text = "Smith v. Jones, 500 F.2d 123 (9th Cir. 2020), aff'd, 600 U.S. 456 (2021)"
+const [cite] = extractCitations(text)
+
+if (cite.type === "case") {
+  cite.subsequentHistoryEntries
+  // [{ signal: 'affirmed', rawSignal: "aff'd", signalSpan: { ... }, order: 0 }]
+}
+```
+
+Recognized history signals include federal (`aff'd`, `rev'd`, `vacated`, `remanded`, `cert. denied`, `rehearing denied`), Texas writ/petition history (`writ refused`, `pet. denied`), and California review history (`review denied`, `review granted`, `not published`, `superseded by grant of review`).
+
+Dispositions extracted: `en banc`, `per curiam`, `dissent`, `concurrence`, `plurality opinion`, `mem.`, with justice attribution (`(Brennan, J., dissenting)` → `justices: ["Brennan"]`).
+
+### Explanatory Parentheticals
+
+Explanatory parentheticals following case citations are parsed and classified:
+
+```typescript
+const text = '500 F.2d 123 (9th Cir. 2020) (holding that X requires Y)'
+const [cite] = extractCitations(text)
+
+if (cite.type === "case") {
+  cite.parentheticals
+  // [{ text: "holding that X requires Y", type: "holding" }]
+}
+```
+
+Classification types: `holding`, `finding`, `stating`, `noting`, `explaining`, `quoting`, `citing`, `discussing`, `describing`, `recognizing`, `applying`, `rejecting`, `adopting`, `requiring`, `other`.
 
 ### Citation Annotation
 
@@ -143,24 +215,73 @@ Mark up citations with HTML using template or callback modes:
 ```typescript
 import { annotate } from "eyecite-ts/annotate"
 
+// Template mode
 const result = annotate(text, citations, {
   template: { before: '<cite>', after: '</cite>' },
 })
-// "See Smith v. Jones, <cite>500 F.2d 123</cite> (2020)."
+
+// Callback mode for custom markup
+const linked = annotate(text, citations, {
+  callback: (citation, surrounding) => {
+    if (citation.type === "case") {
+      return `<a href="/cases/${citation.volume}-${citation.page}">${citation.matchedText}</a>`
+    }
+    return `<span>${citation.matchedText}</span>`
+  },
+})
 ```
 
-XSS auto-escape is enabled by default. Use `useFullSpan: true` to annotate from case name through closing parenthetical. See the [Annotation Guide](docs/guides/annotation.md) for callback mode and full options.
+XSS auto-escape is enabled by default. Use `useFullSpan: true` to annotate from case name through closing parenthetical.
 
-### Confidence & Signals
+### Confidence Scoring
 
-Each citation carries a `confidence` score (0-1) based on pattern match quality and reporter validation. Citations preceded by legal signals are tagged:
+Each citation carries a `confidence` score (0–1) based on pattern match quality, reporter validation, and metadata completeness:
+
+```typescript
+const [cite] = extractCitations(text)
+cite.confidence // 0.85
+```
+
+Scores are adjusted by reporter validation (+0.2 for known reporters, -0.3 for unknown), year plausibility, case name presence, and court identification. False positives from international reporters or implausible years get reduced to 0.1.
+
+### Citation Signals
+
+Citations preceded by Bluebook signals are tagged:
 
 ```typescript
 const text = "See also Smith v. Jones, 500 F.2d 123 (2020)."
 const [cite] = extractCitations(text)
+cite.signal // "see also"
+```
 
-cite.confidence // 0.85
-cite.signal     // "see also"
+Recognized signals: `see`, `see also`, `see generally`, `cf`, `but see`, `but cf`, `compare`, `accord`, `contra`, `e.g.`, and combined forms (`see, e.g.`, `see also, e.g.`, `but see, e.g.`, `cf., e.g.`, `but cf., e.g.`).
+
+### Court Inference
+
+Case citations carry a `inferredCourt` field derived from the reporter series:
+
+```typescript
+const [cite] = extractCitations(text)
+if (cite.type === "case") {
+  cite.inferredCourt
+  // { level: "appellate", jurisdiction: "federal", confidence: 1.0 }
+}
+```
+
+### Component Spans
+
+Every citation carries per-field position data for precise source mapping:
+
+```typescript
+const [cite] = extractCitations(text)
+if (cite.type === "case") {
+  cite.spans?.volume    // { cleanStart, cleanEnd, originalStart, originalEnd }
+  cite.spans?.reporter  // ...
+  cite.spans?.page      // ...
+  cite.spans?.court     // ...
+  cite.spans?.year      // ...
+  cite.spans?.caseName  // ...
+}
 ```
 
 ### Footnote Detection
@@ -177,7 +298,39 @@ for (const cite of citations) {
 }
 ```
 
-Supports HTML footnote tags and plaintext footnote sections (separator + numbered markers). See the [Footnote Detection Guide](docs/guides/footnote-detection.md).
+Two strategies: HTML tag scanner (`<footnote>`, `<fn>`, footnote class/id attributes) and plaintext separator detection (5+ dashes/underscores followed by numbered markers). The `"footnote"` scope strategy enforces zone-based isolation: Id. is strict (same zone only), supra and short-form case can cross from footnotes to body.
+
+### Structured Dates
+
+Parentheticals with full dates return structured date objects:
+
+```typescript
+const text = "500 F.3d 100 (2d Cir. Jan. 15, 2020)"
+const [cite] = extractCitations(text)
+if (cite.type === "case") {
+  cite.date // { iso: '2020-01-15', parsed: { year: 2020, month: 1, day: 15 } }
+}
+```
+
+### Post-Extraction Utilities
+
+The `eyecite-ts/utils` entry point provides composable post-processing:
+
+```typescript
+import { groupByCase, toBluebook, toReporterKey, getSurroundingContext } from "eyecite-ts/utils"
+
+// Group citations by case (parallel + short-form → full)
+const groups = groupByCase(citations)
+
+// Format as Bluebook citation string
+const formatted = toBluebook(citation)
+
+// Get canonical reporter key for deduplication
+const key = toReporterKey(citation) // "500-F.2d-123"
+
+// Extract surrounding sentence context
+const ctx = getSurroundingContext(text, citation, { chars: 100 })
+```
 
 ## Type System
 
@@ -195,8 +348,17 @@ if (isCaseCitation(citation)) {
 // Exhaustive switch
 switch (citation.type) {
   case "case": /* ... */ break
+  case "docket": /* ... */ break
   case "statute": /* ... */ break
-  // ... all 11 types
+  case "constitutional": /* ... */ break
+  case "journal": /* ... */ break
+  case "neutral": /* ... */ break
+  case "publicLaw": /* ... */ break
+  case "federalRegister": /* ... */ break
+  case "statutesAtLarge": /* ... */ break
+  case "id": /* ... */ break
+  case "supra": /* ... */ break
+  case "shortFormCase": /* ... */ break
   default: assertUnreachable(citation.type)
 }
 ```
@@ -205,39 +367,48 @@ switch (citation.type) {
 
 ## Bundle Size
 
-Three entry points for tree-shaking:
+Four entry points for tree-shaking:
 
 | Entry Point | Import | Size (brotli) |
 |-------------|--------|---------------|
-| Core extraction | `eyecite-ts` | ~20 KB |
-| Annotation | `eyecite-ts/annotate` | ~1.3 KB |
+| Core extraction | `eyecite-ts` | ~37 KB |
+| Annotation | `eyecite-ts/annotate` | ~1 KB |
+| Post-extraction utils | `eyecite-ts/utils` | ~1.8 KB |
 | Reporter data | `eyecite-ts/data` | lazy-loaded |
 
 Import only what you need — the reporter database is loaded on first use, not at import time.
 
 ## Comparison with Python eyecite
 
-Every claim verified against [Python eyecite](https://github.com/freelawproject/eyecite) source code (April 2026).
+Every claim verified against [Python eyecite](https://github.com/freelawproject/eyecite) source code (May 2026).
 
 | Capability | Python eyecite | eyecite-ts | Notes |
 |---|---|---|---|
 | Case citations | Yes | Yes | Both extract volume/reporter/page/court/year |
-| Statute citations | Yes (all 50 states + DC + territories) | Yes (50 states + DC + federal) | Python uses `reporters-db`; TS uses built-in patterns |
+| Docket citations | No | Yes | Slip opinions, PACER docket numbers |
+| Statute citations | Yes (50 states + DC + territories) | Yes (50 states + DC + federal) | Python uses `reporters-db`; TS uses built-in patterns |
 | Constitutional citations | No | Yes (U.S. + 50 states) | Dedicated type with article/amendment/section/clause |
+| State admin codes | No | Yes (NM, OR, MD, ID, MT) | NMAC, OAR, COMAR, IDAPA, ARM |
 | Journal / law review | Yes | Yes | |
-| Neutral (WL/LEXIS) | Yes (as case citations) | Yes (dedicated type) | |
+| Neutral (WL/LEXIS) | Yes (as case) | Yes (dedicated type) | Separate NeutralCitation with database/court split |
 | Short-form resolution | Yes | Yes | |
-| Case name extraction | Yes | Yes | Both use backward scanning |
-| Parallel citation linking | Partial (detection + metadata copy) | Yes (`groupId` + `parallelCitations`) | |
+| Case name extraction | Yes | Yes | Both use backward scanning; TS runs on neutral cites too |
+| Parallel citation linking | Partial | Yes | `groupId` + `parallelCitations` array |
+| Subsequent history | No | Yes | Federal, Texas writ/petition, California review signals |
+| Explanatory parentheticals | No | Yes | Classified by gerund (holding, finding, stating, ...) |
+| Justice attribution | No | Yes | `(Brennan, J., dissenting)` → justices + scope |
+| Court inference | No | Yes | Level/jurisdiction from reporter series |
 | Full span tracking | Yes | Yes | TS carries dual clean/original positions |
-| Component spans | Minimal (pin cite only) | Yes (all fields) | |
+| Component spans | Minimal | Yes (all fields) | Per-component position data |
 | Footnote detection | No | Yes | HTML + plaintext strategies |
-| Citation signals | No (stop words only) | Yes (extracted as metadata) | |
-| Annotation | Yes (HTML modes) | Yes (template/callback + XSS auto-escape) | |
-| Position mapping | Yes (diff-based) | Yes (incremental TransformationMap) | |
-| Type system | Class inheritance | Discriminated union | TS enables exhaustive switch |
+| Citation signals | No (stop words) | Yes (metadata) | Bluebook signals including combined forms |
+| Confidence scoring | No | Yes | Pattern quality + reporter validation |
+| Annotation | Yes (HTML modes) | Yes (template/callback) | XSS auto-escape on by default |
+| Position mapping | Yes (diff-based) | Yes (incremental) | TransformationMap during cleaning |
+| Type system | Class inheritance | Discriminated union | Exhaustive switch, conditional types |
+| Post-extraction utils | No | Yes | groupByCase, toBluebook, toReporterKey |
 
-eyecite-ts started as a port and has diverged. Both are capable citation extractors — eyecite-ts adds constitutional citations, footnote detection, citation signals, rich component spans, and a TypeScript-native type system, while Python eyecite has broader statute coverage via `reporters-db` and a mature ecosystem.
+eyecite-ts started as a port and has diverged. Both are capable citation extractors — eyecite-ts adds docket citations, constitutional citations, subsequent history, explanatory parentheticals, footnote detection, citation signals, structured confidence scoring, court inference, rich component spans, and a TypeScript-native type system, while Python eyecite has broader statute coverage via `reporters-db` and a mature ecosystem.
 
 Coming from Python eyecite? See the [Migration Guide](docs/guides/migration-from-python.md).
 
@@ -252,7 +423,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 ```bash
 pnpm install           # Install dependencies (corepack, pnpm 10)
 pnpm test              # Run tests (vitest, watch mode)
-pnpm exec vitest run   # Run tests once (1,748 tests, 72 files)
+pnpm exec vitest run   # Run tests once (2,966 tests, 96 files)
 pnpm typecheck         # Type-check with tsc
 pnpm build             # Build (ESM + CJS + DTS)
 pnpm lint              # Lint with Biome
@@ -268,4 +439,4 @@ MIT
 
 ## Credits
 
-Inspired by and ported from [eyecite](https://github.com/freelawproject/eyecite) (Python) by [Free Law Project](https://free.law/). This TypeScript implementation extends the original with constitutional citations, footnote detection, citation signals, parallel citation grouping, component spans, and a discriminated-union type system.
+Inspired by and ported from [eyecite](https://github.com/freelawproject/eyecite) (Python) by [Free Law Project](https://free.law/). This TypeScript implementation extends the original with docket citations, constitutional citations, subsequent history, explanatory parentheticals, footnote detection, citation signals, structured confidence scoring, court inference, parallel citation grouping, component spans, post-extraction utilities, and a discriminated-union type system.
