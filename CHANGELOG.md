@@ -1,5 +1,43 @@
 # eyecite-ts
 
+## 0.21.1
+
+### Patch Changes
+
+- [#502](https://github.com/medelman17/eyecite-ts/pull/502) [`32f220c`](https://github.com/medelman17/eyecite-ts/commit/32f220cfa2a73738da7f28d544e68645edf8796b) Thanks [@medelman17](https://github.com/medelman17)! - Fix `Id,` (typo comma, no period) crash on opinions with unusual pincite prefixes.
+
+  `extractCitations` would throw `Error: Failed to parse Id. citation: Id,` when an opinion contained text like `Id, at pages 2-4` (or `Id, at section 3`, etc.) — kinds where the tokenizer matched `Id,` as the start of an Id. citation via its `(?=\s+at\s)` lookahead, but then the optional pincite branch refused to extend the match because `pages` / `section` / etc. is not a recognized pincite prefix. The matched `text` field was just `Id,` (3 characters). `extractId` then re-applied the same lookahead-bearing regex against only those 3 characters — where the lookahead has nothing to look at — and threw.
+
+  The lookahead in `extractId` was redundant defensive code: the tokenizer (`ID_PATTERN`) has already enforced it. Removing it lets `extractId` parse `Id,` as a valid (typo-comma) Id citation with no pincite, matching the rest of the function's tolerance for partial parses.
+
+  Surfaced by a CAP-corpus signal-extraction audit on `f-supp-2d/876/json/0128-01.json` (`"to understand the procedure (Id, at pages 2-4)"`). No behavior change for citations that parse fully — `Id, at 1483`, `Id., at 253`, `Id. at p. 125`, and `Id. ¶ 12` all still produce identical output.
+
+- [#501](https://github.com/medelman17/eyecite-ts/pull/501) [`77e2c92`](https://github.com/medelman17/eyecite-ts/commit/77e2c92bf0d5a4e4b33c25e5c7c61be2c3e318e1) Thanks [@medelman17](https://github.com/medelman17)! - Recognize `e. g.` (with internal whitespace) as the `e.g.` signal.
+
+  The Bluebook abbreviation `e.g.` appears in two typesetting variants: the closed form `e.g.` and the older spaced form `e. g.` (with whitespace between the letters), common in older opinions and some publishers' styles. The closed form already worked; the spaced form was silently missed, dropping the signal entirely.
+
+  Both the prefix matchers (`SIGNAL_PATTERNS` in `detectStringCites.ts`) and the leading-signal scanner (`detectLeadingSignals`) now accept optional whitespace between `e.` and `g.`. Affects all six combined forms: `e.g.`, `see, e.g.`, `see also, e.g.`, `but see, e.g.`, `cf., e.g.`, `but cf., e.g.`.
+
+  Surfaced by a CAP-corpus signal-extraction audit: e.g. `See, e. g., New State Ice Co. v. Liebmann, 285 U.S. 262 (1932)` was extracting the case but losing the signal.
+
+- [#503](https://github.com/medelman17/eyecite-ts/pull/503) [`78d2783`](https://github.com/medelman17/eyecite-ts/commit/78d278354f0259c3aa0de8977335f4936e18254a) Thanks [@medelman17](https://github.com/medelman17)! - Recognize `See, also,` (extra inter-word comma) as the `see also` signal.
+
+  Older typesetting variants in legal opinions sometimes insert an extra comma between `See` and `also`, producing forms like `See, also, The Plymouth, 70 U.S. (3 Wall.) 20`. The canonical `See also` worked; the comma-bearing variant was missed entirely (signal=undefined).
+
+  Both the prefix matcher (`SIGNAL_PATTERNS` in `detectStringCites.ts`) and the leading-signal scanner (`detectLeadingSignals`) now accept optional `\s*,?\s+` between `see` and `also`. Affects both `see also` and the combined `see also, e.g.` form.
+
+  Surfaced by a CAP-corpus signal-extraction audit on a 19th-century admiralty case. The canonical `See also` continues to extract identically.
+
+- [#499](https://github.com/medelman17/eyecite-ts/pull/499) [`2f845cc`](https://github.com/medelman17/eyecite-ts/commit/2f845cc8ca175a788a3242e4b1915f2a2c8b10b6) Thanks [@medelman17](https://github.com/medelman17)! - Fix `Id.` resolves-to skipping weakly-signaled antecedent (#498).
+
+  `resolveId` previously down-ranked candidates carrying `See`, `Cf.`, `See also`, `Compare`, `But cf.`, or `See generally` signals (`+100 if !weak` in the scorer), which let a more-distant strong-signal full cite beat a more-recent weak-signal one. The bug surfaced when the same input was extracted with vs. without a `See` prefix on the most-recent full cite — the single-character delta flipped `Id.`'s resolved cluster from the immediately-preceding case to the prior unsignaled one.
+
+  Per Bluebook Rule 4.1 (and matching the Python eyecite reference implementation, which is signal-blind), `Id.` anchors to the immediately preceding cited authority regardless of signal phrase. The signal qualifies _how_ the source supports the proposition, not whether the citation can be the referent of a following `Id.`
+
+  The fix removes the weak-signal scoring component from `resolveId`. Family preference (case vs. statute based on `Id.`'s pincite shape), quote-zone filtering, parenthetical-child filtering, and case-name window checks are unchanged. `resolution.resolvedTo` and `resolution.antecedentIndex` now agree in every signal case.
+
+  **Behavior change for #480 weak-signal scenarios:** in `STRONG. See WEAK. Id.` patterns, `Id.` now resolves to the `See`-signaled cite (the immediately preceding citation), not the strong cite. This aligns with Python eyecite and the strict Rule 4.1 reading. Six tests in `tests/resolve/issue480_idAntecedent.test.ts` were updated to encode the new (correct) expectation.
+
 ## 0.21.0
 
 ### Minor Changes
