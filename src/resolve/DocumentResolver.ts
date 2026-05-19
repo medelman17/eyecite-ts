@@ -487,7 +487,7 @@ export class DocumentResolver {
    * preceding cited authority" — unlike `resolveId`'s primary chase
    * (which only accepts resolved full antecedents), this lookup accepts
    * any prior citation that passes the existing scope / parenthetical /
-   * weak-signal / quote-zone filters, regardless of resolution state.
+   * quote-zone filters, regardless of resolution state.
    *
    * Returns the index of the immediately-preceding eligible citation,
    * or `undefined` if none.
