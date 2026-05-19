@@ -1011,6 +1011,10 @@ export class DocumentResolver {
     // side of `v.` / `vs.`, ending at sentence punctuation or a comma.
     // Looser than `V_CASE_NAME_REGEX` from `extractCase.ts`, which is
     // anchored to a citation core — here we're scanning free prose.
+    //
+    // The nested `*` quantifiers are ReDoS-safe: each repetition requires a
+    // mandatory `\s+` separator, so the inner and outer alternatives are
+    // disjoint on the same input and cannot backtrack catastrophically.
     const VS_REGEX =
       /([A-Z][A-Za-z0-9.'&\-/]*(?:\s+[A-Z][A-Za-z0-9.'&\-/]*)*)\s+v(?:s)?\.\s+([A-Z][A-Za-z0-9.'&\-/]*(?:\s+[A-Z][A-Za-z0-9.'&\-/]*)*)/g
 
