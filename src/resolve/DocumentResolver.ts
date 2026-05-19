@@ -482,6 +482,35 @@ export class DocumentResolver {
   }
 
   /**
+   * Find the immediate-preceding citation index for `antecedentIndex`
+   * purposes. Bluebook Rule 4.1: `Id.` anchors to "the immediately
+   * preceding cited authority" — unlike `resolveId`'s primary chase
+   * (which only accepts resolved full antecedents), this lookup accepts
+   * any prior citation that passes the existing scope / parenthetical /
+   * weak-signal / quote-zone filters, regardless of resolution state.
+   *
+   * Returns the index of the immediately-preceding eligible citation,
+   * or `undefined` if none.
+   */
+  private findImmediatePredecessor(
+    citation: IdCitation | SupraCitation | ShortFormCaseCitation,
+  ): number | undefined {
+    const currentIndex = this.context.citationIndex
+    const citationZone = isInZone(citation.span.originalStart, this.quoteZones)
+
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      // Apply the same filters as resolveId's main chase.
+      if (this.isParentheticalChild(i)) continue
+      if (!this.isWithinScope(i, currentIndex)) continue
+      const candidateZone = isInZone(this.citations[i].span.originalStart, this.quoteZones)
+      if (candidateZone && candidateZone !== citationZone) continue
+      // Accept regardless of resolution state.
+      return i
+    }
+    return undefined
+  }
+
+  /**
    * Resolves `Id.` to the most recent preceding *cited authority*, respecting
    * Bluebook signal categories, block-/inline-quote zones, and the family
    * (case vs. statute) implied by `Id.`'s pincite shape (#480).
@@ -519,11 +548,25 @@ export class DocumentResolver {
       if (isFullCitation(c)) {
         primaryIdx = i
       } else {
-        // shortForm/Id./supra — follow the resolution chain. If it failed to
-        // resolve we skip it: a broken short-form shouldn't pin Id. to a
-        // citation the writer didn't successfully cite.
+        // shortForm/Id./supra — follow the resolution chain.
         const prev = this.resolutions[i]
-        if (!prev || prev.resolvedTo === undefined) continue
+        if (!prev || prev.resolvedTo === undefined) {
+          // Unresolved short-form. Per Bluebook Rule 4.1, `Id.` anchors to
+          // the immediately preceding cited authority — we must not chase
+          // past an unresolved short-form to a more-distant full cite,
+          // because the writer was citing the unresolved short-form, not
+          // the earlier authority. Stop pass-1 here. Pass-2
+          // (`findImmediatePredecessor`) will record the chain pointer in
+          // `antecedentIndex`. Exception: short-forms that are themselves
+          // syntactic asides (paren children, out of scope, wrong quote
+          // zone) are not really "in the writer's main flow" and may be
+          // skipped — those are filtered below.
+          if (this.isParentheticalChild(i)) continue
+          if (!this.isWithinScope(i, currentIndex)) continue
+          const unresolvedZone = isInZone(c.span.originalStart, this.quoteZones)
+          if (unresolvedZone && unresolvedZone !== idQuoteZone) continue
+          break
+        }
         primaryIdx = prev.resolvedTo
       }
 
@@ -548,8 +591,20 @@ export class DocumentResolver {
     }
 
     if (candidates.length === 0) {
-      // Diagnose: did we have any preceding citation at all? If not, the
-      // legacy failure message helps consumers debug "Id. before any cite".
+      // No resolved full-cite candidate. Pass 2: try the immediate
+      // predecessor regardless of resolution state — Bluebook Rule 4.1
+      // anchors `Id.` to the immediately preceding cited authority, not
+      // just to resolved ones. The chain pointer is recorded in
+      // `antecedentIndex`; `resolvedTo` stays undefined.
+      const antecedentIndex = this.findImmediatePredecessor(citation)
+      if (antecedentIndex !== undefined) {
+        return {
+          resolvedTo: undefined,
+          antecedentIndex,
+          confidence: 0.7,
+          warnings: ["Id. antecedent has unresolved authority; chained by position only"],
+        }
+      }
       const anyPrior = currentIndex > 0
       return this.createFailureResult(
         anyPrior ? "Antecedent citation outside scope boundary" : "No preceding citation found",
@@ -585,6 +640,7 @@ export class DocumentResolver {
 
     return {
       resolvedTo: best.index,
+      antecedentIndex: this.findImmediatePredecessor(citation),
       confidence,
       warnings,
     }
@@ -823,6 +879,7 @@ export class DocumentResolver {
 
     return {
       resolvedTo: bestMatch.index,
+      antecedentIndex: this.findImmediatePredecessor(citation),
       confidence: bestMatch.similarity,
       warnings: warnings.length > 0 ? warnings : undefined,
     }
@@ -861,6 +918,15 @@ export class DocumentResolver {
     }
 
     if (candidates.length === 0) {
+      const antecedentIndex = this.findImmediatePredecessor(citation)
+      if (antecedentIndex !== undefined) {
+        return {
+          resolvedTo: undefined,
+          antecedentIndex,
+          confidence: 0.5,
+          warnings: ["No matching full case citation found; chained by position only"],
+        }
+      }
       return this.createFailureResult("No matching full case citation found")
     }
 
@@ -883,6 +949,7 @@ export class DocumentResolver {
       if (namedMatch !== undefined) {
         return {
           resolvedTo: namedMatch,
+          antecedentIndex: this.findImmediatePredecessor(citation),
           confidence: 0.98, // Higher than bare vol+reporter — party-name disambiguation tightens.
         }
       }
@@ -891,6 +958,7 @@ export class DocumentResolver {
     // No party name (or no name match): pick most recent candidate.
     return {
       resolvedTo: candidates[0],
+      antecedentIndex: this.findImmediatePredecessor(citation),
       confidence: 0.95,
     }
   }
