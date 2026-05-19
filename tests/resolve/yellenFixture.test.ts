@@ -19,8 +19,7 @@ describe("Yellen / Leach end-to-end (bug report 2026-05-19)", () => {
   it("Yellen short-form has inferredCaseName from prose", () => {
     const cites = extractCitations(text, { resolve: true })
     const yellenShort = cites.find(
-      (c): c is ShortFormCaseCitation =>
-        c.type === "shortFormCase" && c.partyName === "Yellen",
+      (c): c is ShortFormCaseCitation => c.type === "shortFormCase" && c.partyName === "Yellen",
     )
     expect(yellenShort).toBeDefined()
     expect(yellenShort?.inferredCaseName).toBe("Yellen v. Kassin")
