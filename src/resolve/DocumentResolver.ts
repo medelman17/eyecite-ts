@@ -105,8 +105,7 @@ function classifyAsciiQuote(text: string, pos: number): "open" | "close" | "ambi
   const prev = pos === 0 ? "" : text[pos - 1]
   const next = pos === text.length - 1 ? "" : text[pos + 1]
 
-  const openPrev =
-    prev === "" || /\s/.test(prev) || prev === "(" || prev === "[" || prev === "—"
+  const openPrev = prev === "" || /\s/.test(prev) || prev === "(" || prev === "[" || prev === "—"
   const openNext = /[A-Za-zÀ-ɏ]/.test(next) || next === "("
   if (openPrev && openNext) return "open"
 
@@ -167,19 +166,26 @@ function detectQuoteZones(text: string): Array<{ start: number; end: number }> {
   // Id. resolution. The classifier handles arbitrary text snippets
   // robustly. Typographic quotes (U+201C / U+201D) are unambiguous and
   // pair directly.
+  //
+  // Two separate stacks isolate ASCII and typographic styles so a mixed
+  // open/close (e.g. ASCII `"` … typographic `”`) cannot cross-pair into
+  // a phantom zone that engulfs intermediate citations.
   const MAX_INLINE_QUOTE_LEN = 600
-  const opens: number[] = []
+  const asciiOpens: number[] = []
+  const typographicOpens: number[] = []
   for (let i = 0; i < text.length; i++) {
     const ch = text[i]
 
     // Typographic quotes: unambiguous.
     if (ch === "“") {
-      opens.push(i)
+      typographicOpens.push(i)
       continue
     }
     if (ch === "”") {
-      if (opens.length === 0) continue // orphan close
-      const openPos = opens.pop()!
+      // Orphan closes are skipped — a leading typographic `”` without a
+      // matching open should not retroactively turn into an open.
+      const openPos = typographicOpens.pop()
+      if (openPos === undefined) continue
       if (i - openPos + 1 <= MAX_INLINE_QUOTE_LEN) {
         zones.push({ start: openPos, end: i + 1 })
       }
@@ -190,10 +196,11 @@ function detectQuoteZones(text: string): Array<{ start: number; end: number }> {
     if (ch !== '"') continue
     const cls = classifyAsciiQuote(text, i)
     if (cls === "open") {
-      opens.push(i)
+      asciiOpens.push(i)
     } else if (cls === "close") {
-      if (opens.length === 0) continue // orphan close — discard
-      const openPos = opens.pop()!
+      // Orphan closes are skipped — same rationale as the typographic branch.
+      const openPos = asciiOpens.pop()
+      if (openPos === undefined) continue
       if (i - openPos + 1 <= MAX_INLINE_QUOTE_LEN) {
         zones.push({ start: openPos, end: i + 1 })
       }

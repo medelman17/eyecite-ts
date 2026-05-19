@@ -12,7 +12,10 @@ describe("quote-zone robustness — orphan ASCII quotes", () => {
     const id = cites.find((c): c is IdCitation => c.type === "id")
     expect(id?.resolution?.resolvedTo).toBeDefined()
     // Resolved to Smith (idx 0).
-    expect(cites[id!.resolution!.resolvedTo!].type).toBe("case")
+    const resolvedTo = id?.resolution?.resolvedTo
+    if (resolvedTo !== undefined) {
+      expect(cites[resolvedTo].type).toBe("case")
+    }
   })
 
   it("orphan trailing open-quote does not create phantom zone", () => {
@@ -36,7 +39,22 @@ describe("quote-zone robustness — orphan ASCII quotes", () => {
     const cites = extractCitations(text, { resolve: true })
     const id = cites.find((c): c is IdCitation => c.type === "id")
     expect(id?.resolution?.resolvedTo).toBeDefined()
-    expect(cites[id!.resolution!.resolvedTo!].type).toBe("case")
+    const resolvedTo = id?.resolution?.resolvedTo
+    if (resolvedTo !== undefined) {
+      expect(cites[resolvedTo].type).toBe("case")
+    }
+  })
+})
+
+describe("quote-zone robustness — ASCII and typographic don't cross-pair", () => {
+  it("ASCII open with typographic close does not engulf intermediate citation", () => {
+    // Mixed-style quotes (one ASCII open, one typographic close) should
+    // NOT pair across styles — otherwise the phantom zone engulfs Smith
+    // and breaks Id. resolution.
+    const text = `He said "the rule applies. Smith v. Jones, 100 F.2d 50, 55 (1990). Was clear.” Id.`
+    const cites = extractCitations(text, { resolve: true })
+    const id = cites.find((c): c is IdCitation => c.type === "id")
+    expect(id?.resolution?.resolvedTo).toBeDefined()
   })
 })
 
