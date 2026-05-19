@@ -799,19 +799,6 @@ export interface SupraCitation extends CitationBase {
    */
   pinciteInheritedFrom?: number
   /**
-   * Case name inferred from prose preceding this short-form when no full
-   * citation in `citations[]` matched its vol+reporter. Populated by the
-   * resolver fallback for the "In Smith v. Jones... Smith, 100 F.2d at 200"
-   * pattern. Consumers: prefer `caseName ?? inferredCaseName ?? partyName`.
-   */
-  inferredCaseName?: string
-  /** Plaintiff side of the inferred case name. */
-  inferredPlaintiff?: string
-  /** Defendant side of the inferred case name. */
-  inferredDefendant?: string
-  /** Span in original text where the inferred case name was found. */
-  inferredCaseNameSpan?: Span
-  /**
    * Trailing parenthetical content (text between the parens, excluding the
    * parens themselves). See `IdCitation.parenthetical` for common shapes
    * and rationale. #303

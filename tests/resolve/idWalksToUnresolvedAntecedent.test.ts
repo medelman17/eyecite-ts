@@ -69,3 +69,22 @@ describe("antecedentIndex — Id. clusters with unresolved short-form (Bluebook 
     expect(id?.resolution?.resolvedTo).toBeUndefined()
   })
 })
+
+describe("supra success path also populates antecedentIndex", () => {
+  it("Smith → Brown → Smith, supra — supra resolves AND records antecedentIndex one step back", () => {
+    const text =
+      "Smith v. Jones, 100 F.2d 50 (1990). Brown v. Doe, 200 F.3d 100 (2000). Smith, supra."
+    const cites = extractCitations(text, { resolve: true })
+    expect(cites).toHaveLength(3)
+    const supra = cites[2]
+    expect(supra.type).toBe("supra")
+    expect(
+      (supra as { resolution?: { resolvedTo?: number; antecedentIndex?: number } }).resolution
+        ?.resolvedTo,
+    ).toBe(0) // resolves to Smith
+    expect(
+      (supra as { resolution?: { resolvedTo?: number; antecedentIndex?: number } }).resolution
+        ?.antecedentIndex,
+    ).toBe(1) // immediate predecessor is Brown (one step back)
+  })
+})

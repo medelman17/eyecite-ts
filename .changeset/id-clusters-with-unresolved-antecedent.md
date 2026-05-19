@@ -17,7 +17,6 @@ Three coordinated fixes resolve a class of bugs where `Id.` referred to the wron
 - `ResolutionResult.antecedentIndex?: number` — chain pointer to the immediately preceding cited authority, regardless of resolution state. Same shape as the existing `ShortFormCaseCitation.pinciteInheritedFrom` from 0.19.0. Walk transitively for the chain's originator.
 - `ShortFormCaseCitation.inferredCaseName?: string` — case name recovered from preceding prose when vol+reporter lookup fails.
 - `ShortFormCaseCitation.inferredPlaintiff?: string`, `inferredDefendant?: string`, `inferredCaseNameSpan?: Span` — supporting fields for the inferred name.
-- Same four `inferred*` fields on `SupraCitation`.
 
 **Migration:**
 
