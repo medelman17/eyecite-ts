@@ -1790,4 +1790,34 @@ describe("Connecticut comma-pincite for Id./Ibid./supra (#353)", () => {
       expect(id.confidence).toBeLessThanOrEqual(0.7)
     }
   })
+
+  // Crash bug surfaced by a CAP-corpus signal-extraction audit on
+  // `f-supp-2d/876/json/0128-01.json` ("Id, at pages 2-4"). The tokenizer's
+  // ID_PATTERN matches `Id,` because the lookahead `(?=\s+at\s)` is satisfied
+  // by the surrounding context, but its optional pincite branch can't parse
+  // the unusual `pages` prefix, so token.text ends up as just `Id,` (3 chars).
+  // `extractId` then re-applies the same lookahead-bearing regex against only
+  // the 3-char token text — where the lookahead has nothing to look at — and
+  // throws `Failed to parse Id. citation: Id,`. Fix: do not throw on regex
+  // re-parse failure; the tokenizer already vetted the token.
+  describe("does not crash on unusual Id, pincite forms", () => {
+    it("`Id, at pages 2-4` (unrecognized `pages` prefix) extracts Id without crashing", () => {
+      const text = "See Smith v. Jones, 100 F.3d 1 (1990). Id, at pages 2-4 explain the rule."
+      // Must not throw.
+      const cites = extractCitations(text)
+      const id = cites.find((c) => c.type === "id")
+      expect(id?.type).toBe("id")
+      // Pincite is not parseable from `pages 2-4`; that's expected.
+      if (id?.type === "id") {
+        expect(id.pincite).toBeUndefined()
+      }
+    })
+
+    it("`Id, at section 3` (unrecognized `section` prefix) extracts Id without crashing", () => {
+      const text = "See Smith v. Jones, 100 F.3d 1 (1990). Id, at section 3."
+      const cites = extractCitations(text)
+      const id = cites.find((c) => c.type === "id")
+      expect(id?.type).toBe("id")
+    })
+  })
 })
