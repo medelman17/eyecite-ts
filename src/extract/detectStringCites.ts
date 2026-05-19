@@ -9,6 +9,7 @@
  */
 
 import type { Citation, CitationSignal, FullCaseCitation } from "@/types/citation"
+import { getCitationEnd, getCitationStart } from "@/utils/citationBounds"
 
 /**
  * Signal words recognized between string citation members (case-insensitive).
@@ -53,25 +54,6 @@ function buildSignalPatterns() {
     endRegex: new RegExp(`${regex.source.replace(/^\^/, "(?<![a-z])")}\\s*$`, regex.flags),
     signal,
   }))
-}
-
-/**
- * Get the end position of a citation's full extent in cleaned text.
- * Uses fullSpan if available on any citation type (currently only case
- * citations carry fullSpan, but this is future-proof for other types).
- */
-function getCitationEnd(c: Citation): number {
-  const fullSpan = "fullSpan" in c ? (c as FullCaseCitation).fullSpan : undefined
-  return fullSpan ? fullSpan.cleanEnd : c.span.cleanEnd
-}
-
-/**
- * Get the start position of a citation's full extent in cleaned text.
- * Uses fullSpan if available on any citation type.
- */
-function getCitationStart(c: Citation): number {
-  const fullSpan = "fullSpan" in c ? (c as FullCaseCitation).fullSpan : undefined
-  return fullSpan ? fullSpan.cleanStart : c.span.cleanStart
 }
 
 /** Set a signal on a citation without triggering type errors on the union. */

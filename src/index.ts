@@ -101,9 +101,9 @@ export {
   extractStatute,
   extractStatutesAtLarge,
 } from "./extract"
-export { parsePincite } from "./extract/pincite"
-export type { PinciteInfo } from "./extract/pincite"
 export { normalizeCourt } from "./extract/courtNormalization"
+export type { PinciteInfo } from "./extract/pincite"
+export { parsePincite } from "./extract/pincite"
 // Tokenization Layer
 export { tokenize } from "./tokenize"
 export type { Token } from "./tokenize/tokenizer"
@@ -131,5 +131,19 @@ export type {
 // Footnote Detection
 // ============================================================================
 
-export { detectFootnotes } from "./footnotes"
 export type { FootnoteMap, FootnoteZone } from "./footnotes"
+export { detectFootnotes } from "./footnotes"
+
+// ============================================================================
+// Document Understanding API
+// ============================================================================
+
+export type {
+  AnalyzedFootnoteZone,
+  AttributionKind,
+  CitationGraph,
+  Document,
+  Edge,
+  QuoteAttribution,
+} from "./document"
+export { analyzeDocument } from "./document"
