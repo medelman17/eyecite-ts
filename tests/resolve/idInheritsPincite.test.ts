@@ -89,19 +89,21 @@ describe("Id. inherits pincite from antecedent (Bluebook 4.1)", () => {
       expect(ids[1].pincite).toBe(55)
     })
 
-    it("`Id. at 62.` then `Id.` — second Id. inherits 62 from chain root's pincite", () => {
-      // Bluebook semantics: the second Id. refers to the antecedent, which
-      // resolves transitively to the full citation (pincite=55). The
-      // explicit `at 62` on the first Id. is local to that Id. only —
-      // the second Id. inherits from the full citation's pincite=55, not
-      // the local override 62.
+    it("`Id. at 62.` then `Id.` — second Id. inherits 62 from immediate predecessor (Rule 4.1)", () => {
+      // Bluebook Rule 4.1 / Indigo Book R6.2.2: `Id.` refers to the
+      // immediately preceding cited authority. A bare `Id.` after
+      // `Id. at 62.` inherits the pincite of that immediate predecessor
+      // (62), NOT the terminal full citation's pincite (55).
+      // See docs/research/2026-05-19-pincite-inheritance.md.
       const text = "Smith v. Jones, 100 F.2d 50, 55 (1990). Id. at 62. Id."
       const cites = extractCitations(text, { resolve: true })
       const ids = cites.filter((c): c is IdCitation => c.type === "id")
       expect(ids).toHaveLength(2)
       expect(ids[0].pincite).toBe(62)
-      // Documents transitive-to-full-citation inheritance behavior.
-      expect(ids[1].pincite).toBe(55)
+      expect(ids[1].pincite).toBe(62)
+      expect(ids[1].pinciteInherited).toBe(true)
+      // Index of ids[0] in cites[]: full citation is index 0, ids[0] is index 1.
+      expect(ids[1].pinciteInheritedFrom).toBe(1)
     })
   })
 
