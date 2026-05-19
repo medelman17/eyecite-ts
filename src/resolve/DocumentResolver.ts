@@ -981,12 +981,19 @@ export class DocumentResolver {
    *
    * Unlike `extractCaseName` — which performs a boundary-bounded backward
    * walk starting *immediately before* a citation core — this scan looks
-   * anywhere in a ~200-char window before the short-form and accepts the
+   * anywhere in a ~400-char window before the short-form and accepts the
    * closest "Party v. Party" mention whose plaintiff or defendant matches
    * the short-form's `partyName`. Crossing intervening sentence boundaries
    * (e.g., "In Yellen v. Kassin, the court held. Yellen, 416 ...") is
    * required: the prose mention and the short-form are by definition
    * separated by other prose.
+   *
+   * LOOKBACK = 400 chars accommodates real-world legal prose where the
+   * prose mention and short-form are separated by a long quoted passage
+   * (e.g. the bug-report 2026-05-19 Yellen fixture has ~351 chars of
+   * block quote between "In Yellen v. Kassin" and "Yellen, 416 N.J.
+   * Super. at 590"). False-positive risk is bounded by the partyName
+   * acceptance check and the "closest match wins" tie-breaker.
    *
    * Returns the inferred case name + spans, or `undefined` if no
    * acceptable match is found within `LOOKBACK` chars.
@@ -999,7 +1006,7 @@ export class DocumentResolver {
         span: Span
       }
     | undefined {
-    const LOOKBACK = 200
+    const LOOKBACK = 400
     if (!citation.partyName) return undefined
 
     const start = Math.max(0, citation.span.cleanStart - LOOKBACK)
