@@ -12,7 +12,6 @@
 
 import type {
   Citation,
-  CitationSignal,
   FullCaseCitation,
   FullCitation,
   IdCitation,
@@ -45,28 +44,6 @@ function getFullSpan(citation: Citation): Span | undefined {
   }
   return undefined
 }
-
-/**
- * Bluebook signal categories that mark a citation as an *aside* — supporting,
- * comparative, or background — rather than a primary cited authority.
- * Citations carrying a weak signal are skipped when picking an `Id.`
- * antecedent unless no stronger candidate is in scope. Suggested-contradiction
- * (`but cf.`) is weak; direct-contradiction (`contra`, `but see`) is strong
- * because the writer is squarely engaging the cited authority.
- */
-const WEAK_SIGNALS: ReadonlySet<CitationSignal> = new Set<CitationSignal>([
-  "see",
-  "see also",
-  "see generally",
-  "cf",
-  "but cf",
-  "compare",
-  "e.g.",
-  "see, e.g.",
-  "see also, e.g.",
-  "cf., e.g.",
-  "but cf., e.g.",
-])
 
 /**
  * Family classification used when matching `Id.` to an antecedent. Page-style
@@ -365,8 +342,10 @@ export class DocumentResolver {
 
   /**
    * Resolves `Id.` to the most recent preceding *cited authority*, respecting
-   * Bluebook signal categories, block-/inline-quote zones, and the family
-   * (case vs. statute) implied by `Id.`'s pincite shape (#480).
+   * block-/inline-quote zones and the family (case vs. statute) implied by
+   * `Id.`'s pincite shape (#480). Per Bluebook Rule 4.1, signal phrase is
+   * NOT a filter — `Id.` anchors to the immediately preceding cited
+   * authority regardless of whether it carries `See`, `Cf.`, etc. (#498).
    *
    * Algorithm:
    *   1. Walk backward from `currentIndex`, normalizing short-form citations
@@ -375,9 +354,8 @@ export class DocumentResolver {
    *      doesn't get double-counted with its full-cite further back.
    *   2. Filter candidates that are parenthetical children (existing #214
    *      behavior) or in a quote zone outside `Id.`'s own zone.
-   *   3. Score remaining candidates: family-match dominates, then signal
-   *      strength, then (implicitly) recency (first-added = most recent
-   *      effective mention).
+   *   3. Score remaining candidates: family-match dominates, then (implicitly)
+   *      recency (first-added = most recent effective mention).
    *   4. Apply the case-name window check to surface ambiguity when the prose
    *      immediately before `Id.` mentions a different case name.
    */
@@ -389,7 +367,6 @@ export class DocumentResolver {
     interface Candidate {
       index: number
       family: CitationFamily
-      weak: boolean
     }
     const candidates: Candidate[] = []
     const seen = new Set<number>()
@@ -439,7 +416,6 @@ export class DocumentResolver {
       candidates.push({
         index: primaryIdx,
         family: citationFamily(cit),
-        weak: this.isCandidateWeakSignal(cit),
       })
     }
 
@@ -465,15 +441,16 @@ export class DocumentResolver {
     }
 
     // Score each candidate. Family-match dominates (Id.'s pincite shape
-    // tells us which family of authority the writer intended). Strong
-    // (unsignaled or direct-engagement) candidates beat weak (aside)
-    // candidates. Recency breaks ties — candidates are pushed in reverse
-    // document order, so the first match at a given score is the most
-    // recent effective mention.
+    // tells us which family of authority the writer intended). Recency
+    // breaks ties — candidates are pushed in reverse document order, so
+    // the first match at a given score is the most recent effective
+    // mention. Per Bluebook Rule 4.1, signal phrase does NOT affect
+    // antecedent selection: `Id.` anchors to the immediately preceding
+    // cited authority regardless of whether that authority is introduced
+    // by `See`, `Cf.`, or any other signal (#498).
     const score = (c: Candidate) => {
       let s = 0
       if (c.family === preferredFamily) s += 1000
-      if (!c.weak) s += 100
       return s
     }
     let best = candidates[0]
@@ -513,30 +490,6 @@ export class DocumentResolver {
     const tail = this.text.substring(start, end)
     if (/^\s*[,]?\s*§§?\s*\d/.test(tail)) return "statute"
     return "case"
-  }
-
-  /**
-   * Computes the "effective" signal for a citation. Citations inside a
-   * string-cite group inherit the leading signal of the group's first
-   * member when they have no signal of their own — the Bluebook rule that
-   * a leading signal governs the entire string cite.
-   */
-  private getEffectiveSignal(citation: Citation): CitationSignal | undefined {
-    if (citation.signal) return citation.signal
-    const groupId = citation.stringCitationGroupId
-    if (!groupId) return undefined
-    // First member of the group carries the leading signal.
-    for (const c of this.citations) {
-      if (c.stringCitationGroupId === groupId && c.stringCitationIndex === 0) {
-        return c.signal
-      }
-    }
-    return undefined
-  }
-
-  private isCandidateWeakSignal(citation: Citation): boolean {
-    const sig = this.getEffectiveSignal(citation)
-    return sig !== undefined && WEAK_SIGNALS.has(sig)
   }
 
   /**
