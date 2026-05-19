@@ -25,7 +25,7 @@
 | `src/document/types.ts` | Create | `Document`, `Edge` union, `QuoteAttribution`, `FootnoteZone`, `AttributionKind`, `CitationGraph` |
 | `src/document/proseOffsets.ts` | Create | `computeProseOffsets(text, citations, transformationMap?)` |
 | `src/document/citationGraph.ts` | Create | `buildCitationGraph(citations)` |
-| `src/document/quoteAttribution.ts` | Create | `attributeQuotes(text, quoteZones, citations, parenDepths)` |
+| `src/document/quoteAttribution.ts` | Create | `attributeQuotes(text, quoteZones, citations)` |
 | `src/document/footnoteZones.ts` | Create | `extractFootnoteZones(citations)` |
 | `src/document/analyzer.ts` | Create | `analyzeDocument` orchestrator |
 | `src/document/index.ts` | Create | Public re-exports for the module |
@@ -747,6 +747,8 @@ function makeSpan(start: number, end: number): Span {
 
 The `_transformationMap` parameter is reserved for future use (per spec — clean-coord mapping); v1 leaves it unused and sets `cleanStart === originalStart`.
 
+**Note on adjacency behavior:** the spec mentioned emitting length-0 spans for adjacent citations with no prose between them. This implementation **skips silently** instead (cleaner — consumers see "not present" rather than "present but empty"). When you update the spec doc later, reconcile that note. Behavior in this implementation: `precedingProse.has(i)` returns false when citation `i` has no preceding prose; consumers check `Map.has` rather than `span.cleanEnd > span.cleanStart`.
+
 - [ ] **Step 3.4: Run the tests**
 
 ```bash
@@ -1040,9 +1042,12 @@ export function buildCitationGraph(
   }
 
   // parallel edges — undirected; emit one edge per pair within each group.
+  // groupId only exists on FullCaseCitation; narrow before access.
   const groupMembers = new Map<string, number[]>()
   for (let i = 0; i < citations.length; i++) {
-    const groupId = (citations[i] as FullCaseCitation).groupId
+    const c = citations[i]
+    if (c.type !== "case") continue
+    const groupId = c.groupId
     if (!groupId) continue
     const members = groupMembers.get(groupId) ?? []
     members.push(i)
@@ -1163,7 +1168,6 @@ Create `tests/document/quoteAttribution.test.ts`:
 import { describe, expect, it } from "vitest"
 import { extractCitations } from "@/extract"
 import { attributeQuotes } from "@/document/quoteAttribution"
-import { computeParenDepths } from "@/utils/parenDepths"
 import { detectQuoteZones } from "@/utils/detectQuoteZones"
 
 describe("attributeQuotes", () => {
@@ -1171,8 +1175,7 @@ describe("attributeQuotes", () => {
     const text = "Plain prose with no quotes. Smith v. Jones, 100 F.2d 50 (1990)."
     const cites = extractCitations(text)
     const zones = detectQuoteZones(text)
-    const depths = computeParenDepths(text, cites)
-    const result = attributeQuotes(text, zones, cites, depths)
+    const result = attributeQuotes(text, zones, cites)
     expect(result).toEqual([])
   })
 
@@ -1180,8 +1183,7 @@ describe("attributeQuotes", () => {
     const text = `The court held "the rule applies" in Smith v. Jones, 100 F.2d 50 (1990).`
     const cites = extractCitations(text)
     const zones = detectQuoteZones(text)
-    const depths = computeParenDepths(text, cites)
-    const result = attributeQuotes(text, zones, cites, depths)
+    const result = attributeQuotes(text, zones, cites)
     expect(result.length).toBeGreaterThan(0)
     const attribution = result[0]
     expect(attribution.attributionKind).toBe("adjacent")
@@ -1195,8 +1197,7 @@ describe("attributeQuotes", () => {
     const text = `> the rule applies in all cases of prescriptive easement, the court held\n\nSmith v. Jones, 100 F.2d 50 (1990).`
     const cites = extractCitations(text)
     const zones = detectQuoteZones(text)
-    const depths = computeParenDepths(text, cites)
-    const result = attributeQuotes(text, zones, cites, depths)
+    const result = attributeQuotes(text, zones, cites)
     const blockAttribution = result.find((a) => a.attributionKind === "block-quote")
     expect(blockAttribution).toBeDefined()
     expect(blockAttribution?.citationIndex).toBe(0)
@@ -1206,8 +1207,7 @@ describe("attributeQuotes", () => {
     const text = `Smith v. Jones, 100 F.2d 50 (1990) (quoting "the rule applies" from prior precedent).`
     const cites = extractCitations(text)
     const zones = detectQuoteZones(text)
-    const depths = computeParenDepths(text, cites)
-    const result = attributeQuotes(text, zones, cites, depths)
+    const result = attributeQuotes(text, zones, cites)
     const parenAttribution = result.find((a) => a.attributionKind === "parenthetical")
     expect(parenAttribution).toBeDefined()
     // The enclosing cite is Smith (idx 0).
@@ -1219,8 +1219,7 @@ describe("attributeQuotes", () => {
     const text = `He said "the rule applies" and walked away with no citation.`
     const cites = extractCitations(text)
     const zones = detectQuoteZones(text)
-    const depths = computeParenDepths(text, cites)
-    const result = attributeQuotes(text, zones, cites, depths)
+    const result = attributeQuotes(text, zones, cites)
     expect(result.length).toBeGreaterThan(0)
     expect(result[0].citationIndex).toBeUndefined()
     expect(result[0].attributionKind).toBeUndefined()
@@ -1230,8 +1229,7 @@ describe("attributeQuotes", () => {
     const text = `He said "the rule applies." Then a new sentence. Smith v. Jones, 100 F.2d 50 (1990).`
     const cites = extractCitations(text)
     const zones = detectQuoteZones(text)
-    const depths = computeParenDepths(text, cites)
-    const result = attributeQuotes(text, zones, cites, depths)
+    const result = attributeQuotes(text, zones, cites)
     // The quote should not be attributed adjacent because a period separates
     // it from Smith.
     const inlineAttribution = result.find((a) => a.attributionKind === "adjacent")
@@ -1242,8 +1240,7 @@ describe("attributeQuotes", () => {
     const text = `The court held "the rule applies" in Smith v. Jones, 100 F.2d 50 (1990).`
     const cites = extractCitations(text)
     const zones = detectQuoteZones(text)
-    const depths = computeParenDepths(text, cites)
-    const result = attributeQuotes(text, zones, cites, depths)
+    const result = attributeQuotes(text, zones, cites)
     expect(result[0].quoteText).toBe("the rule applies")
   })
 })
@@ -1288,7 +1285,6 @@ export function attributeQuotes(
   text: string,
   quoteZones: Array<{ start: number; end: number }>,
   citations: Citation[],
-  parenDepths: number[],
 ): QuoteAttribution[] {
   const result: QuoteAttribution[] = []
 
@@ -1302,7 +1298,7 @@ export function attributeQuotes(
     }
 
     // Parenthetical-internal path takes precedence — check first.
-    const parenAttribution = findParentheticalAttribution(zone, citations, parenDepths)
+    const parenAttribution = findParentheticalAttribution(text, zone, citations)
     if (parenAttribution !== undefined) {
       result.push({
         quoteSpan,
@@ -1318,7 +1314,7 @@ export function attributeQuotes(
     const isBlock = isBlockQuote(text, zone)
 
     if (isBlock) {
-      const candidate = findBlockQuoteCandidate(text, zone, citations)
+      const candidate = findBlockQuoteCandidate(zone, citations)
       if (candidate !== undefined) {
         const distance = candidate.distance
         result.push({
@@ -1352,9 +1348,18 @@ export function attributeQuotes(
 }
 
 function extractQuoteText(text: string, zone: { start: number; end: number }): string {
-  // Strip the outer quote marks (1 char on each side; safe for ASCII and typographic).
-  const inner = text.slice(zone.start + 1, zone.end - 1)
-  return inner
+  const raw = text.slice(zone.start, zone.end)
+  // Markdown blockquote (zone starts with `>` after optional whitespace):
+  // strip the leading `>` and one space from each line, then trim.
+  if (/^\s*>/m.test(raw)) {
+    return raw
+      .split(/\r?\n/)
+      .map((line) => line.replace(/^\s*>\s?/, ""))
+      .join("\n")
+      .trim()
+  }
+  // Paired ASCII or typographic quote: strip the outer mark on each side.
+  return text.slice(zone.start + 1, zone.end - 1)
 }
 
 function isBlockQuote(text: string, zone: { start: number; end: number }): boolean {
@@ -1368,7 +1373,6 @@ function isBlockQuote(text: string, zone: { start: number; end: number }): boole
 }
 
 function findBlockQuoteCandidate(
-  text: string,
   zone: { start: number; end: number },
   citations: Citation[],
 ): { index: number; distance: number } | undefined {
@@ -1401,63 +1405,43 @@ function findInlineCandidate(
 }
 
 function findParentheticalAttribution(
+  text: string,
   zone: { start: number; end: number },
   citations: Citation[],
-  parenDepths: number[],
 ): number | undefined {
-  // Find the citation whose fullSpan encloses the quote zone.
-  for (let i = 0; i < citations.length; i++) {
-    if (parenDepths[i] <= 0) continue // citation must itself be inside someone's paren
-    // Use the enclosing citation: find the most recent citation at lower depth
-    // whose span starts before this paren-child citation's span.
-    // Simpler heuristic: if the quote zone is between two adjacent citations
-    // (one paren-child, one parent), attribute to the parent.
-    // For v1: skip — the parenthetical path is most reliably triggered by
-    // explicit `(quoting "..." Smith, ...)` shapes, which the in-parenthetical-of
-    // edge already captures. Return undefined here and rely on quoteText
-    // presence as the consumer's signal.
-  }
-  // Iterate citations; if the quote zone is fully contained within a
-  // citation's text region (between the opening `(` after the cite and the
-  // matching `)` ), attribute to that citation.
+  // For each citation, walk forward from its end position looking for the
+  // FIRST `(`; track depth to find the matching `)`. If the quote zone is
+  // fully contained inside that paren range, attribute to this citation.
+  //
+  // Handles the common Bluebook shapes:
+  //   Smith, 1 U.S. 1 (1990) (quoting "..." from prior precedent).
+  //   Smith, 1 U.S. 1 (1990) (Other v. Else, 2 F.3d 1 (citing "...")).
+  //
+  // Returns the first citation whose trailing paren contains the zone.
+  // Unsupported shapes (no trailing paren, malformed parens) return
+  // undefined gracefully — the quote ends up unattributed.
   for (let i = 0; i < citations.length; i++) {
     const c = citations[i]
-    const candidateStart = c.span.originalEnd
-    // Scan forward from candidate start to find a `(`; if the quote zone
-    // sits between that `(` and its matching `)`, attribute.
-    // ... see implementation note below.
-  }
-  return undefined
-}
-```
-
-**Implementation note for Step 5.3:** the parenthetical-attribution function is the trickiest. The naive approach (scan for `(` after each citation and check quote-zone containment) works for most cases but has edge cases (nested parens, line breaks). For v1, the recommended implementation:
-
-```ts
-function findParentheticalAttribution(
-  zone: { start: number; end: number },
-  citations: Citation[],
-  parenDepths: number[],
-): number | undefined {
-  // For each citation, check whether the quote zone sits within the
-  // text region immediately after the citation, bounded by the matching
-  // close-paren of the citation's trailing `(`.
-  for (let i = 0; i < citations.length; i++) {
-    const c = citations[i]
-    // Quote must START after the citation's text begins.
-    if (zone.start < c.span.originalStart) continue
-    // Walk forward from citation start to find the opening paren and its match.
-    // (Reuses the parenthetical-depth-scanning approach from computeParenDepths.)
-    // If the quote zone is fully inside that paren, attribute.
-    // For simplicity in v1: trust the existing parenDepths tag — if the
-    // citation has a NEXT citation at higher depth whose span contains zone,
-    // the enclosing citation IS this one.
-    const next = citations[i + 1]
-    if (!next) continue
-    if (parenDepths[i + 1] > parenDepths[i]) {
-      // citations[i+1] is inside citations[i]'s parenthetical
-      if (zone.start >= c.span.originalEnd && zone.end <= next.span.originalEnd + 200) {
-        return i
+    // Quote must start after the citation ends.
+    if (zone.start <= c.span.originalEnd) continue
+    // Walk forward from citation end looking for `(...)`.
+    let depth = 0
+    let openPos = -1
+    for (let p = c.span.originalEnd; p < text.length; p++) {
+      const ch = text[p]
+      if (ch === "(") {
+        if (openPos === -1) openPos = p
+        depth++
+      } else if (ch === ")") {
+        depth--
+        if (depth === 0 && openPos !== -1) {
+          // Found the matching close-paren.
+          if (zone.start >= openPos && zone.end <= p + 1) {
+            return i
+          }
+          break // this citation's trailing paren doesn't contain the zone
+        }
+        if (depth < 0) break // unbalanced; abandon
       }
     }
   }
@@ -1465,7 +1449,13 @@ function findParentheticalAttribution(
 }
 ```
 
-The fallback for unsupported parenthetical shapes is graceful: the function returns undefined, and the quote ends up unattributed (still surfaces in the result with `quoteText` populated).
+**Note:** `text` must be threaded into this helper from `attributeQuotes`. Update the helper's call site accordingly:
+
+```ts
+const parenAttribution = findParentheticalAttribution(text, zone, citations)
+```
+
+(The `parenDepths` parameter is no longer needed for the paren-walking algorithm — remove from the signature and the call site.)
 
 - [ ] **Step 5.4: Run the tests**
 
@@ -1719,7 +1709,7 @@ export function analyzeDocument(
 
   const prose = computeProseOffsets(text, citations, opts?.transformationMap)
   const citationGraph = buildCitationGraph(citations, parenDepths)
-  const quoteAttributions = attributeQuotes(text, quoteZones, citations, parenDepths)
+  const quoteAttributions = attributeQuotes(text, quoteZones, citations)
   const footnoteZones = extractFootnoteZones(citations)
 
   return {
@@ -1953,7 +1943,7 @@ EOF
 pnpm exec vitest run && pnpm typecheck && pnpm lint && pnpm build && pnpm size 2>&1 | tail -15
 ```
 
-Expected: all five pass. Test count should be ~3006 baseline + new (~30-40 tests across the 7 new test files) = ~3040+.
+Expected: all five pass. Test count should be approximately the current baseline + ~30-40 new tests across the 7 new test files. Don't worry about the exact number — baselines drift as other PRs land; what matters is no regressions.
 
 - [ ] **Step 10.2: Review the diff**
 
