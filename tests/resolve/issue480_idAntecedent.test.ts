@@ -42,72 +42,76 @@ describe("Issue #480: Id./short-form antecedent resolution", () => {
     })
   })
 
-  // Criterion 3: signal-phrase awareness — see / see also / cf. / but cf. /
-  // compare / see generally are "asides" and should not become Id. antecedents
-  // when a more-recent non-signaled case is in scope.
-  describe("signal-phrase awareness", () => {
-    it("Id. skips over a 'see also' intervening case", () => {
+  // Criterion 3: signal-phrase blindness — per Bluebook Rule 4.1, `Id.`
+  // anchors to the immediately preceding cited authority regardless of
+  // signal phrase. A `See`/`Cf.`/`Compare`-signaled full citation is still
+  // an authority; the signal qualifies *how* the source supports the
+  // proposition, not whether the citation can be the referent of a
+  // following `Id.` (originally tested as "skips over" in #480; corrected
+  // to strict Rule 4.1 in #498 to match the Python eyecite reference).
+  describe("signal-phrase blindness (Bluebook Rule 4.1, #498)", () => {
+    it("Id. anchors to a 'see also' intervening case", () => {
       const text =
         "People v. Henderson, 28 N.Y.3d 63, 70 (2016). " +
         "See also People v. Molineux, 168 N.Y. 264 (1901). Id. at 70."
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
-      const henderson = citations.find((c) => c.type === "case" && c.volume === 28)!
+      const molineux = citations.find((c) => c.type === "case" && c.volume === 168)!
       const id = citations.find((c) => c.type === "id")!
-      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(henderson))
+      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(molineux))
     })
 
-    it("Id. skips over a 'cf.' intervening case", () => {
+    it("Id. anchors to a 'cf.' intervening case", () => {
       const text =
         "People v. Henderson, 28 N.Y.3d 63, 70 (2016). " +
         "Cf. People v. Molineux, 168 N.Y. 264 (1901). Id. at 70."
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
-      const henderson = citations.find((c) => c.type === "case" && c.volume === 28)!
+      const molineux = citations.find((c) => c.type === "case" && c.volume === 168)!
       const id = citations.find((c) => c.type === "id")!
-      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(henderson))
+      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(molineux))
     })
 
-    it("Id. skips over a 'see' intervening case", () => {
+    it("Id. anchors to a 'see' intervening case", () => {
       const text =
         "Henderson v. State, 28 N.Y.3d 63, 70 (2016). " +
         "See Adams v. Brown, 168 N.Y. 264 (1901). Id. at 70."
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
-      const henderson = citations.find((c) => c.type === "case" && c.volume === 28)!
+      const adams = citations.find((c) => c.type === "case" && c.volume === 168)!
       const id = citations.find((c) => c.type === "id")!
-      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(henderson))
+      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(adams))
     })
 
-    it("Id. skips over a 'but cf.' intervening case", () => {
+    it("Id. anchors to a 'but cf.' intervening case", () => {
       const text =
         "Henderson v. State, 28 N.Y.3d 63, 70 (2016). " +
         "But cf. Adams v. Brown, 168 N.Y. 264 (1901). Id. at 70."
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
-      const henderson = citations.find((c) => c.type === "case" && c.volume === 28)!
+      const adams = citations.find((c) => c.type === "case" && c.volume === 168)!
       const id = citations.find((c) => c.type === "id")!
-      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(henderson))
+      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(adams))
     })
 
-    it("Id. skips over a 'compare' intervening case", () => {
+    it("Id. anchors to a 'compare' intervening case", () => {
       const text =
         "Henderson v. State, 28 N.Y.3d 63, 70 (2016). " +
         "Compare Adams v. Brown, 168 N.Y. 264 (1901). Id. at 70."
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
-      const henderson = citations.find((c) => c.type === "case" && c.volume === 28)!
+      const adams = citations.find((c) => c.type === "case" && c.volume === 168)!
       const id = citations.find((c) => c.type === "id")!
-      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(henderson))
+      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(adams))
     })
 
-    it("Id. skips over a 'see generally' intervening case", () => {
+    it("Id. anchors to a 'see generally' intervening case", () => {
       const text =
         "Henderson v. State, 28 N.Y.3d 63, 70 (2016). " +
         "See generally Adams v. Brown, 168 N.Y. 264 (1901). Id. at 70."
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
-      const henderson = citations.find((c) => c.type === "case" && c.volume === 28)!
+      const adams = citations.find((c) => c.type === "case" && c.volume === 168)!
       const id = citations.find((c) => c.type === "id")!
-      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(henderson))
+      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(adams))
     })
 
-    it("Id. resolves to a weakly-signaled case when no strong case is in scope", () => {
-      // Only weakly-signaled candidates exist; fall back to most recent.
+    it("Id. resolves to most-recent of two weakly-signaled cases (recency wins)", () => {
+      // Both candidates weakly signaled; recency picks the latter.
       const text =
         "See People v. Resek, 3 N.Y.3d 385 (2004). " +
         "See also People v. Molineux, 168 N.Y. 264 (1901). Id. at 270."
