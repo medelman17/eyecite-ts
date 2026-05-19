@@ -44,7 +44,7 @@ describe("detectParallel — pincite-between gap shapes", () => {
     expect(cites[0].groupId).toBe(cites[1].groupId)
     // Note: parallelCitations stores the normalized reporter form ("S.Ct.",
     // no space), not the source form ("S. Ct."). See reporter normalization
-    // in extractCitations.ts.
+    // in src/clean/cleaners.ts (normalizeReporterSpacing).
     expect(cites[0].parallelCitations).toEqual([
       { volume: 93, reporter: "S.Ct.", page: 705 },
     ])
@@ -55,6 +55,16 @@ describe("detectParallel — pincite-between gap shapes", () => {
     // a parallel pair, which isn't a real-world combination but exercises the
     // classifier in isolation.
     const text = "Smith v. Jones, 100 F.2d 50, 55 n.3, 200 A.2d 100 (1990)."
+    const cites = caseCites(text)
+    expect(cites).toHaveLength(2)
+    expect(cites[0].groupId).toBe(cites[1].groupId)
+  })
+
+  it("accepts star-pagination pincite (', *N, ')", () => {
+    // Star-pagination (`*2`) is common in slip-opinion / unreported decisions
+    // and explicitly handled by parsePincite. The classifier accepts it as
+    // a pincite-between segment.
+    const text = "Smith v. Jones, 374 N.J. Super. 448, *2, 864 A.2d 1191 (2005)."
     const cites = caseCites(text)
     expect(cites).toHaveLength(2)
     expect(cites[0].groupId).toBe(cites[1].groupId)
