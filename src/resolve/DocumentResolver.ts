@@ -91,6 +91,32 @@ function citationFamily(citation: Citation): CitationFamily {
 }
 
 /**
+ * Classify an ASCII `"` at position `pos` as opening, closing, or ambiguous,
+ * based on neighboring characters. English typographic conventions:
+ *
+ *   - Opening: preceded by start/whitespace/punctuation-open (`(`, `[`, `—`)
+ *     AND followed by a letter or `(`.
+ *   - Closing: preceded by a letter/digit/sentence punctuation
+ *     (`.`, `,`, `?`, `!`, `:`, `;`, `)`, `]`) AND followed by end/
+ *     whitespace/punctuation.
+ *   - Ambiguous: everything else (skipped during pairing).
+ */
+function classifyAsciiQuote(text: string, pos: number): "open" | "close" | "ambiguous" {
+  const prev = pos === 0 ? "" : text[pos - 1]
+  const next = pos === text.length - 1 ? "" : text[pos + 1]
+
+  const openPrev = prev === "" || /\s/.test(prev) || prev === "(" || prev === "[" || prev === "—"
+  const openNext = /[A-Za-zÀ-ɏ]/.test(next) || next === "("
+  if (openPrev && openNext) return "open"
+
+  const closePrev = /[A-Za-z0-9À-ɏ.,?!:;)\]]/.test(prev)
+  const closeNext = next === "" || /[\s.,;:)—\]]/.test(next)
+  if (closePrev && closeNext) return "close"
+
+  return "ambiguous"
+}
+
+/**
  * Detects block-quote and inline-quote zones in **original** text and
  * returns sorted, non-overlapping `{start, end}` ranges in original-text
  * coordinates. Callers must look up citations via `span.originalStart`,
@@ -101,10 +127,10 @@ function citationFamily(citation: Citation): CitationFamily {
  *   - Markdown blockquotes: contiguous lines whose first non-whitespace
  *     character is `>`. The zone spans from the first such line's start to
  *     the end of the last contiguous line.
- *   - Inline paired double-quotes: greedy `"…"` regions on a single content
- *     stretch. We only accept pairs that are at most ~600 chars apart, which
- *     filters most cases of stray unbalanced quotes; longer "quotes" would
- *     swallow unrelated citations and produce wrong skips.
+ *   - Inline paired quotes: balanced `"…"` or `“…”` regions on a single
+ *     content stretch. We only accept pairs that are at most ~600 chars
+ *     apart, which filters most cases of stray unbalanced quotes; longer
+ *     "quotes" would swallow unrelated citations and produce wrong skips.
  */
 function detectQuoteZones(text: string): Array<{ start: number; end: number }> {
   const zones: Array<{ start: number; end: number }> = []
@@ -129,20 +155,57 @@ function detectQuoteZones(text: string): Array<{ start: number; end: number }> {
   }
   if (zoneStart !== -1) zones.push({ start: zoneStart, end: text.length })
 
-  // Inline paired double-quotes.
+  // Inline paired quotes. Two-step:
+  //   1. Classify each quote-character as open / close / ambiguous based on
+  //      neighboring characters (typographic conventions).
+  //   2. Match opens to closes with a stack, skipping orphans and ambiguous.
+  //
+  // Why not greedy "first quote = open, next = close"? That mispairs when
+  // input starts mid-document with an orphan close (e.g. `use." Smith...`),
+  // creating a phantom zone that engulfs unrelated citations and breaks
+  // Id. resolution. The classifier handles arbitrary text snippets
+  // robustly. Typographic quotes (U+201C / U+201D) are unambiguous and
+  // pair directly.
+  //
+  // Two separate stacks isolate ASCII and typographic styles so a mixed
+  // open/close (e.g. ASCII `"` … typographic `”`) cannot cross-pair into
+  // a phantom zone that engulfs intermediate citations.
   const MAX_INLINE_QUOTE_LEN = 600
-  let openPos = -1
+  const asciiOpens: number[] = []
+  const typographicOpens: number[] = []
   for (let i = 0; i < text.length; i++) {
-    if (text[i] !== '"') continue
-    if (openPos === -1) {
-      openPos = i
-    } else {
-      const length = i - openPos + 1
-      if (length <= MAX_INLINE_QUOTE_LEN) {
+    const ch = text[i]
+
+    // Typographic quotes: unambiguous.
+    if (ch === "“") {
+      typographicOpens.push(i)
+      continue
+    }
+    if (ch === "”") {
+      // Orphan closes are skipped — a leading typographic `”` without a
+      // matching open should not retroactively turn into an open.
+      const openPos = typographicOpens.pop()
+      if (openPos === undefined) continue
+      if (i - openPos + 1 <= MAX_INLINE_QUOTE_LEN) {
         zones.push({ start: openPos, end: i + 1 })
       }
-      openPos = -1
+      continue
     }
+
+    // ASCII straight double-quote: classify by neighbors.
+    if (ch !== '"') continue
+    const cls = classifyAsciiQuote(text, i)
+    if (cls === "open") {
+      asciiOpens.push(i)
+    } else if (cls === "close") {
+      // Orphan closes are skipped — same rationale as the typographic branch.
+      const openPos = asciiOpens.pop()
+      if (openPos === undefined) continue
+      if (i - openPos + 1 <= MAX_INLINE_QUOTE_LEN) {
+        zones.push({ start: openPos, end: i + 1 })
+      }
+    }
+    // ambiguous → skip
   }
 
   zones.sort((a, b) => a.start - b.start)
@@ -419,6 +482,35 @@ export class DocumentResolver {
   }
 
   /**
+   * Find the immediate-preceding citation index for `antecedentIndex`
+   * purposes. Bluebook Rule 4.1: `Id.` anchors to "the immediately
+   * preceding cited authority" — unlike `resolveId`'s primary chase
+   * (which only accepts resolved full antecedents), this lookup accepts
+   * any prior citation that passes the existing scope / parenthetical /
+   * quote-zone filters, regardless of resolution state.
+   *
+   * Returns the index of the immediately-preceding eligible citation,
+   * or `undefined` if none.
+   */
+  private findImmediatePredecessor(
+    citation: IdCitation | SupraCitation | ShortFormCaseCitation,
+  ): number | undefined {
+    const currentIndex = this.context.citationIndex
+    const citationZone = isInZone(citation.span.originalStart, this.quoteZones)
+
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      // Apply the same filters as resolveId's main chase.
+      if (this.isParentheticalChild(i)) continue
+      if (!this.isWithinScope(i, currentIndex)) continue
+      const candidateZone = isInZone(this.citations[i].span.originalStart, this.quoteZones)
+      if (candidateZone && candidateZone !== citationZone) continue
+      // Accept regardless of resolution state.
+      return i
+    }
+    return undefined
+  }
+
+  /**
    * Resolves `Id.` to the most recent preceding *cited authority*, respecting
    * Bluebook signal categories, block-/inline-quote zones, and the family
    * (case vs. statute) implied by `Id.`'s pincite shape (#480).
@@ -456,11 +548,25 @@ export class DocumentResolver {
       if (isFullCitation(c)) {
         primaryIdx = i
       } else {
-        // shortForm/Id./supra — follow the resolution chain. If it failed to
-        // resolve we skip it: a broken short-form shouldn't pin Id. to a
-        // citation the writer didn't successfully cite.
+        // shortForm/Id./supra — follow the resolution chain.
         const prev = this.resolutions[i]
-        if (!prev || prev.resolvedTo === undefined) continue
+        if (!prev || prev.resolvedTo === undefined) {
+          // Unresolved short-form. Per Bluebook Rule 4.1, `Id.` anchors to
+          // the immediately preceding cited authority — we must not chase
+          // past an unresolved short-form to a more-distant full cite,
+          // because the writer was citing the unresolved short-form, not
+          // the earlier authority. Stop pass-1 here. Pass-2
+          // (`findImmediatePredecessor`) will record the chain pointer in
+          // `antecedentIndex`. Exception: short-forms that are themselves
+          // syntactic asides (paren children, out of scope, wrong quote
+          // zone) are not really "in the writer's main flow" and may be
+          // skipped — those are filtered below.
+          if (this.isParentheticalChild(i)) continue
+          if (!this.isWithinScope(i, currentIndex)) continue
+          const unresolvedZone = isInZone(c.span.originalStart, this.quoteZones)
+          if (unresolvedZone && unresolvedZone !== idQuoteZone) continue
+          break
+        }
         primaryIdx = prev.resolvedTo
       }
 
@@ -485,8 +591,20 @@ export class DocumentResolver {
     }
 
     if (candidates.length === 0) {
-      // Diagnose: did we have any preceding citation at all? If not, the
-      // legacy failure message helps consumers debug "Id. before any cite".
+      // No resolved full-cite candidate. Pass 2: try the immediate
+      // predecessor regardless of resolution state — Bluebook Rule 4.1
+      // anchors `Id.` to the immediately preceding cited authority, not
+      // just to resolved ones. The chain pointer is recorded in
+      // `antecedentIndex`; `resolvedTo` stays undefined.
+      const antecedentIndex = this.findImmediatePredecessor(citation)
+      if (antecedentIndex !== undefined) {
+        return {
+          resolvedTo: undefined,
+          antecedentIndex,
+          confidence: 0.7,
+          warnings: ["Id. antecedent has unresolved authority; chained by position only"],
+        }
+      }
       const anyPrior = currentIndex > 0
       return this.createFailureResult(
         anyPrior ? "Antecedent citation outside scope boundary" : "No preceding citation found",
@@ -522,6 +640,7 @@ export class DocumentResolver {
 
     return {
       resolvedTo: best.index,
+      antecedentIndex: this.findImmediatePredecessor(citation),
       confidence,
       warnings,
     }
@@ -760,6 +879,7 @@ export class DocumentResolver {
 
     return {
       resolvedTo: bestMatch.index,
+      antecedentIndex: this.findImmediatePredecessor(citation),
       confidence: bestMatch.similarity,
       warnings: warnings.length > 0 ? warnings : undefined,
     }
@@ -798,6 +918,24 @@ export class DocumentResolver {
     }
 
     if (candidates.length === 0) {
+      // Backward prose scan: try to recover case name from preceding prose.
+      const inferred = this.extractInferredCaseName(citation)
+      if (inferred) {
+        citation.inferredCaseName = inferred.caseName
+        citation.inferredPlaintiff = inferred.plaintiff
+        citation.inferredDefendant = inferred.defendant
+        citation.inferredCaseNameSpan = inferred.span
+      }
+
+      const antecedentIndex = this.findImmediatePredecessor(citation)
+      if (antecedentIndex !== undefined) {
+        return {
+          resolvedTo: undefined,
+          antecedentIndex,
+          confidence: 0.5,
+          warnings: ["No matching full case citation found; chained by position only"],
+        }
+      }
       return this.createFailureResult("No matching full case citation found")
     }
 
@@ -820,6 +958,7 @@ export class DocumentResolver {
       if (namedMatch !== undefined) {
         return {
           resolvedTo: namedMatch,
+          antecedentIndex: this.findImmediatePredecessor(citation),
           confidence: 0.98, // Higher than bare vol+reporter — party-name disambiguation tightens.
         }
       }
@@ -828,7 +967,129 @@ export class DocumentResolver {
     // No party name (or no name match): pick most recent candidate.
     return {
       resolvedTo: candidates[0],
+      antecedentIndex: this.findImmediatePredecessor(citation),
       confidence: 0.95,
+    }
+  }
+
+  /**
+   * Backward prose scan for "Party v. Party" patterns preceding a
+   * short-form citation whose vol+reporter lookup failed. Used to recover
+   * a case name when the author introduced the authority in prose (e.g.
+   * "In Yellen v. Kassin, ...") and used a short-form that didn't carry
+   * an extractable full citation.
+   *
+   * Unlike `extractCaseName` — which performs a boundary-bounded backward
+   * walk starting *immediately before* a citation core — this scan looks
+   * anywhere in a ~400-char window before the short-form and accepts the
+   * closest "Party v. Party" mention whose plaintiff or defendant matches
+   * the short-form's `partyName`. Crossing intervening sentence boundaries
+   * (e.g., "In Yellen v. Kassin, the court held. Yellen, 416 ...") is
+   * required: the prose mention and the short-form are by definition
+   * separated by other prose.
+   *
+   * LOOKBACK = 400 chars accommodates real-world legal prose where the
+   * prose mention and short-form are separated by a long quoted passage
+   * (e.g. the bug-report 2026-05-19 Yellen fixture has ~351 chars of
+   * block quote between "In Yellen v. Kassin" and "Yellen, 416 N.J.
+   * Super. at 590"). False-positive risk is bounded by the partyName
+   * acceptance check and the "closest match wins" tie-breaker.
+   *
+   * Returns the inferred case name + spans, or `undefined` if no
+   * acceptable match is found within `LOOKBACK` chars.
+   */
+  private extractInferredCaseName(citation: ShortFormCaseCitation):
+    | {
+        caseName: string
+        plaintiff: string
+        defendant: string
+        span: Span
+      }
+    | undefined {
+    const LOOKBACK = 400
+    if (!citation.partyName) return undefined
+
+    const start = Math.max(0, citation.span.cleanStart - LOOKBACK)
+    const window = this.text.substring(start, citation.span.cleanStart)
+    if (window.length === 0) return undefined
+
+    // Lightweight "Party v. Party" matcher. Allows capitalized words
+    // (with internal connectors / abbreviations / `&`, etc.) on either
+    // side of `v.` / `vs.`, ending at sentence punctuation or a comma.
+    // Looser than `V_CASE_NAME_REGEX` from `extractCase.ts`, which is
+    // anchored to a citation core — here we're scanning free prose.
+    //
+    // The nested `*` quantifiers are ReDoS-safe: each repetition requires a
+    // mandatory `\s+` separator, so the inner and outer alternatives are
+    // disjoint on the same input and cannot backtrack catastrophically.
+    const VS_REGEX =
+      /([A-Z][A-Za-z0-9.'&\-/]*(?:\s+[A-Z][A-Za-z0-9.'&\-/]*)*)\s+v(?:s)?\.\s+([A-Z][A-Za-z0-9.'&\-/]*(?:\s+[A-Z][A-Za-z0-9.'&\-/]*)*)/g
+
+    const shortName = this.normalizePartyName(citation.partyName)
+    let best:
+      | {
+          caseName: string
+          plaintiff: string
+          defendant: string
+          start: number
+          end: number
+        }
+      | undefined
+
+    let m: RegExpExecArray | null
+    VS_REGEX.lastIndex = 0
+    while ((m = VS_REGEX.exec(window)) !== null) {
+      // Strip leading signal words ("In", "See", "Cf", "But", "Compare")
+      // captured as part of the plaintiff. The greedy regex absorbs the
+      // preceding capitalized token, so `"In Yellen v. Kassin"` yields
+      // plaintiff `"In Yellen"`. `stripSignalWords` handles these cases
+      // and preserves `"In re ..."` procedural captions.
+      const rawPlaintiff = m[1].trim()
+      const plaintiff = this.stripSignalWords(rawPlaintiff)
+      const defendant = m[2].trim()
+      const plaintiffNorm = this.normalizePartyName(plaintiff)
+      const defendantNorm = this.normalizePartyName(defendant)
+
+      // Acceptance: exact equality, OR substring containment in either
+      // direction to tolerate abbreviation patterns (`Smith` matches
+      // `Smith, Inc.` and vice versa). Mirror the substring rule used
+      // in `resolveShortFormCase` party-name disambiguation.
+      const hit = (side: string) =>
+        side === shortName || side.includes(shortName) || shortName.includes(side)
+      if (!hit(plaintiffNorm) && !hit(defendantNorm)) continue
+
+      // Recompute the match start to reflect any signal stripping —
+      // if we stripped "In " off the plaintiff, the case-name span
+      // should start at "Yellen", not "In". stripSignalWords strips
+      // both the signal word and its trailing whitespace, so the
+      // length delta is exactly the number of leading chars to skip.
+      const stripOffset = rawPlaintiff.length - plaintiff.length
+      const matchStart = start + m.index + stripOffset
+      best = {
+        caseName: `${plaintiff} v. ${defendant}`,
+        plaintiff,
+        defendant,
+        start: matchStart,
+        end: start + m.index + m[0].length,
+      }
+      // Don't break — keep scanning so the closest (last) match wins.
+    }
+
+    if (!best) return undefined
+
+    return {
+      caseName: best.caseName,
+      plaintiff: best.plaintiff,
+      defendant: best.defendant,
+      // Clean coordinates; consumers should treat these as offsets in
+      // the resolver's input `text`. When the cleaner did not transform
+      // the source, clean == original.
+      span: {
+        cleanStart: best.start,
+        cleanEnd: best.end,
+        originalStart: best.start,
+        originalEnd: best.end,
+      },
     }
   }
 

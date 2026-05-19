@@ -212,7 +212,12 @@ describe("Resolution Integration Tests", () => {
       expect(id!.resolution?.resolvedTo).toBe(smithIndex)
     })
 
-    it("fails Id. when preceding short-form fails to resolve", () => {
+    it("Id. anchors to preceding unresolved short-form via antecedentIndex (Bluebook Rule 4.1)", () => {
+      // Bluebook Rule 4.1: `Id.` refers to the immediately preceding cited
+      // authority, regardless of whether that authority resolved to a full
+      // citation. The short-form `400 F.3d at 200` doesn't match any full
+      // citation (none in this text), but Id. still anchors to it positionally
+      // via `antecedentIndex`. `resolvedTo` stays undefined; a warning is set.
       const text = "400 F.3d at 200. Id. at 201."
 
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
@@ -225,7 +230,10 @@ describe("Resolution Integration Tests", () => {
 
       expect(shortForm!.resolution?.resolvedTo).toBeUndefined()
       expect(id!.resolution?.resolvedTo).toBeUndefined()
-      expect(id!.resolution?.failureReason).toBeDefined()
+      // New: Id. anchors via antecedentIndex even though the short-form
+      // didn't resolve.
+      expect(id!.resolution?.antecedentIndex).toBe(citations.indexOf(shortForm!))
+      expect(id!.resolution?.warnings).toBeDefined()
     })
 
     it("Id. with no pincite after case → statute skips the statute (#480)", () => {
@@ -415,17 +423,23 @@ Second paragraph: Id. at 125.`
       expect(citations[1].resolution?.resolvedTo).toBe(0)
     })
 
-    it("fails to resolve short-form case with no matching volume/reporter", () => {
+    it("short-form case with no matching vol/reporter has resolvedTo undefined; antecedentIndex points at predecessor", () => {
+      // Vol+reporter lookup fails (500 F.2d ≠ 400 F.3d), so `resolvedTo` is
+      // undefined. Bluebook Rule 4.1: the short-form still records its
+      // immediate predecessor in `antecedentIndex` so a subsequent `Id.` (or
+      // consumer walking the chain) can cluster with it.
       const text = "Smith v. Jones, 500 F.2d 123. See 400 F.3d at 200."
 
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
 
       expect(citations).toHaveLength(2)
 
-      // Short-form fails - different volume/reporter
+      // Short-form: vol+reporter mismatch → resolvedTo undefined, but
+      // antecedentIndex still records Smith as the immediate predecessor.
       expect(citations[1].type).toBe("shortFormCase")
       expect(citations[1].resolution?.resolvedTo).toBeUndefined()
-      expect(citations[1].resolution?.failureReason).toContain("No matching full case citation")
+      expect(citations[1].resolution?.antecedentIndex).toBe(0)
+      expect(citations[1].resolution?.warnings).toBeDefined()
     })
   })
 
@@ -454,7 +468,7 @@ Second paragraph: Id. at 125.`
   })
 
   describe("Unresolved Citation Warnings", () => {
-    it("reports unresolved citations with failure reasons (default)", () => {
+    it("reports unresolved citations with failure reasons or warnings (default)", () => {
       const text = "Id. at 100. Brown, supra. 500 F.2d at 200."
 
       const citations = extractCitations(text, {
@@ -466,10 +480,17 @@ Second paragraph: Id. at 125.`
 
       expect(citations).toHaveLength(3)
 
-      // All three should have resolution results with failure reasons
+      // citations[0] (Id. with nothing prior) and citations[1] (Brown supra
+      // with no full match) both yield true failures.
       expect(citations[0].resolution?.failureReason).toBeDefined()
       expect(citations[1].resolution?.failureReason).toBeDefined()
-      expect(citations[2].resolution?.failureReason).toBeDefined()
+      // citations[2] (500 F.2d short-form) has no vol+reporter match either,
+      // but per Bluebook Rule 4.1 it records its immediate predecessor in
+      // `antecedentIndex` and surfaces the problem via `warnings`. resolvedTo
+      // is still undefined.
+      expect(citations[2].resolution?.resolvedTo).toBeUndefined()
+      expect(citations[2].resolution?.antecedentIndex).toBeDefined()
+      expect(citations[2].resolution?.warnings).toBeDefined()
     })
 
     it("omits resolution field when reportUnresolved: false", () => {

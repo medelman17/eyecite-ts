@@ -5,7 +5,7 @@ import type { IdCitation } from "@/types/citation"
 describe("Id. inherits caseName from antecedent", () => {
   it("`Id. at 1133` after `In re Hanford, 292 F.3d 1124, 1133` inherits caseName", () => {
     const text =
-      'In re Hanford Nuclear Reservation Litig., 292 F.3d 1124, 1133 (9th Cir. 2002). The court explained the rule. Id. at 1133.'
+      "In re Hanford Nuclear Reservation Litig., 292 F.3d 1124, 1133 (9th Cir. 2002). The court explained the rule. Id. at 1133."
     const cites = extractCitations(text, { resolve: true })
     const id = cites.find((c) => c.type === "id") as IdCitation | undefined
     expect(id).toBeDefined()
@@ -28,8 +28,7 @@ describe("Id. inherits caseName from antecedent", () => {
   })
 
   it("Id. inherits proceduralPrefix when antecedent has one", () => {
-    const text =
-      "In re Estate of Smith, 200 F.3d 100 (2010). The probate court said so. Id."
+    const text = "In re Estate of Smith, 200 F.3d 100 (2010). The probate court said so. Id."
     const cites = extractCitations(text, { resolve: true })
     const id = cites.find((c) => c.type === "id") as IdCitation | undefined
     expect(id?.proceduralPrefix).toBe("In re")
@@ -68,8 +67,10 @@ describe("Id. inherits caseName from antecedent", () => {
   it("Id. after a short-form chain inherits root case's caseName", () => {
     // Smith v. Jones (full) → Smith, supra (short) → Id.
     // The Id. should inherit from Smith v. Jones (the chain root).
-    const text =
-      "Smith v. Jones, 100 F.2d 50 (1990). Later, Smith, supra. Id. at 60."
+    // Note: the supra must actually resolve for Id. to chain back to the
+    // root — otherwise per Bluebook Rule 4.1 Id. anchors to the unresolved
+    // supra via antecedentIndex and inherits nothing.
+    const text = "Smith v. Jones, 100 F.2d 50 (1990). Smith, supra. Id. at 60."
     const cites = extractCitations(text, { resolve: true })
     const id = cites.find((c) => c.type === "id") as IdCitation | undefined
     expect(id?.caseName).toBe("Smith v. Jones")

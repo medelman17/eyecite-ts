@@ -77,6 +77,22 @@ export interface ResolutionResult {
   resolvedTo?: number
 
   /**
+   * Index of the immediately preceding cited authority in document order,
+   * regardless of whether *that* citation itself resolved to a full cite.
+   * Bluebook Rule 4.1 / Indigo Book R6.2.2: `Id.` anchors here.
+   *
+   * - When the predecessor is a full citation or successfully-resolved
+   *   short-form, this points one step back (may equal `resolvedTo`).
+   * - When the predecessor is an unresolved short-form (e.g. because the
+   *   case name appears only in prose), this still points at it; the
+   *   `resolvedTo` field stays undefined.
+   * - Records the immediate predecessor only; follow transitively via
+   *   `resolutions[antecedentIndex].antecedentIndex` for the originator.
+   *   Same idiom as `ShortFormCaseCitation.pinciteInheritedFrom`.
+   */
+  antecedentIndex?: number
+
+  /**
    * Reason for resolution failure (if any)
    */
   failureReason?: string
