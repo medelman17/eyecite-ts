@@ -918,6 +918,15 @@ export class DocumentResolver {
     }
 
     if (candidates.length === 0) {
+      // Backward prose scan: try to recover case name from preceding prose.
+      const inferred = this.extractInferredCaseName(citation)
+      if (inferred) {
+        citation.inferredCaseName = inferred.caseName
+        citation.inferredPlaintiff = inferred.plaintiff
+        citation.inferredDefendant = inferred.defendant
+        citation.inferredCaseNameSpan = inferred.span
+      }
+
       const antecedentIndex = this.findImmediatePredecessor(citation)
       if (antecedentIndex !== undefined) {
         return {
@@ -960,6 +969,116 @@ export class DocumentResolver {
       resolvedTo: candidates[0],
       antecedentIndex: this.findImmediatePredecessor(citation),
       confidence: 0.95,
+    }
+  }
+
+  /**
+   * Backward prose scan for "Party v. Party" patterns preceding a
+   * short-form citation whose vol+reporter lookup failed. Used to recover
+   * a case name when the author introduced the authority in prose (e.g.
+   * "In Yellen v. Kassin, ...") and used a short-form that didn't carry
+   * an extractable full citation.
+   *
+   * Unlike `extractCaseName` — which performs a boundary-bounded backward
+   * walk starting *immediately before* a citation core — this scan looks
+   * anywhere in a ~200-char window before the short-form and accepts the
+   * closest "Party v. Party" mention whose plaintiff or defendant matches
+   * the short-form's `partyName`. Crossing intervening sentence boundaries
+   * (e.g., "In Yellen v. Kassin, the court held. Yellen, 416 ...") is
+   * required: the prose mention and the short-form are by definition
+   * separated by other prose.
+   *
+   * Returns the inferred case name + spans, or `undefined` if no
+   * acceptable match is found within `LOOKBACK` chars.
+   */
+  private extractInferredCaseName(citation: ShortFormCaseCitation):
+    | {
+        caseName: string
+        plaintiff: string
+        defendant: string
+        span: Span
+      }
+    | undefined {
+    const LOOKBACK = 200
+    if (!citation.partyName) return undefined
+
+    const start = Math.max(0, citation.span.cleanStart - LOOKBACK)
+    const window = this.text.substring(start, citation.span.cleanStart)
+    if (window.length === 0) return undefined
+
+    // Lightweight "Party v. Party" matcher. Allows capitalized words
+    // (with internal connectors / abbreviations / `&`, etc.) on either
+    // side of `v.` / `vs.`, ending at sentence punctuation or a comma.
+    // Looser than `V_CASE_NAME_REGEX` from `extractCase.ts`, which is
+    // anchored to a citation core — here we're scanning free prose.
+    const VS_REGEX =
+      /([A-Z][A-Za-z0-9.'&\-/]*(?:\s+[A-Z][A-Za-z0-9.'&\-/]*)*)\s+v(?:s)?\.\s+([A-Z][A-Za-z0-9.'&\-/]*(?:\s+[A-Z][A-Za-z0-9.'&\-/]*)*)/g
+
+    const shortName = this.normalizePartyName(citation.partyName)
+    let best:
+      | {
+          caseName: string
+          plaintiff: string
+          defendant: string
+          start: number
+          end: number
+        }
+      | undefined
+
+    let m: RegExpExecArray | null
+    VS_REGEX.lastIndex = 0
+    while ((m = VS_REGEX.exec(window)) !== null) {
+      // Strip leading signal words ("In", "See", "Cf", "But", "Compare")
+      // captured as part of the plaintiff. The greedy regex absorbs the
+      // preceding capitalized token, so `"In Yellen v. Kassin"` yields
+      // plaintiff `"In Yellen"`. `stripSignalWords` handles these cases
+      // and preserves `"In re ..."` procedural captions.
+      const rawPlaintiff = m[1].trim()
+      const plaintiff = this.stripSignalWords(rawPlaintiff)
+      const defendant = m[2].trim()
+      const plaintiffNorm = this.normalizePartyName(plaintiff)
+      const defendantNorm = this.normalizePartyName(defendant)
+
+      // Acceptance: exact equality, OR substring containment in either
+      // direction to tolerate abbreviation patterns (`Smith` matches
+      // `Smith, Inc.` and vice versa). Mirror the substring rule used
+      // in `resolveShortFormCase` party-name disambiguation.
+      const hit = (side: string) =>
+        side === shortName || side.includes(shortName) || shortName.includes(side)
+      if (!hit(plaintiffNorm) && !hit(defendantNorm)) continue
+
+      // Recompute the match start to reflect any signal stripping —
+      // if we stripped "In " off the plaintiff, the case-name span
+      // should start at "Yellen", not "In". stripSignalWords strips
+      // both the signal word and its trailing whitespace, so the
+      // length delta is exactly the number of leading chars to skip.
+      const stripOffset = rawPlaintiff.length - plaintiff.length
+      const matchStart = start + m.index + stripOffset
+      best = {
+        caseName: `${plaintiff} v. ${defendant}`,
+        plaintiff,
+        defendant,
+        start: matchStart,
+        end: start + m.index + m[0].length,
+      }
+      // Don't break — keep scanning so the closest (last) match wins.
+    }
+
+    if (!best) return undefined
+
+    return {
+      caseName: best.caseName,
+      plaintiff: best.plaintiff,
+      defendant: best.defendant,
+      // Clean coordinates; consumers should treat these as offsets in
+      // the resolver's input `text`. When the cleaner did not transform
+      // the source, clean == original.
+      span: {
+        cleanStart: best.start,
+        cleanEnd: best.end,
+        originalStart: best.start,
+        originalEnd: best.end,
+      },
     }
   }
 
