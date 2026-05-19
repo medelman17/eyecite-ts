@@ -200,7 +200,12 @@ describe("detectParallelCitations", () => {
       expect(result.size).toBe(0)
     })
 
-    it("does not link citations with wide separation after comma", () => {
+    it("links citations with wide whitespace after comma when shared parenthetical present", () => {
+      // The structural classifier accepts `, \s* ` as a tight comma gap, since
+      // whitespace alone (no other text) is just formatting noise. The shared
+      // parenthetical check (`hasSharedParenthetical`) remains the defense in
+      // depth — `,      ` between two reporter cites that close into a shared
+      // `(year)` is a legitimate (if poorly formatted) parallel citation.
       const cleaned = "500 F.2d 123,      200 F. Supp. 456 (1974)" // 6 spaces after comma
       const tokens: Token[] = [
         {
@@ -219,7 +224,8 @@ describe("detectParallelCitations", () => {
 
       const result = detectParallelCitations(tokens, cleaned)
 
-      expect(result.size).toBe(0)
+      expect(result.size).toBe(1)
+      expect(result.get(0)).toEqual([1])
     })
   })
 

@@ -80,6 +80,24 @@ function setSignal(c: Citation, sig: CitationSignal): void {
 }
 
 /**
+ * Parallel-group secondaries (e.g., `864 A.2d 1191` in
+ * `374 N.J. Super. 448, 864 A.2d 1191 (App. Div. 2005)`) are not
+ * independent authorities — they're the same case reported in another
+ * reporter. The string-cite walker must skip them so it doesn't pair the
+ * secondary with an adjacent unrelated authority across a `;` separator
+ * (e.g., grouping `891 A.2d 1202` with a following `Yellen v. Kassin`).
+ *
+ * A case citation is a parallel secondary iff it has a `groupId` (set by
+ * detectParallelCitations) but no `parallelCitations` (which the primary
+ * alone carries).
+ */
+function isParallelSecondary(c: Citation): boolean {
+  if (c.type !== "case") return false
+  const fc = c as FullCaseCitation
+  return fc.groupId !== undefined && fc.parallelCitations === undefined
+}
+
+/**
  * Parse a recognized signal word from text.
  * Returns the normalized signal and the length of the match, or undefined.
  */
@@ -145,13 +163,58 @@ function analyzeGap(gapText: string): { valid: boolean; signal?: CitationSignal 
 export function detectStringCitations(citations: Citation[], cleanedText: string): void {
   if (citations.length < 2) return
 
-  // Build groups as arrays of citation indices
+  // Build the anchor list: indices of citations that can act as string-cite
+  // members. Parallel-group secondaries are excluded — they're the same
+  // authority as their group's primary, not an independent string-cite
+  // member. (Subsequent-history entries are handled inside the walk below
+  // because they cause the current group to finalize, not just be skipped.)
+  //
+  // When the primary of a parallel group is the "previous" anchor, the gap
+  // to the next anchor must start AFTER the group's last secondary so the
+  // gap text only contains the inter-authority separator (e.g., "; see also ")
+  // and not the secondary's `(year)` parenthetical.
+  const anchorIndices: number[] = []
+  // anchorEnd[k] = cleanedText position to use as the END of anchor k for
+  // gap analysis. For a primary with secondaries, this is the LAST secondary's
+  // fullSpan.cleanEnd; otherwise just the anchor's own end.
+  const anchorEnd: number[] = []
+  for (let i = 0; i < citations.length; i++) {
+    if (isParallelSecondary(citations[i])) continue
+    anchorIndices.push(i)
+    // Look ahead for parallel-group secondaries belonging to this anchor.
+    // They appear contiguously after the primary in document order (the
+    // parallel detector only groups adjacent same-paren cites).
+    let endPos = getCitationEnd(citations[i])
+    const groupId =
+      citations[i].type === "case"
+        ? (citations[i] as FullCaseCitation).groupId
+        : undefined
+    if (groupId !== undefined) {
+      for (let j = i + 1; j < citations.length; j++) {
+        const sib = citations[j]
+        if (sib.type !== "case") break
+        const fc = sib as FullCaseCitation
+        if (fc.groupId !== groupId) break
+        if (!isParallelSecondary(sib)) break
+        endPos = getCitationEnd(sib)
+      }
+    }
+    anchorEnd.push(endPos)
+  }
+
+  if (anchorIndices.length < 2) return
+
+  // Build groups as arrays of citation indices (the original primary indices,
+  // not anchor-list positions — downstream metadata is keyed off the
+  // citation array).
   const groups: number[][] = []
   let currentGroup: number[] = []
 
-  for (let i = 0; i < citations.length - 1; i++) {
+  for (let k = 0; k < anchorIndices.length - 1; k++) {
+    const i = anchorIndices[k]
+    const nextI = anchorIndices[k + 1]
     const current = citations[i]
-    const next = citations[i + 1]
+    const next = citations[nextI]
 
     // Skip if next citation is a subsequent history entry
     if (next.type === "case" && (next as FullCaseCitation).subsequentHistoryOf) {
@@ -168,8 +231,9 @@ export function detectStringCitations(citations: Citation[], cleanedText: string
       continue
     }
 
-    // Extract gap text between end of current's full extent and start of next's full extent
-    const gapStart = getCitationEnd(current)
+    // Extract gap text between end of current's parallel group (anchorEnd[k])
+    // and start of next's full extent.
+    const gapStart = anchorEnd[k]
     const gapEnd = getCitationStart(next)
 
     // Guard against overlapping or adjacent spans with no gap
@@ -190,7 +254,7 @@ export function detectStringCitations(citations: Citation[], cleanedText: string
         currentGroup.push(i)
       }
       // Always add the next citation to the group
-      currentGroup.push(i + 1)
+      currentGroup.push(nextI)
       // Set mid-group signal on next citation if found and not already set
       if (analysis.signal && !next.signal) {
         setSignal(next, analysis.signal)
