@@ -115,4 +115,18 @@ describe("Id. inherits pincite from antecedent (Bluebook 4.1)", () => {
       expect(id?.pincite).toBeUndefined()
     })
   })
+
+  describe("Rule 4.1 parenthetical exception", () => {
+    it("`Id.` after `Smith, at 100 (citing Other, 2 F.3d 1, 5)` inherits Smith's 100", () => {
+      // Bluebook Rule 4.1 explicitly excludes parenthetical-nested cites
+      // ("citing", "quoting", etc.) from the "intervening authority" rule.
+      // The Id. inherits from Smith (the host citation), not from Other.
+      const text =
+        "Smith v. Jones, 100 F.2d 50, 100 (1990) (citing Other v. Else, 2 F.3d 1, 5). Id."
+      const cites = extractCitations(text, { resolve: true })
+      const id = findId(cites)
+      expect(id?.pincite).toBe(100)
+      expect(id?.pinciteInherited).toBe(true)
+    })
+  })
 })
