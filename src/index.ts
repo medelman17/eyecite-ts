@@ -139,6 +139,7 @@ export { detectFootnotes } from "./footnotes"
 // ============================================================================
 
 export type {
+  AnalyzedFootnoteZone,
   AttributionKind,
   CitationGraph,
   Document,

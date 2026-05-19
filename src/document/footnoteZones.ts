@@ -1,5 +1,5 @@
 import type { Citation } from "../types/citation"
-import type { FootnoteZone } from "./types"
+import type { AnalyzedFootnoteZone } from "./types"
 
 /**
  * Extract footnote zones from citations that carry footnote tagging.
@@ -11,7 +11,7 @@ import type { FootnoteZone } from "./types"
  * start/end coordinates are derived from the citations' spans (the
  * outermost original-text bounds of the footnote's citations).
  */
-export function extractFootnoteZones(citations: Citation[]): FootnoteZone[] | undefined {
+export function extractFootnoteZones(citations: Citation[]): AnalyzedFootnoteZone[] | undefined {
   // Bucket by footnoteNumber.
   const buckets = new Map<number, number[]>()
   for (let i = 0; i < citations.length; i++) {
@@ -24,7 +24,7 @@ export function extractFootnoteZones(citations: Citation[]): FootnoteZone[] | un
 
   if (buckets.size === 0) return undefined
 
-  const zones: FootnoteZone[] = []
+  const zones: AnalyzedFootnoteZone[] = []
   for (const [footnoteNumber, citationIndices] of buckets) {
     // Span: outermost original-text coords of the footnote's citations.
     let start = Number.POSITIVE_INFINITY

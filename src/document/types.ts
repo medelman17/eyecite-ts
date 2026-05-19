@@ -75,7 +75,7 @@ export interface CitationGraph {
  * input citations carry footnote tagging (extractCitations was called
  * with `detectFootnotes: true`).
  */
-export interface FootnoteZone {
+export interface AnalyzedFootnoteZone {
   start: number
   end: number
   footnoteNumber: number
@@ -113,5 +113,5 @@ export interface Document {
 
   /** Footnote zones with citation members. Optional — only present when
    *  citations carry footnote tagging. */
-  footnoteZones?: FootnoteZone[]
+  footnoteZones?: AnalyzedFootnoteZone[]
 }

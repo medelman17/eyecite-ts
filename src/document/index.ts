@@ -4,10 +4,10 @@
 export { analyzeDocument } from "./analyzer"
 
 export type {
+  AnalyzedFootnoteZone,
   AttributionKind,
   CitationGraph,
   Document,
   Edge,
-  FootnoteZone,
   QuoteAttribution,
 } from "./types"
