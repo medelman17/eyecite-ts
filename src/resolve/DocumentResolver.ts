@@ -14,6 +14,7 @@ import type {
   Citation,
   CitationSignal,
   FullCaseCitation,
+  FullCitation,
   IdCitation,
   ShortFormCaseCitation,
   SupraCitation,
@@ -277,29 +278,18 @@ export class DocumentResolver {
       // follow short-form chains (shortForm/supra/Id. → full antecedent).
       this.resolutions[i] = resolution
 
-      // Bluebook Rule 4.1: an `Id.` refers to the same authority and page(s)
-      // cited in the antecedent. When the antecedent is a case citation,
+      // Bluebook Rule 4.1: when the antecedent is a case citation,
       // propagate its caption (caseName, plaintiff, defendant, procedural
-      // prefix). When the Id. lacks an explicit `at NNN`, also propagate
-      // pincite from the antecedent. Consumers can then use the Id.
-      // directly without walking `resolution.resolvedTo`.
+      // prefix) onto the Id. so consumers can use it directly without
+      // walking `resolution.resolvedTo`. Pincite inheritance lives in the
+      // post-resolution `inheritPincites` pass below (it has to walk the
+      // citation array to honor the "immediately preceding citation"
+      // rule when intermediate `Id. at X` introduces a new pincite).
       let citationOut: Citation = citation
       if (citation.type === "id" && resolution?.resolvedTo !== undefined) {
         const antecedent = this.citations[resolution.resolvedTo]
         if (antecedent) {
           const idOut: IdCitation = { ...(citation as IdCitation) }
-
-          // Pincite inheritance (when Id. has none explicit).
-          if (
-            idOut.pincite === undefined &&
-            "pincite" in antecedent &&
-            typeof antecedent.pincite === "number"
-          ) {
-            idOut.pincite = antecedent.pincite
-            if ("pinciteInfo" in antecedent && antecedent.pinciteInfo) {
-              idOut.pinciteInfo = antecedent.pinciteInfo
-            }
-          }
 
           // Case-name inheritance (only when antecedent is a `case`).
           if (antecedent.type === "case") {
@@ -325,7 +315,80 @@ export class DocumentResolver {
       } as ResolvedCitation)
     }
 
+    this.inheritPincites(resolved)
     return resolved
+  }
+
+  /**
+   * Returns true if the given full citation carries a numeric pincite
+   * (case-family: case, journal, neutral). Short-form citation types
+   * (IdCitation, SupraCitation, ShortFormCaseCitation) all type `pincite`
+   * as `number` only, so they can only inherit from numeric-pincite
+   * authorities. Statute-family inheritance is blocked by the type system
+   * today; revisit if/when short-forms gain `string` pincite support.
+   */
+  private hasNumericPinciteFamily(cit: FullCitation): boolean {
+    return cit.type === "case" || cit.type === "journal" || cit.type === "neutral"
+  }
+
+  /**
+   * Post-resolution pass: propagate pincite from the immediately preceding
+   * same-authority citation per Bluebook Rule 4.1 / Indigo Book R6.2.2.
+   * Mutates `resolved` in place. Walks backward from each short-form,
+   * stopping at authority boundaries (different `resolvedTo`) or successful
+   * inheritance, skipping citations nested in explanatory parentheticals
+   * (Rule 4.1 explicit exception). Only inherits numeric pincites — see
+   * `hasNumericPinciteFamily` for why.
+   *
+   * See docs/superpowers/specs/2026-05-19-pincite-inheritance-design.md.
+   */
+  private inheritPincites(resolved: ResolvedCitation[]): void {
+    for (let i = 0; i < resolved.length; i++) {
+      const cit = resolved[i]
+
+      // Eligibility: only short-forms with a successful resolution and no
+      // explicit pincite/pinciteInfo of their own.
+      if (cit.type !== "id" && cit.type !== "supra" && cit.type !== "shortFormCase") continue
+      const myResolution = this.resolutions[i]
+      if (!myResolution || myResolution.resolvedTo === undefined) continue
+      if (cit.pincite !== undefined || cit.pinciteInfo !== undefined) continue
+
+      const targetPrimary = myResolution.resolvedTo
+      const currentParenDepth = this.parenDepths[i] ?? 0
+
+      // Family check uses the terminal full citation. resolvedTo always
+      // points at a full citation by construction in
+      // resolveId/resolveSupra/resolveShortFormCase.
+      const targetFull = resolved[targetPrimary] as unknown as FullCitation
+      if (!this.hasNumericPinciteFamily(targetFull)) continue
+
+      for (let j = i - 1; j >= 0; j--) {
+        // Rule 4.1 explicit exception: explanatory-parenthetical cites
+        // are not "intervening authorities."
+        if ((this.parenDepths[j] ?? 0) > currentParenDepth) continue
+
+        const cand = resolved[j]
+        const candPrimary = isFullCitation(cand) ? j : this.resolutions[j]?.resolvedTo
+
+        // Authority boundary: stop scanning at any prior cite that resolves
+        // to a different primary (or fails to resolve).
+        if (candPrimary !== targetPrimary) break
+
+        // Candidate must carry a numeric pincite to inherit. Skip non-numeric
+        // (statute-shape) candidates by continuing — a more eligible candidate
+        // may exist further back. Skip pinciteInfo-only candidates similarly.
+        const candPincite = (cand as { pincite?: number | string }).pincite
+        if (typeof candPincite !== "number") continue
+
+        const target = cit as IdCitation | SupraCitation | ShortFormCaseCitation
+        target.pincite = candPincite
+        const candPinciteInfo = (cand as { pinciteInfo?: IdCitation["pinciteInfo"] }).pinciteInfo
+        if (candPinciteInfo) target.pinciteInfo = candPinciteInfo
+        target.pinciteInherited = true
+        target.pinciteInheritedFrom = j
+        break
+      }
+    }
   }
 
   /**

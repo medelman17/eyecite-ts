@@ -724,6 +724,21 @@ export interface IdCitation extends CitationBase {
   /** Structured pincite information (page, range, footnote, star-pagination). */
   pinciteInfo?: import("../extract/pincite").PinciteInfo
   /**
+   * True if `pincite` was inherited from a preceding same-authority citation
+   * per Bluebook Rule 4.1 / Indigo Book R6.2.2. Undefined when `pincite` was
+   * extracted directly from this citation's text or when no pincite was set.
+   */
+  pinciteInherited?: boolean
+  /**
+   * Array index of the citation from which `pincite` was inherited.
+   * Indexes into the same array this citation appears in — i.e., the
+   * output of `extractCitations(...).citations` (or
+   * `DocumentResolver.resolve()`'s output, which preserves input order).
+   * Set only when `pinciteInherited` is true. Records the immediate
+   * predecessor; follow transitively for the chain's originator.
+   */
+  pinciteInheritedFrom?: number
+  /**
    * Trailing parenthetical content (text between the parens, excluding the
    * parens themselves) captured from `Id. at N (...)` forms. Common values
    * include drop-citation markers (`citation omitted`, `internal quotation
@@ -769,6 +784,21 @@ export interface SupraCitation extends CitationBase {
   /** Structured pincite information (page, range, footnote, star-pagination). */
   pinciteInfo?: import("../extract/pincite").PinciteInfo
   /**
+   * True if `pincite` was inherited from a preceding same-authority citation
+   * per Bluebook Rule 4.1 / Indigo Book R6.2.2. Undefined when `pincite` was
+   * extracted directly from this citation's text or when no pincite was set.
+   */
+  pinciteInherited?: boolean
+  /**
+   * Array index of the citation from which `pincite` was inherited.
+   * Indexes into the same array this citation appears in — i.e., the
+   * output of `extractCitations(...).citations` (or
+   * `DocumentResolver.resolve()`'s output, which preserves input order).
+   * Set only when `pinciteInherited` is true. Records the immediate
+   * predecessor; follow transitively for the chain's originator.
+   */
+  pinciteInheritedFrom?: number
+  /**
    * Trailing parenthetical content (text between the parens, excluding the
    * parens themselves). See `IdCitation.parenthetical` for common shapes
    * and rationale. #303
@@ -792,6 +822,21 @@ export interface ShortFormCaseCitation extends CitationBase {
   pincite?: number
   /** Structured pincite information (page, range, footnote, star-pagination). */
   pinciteInfo?: import("../extract/pincite").PinciteInfo
+  /**
+   * True if `pincite` was inherited from a preceding same-authority citation
+   * per Bluebook Rule 4.1 / Indigo Book R6.2.2. Undefined when `pincite` was
+   * extracted directly from this citation's text or when no pincite was set.
+   */
+  pinciteInherited?: boolean
+  /**
+   * Array index of the citation from which `pincite` was inherited.
+   * Indexes into the same array this citation appears in — i.e., the
+   * output of `extractCitations(...).citations` (or
+   * `DocumentResolver.resolve()`'s output, which preserves input order).
+   * Set only when `pinciteInherited` is true. Records the immediate
+   * predecessor; follow transitively for the chain's originator.
+   */
+  pinciteInheritedFrom?: number
   /** Component-level spans (currently just `pincite`; extend when needed). */
   spans?: import("./componentSpans").ShortFormCaseComponentSpans
   /** Back-reference party name when the short-form includes one (Bluebook
