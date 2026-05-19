@@ -11,20 +11,19 @@
  */
 
 import type { Token } from "@/tokenize/tokenizer"
-
-/**
- * Maximum characters allowed between end of comma and start of next citation.
- * Bluebook standard uses tight spacing: "500 F.2d 123, 200 F. Supp. 456"
- */
-const MAX_PROXIMITY = 5
+import { parsePincite } from "./pincite"
 
 /**
  * Maximum total gap (chars) between end of one citation and start of next
  * to even consider them as parallel candidates. Beyond this distance, we can
  * skip all other checks (comma, parenthetical, etc.) for performance.
- * Includes comma, spaces, and potential pincite: ", 125, " = ~10 chars
+ *
+ * Sized to comfortably hold a comma-separated pincite list like
+ * `, 410-13 nn. 5-10, ` (~17 chars) or `, 453-55, 460, ` (14 chars). The
+ * pincite-validation gate inside the loop is the real false-positive
+ * defense; this cap is just an early-exit performance optimization.
  */
-const MAX_GAP_FOR_PARALLEL = 20
+const MAX_GAP_FOR_PARALLEL = 80
 
 /**
  * Detect parallel citation groups from tokenized citations.
@@ -119,19 +118,38 @@ export function detectParallelCitations(tokens: Token[], cleanedText = ""): Map<
         break
       }
 
-      // Bluebook requires comma separator for parallel citations
-      if (!gapText.includes(",")) {
-        break // No comma = not parallel, stop looking
+      // Gap text between primary and secondary cite must be one of two shapes:
+      //
+      //   Tight comma: ", " (no pincite between cites)
+      //     "374 N.J. Super. 448, 864 A.2d 1191"
+      //
+      //   Pincite-between: ", PINCITE_LIST, " — the Bluebook-canonical form
+      //   per Indigo Book R12.3, where the primary's pincite sits between
+      //   the two parallel cites.
+      //     "374 N.J. Super. 448, 453-55, 864 A.2d 1191"
+      //     "410 U.S. 113, 115, 153, 93 S. Ct. 705"  (multi-pincite list)
+      //
+      // A PINCITE is anything `parsePincite()` accepts — page, range, star,
+      // paragraph, footnote, etc. Reusing parsePincite keeps it as the single
+      // source of truth for "what counts as a pincite" and means future
+      // pincite improvements propagate here automatically.
+      //
+      // Punctuation other than commas inside the segment list (e.g.
+      // `, 453; 460, `) deliberately fails — `parsePincite("453; 460")`
+      // returns null, the segment-by-segment validation fails, and the gap
+      // is rejected. That's correct: semicolons don't appear in legitimate
+      // pincite lists.
+      const tight = /^,\s*$/.test(gapText)
+      let pinciteBetween = false
+      if (!tight) {
+        const inner = gapText.match(/^,\s*(.+?)\s*,\s*$/)
+        if (inner) {
+          const segments = inner[1].split(/\s*,\s*/)
+          pinciteBetween =
+            segments.length > 0 && segments.every((s) => parsePincite(s) !== null)
+        }
       }
-
-      // Check proximity: distance from comma to next citation start
-      // MAX_PROXIMITY enforces tight spacing: "A, B" not "A,      B"
-      const commaIndex = gapText.indexOf(",")
-      const distanceAfterComma = gapText.length - commaIndex - 1
-
-      if (distanceAfterComma > MAX_PROXIMITY) {
-        break // Too far apart, stop looking
-      }
+      if (!tight && !pinciteBetween) break
 
       // Check for shared parenthetical
       // Both citations must share the SAME closing parenthetical
