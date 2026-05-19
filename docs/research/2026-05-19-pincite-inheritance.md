@@ -36,7 +36,18 @@ Bluebook Rule 4.1 anchors `Id.` to the **immediately preceding cited authority**
 
 ### 1.1 The core rule
 
-Rule 4.1 of the 21st edition of *The Bluebook: A Uniform System of Citation* governs `Id.` It cannot be quoted verbatim here (the official online edition at `legalbluebook.com/bluebook/v21/rules/4-short-citation-forms/4-1-id` is paywalled), but the rule is uniformly summarized across every authoritative law-school guide consulted:
+The **Indigo Book 2.0** ([law.resource.org/pub/us/code/blue/indigobook-2.0-beta.html](https://law.resource.org/pub/us/code/blue/indigobook-2.0-beta.html)), the open-access companion to the Bluebook, states the rule directly at **R6.2.2 ("Use of _Id._")**:
+
+> "Use the short form _Id._ (capitalized in a citation sentence after a text sentence) or _id._ (uncapitalized within a sentence as citation clause) to support a statement where it refers to the same exact source cited in the **immediately preceding citation**."
+>
+> "_Id._ can be used alone, to indicate the **same page of the same source**. It can be used with a new pincite to a page, section, or other subdivision, to indicate a different portion of the immediately preceding source. **_Id._ can also refer to a preceding citation that is itself _Id._ or another short form of a citation.**"
+
+This is the load-bearing language for chained `Id.`s. It says **explicitly** that:
+- The reference is to the *immediately preceding* citation, not the chain's terminal authority.
+- Chained `Id.`s are first-class — `Id.` can refer to another `Id.`
+- A bare `Id.` after `Id. at 115` refers to "the same source" as `Id. at 115`, which itself is "page 115 of the same source as the earlier full citation." Substituting: bare `Id.` = page 115 of that source.
+
+The corresponding rule in the Bluebook proper (21st ed.) is **Rule 4.1**. It cannot be quoted verbatim here (the official online edition at `legalbluebook.com/bluebook/v21/rules/4-short-citation-forms/4-1-id` is paywalled), but the rule is uniformly summarized across every authoritative law-school guide consulted:
 
 > "_Id._ always refers to the immediately preceding cited authority, either in the same footnote or the previous footnote so long as it is the only authority cited in the preceding footnote."
 > — Tarlton Law Library, *Short form: Id., Infra, Supra, Hereinafter* (paraphrasing Rule 4.1) ([tarlton.law.utexas.edu](https://tarlton.law.utexas.edu/bluebook-legal-citation/short-form))
@@ -354,7 +365,12 @@ Cases 7 and 14 require the §5.1 parenthetical-depth refinement. Cases 11 is fre
 
 ## Sources
 
-**Bluebook authoritative summaries** (Rule 4.1):
+**Primary source — Indigo Book 2.0** (R6.2.2 "Use of _Id._" and R15.3 "Id." for cases):
+
+- [Indigo Book 2.0 beta](https://law.resource.org/pub/us/code/blue/indigobook-2.0-beta.html) — R6.2.2 explicitly anchors `Id.` to the "immediately preceding citation," confirms chaining (`Id.` can refer to another `Id.`), and confirms that `Id. at X` means "different portion of the immediately preceding source." Load-bearing source for this design.
+- [Indigo Book 1.0](https://law.resource.org/pub/us/code/blue/IndigoBook.html) — earlier R15.3 ("Using _Id._") with the same anchoring semantics; less explicit on chaining.
+
+**Bluebook authoritative summaries** (Rule 4.1 — the rule itself is paywalled):
 
 - [Tarlton Law Library — Short form: Id., Infra, Supra, Hereinafter](https://tarlton.law.utexas.edu/bluebook-legal-citation/short-form) — Rule 4.1 paraphrase; "immediately preceding cited authority"; parenthetical/history exception.
 - [UC Davis Mabie Law Library — Short Citation Forms](https://libguides.law.ucdavis.edu/c.php?g=1014499&p=7370559) — "Use Id. when citing the immediately preceding authority" + single-authority requirement.
