@@ -10,7 +10,7 @@ Bluebook Rule 4.1 says a bare `Id.` (no explicit `at NNN`) refers to "the same s
 
 ### The bug
 
-`DocumentResolver.ts:285-302` already inherits pincite when `Id.` has none — but only from the citation at `resolution.resolvedTo`. Because `resolvedTo` is **flat** (every short-form points directly to the terminal full citation, never to an intermediate), the inheritance silently misses any pincite introduced mid-chain:
+The existing inline inheritance block in `DocumentResolver.ts` — the `if (citation.type === "id" && resolution?.resolvedTo !== undefined)` branch inside the main `resolve()` loop — already inherits pincite when `Id.` has none, but only from the citation at `resolution.resolvedTo`. Because `resolvedTo` is **flat** (every short-form points directly to the terminal full citation, never to an intermediate), the inheritance silently misses any pincite introduced mid-chain:
 
 | Input | Expected (Bluebook) | Current behavior |
 |---|---|---|
@@ -47,9 +47,13 @@ for each i in 0..resolved.length-1:
     candPrimary = isFullCitation(cand) ? j : resolutions[j]?.resolvedTo
     if candPrimary !== targetPrimary: break   // authority boundary
 
+    // Require a numeric or string pincite directly on the candidate.
+    // (pinciteInfo-only candidates, e.g. paragraph-only or star-only, are
+    // not inherited from — mirrors the existing inline block's
+    // `typeof antecedent.pincite === "number"` discipline. See §"Type
+    // compatibility" below for the family-shape gate.)
     if cand.pincite !== undefined:
-      if !pinciteTypeCompatible(cit, cand): break       // numeric ↔ string mismatch
-      if !pinciteWithinRange(targetPrimary, cand.pincite): break  // MAX_OPINION_PAGE_COUNT
+      if !pinciteTypeCompatible(cit, cand): break
 
       cit.pincite              = cand.pincite
       cit.pinciteInfo          = cand.pinciteInfo
@@ -65,8 +69,8 @@ for each i in 0..resolved.length-1:
 - **Provenance = immediate predecessor.** `pinciteInheritedFrom` records the citation index the pincite was copied *from*, not the chain's originator. Consumers wanting the originator transitively follow `pinciteInheritedFrom` until they hit a citation where `pinciteInherited` is false.
 - **Walks backward, stops at boundaries.** Stops on (a) authority mismatch (different `resolvedTo`), (b) successful inheritance, (c) reaching index `-1`. Bounded; no cycles possible.
 - **Parenthetical-depth skip.** Mirrors Bluebook Rule 4.1's explicit exclusion of explanatory-parenthetical cites from the "intervening authority" rule. Uses existing `DocumentResolver.parenDepths[]`.
-- **Type compatibility gate.** Mirrors the existing inline block's `typeof antecedent.pincite === "number"` check — a numeric pincite never propagates to a statute, a string section never propagates to a case.
-- **MAX_OPINION_PAGE_COUNT validation.** Inherited pincite must fall within `[fullPage, fullPage + MAX_OPINION_PAGE_COUNT)` of the terminal full citation. Default `150`, matches Python eyecite. Configurable via resolver options for long opinions (cf. eyecite issue #104).
+- **Type compatibility gate (`pinciteTypeCompatible`).** Defined as: compatible iff `cit`'s family expects the same pincite shape as `cand`'s. Case-family (`case`, `journal`, `neutral`, `id`-resolving-to-case, `supra`-resolving-to-case, `shortFormCase`) expects `number | undefined`. Statute-family (`statute`, `id`-resolving-to-statute) expects `string | undefined`. Inheriting a `string` into a case-family citation or a `number` into a statute is always wrong; the check returns `false` and the walk stops. Implementation can derive family by inspecting the terminal full citation at `targetPrimary`.
+- **No range/sanity validation in this PR.** A `MAX_OPINION_PAGE_COUNT`-style check (mirroring Python eyecite's `_has_invalid_pin_cite`) was recommended in the research but is **out of scope** here — eyecite-ts has no such validation today, and adding it now would be a separate, measurable behavior change. Tracked as future work; see Non-Goals.
 
 ## Type Changes
 
@@ -84,9 +88,12 @@ export interface IdCitation extends CitationBase {
   pinciteInherited?: boolean
 
   /**
-   * Array index (in the resolved-citations output) of the citation from
-   * which `pincite` was inherited. Set only when `pinciteInherited` is true.
-   * Records the immediate predecessor; follow transitively for the originator.
+   * Array index of the citation from which `pincite` was inherited.
+   * Indexes into the same array this citation appears in — i.e., the
+   * output of `extractCitations(...).citations` (equivalently
+   * `DocumentResolver.resolve()`'s output, which preserves input order).
+   * Set only when `pinciteInherited` is true. Records the immediate
+   * predecessor; follow transitively for the chain's originator.
    */
   pinciteInheritedFrom?: number
 }
@@ -123,18 +130,18 @@ resolve(citations: Citation[]): ResolvedCitation[] {
 
 ### What changes in the existing main-loop inheritance block
 
-`DocumentResolver.ts:285-302` (the existing inline inheritance block) is split:
+The inline inheritance block inside `DocumentResolver.resolve()` (the `if (citation.type === "id" && resolution?.resolvedTo !== undefined)` branch) is split:
 
-- **Removed:** the pincite/pinciteInfo propagation (lines 290-303). Replaced by `inheritPincites`.
-- **Kept:** the case-name/plaintiff/defendant/proceduralPrefix propagation (lines 305-313). Case names belong to the *terminal authority*, not to intermediate Id.s, so the existing `antecedent = this.citations[resolution.resolvedTo]` lookup remains correct.
-- **Kept:** the re-scoring via `scoreCitation` (lines 322-338). The new pass does **not** re-score — pincite presence isn't an input to current confidence axes. If a future change makes scoring pincite-sensitive, a re-score call gets added in a follow-up PR.
+- **Removed:** the pincite/pinciteInfo propagation. Replaced by `inheritPincites`.
+- **Kept:** the case-name/plaintiff/defendant/proceduralPrefix propagation. Case names belong to the *terminal authority*, not to intermediate Id.s, so the existing `antecedent = this.citations[resolution.resolvedTo]` lookup remains correct.
+- **Kept:** the re-scoring via `scoreCitation` further down in the loop. The new pass does **not** re-score — pincite presence isn't an input to current confidence axes. If a future change makes scoring pincite-sensitive, a re-score call gets added in a follow-up PR.
 
 ### What `inheritPincites` reads
 
 - `resolved` (input/output, mutated in place) — used for both the walk and `isFullCitation` checks. Resolved entries preserve the `type` discriminant, so no need to cross-reference `this.citations`.
 - `this.resolutions[]` — for `candPrimary` lookup when a walked predecessor is a short-form.
 - `this.parenDepths[]` — for the parenthetical-exception check.
-- A small helper to fetch the terminal full citation given `resolvedTo` (for `pinciteWithinRange`).
+- A small helper to fetch the terminal full citation given a `resolvedTo` index (for the type-compatibility family lookup).
 
 ## Testing
 
@@ -176,14 +183,15 @@ describe("pincite inheritance — signals don't break chains")
 
 describe("pincite inheritance — footnotes")
   Case 12: fn1: Smith, at 100. fn2: Id. at 115. fn3: Id.  → 115
-           (respects existing "footnote" scope strategy)
-
-describe("pincite inheritance — validation guard")
-  Case 13: Smith, 1 U.S. 1 → Id. at 9999                  → 9999 rejected on
-           the explicit Id. (existing behavior); subsequent bare Id. → undefined
+           (use `extractCitations(text, { resolve: true, detectFootnotes: true })`;
+            respects existing "footnote" scope strategy)
 ```
 
+(Case 13 — range/MAX_OPINION_PAGE_COUNT validation — is **deferred** along with the validation itself. See Non-Goals.)
+
 ### Assertion shape
+
+Single-citation case:
 
 ```ts
 const cites = extractCitations(text, { resolve: true })
@@ -192,6 +200,18 @@ expect(idCit.type).toBe("id")
 expect(idCit.pincite).toBe(115)
 expect(idCit.pinciteInherited).toBe(true)
 expect(idCit.pinciteInheritedFrom).toBe(M)
+```
+
+Multi-citation case (cases 4, 14, where multiple bare Id.s in the same chain must each be checked):
+
+```ts
+const cites = extractCitations(text, { resolve: true })
+const ids = cites.filter((c): c is IdCitation => c.type === "id")
+expect(ids).toHaveLength(2)
+expect(ids[0].pincite).toBe(115)
+expect(ids[0].pinciteInheritedFrom).toBe(/* index of `Id. at 115` */)
+expect(ids[1].pincite).toBe(115)
+expect(ids[1].pinciteInheritedFrom).toBe(/* index of ids[0] in cites[] */)
 ```
 
 ### What is NOT tested in this PR
@@ -205,7 +225,7 @@ expect(idCit.pinciteInheritedFrom).toBe(M)
 | File | Change |
 |---|---|
 | `src/types/citation.ts` | Add `pinciteInherited?: boolean` and `pinciteInheritedFrom?: number` to `IdCitation`, `SupraCitation`, `ShortFormCaseCitation` |
-| `src/resolve/DocumentResolver.ts` | Remove pincite-inheritance lines from the existing inline block (~lines 290-303). Add `private inheritPincites(resolved)` method. Call it once at end of `resolve()`. |
+| `src/resolve/DocumentResolver.ts` | Remove the pincite/pinciteInfo propagation from the existing inline `if (citation.type === "id" && resolution?.resolvedTo !== undefined)` block. Keep case-name propagation and re-scoring in that block. Add `private inheritPincites(resolved)` method. Call it once at end of `resolve()`. |
 | `tests/resolve/idInheritsPincite.test.ts` | **Extend** with the new chained/intermediate/parenthetical/supra/statute test groups. Existing single-hop tests stay (and continue to pass under the new pass). |
 | `.changeset/<random>.md` | New changeset describing the inheritance fix (minor bump — new optional fields, behavior change for short-form pincites) |
 
@@ -215,7 +235,8 @@ No changes needed to `src/index.ts` (the new fields are properties on already-ex
 
 - **Re-scoring inheriting citations.** Out of scope until a confidence axis depends on pincite.
 - **Case-name inheritance for `Supra` and `ShortFormCaseCitation`.** Currently only `Id.` gets case-name inheritance. Expanding that is a separate concern.
-- **Removing the MAX_OPINION_PAGE_COUNT validation entirely.** Default stays at 150, configurable; making it dynamic per-volume is a separate ticket.
+- **`MAX_OPINION_PAGE_COUNT`-style range validation.** Recommended by research §5.3, but eyecite-ts has no such validation today (verified — no matches for `MAX_OPINION_PAGE_COUNT`/`invalid_pin_cite` in `src/`). Adding it now would be a separate, measurable behavior change for both single-hop and multi-hop inheritance. Tracked as future work — own PR, own benchmarks, default likely `150` matching upstream eyecite with an opt-out for long opinions (cf. eyecite issue #104).
+- **Inheriting from `pinciteInfo`-only candidates.** If a candidate has structured `pinciteInfo` but no numeric/string `pincite`, we don't inherit. Mirrors the existing inline block's discipline. Revisit when a real-world case shows this matters.
 - **Validating pincite type compatibility for *all* cross-type chains.** The gate is "don't propagate a numeric to a statute and vice versa." Finer distinctions (e.g., page vs. paragraph vs. star-pagination within case-family) are not in scope; they share `PinciteInfo` shape.
 
 ## Open Questions
