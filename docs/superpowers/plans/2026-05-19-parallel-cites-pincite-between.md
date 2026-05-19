@@ -39,16 +39,19 @@ ls docs/research/2026-05-19-parallel-citation-detection.md
 
 If you're elsewhere, switch back and pop any lock-file stash (per `project_persistent_drift` memory: `package.json` + `pnpm-lock.yaml` are expected to show as modified — leave alone or stash during branch switches).
 
+**Known LSP noise:** Every new test file under `tests/` in this codebase triggers spurious LSP `Cannot find module '@/extract'` and "Parameter 'c' implicitly has 'any' type" warnings. `pnpm typecheck` and `pnpm exec vitest run` are the authoritative checks; ignore the LSP diagnostics on the new test files.
+
 ---
 
-## Task 1: Write the Randolph End-to-End Failing Test (TDD red)
+## Task 1: Write Failing Randolph Test + Implement Classifier (TDD red→green)
 
-This is the canonical bug-report scenario. Write the failing test first so we're driving the implementation against a real-world input.
+The canonical bug-report scenario drives the implementation. Single task because the test file and the source change are committed together in a TDD red→green cycle (avoids leaving uncommitted state for a subsequent subagent to pick up).
 
 **Files:**
 - Create: `tests/extract/randolphFixture.test.ts`
+- Modify: `src/extract/detectParallel.ts`
 
-- [ ] **Step 1.1: Create the test file**
+- [ ] **Step 1.1: Create the failing test file**
 
 ```ts
 import { describe, expect, it } from "vitest"
@@ -140,22 +143,9 @@ describe("Randolph fixture — all parallel pairs across pincite-between gaps de
 pnpm exec vitest run tests/extract/randolphFixture.test.ts 2>&1 | tail -20
 ```
 
-Expected: **FAIL.** The first test fails because `caseCites[0]` (the 374 N.J. Super.) and `caseCites[2]` (the 186 N.J. — wait, indices depend on extraction order) don't have `groupId` set. The second test may pass or fail depending on existing behavior — note the result and proceed.
+Expected: **FAIL.** The first test "all three parallel pairs detected" fails because the `374 N.J. Super.` and `416 N.J. Super.` pairs (with pincite between) aren't being grouped. The second test may pass or fail depending on current string-cite behavior — note the result.
 
-Don't try to make these pass yet. Move to Task 2.
-
-- [ ] **Step 1.3: Do NOT commit yet**
-
-Stay red. Implementation in Tasks 2-3 will make them green.
-
----
-
-## Task 2: Implement the Pincite-Between Classifier (TDD green for Randolph)
-
-**Files:**
-- Modify: `src/extract/detectParallel.ts`
-
-- [ ] **Step 2.1: Add the `parsePincite` import**
+- [ ] **Step 1.3: Add the `parsePincite` import**
 
 Open `src/extract/detectParallel.ts`. Find the existing imports at the top (around line 13: `import type { Token } from "@/tokenize/tokenizer"`). Add this import below it:
 
@@ -163,7 +153,7 @@ Open `src/extract/detectParallel.ts`. Find the existing imports at the top (arou
 import { parsePincite } from "./pincite"
 ```
 
-- [ ] **Step 2.2: Widen `MAX_GAP_FOR_PARALLEL` and remove `MAX_PROXIMITY`**
+- [ ] **Step 1.4: Widen `MAX_GAP_FOR_PARALLEL` and remove `MAX_PROXIMITY`**
 
 In the same file, find the existing constants block (around lines 17-27):
 
@@ -201,7 +191,7 @@ const MAX_GAP_FOR_PARALLEL = 80
 
 (`MAX_PROXIMITY` is removed entirely — replaced by the structural classifier below.)
 
-- [ ] **Step 2.3: Replace the MAX_PROXIMITY check with the structural classifier**
+- [ ] **Step 1.5: Replace the MAX_PROXIMITY check with the structural classifier**
 
 In the same file, find this block inside the for-loop (around lines 122-134):
 
@@ -239,6 +229,12 @@ Replace with:
       // paragraph, footnote, etc. Reusing parsePincite keeps it as the single
       // source of truth for "what counts as a pincite" and means future
       // pincite improvements propagate here automatically.
+      //
+      // Punctuation other than commas inside the segment list (e.g.
+      // `, 453; 460, `) deliberately fails — `parsePincite("453; 460")`
+      // returns null, the segment-by-segment validation fails, and the gap
+      // is rejected. That's correct: semicolons don't appear in legitimate
+      // pincite lists.
       const tight = /^,\s*$/.test(gapText)
       let pinciteBetween = false
       if (!tight) {
@@ -252,7 +248,7 @@ Replace with:
       if (!tight && !pinciteBetween) break
 ```
 
-- [ ] **Step 2.4: Run the Randolph fixture tests**
+- [ ] **Step 1.6: Run the Randolph fixture tests**
 
 ```bash
 pnpm exec vitest run tests/extract/randolphFixture.test.ts 2>&1 | tail -15
@@ -260,13 +256,9 @@ pnpm exec vitest run tests/extract/randolphFixture.test.ts 2>&1 | tail -15
 
 Expected: the first test "all three parallel pairs detected with correct groupIds" PASSES. The second "string-cite anomaly auto-resolves" should also pass (the affirmance secondary is no longer a primary-shape candidate for string-cite walker).
 
-If the first test fails:
-- Print the extracted citations to debug: temporarily add `console.log(JSON.stringify(caseCites.map(c => ({ text: c.text, groupId: c.groupId, parallels: c.parallelCitations })), null, 2))` before the assertions.
-- Most likely cause if it fails: the inner-content regex `^,\s*(.+?)\s*,\s*$/` not matching for the specific input. Test the regex on `", 453-55, "` and `", 120, "` in isolation.
+If a test fails, print the extracted citations to understand actual vs expected, then debug from there.
 
-If the second test fails: read the resolved `stringCitationGroupId` values for `caseCites[3]` and `caseCites[4]` and report. The behavior may differ from the predicted post-fix state; document the actual behavior in the assertion comment and adjust if the spec's prediction was wrong.
-
-- [ ] **Step 2.5: Run the full test suite**
+- [ ] **Step 1.7: Run the full test suite**
 
 ```bash
 pnpm exec vitest run 2>&1 | tail -5
@@ -277,7 +269,7 @@ Expected: full suite passes (~2995 + 2 new tests = ~2997). If any existing test 
 - Tests that count distinct citations in a fixture — counts may drop because previously-unpaired cites now collapse into parallel groups when `groupByCase()` is invoked.
 - If something fails that doesn't fit either pattern, surface it — don't silently adjust.
 
-- [ ] **Step 2.6: Typecheck + lint**
+- [ ] **Step 1.8: Typecheck + lint**
 
 ```bash
 pnpm typecheck && pnpm lint 2>&1 | tail -5
@@ -285,7 +277,7 @@ pnpm typecheck && pnpm lint 2>&1 | tail -5
 
 Expected: both pass (Biome may report pre-existing warnings; those are fine).
 
-- [ ] **Step 2.7: Commit**
+- [ ] **Step 1.9: Commit (test + implementation together)**
 
 ```bash
 git add src/extract/detectParallel.ts tests/extract/randolphFixture.test.ts
@@ -317,14 +309,14 @@ EOF
 
 ---
 
-## Task 3: Focused Unit Tests for Each Gap Shape
+## Task 2: Focused Unit Tests for Each Gap Shape
 
 The Randolph fixture proves the algorithm works end-to-end on a representative real-world input. This task adds finer-grained unit tests so future regressions on specific gap shapes get caught immediately.
 
 **Files:**
 - Create: `tests/extract/detectParallelPinciteBetween.test.ts`
 
-- [ ] **Step 3.1: Create the unit test file**
+- [ ] **Step 2.1: Create the unit test file**
 
 ```ts
 import { describe, expect, it } from "vitest"
@@ -378,8 +370,13 @@ describe("detectParallel — pincite-between gap shapes", () => {
   })
 
   it("accepts footnote pincite (', NNN n.N, ')", () => {
-    const text =
-      "Smith v. Jones, 100 F.2d 50, 55 n.3, 200 A.2d 100 (1990)."
+    // Note: this synthetic uses F.2d (federal) + A.2d (regional reporter) as
+    // a parallel pair, which isn't a real-world combination but exercises the
+    // classifier in isolation. If the test fails, print the extracted tokens
+    // first — the tokenizer may treat one of these as non-case-shape in this
+    // exact context, in which case substitute a more realistic reporter combo
+    // (e.g. two state-court reporters that legitimately appear as parallels).
+    const text = "Smith v. Jones, 100 F.2d 50, 55 n.3, 200 A.2d 100 (1990)."
     const cites = caseCites(text)
     expect(cites).toHaveLength(2)
     expect(cites[0].groupId).toBe(cites[1].groupId)
@@ -391,12 +388,11 @@ describe("detectParallel — pincite-between gap shapes", () => {
     const text =
       "Smith v. Jones, 374 N.J. Super. 448, see also, 864 A.2d 1191 (2005)."
     const cites = caseCites(text)
-    // Whatever the extractor produces, the two case-shape tokens must NOT
-    // share a groupId (no parallel detection across prose).
-    if (cites.length >= 2) {
-      expect(
-        cites[0].groupId !== undefined && cites[0].groupId === cites[1].groupId,
-      ).toBe(false)
+    // Two valid outcomes both count as "rejected":
+    //   (a) tokenizer doesn't extract both as case-shape (length < 2)
+    //   (b) both extracted but without a shared groupId
+    if (cites.length >= 2 && cites[0].groupId !== undefined && cites[1].groupId !== undefined) {
+      expect(cites[0].groupId).not.toBe(cites[1].groupId)
     }
   })
 
@@ -404,10 +400,8 @@ describe("detectParallel — pincite-between gap shapes", () => {
     const text =
       "Smith v. Jones, 374 N.J. Super. 448, page 453 of, 864 A.2d 1191 (2005)."
     const cites = caseCites(text)
-    if (cites.length >= 2) {
-      expect(
-        cites[0].groupId !== undefined && cites[0].groupId === cites[1].groupId,
-      ).toBe(false)
+    if (cites.length >= 2 && cites[0].groupId !== undefined && cites[1].groupId !== undefined) {
+      expect(cites[0].groupId).not.toBe(cites[1].groupId)
     }
   })
 
@@ -422,7 +416,7 @@ describe("detectParallel — pincite-between gap shapes", () => {
 })
 ```
 
-- [ ] **Step 3.2: Run the new tests**
+- [ ] **Step 2.2: Run the new tests**
 
 ```bash
 pnpm exec vitest run tests/extract/detectParallelPinciteBetween.test.ts 2>&1 | tail -15
@@ -434,7 +428,7 @@ If any test fails:
 - For "accepts" failures: print the extracted citations and inspect the `groupId` / `parallelCitations` fields. Likely cause is that the test text doesn't tokenize as expected — verify by minimizing the input.
 - For "REJECTS" failures: this would mean the structural classifier is too permissive. Print the gap text and the segments array — confirm `parsePincite` correctly returns null for the prose.
 
-- [ ] **Step 3.3: Run the full suite**
+- [ ] **Step 2.3: Run the full suite**
 
 ```bash
 pnpm exec vitest run 2>&1 | tail -5
@@ -442,7 +436,7 @@ pnpm exec vitest run 2>&1 | tail -5
 
 Expected: full suite still passes.
 
-- [ ] **Step 3.4: Typecheck + lint**
+- [ ] **Step 2.4: Typecheck + lint**
 
 ```bash
 pnpm typecheck && pnpm lint 2>&1 | tail -5
@@ -450,7 +444,7 @@ pnpm typecheck && pnpm lint 2>&1 | tail -5
 
 Expected: both pass.
 
-- [ ] **Step 3.5: Commit**
+- [ ] **Step 2.5: Commit**
 
 ```bash
 git add tests/extract/detectParallelPinciteBetween.test.ts
@@ -472,12 +466,12 @@ EOF
 
 ---
 
-## Task 4: Changeset
+## Task 3: Changeset
 
 **Files:**
 - Create: `.changeset/parallel-cites-pincite-between.md`
 
-- [ ] **Step 4.1: Write the changeset**
+- [ ] **Step 3.1: Write the changeset**
 
 ```markdown
 ---
@@ -504,7 +498,7 @@ Previously, `MAX_PROXIMITY = 5` chars after the comma rejected this form, so eye
 See `docs/superpowers/specs/2026-05-19-parallel-cites-pincite-between-design.md` for the full design and `docs/research/2026-05-19-parallel-citation-detection.md` for the Bluebook + Python eyecite + industry reference validation.
 ```
 
-- [ ] **Step 4.2: Commit**
+- [ ] **Step 3.2: Commit**
 
 ```bash
 git add .changeset/parallel-cites-pincite-between.md
@@ -520,9 +514,9 @@ EOF
 
 ---
 
-## Task 5: Final Verification
+## Task 4: Final Verification
 
-- [ ] **Step 5.1: Full suite + typecheck + lint + build + size**
+- [ ] **Step 4.1: Full suite + typecheck + lint + build + size**
 
 ```bash
 pnpm exec vitest run && pnpm typecheck && pnpm lint && pnpm build && pnpm size 2>&1 | tail -15
@@ -530,15 +524,15 @@ pnpm exec vitest run && pnpm typecheck && pnpm lint && pnpm build && pnpm size 2
 
 Expected: all five pass. Tests should show ~2995 baseline + 10 new (2 Randolph fixture + 8 unit tests) = ~3005 passing.
 
-- [ ] **Step 5.2: Review the diff**
+- [ ] **Step 4.2: Review the diff**
 
 ```bash
 git log --oneline main..HEAD
 git diff main..HEAD --stat
 ```
 
-Expected: 4 commits (Tasks 2, 3, 4 each create one; Task 1 was rolled into Task 2's commit because the test was written but not committed). Stat shows changes concentrated in `src/extract/detectParallel.ts`, `tests/extract/`, and `.changeset/`.
+Expected: **3 commits** (Tasks 1, 2, 3 each create one). Stat shows changes concentrated in `src/extract/detectParallel.ts`, `tests/extract/`, and `.changeset/`.
 
-- [ ] **Step 5.3: Hand off**
+- [ ] **Step 4.3: Hand off**
 
 Implementation complete. Open a PR (don't push automatically — confirm with the user first per project conventions). Suggested PR title: **"fix(extract): detect parallel cites across pincite-between gaps (Bluebook canonical)"**.
