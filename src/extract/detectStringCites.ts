@@ -30,12 +30,16 @@ function buildSignalPatterns() {
   // counterparts so the alternation prefers the more specific match. The
   // trailing `,?` after `e\.g\.` allows the optional comma that typically
   // separates the signal from the citation (e.g., "See, e.g., Smith v. Jones").
+  //
+  // The `e\.\s*g\.` form accepts both the closed `e.g.` and the older spaced
+  // typesetting variant `e. g.` (with whitespace between the letters), which
+  // shows up in older opinions and some publishers' styles.
   const raw: ReadonlyArray<{ regex: RegExp; signal: CitationSignal }> = [
-    { regex: /^but\s+cf\.,\s+e\.g\.,?(?=\s|$)/i, signal: "but cf., e.g." },
-    { regex: /^see\s+also,\s+e\.g\.,?(?=\s|$)/i, signal: "see also, e.g." },
-    { regex: /^but\s+see,\s+e\.g\.,?(?=\s|$)/i, signal: "but see, e.g." },
-    { regex: /^cf\.,\s+e\.g\.,?(?=\s|$)/i, signal: "cf., e.g." },
-    { regex: /^see,\s+e\.g\.,?(?=\s|$)/i, signal: "see, e.g." },
+    { regex: /^but\s+cf\.,\s+e\.\s*g\.,?(?=\s|$)/i, signal: "but cf., e.g." },
+    { regex: /^see\s+also,\s+e\.\s*g\.,?(?=\s|$)/i, signal: "see also, e.g." },
+    { regex: /^but\s+see,\s+e\.\s*g\.,?(?=\s|$)/i, signal: "but see, e.g." },
+    { regex: /^cf\.,\s+e\.\s*g\.,?(?=\s|$)/i, signal: "cf., e.g." },
+    { regex: /^see,\s+e\.\s*g\.,?(?=\s|$)/i, signal: "see, e.g." },
     { regex: /^see\s+generally\b/i, signal: "see generally" },
     { regex: /^see\s+also\b/i, signal: "see also" },
     { regex: /^but\s+see\b/i, signal: "but see" },
@@ -45,7 +49,7 @@ function buildSignalPatterns() {
     { regex: /^contra\b/i, signal: "contra" },
     { regex: /^see\b/i, signal: "see" },
     { regex: /^cf\.?(?=\s|$)/i, signal: "cf" },
-    { regex: /^e\.g\.,?(?=\s|$)/i, signal: "e.g." },
+    { regex: /^e\.\s*g\.,?(?=\s|$)/i, signal: "e.g." },
   ]
   return raw.map(({ regex, signal }) => ({
     regex,
@@ -341,7 +345,13 @@ export function detectLeadingSignals(citations: Citation[], cleanedText: string)
     const matches: Array<{ signal: CitationSignal; start: number; end: number }> = []
 
     for (const { signal } of SIGNAL_PATTERNS) {
-      const escaped = signal.replace(/\./g, "\\.").replace(/\s+/g, "\\s+")
+      // The `e\.\s*g\.` form accepts both the closed `e.g.` and the spaced
+      // typesetting variant `e. g.` (with whitespace between the letters),
+      // which appears in older opinions and some publishers' styles.
+      const escaped = signal
+        .replace(/\./g, "\\.")
+        .replace(/\s+/g, "\\s+")
+        .replace(/e\\\.g\\\./g, "e\\.\\s*g\\.")
       const pattern = new RegExp(`(?<![a-zA-Z])(${escaped})(?![a-zA-Z])`, "gi")
       let match: RegExpExecArray | null
       while ((match = pattern.exec(gapText)) !== null) {
