@@ -187,4 +187,26 @@ describe("isolated citation signal detection", () => {
       expect(caseCite!.signal).toBe("see, e.g.")
     })
   })
+
+  // `See, also,` with an extra comma after `See` is an older typesetting
+  // variant of `See also`. Surfaced by a CAP-corpus signal-extraction audit
+  // (1 occurrence in 80 modern federal opinions): "in admiralty jurisdiction.
+  // See, also, The Plymouth, 70 U.S. (3 Wall.) 20." The canonical form
+  // (no extra comma) continues to work unchanged.
+  describe('"See, also," (extra inter-word comma)', () => {
+    it('detects "See, also," as "see also"', () => {
+      const text = "In admiralty jurisdiction. See, also, The Plymouth, 70 U.S. (3 Wall.) 20 (1865)."
+      const citations = extractCitations(text)
+      const caseCite = citations.find((c) => c.type === "case")
+      expect(caseCite).toBeDefined()
+      expect(caseCite!.signal).toBe("see also")
+    })
+
+    it("canonical 'See also' (no extra comma) still works", () => {
+      const text = "Other circuits agree. See also Davis v. Lee, 200 F.3d 100 (5th Cir. 2018)."
+      const citations = extractCitations(text)
+      const caseCite = citations.find((c) => c.type === "case")
+      expect(caseCite!.signal).toBe("see also")
+    })
+  })
 })

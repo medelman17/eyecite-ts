@@ -36,12 +36,15 @@ function buildSignalPatterns() {
   // shows up in older opinions and some publishers' styles.
   const raw: ReadonlyArray<{ regex: RegExp; signal: CitationSignal }> = [
     { regex: /^but\s+cf\.,\s+e\.\s*g\.,?(?=\s|$)/i, signal: "but cf., e.g." },
-    { regex: /^see\s+also,\s+e\.\s*g\.,?(?=\s|$)/i, signal: "see also, e.g." },
+    // `see\s*,?\s+also` accepts the older typesetting variant `See, also,`
+    // (extra comma after `See`) seen in CAP-corpus opinions, while the
+    // canonical `See also` continues to match.
+    { regex: /^see\s*,?\s+also,\s+e\.\s*g\.,?(?=\s|$)/i, signal: "see also, e.g." },
     { regex: /^but\s+see,\s+e\.\s*g\.,?(?=\s|$)/i, signal: "but see, e.g." },
     { regex: /^cf\.,\s+e\.\s*g\.,?(?=\s|$)/i, signal: "cf., e.g." },
     { regex: /^see,\s+e\.\s*g\.,?(?=\s|$)/i, signal: "see, e.g." },
     { regex: /^see\s+generally\b/i, signal: "see generally" },
-    { regex: /^see\s+also\b/i, signal: "see also" },
+    { regex: /^see\s*,?\s+also\b/i, signal: "see also" },
     { regex: /^but\s+see\b/i, signal: "but see" },
     { regex: /^but\s+cf\.?(?=\s|$)/i, signal: "but cf" },
     { regex: /^compare\b/i, signal: "compare" },
@@ -348,10 +351,15 @@ export function detectLeadingSignals(citations: Citation[], cleanedText: string)
       // The `e\.\s*g\.` form accepts both the closed `e.g.` and the spaced
       // typesetting variant `e. g.` (with whitespace between the letters),
       // which appears in older opinions and some publishers' styles.
+      //
+      // The `see\\s*,?\\s+also` substitution accepts the older typesetting
+      // variant `See, also,` (extra comma after `See`); the canonical
+      // `See also` (no extra comma) continues to match.
       const escaped = signal
         .replace(/\./g, "\\.")
         .replace(/\s+/g, "\\s+")
         .replace(/e\\\.g\\\./g, "e\\.\\s*g\\.")
+        .replace(/see\\s\+also/g, "see\\s*,?\\s+also")
       const pattern = new RegExp(`(?<![a-zA-Z])(${escaped})(?![a-zA-Z])`, "gi")
       let match: RegExpExecArray | null
       while ((match = pattern.exec(gapText)) !== null) {
