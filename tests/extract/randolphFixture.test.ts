@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { extractCitations } from "@/extract"
-import type { Citation, FullCaseCitation } from "@/types/citation"
+import type { FullCaseCitation } from "@/types/citation"
 
 describe("Randolph fixture — all parallel pairs across pincite-between gaps detect", () => {
   // The actual passage from the user's brief (HOA / adverse-possession context).

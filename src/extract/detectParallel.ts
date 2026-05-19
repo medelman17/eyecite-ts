@@ -34,7 +34,10 @@ const MAX_GAP_FOR_PARALLEL = 80
  * Detection algorithm:
  * 1. Iterate tokens with lookahead (i, i+1, i+2...)
  * 2. Check if token[i] and token[i+1] are both case citations
- * 3. Check if comma separates them (within MAX_PROXIMITY chars)
+ * 3. Classify the gap text as either tight comma (`, `) or pincite-between
+ *    (`, PINCITE_LIST, `) — Bluebook canonical per Indigo Book R12.3. Reuses
+ *    the existing parsePincite helper as single source of truth for pincite
+ *    shapes (page/range/star/¶/footnote/etc.).
  * 4. Check if both citations share a closing parenthetical (via cleaned text)
  * 5. If all conditions met, add to parallel group
  * 6. Continue for chain (i+1, i+2, i+3...) until no more matches
