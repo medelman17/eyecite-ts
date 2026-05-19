@@ -129,7 +129,16 @@ export function extractId(
   // `p.` / `pp.` prefix for CSM form (`Id. at p. 125`; see #236), and
   // `¶` / `¶¶` / `para.` / `paras.` paragraph markers (#204). When the
   // pincite is a paragraph form, `at` is optional (`Id. ¶ 12`).
-  const idRegex = /([Ii])(?:d|bid)\s*(?:(\.)|(,)(?=\s+at\s))(?:(,\s+|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
+  //
+  // The comma alternative deliberately omits ID_PATTERN's `(?=\s+at\s)`
+  // lookahead because the tokenizer has already enforced it; the `text` we
+  // receive is only the matched substring (often `Id,` with the `at` and
+  // any unrecognized pincite trailing OUTSIDE the match), and re-checking
+  // the lookahead here would always fail. Without this, an opinion like
+  // `Id, at pages 2-4` (where the tokenizer matches `Id,` but the
+  // unrecognized `pages` prefix prevents the pincite branch from
+  // extending the match) crashes the whole pipeline.
+  const idRegex = /([Ii])(?:d|bid)\s*([.,])(?:(,\s+|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
   const match = idRegex.exec(text)
 
   if (!match) {
@@ -140,21 +149,21 @@ export function extractId(
   // Non-standard punctuation signals:
   //   - `isTypoComma`: comma replacing the period (`Id, at 1483`) — lower confidence
   //   - `hasComma`: post-period comma (`Id., at 253` or `Id., 253`) — slightly
-  //     lower confidence than canonical. Connector capture (group 4) starts
+  //     lower confidence than canonical. Connector capture (group 3) starts
   //     with `,` for both the post-period-comma-at form and the Connecticut
   //     comma-pincite form.
-  const isTypoComma = match[3] === ","
-  const hasComma = isTypoComma || match[4]?.startsWith(",") === true
-  const pinciteInfo: PinciteInfo | undefined = match[5]
-    ? (parsePincite(match[5]) ?? undefined)
+  const isTypoComma = match[2] === ","
+  const hasComma = isTypoComma || match[3]?.startsWith(",") === true
+  const pinciteInfo: PinciteInfo | undefined = match[4]
+    ? (parsePincite(match[4]) ?? undefined)
     : undefined
   const pincite = pinciteInfo?.page
 
   // Component span for pincite (#210)
   let spans: IdComponentSpans | undefined
-  if (match[5] && match.indices?.[5]) {
+  if (match[4] && match.indices?.[4]) {
     spans = {
-      pincite: spanFromGroupIndex(span.cleanStart, match.indices[5], transformationMap),
+      pincite: spanFromGroupIndex(span.cleanStart, match.indices[4], transformationMap),
     }
   }
 
