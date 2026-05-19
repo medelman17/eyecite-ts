@@ -129,4 +129,112 @@ describe("Id. inherits pincite from antecedent (Bluebook 4.1)", () => {
       expect(id?.pinciteInherited).toBe(true)
     })
   })
+
+  describe("chains with intermediate pincite changes (Rule 4.1)", () => {
+    it("Smith, at 55 → Id. at 115 → Id. at 200 → bare Id. inherits 200", () => {
+      const text = "Smith v. Jones, 100 F.2d 50, 55 (1990). Id. at 115. Id. at 200. Id."
+      const cites = extractCitations(text, { resolve: true })
+      const ids = cites.filter((c): c is IdCitation => c.type === "id")
+      expect(ids).toHaveLength(3)
+      expect(ids[0].pincite).toBe(115)
+      expect(ids[1].pincite).toBe(200)
+      expect(ids[2].pincite).toBe(200)
+      expect(ids[2].pinciteInherited).toBe(true)
+    })
+
+    it("Smith, at 55 → Id. at 115 → bare Id. → bare Id. — both bare Id.s inherit 115", () => {
+      const text = "Smith v. Jones, 100 F.2d 50, 55 (1990). Id. at 115. Id. Id."
+      const cites = extractCitations(text, { resolve: true })
+      const ids = cites.filter((c): c is IdCitation => c.type === "id")
+      expect(ids).toHaveLength(3)
+      expect(ids[0].pincite).toBe(115)
+      expect(ids[1].pincite).toBe(115)
+      expect(ids[1].pinciteInherited).toBe(true)
+      expect(ids[2].pincite).toBe(115)
+      expect(ids[2].pinciteInherited).toBe(true)
+      // Provenance: the third Id. inherits from the second (which itself
+      // inherited from `Id. at 115`). pinciteInheritedFrom values are
+      // adjacent indices in cites[].
+      expect(ids[2].pinciteInheritedFrom).toBe((ids[1].pinciteInheritedFrom ?? 0) + 1)
+    })
+  })
+
+  describe("authority boundaries break the chain", () => {
+    it("Smith → Id. at 115 → Other, at 50 → bare Id. inherits 50 (Other is new authority)", () => {
+      const text =
+        "Smith v. Jones, 100 F.2d 50, 55 (1990). Id. at 115. Other v. Else, 200 F.3d 1, 50 (1991). Id."
+      const cites = extractCitations(text, { resolve: true })
+      const ids = cites.filter((c): c is IdCitation => c.type === "id")
+      expect(ids).toHaveLength(2)
+      // ids[0] is `Id. at 115` referring to Smith — keeps its explicit 115.
+      expect(ids[0].pincite).toBe(115)
+      // ids[1] is the bare `Id.` referring to Other — inherits Other's 50.
+      expect(ids[1].pincite).toBe(50)
+      expect(ids[1].pinciteInherited).toBe(true)
+    })
+
+    it("Smith → Id. at 115 → Other (no pincite) → bare Id. — no inheritance", () => {
+      const text =
+        "Smith v. Jones, 100 F.2d 50, 55 (1990). Id. at 115. Other v. Else, 200 F.3d 1 (1991). Id."
+      const cites = extractCitations(text, { resolve: true })
+      const ids = cites.filter((c): c is IdCitation => c.type === "id")
+      expect(ids).toHaveLength(2)
+      expect(ids[0].pincite).toBe(115)
+      // Bare Id. after Other (which has no pincite) — no inheritance,
+      // and chain cannot cross back to Smith because Other is an
+      // authority boundary.
+      expect(ids[1].pincite).toBeUndefined()
+      expect(ids[1].pinciteInherited).toBeUndefined()
+    })
+  })
+
+  describe("supra and short-form-case as intermediates", () => {
+    it("Smith → Other → Smith, supra, at 50 → bare Id. inherits 50 from supra", () => {
+      const text =
+        "Smith v. Jones, 100 F.2d 50, 55 (1990). Other v. Else, 200 F.3d 1 (1991). Smith, supra, at 50. Id."
+      const cites = extractCitations(text, { resolve: true })
+      const id = findId(cites)
+      expect(id?.pincite).toBe(50)
+      expect(id?.pinciteInherited).toBe(true)
+    })
+
+    it("Smith → Smith, 100 F.2d at 115 → bare Id. inherits 115 from short-form", () => {
+      const text = "Smith v. Jones, 100 F.2d 50, 55 (1990). Smith, 100 F.2d at 115. Id."
+      const cites = extractCitations(text, { resolve: true })
+      const id = findId(cites)
+      expect(id?.pincite).toBe(115)
+      expect(id?.pinciteInherited).toBe(true)
+    })
+  })
+
+  describe("signals do not break Id. chains", () => {
+    it("Smith → see also Id. at 115 → see Id. — bare Id. inherits 115", () => {
+      const text = "Smith v. Jones, 100 F.2d 50, 55 (1990). See also Id. at 115. See Id."
+      const cites = extractCitations(text, { resolve: true })
+      const ids = cites.filter((c): c is IdCitation => c.type === "id")
+      expect(ids).toHaveLength(2)
+      expect(ids[0].pincite).toBe(115)
+      expect(ids[1].pincite).toBe(115)
+      expect(ids[1].pinciteInherited).toBe(true)
+    })
+  })
+
+  describe("footnote-aware chains", () => {
+    it("chain with detectFootnotes enabled still inherits correctly", () => {
+      // The footnote scope strategy gates resolution boundaries; inheritance
+      // runs after resolution, so any chain that the resolver accepts also
+      // inherits correctly. This test exercises the option compatibility
+      // (no crash, behavior preserved) more than footnote-specific semantics
+      // — those live in tests/footnotes/.
+      const text = "Smith v. Jones, 100 F.2d 50, 55 (1990). Id. at 115. Id."
+      const cites = extractCitations(text, {
+        resolve: true,
+        detectFootnotes: true,
+      })
+      const ids = cites.filter((c): c is IdCitation => c.type === "id")
+      expect(ids).toHaveLength(2)
+      expect(ids[1].pincite).toBe(115)
+      expect(ids[1].pinciteInherited).toBe(true)
+    })
+  })
 })
