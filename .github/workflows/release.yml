@@ -35,3 +35,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: true
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Also expose as NPM_TOKEN so changesets/action skips its OIDC
+          # trusted-publishing fallback and uses the token path. OIDC
+          # broke npm-side around 2026-05-19T20:00Z (404 on PUT for new
+          # versions). Token-based publish still produces provenance via
+          # NPM_CONFIG_PROVENANCE above.
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
