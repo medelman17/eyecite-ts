@@ -1630,13 +1630,30 @@ export function extractCaseName(
     if (!SENTENCE_INITIAL_WORDS.has(firstWordClean)) {
       // Skip multi-citation strings (joined by semicolons)
       if (!caption.includes(";")) {
-        const nameStart = adjustedSearchStart + leadingWsLen + signalStripLen
-        return { caseName: caption, nameStart, precedingDocketMeta }
+        // Reject literal short-form citation markers as captions (#517).
+        // When the tokenizer can't match a token like `Id., 584 N.Y.S.2d 744`
+        // (older parallel-reporter Id. form not handled by ID_PATTERN), the
+        // backward scan picks up the bare `Id.` token as a single-party
+        // caption. `Id.` / `Ibid.` are never legitimate party names.
+        if (!isShortFormMarker(caption)) {
+          const nameStart = adjustedSearchStart + leadingWsLen + signalStripLen
+          return { caseName: caption, nameStart, precedingDocketMeta }
+        }
       }
     }
   }
 
   return undefined
+}
+
+/**
+ * Returns true when `caption` is a literal short-form citation marker
+ * (Id., Ibid., supra) rather than a real party name (#517). Comparison
+ * is case-insensitive and tolerates a trailing period.
+ */
+function isShortFormMarker(caption: string): boolean {
+  const normalized = caption.trim().toLowerCase().replace(/\.$/, "")
+  return normalized === "id" || normalized === "ibid" || normalized === "supra"
 }
 
 /** A raw parenthetical block extracted from text */
