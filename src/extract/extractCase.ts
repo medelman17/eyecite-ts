@@ -547,6 +547,58 @@ function isSignalWord(word: string): word is ParentheticalType {
 /** Matches a leading word (used to extract signal word candidate) */
 const LEADING_WORD_REGEX = /^([a-z]+)\b/i
 
+/**
+ * Detect parenthetical content that *cannot* be a metadata paren —
+ * three shapes, all symptoms of #522 (nested-paren leak):
+ *
+ * 1. Unbalanced parens (more `(` than `)`): the regex truncated past an
+ *    inner open paren and the actual paren extends further. Common shape:
+ *    `quoting X v. Y, ... (1995` (closing `)` consumed as the regex's own).
+ *
+ * 2. Leading signal word (`quoting`, `citing`, `holding`, etc.): explanatory
+ *    prose, never metadata.
+ *
+ * 3. Nested `(YYYY)` inside the content: the inner year belongs to a quoted
+ *    citation (`see Foo v. Bar, 100 U.S. 1 (1995)`) — and broader Bluebook
+ *    metadata parens never contain a nested year paren. Catches `see`/`but
+ *    see`/`accord`/etc. lead-ins that aren't in `SIGNAL_WORDS` but still
+ *    follow the same explanatory shape with a nested year paren.
+ *
+ * Before this guard, all three shapes ran through `parseParenthetical`, which
+ * picked up the first 4-digit token as a year (often a page number from
+ * inside the nested paren) and the entire prose body as a court — corrupting
+ * the outer cite. The lookahead, in-token paren, and classification paths
+ * gate metadata extraction on this check before calling `parseParenthetical`.
+ *
+ * NOTE: `collectParentheticals` uses depth-tracking and returns balanced
+ * content, but the balanced content can still fall into shape #3 (e.g., the
+ * full `see ... (1995)`). The check applies uniformly across all paren paths.
+ */
+function isNonMetadataParenContent(content: string): boolean {
+  // Unbalanced parens: more `(` than `)` means the lookahead regex stopped at
+  // an inner `)` and the actual paren extends further.
+  let depth = 0
+  for (const ch of content) {
+    if (ch === "(") depth++
+    else if (ch === ")") depth--
+  }
+  if (depth > 0) return true
+
+  // Leading signal word — explanatory paren, not metadata.
+  const leadingMatch = LEADING_WORD_REGEX.exec(content)
+  if (leadingMatch) {
+    const candidate = leadingMatch[1].toLowerCase()
+    if (isSignalWord(candidate)) return true
+  }
+
+  // Nested `(YYYY)` inside the content — the inner year paren marks an
+  // embedded citation (`see Foo, 100 U.S. 1 (1995)`). A real metadata paren
+  // never contains another year paren.
+  if (/\(\d{4}\)/.test(content)) return true
+
+  return false
+}
+
 /** Standard "v." or "vs." case name format.
  *
  *  The trailing alternation accepts either a comma (Bluebook form:
@@ -2201,6 +2253,12 @@ function classifyParenthetical(raw: string):
     }
   }
 
+  // Non-metadata shape (nested year paren, unbalanced, etc.) — classify as
+  // explanatory `other` so it never feeds `parseParenthetical`. See #522.
+  if (isNonMetadataParenContent(raw)) {
+    return { kind: "explanatory", text: raw, type: "other" }
+  }
+
   // Try metadata parse: court, year, date, disposition
   // Note: "other"-type parens with embedded years (e.g., "the court, in 2019, held X")
   // will be classified as metadata. This is a known limitation — most explanatory
@@ -2626,7 +2684,7 @@ export function extractCase(
   // When a nominative reporter is present, the first paren in token text is the
   // nominative (e.g., "(2 Black)") — skip it so the year/court look-ahead runs.
   const parenMatch = PAREN_REGEX.exec(text)
-  if (parenMatch && !nominativeVolume) {
+  if (parenMatch && !nominativeVolume && !isNonMetadataParenContent(parenMatch[1])) {
     parentheticalContent = parenMatch[1]
     // Parse parenthetical using unified parser
     metaParenResult = parseParenthetical(parentheticalContent)
@@ -2694,7 +2752,7 @@ export function extractCase(
       parenAfterToken = parenAfterToken.substring(unpubMatch[0].length)
     }
     const lookAheadMatch = LOOKAHEAD_PAREN_REGEX.exec(parenAfterToken)
-    if (lookAheadMatch) {
+    if (lookAheadMatch && !isNonMetadataParenContent(lookAheadMatch[1])) {
       parentheticalContent = lookAheadMatch[1]
       // Parse parenthetical using unified parser
       metaParenResult = parseParenthetical(parentheticalContent)
