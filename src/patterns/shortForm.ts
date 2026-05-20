@@ -27,14 +27,22 @@ import type { Pattern } from "./casePatterns"
  *  footnote suffix (see #202), an optional `p.` / `pp.` prefix for
  *  California Style Manual form (see #236), and `¶` / `¶¶` / `para.` /
  *  `paras.` paragraph markers (#204). When the pincite is a paragraph form,
- *  `at` is optional — `Id. ¶ 12` and `Id. at ¶ 12` both match. */
+ *  `at` is optional — `Id. ¶ 12` and `Id. at ¶ 12` both match.
+ *
+ *  Comma-pincite guard (#549): the `,\s+` Connecticut alternative (#353)
+ *  carries a `(?!\d+\s+[A-Z])` lookahead so a fresh full citation that
+ *  starts immediately after the comma — `Id., 100 F.3d 1` — does NOT get
+ *  its volume eaten as Id.'s pincite. The pure comma-pincite form
+ *  (`Id., 6.`) keeps working because its digits are not followed by a
+ *  capital-letter reporter shape. */
 export const ID_PATTERN: RegExp =
-  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]d(?:\s*\.|\s*,(?=\s+at\s))(?:(?:,\s+|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
+  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]d(?:\s*\.|\s*,(?=\s+at\s))(?:(?:,\s+(?!\d+\s+[A-Z])|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
 
 /** Ibid. with optional pincite (less common variant). Paragraph forms (#204)
- *  follow the same convention as Id. Optional space before the period (#305). */
+ *  follow the same convention as Id. Optional space before the period (#305).
+ *  Comma-pincite guard (#549) mirrors ID_PATTERN — see comment there. */
 export const IBID_PATTERN: RegExp =
-  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]bid\s*\.(?:(?:,\s+|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
+  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]bid\s*\.(?:(?:,\s+(?!\d+\s+[A-Z])|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
 
 /**
  * Supra with party name and optional pincite.
@@ -57,9 +65,18 @@ export const IBID_PATTERN: RegExp =
  * `p.` / `pp.` prefix for California Style Manual form (#236), and `¶` /
  * `¶¶` / `para.` / `paras.` paragraph markers (#204). When the pincite is a
  * paragraph form, `at` is optional.
+ *
+ * Comma-pincite guard (#549): the `,\s+` Connecticut alternative (#353)
+ * carries a `(?!\d+\s+[A-Z])` lookahead so a fresh full citation that
+ * starts after the comma — `Smith v. Jones, supra, 522 F.3d 1` — does
+ * NOT have its volume eaten as supra's pincite. The pure comma-pincite
+ * form (`Smith, supra, 522.`) keeps working because its digits are not
+ * followed by a capital-letter reporter shape. Without this guard the
+ * supra token grew to include the next citation's volume, producing
+ * overlapping core spans (~4-5% of CAP opinions).
  */
 export const SUPRA_PATTERN: RegExp =
-  /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:(?:,\s+|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
+  /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:(?:,\s+(?!\d+\s+[A-Z])|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
 
 /**
  * Standalone supra without party name (common in footnotes).
