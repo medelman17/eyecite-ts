@@ -18,23 +18,29 @@ import { tagCitationsWithFootnotes } from "@/footnotes/tagging"
 import type { FootnoteMap } from "@/footnotes/types"
 import {
   computeCaseConfidence,
+  extractAnnotation,
   extractCase,
   extractConstitutional,
   extractDocket,
   extractFederalRegister,
+  extractFederalRule,
   extractJournal,
   extractNeutral,
   extractPublicLaw,
+  extractRestatement,
   extractStatute,
   extractStatutesAtLarge,
+  extractTreatise,
 } from "@/extract"
 import type { Pattern } from "@/patterns"
 import {
   casePatterns,
   constitutionalPatterns,
   docketPatterns,
+  federalRulePatterns,
   journalPatterns,
   neutralPatterns,
+  secondaryAuthorityPatterns,
   shortFormPatterns,
   statutePatterns,
 } from "@/patterns"
@@ -241,6 +247,8 @@ export function extractCitations(
     ...neutralPatterns, // Most specific (year-based format)
     ...docketPatterns, // Docket-number citations (anchored by "No. ")
     ...shortFormPatterns, // Short-form (requires " at " keyword)
+    ...federalRulePatterns, // Fed. R. Civ. P. etc. — before casePatterns (#576, #582)
+    ...secondaryAuthorityPatterns, // Restatement / treatise / A.L.R. — before casePatterns (#578, #579, #581)
     ...federalStatutePatterns, // USC/CFR/IRC — before casePatterns (#428)
     ...casePatterns, // Case citations (reporter-specific)
     ...constitutionalPatterns, // Constitutional citations (more specific than statutes)
@@ -350,8 +358,7 @@ export function extractCitations(
   // Restore document order for downstream passes that assume left-to-right
   // sequence (string-cite grouping, parallel detection, etc.).
   const deduplicatedTokens = overlapKept.sort(
-    (a, b) =>
-      a.span.cleanStart - b.span.cleanStart || b.span.cleanEnd - a.span.cleanEnd,
+    (a, b) => a.span.cleanStart - b.span.cleanStart || b.span.cleanEnd - a.span.cleanEnd,
   )
 
   // Step 3.5: Detect parallel citation groups
@@ -389,13 +396,7 @@ export function extractCitations(
         } else if (token.patternId === "shortFormCase") {
           citation = extractShortFormCase(token, transformationMap, cleaned)
         } else {
-          citation = extractCase(
-            token,
-            transformationMap,
-            cleaned,
-            text,
-            caseTokenSpans,
-          )
+          citation = extractCase(token, transformationMap, cleaned, text, caseTokenSpans)
         }
         break
       case "docket": {
@@ -427,6 +428,18 @@ export function extractCitations(
         break
       case "constitutional":
         citation = extractConstitutional(token, transformationMap)
+        break
+      case "federalRule":
+        citation = extractFederalRule(token, transformationMap)
+        break
+      case "restatement":
+        citation = extractRestatement(token, transformationMap)
+        break
+      case "treatise":
+        citation = extractTreatise(token, transformationMap)
+        break
+      case "annotation":
+        citation = extractAnnotation(token, transformationMap)
         break
       default:
         // Unknown type - skip
@@ -863,10 +876,7 @@ function hasNmContextNearby(cleaned: string, cleanStart: number): boolean {
   return NM_CONTEXT_RE.test(window)
 }
 
-function inheritBareSectionJurisdiction(
-  citations: Citation[],
-  cleaned: string,
-): void {
+function inheritBareSectionJurisdiction(citations: Citation[], cleaned: string): void {
   let context: BareSectionContext | null = null
 
   for (const cite of citations) {
@@ -992,8 +1002,7 @@ function detectBareSectionLists(
   cleaned: string,
   transformationMap: TransformationMap,
 ): void {
-  const sectionPart =
-    "\\d[\\w-]*(?:\\.[\\d\\w-]+)*(?:\\([A-Za-z0-9]+\\))*"
+  const sectionPart = "\\d[\\w-]*(?:\\.[\\d\\w-]+)*(?:\\([A-Za-z0-9]+\\))*"
   // Allow optional `Code` (or `Code Ann.`) prefix immediately before `§§`.
   // Anchor on `§§` followed by whitespace + a section. The list itself is
   // detected by `expandPluralSectionList` once the head is in place; we only
@@ -1085,12 +1094,9 @@ function expandPluralSectionList(
   // optional dotted suffixes (`19.2-81`, `12940.5`) and optional subsection
   // chain (`(A)`, `(1)`, `(b)(14)`). The dotted extension was added in #563
   // so bare `Code §§ 19.2-81 and 18.2-266` siblings are picked up.
-  const sectionPart =
-    "\\d[\\w-]*(?:\\.[\\d\\w-]+)*(?:\\([A-Za-z0-9]+\\))*"
+  const sectionPart = "\\d[\\w-]*(?:\\.[\\d\\w-]+)*(?:\\([A-Za-z0-9]+\\))*"
   const connectorPart = "\\s*,\\s*|\\s+and\\s+|\\s+to\\s+"
-  const continuationRe = new RegExp(
-    `^(?:${connectorPart})(${sectionPart})`,
-  )
+  const continuationRe = new RegExp(`^(?:${connectorPart})(${sectionPart})`)
   // `et seq.` immediately after a sibling — owner detection. (#566)
   const TRAILING_ET_SEQ_RE = /^\s*et\s+seq\.?/i
 
@@ -1181,8 +1187,7 @@ function detectBareSectionShortForms(
   cleaned: string,
   transformationMap: TransformationMap,
 ): void {
-  const BARE_SECTION_RE =
-    /(?<![A-Za-z\d-])§\s*(\d[\w]*(?:\.[\w]+)*(?:\([A-Za-z0-9.]+\))*)/g
+  const BARE_SECTION_RE = /(?<![A-Za-z\d-])§\s*(\d[\w]*(?:\.[\w]+)*(?:\([A-Za-z0-9.]+\))*)/g
   const SCAN_WINDOW = 300
 
   // Snapshot the input list — we'll push results to newCitations and sort.
@@ -1275,10 +1280,7 @@ function detectBarePartyBackReferences(
   const stripNamePrefix = (raw: string): string => {
     let s = raw.trim()
     // Procedural prefix: `In re X`, `Estate of X`, `Ex parte X`, `Matter of X`.
-    s = s.replace(
-      /^(?:In\s+re|Estate\s+of|Ex\s+parte|Matter\s+of|Application\s+of)\s+/i,
-      "",
-    )
+    s = s.replace(/^(?:In\s+re|Estate\s+of|Ex\s+parte|Matter\s+of|Application\s+of)\s+/i, "")
     // Sentence-initial signal connectors that bleed into the captured plaintiff.
     s = s.replace(
       /^(?:But\s+(?:see|cf\.?)|See(?:\s+also)?|Compare|Cf\.?|Accord|E\.\s*g\.?|Also|Then)\s+/,
@@ -1348,8 +1350,7 @@ function detectBarePartyBackReferences(
     // N-M` for short-form pincite refs. Also accept spelled-out `page` /
     // `pages`. (#454)
     const pagePrefix = "(?:pp?\\.?\\s*|pages?\\s+)?"
-    const pincitePart =
-      "\\d+(?:[-\\u2013\\u2014]\\d+)?(?:,\\s*\\d+(?:[-\\u2013\\u2014]\\d+)?)*"
+    const pincitePart = "\\d+(?:[-\\u2013\\u2014]\\d+)?(?:,\\s*\\d+(?:[-\\u2013\\u2014]\\d+)?)*"
     const pattern = new RegExp(
       `(?<![A-Za-z'])(${escapedName})\\s*,\\s*at\\s+${pagePrefix}(${pincitePart})`,
       "g",
@@ -1415,11 +1416,7 @@ function detectBarePartyBackReferences(
   citations.sort((a, b) => a.span.cleanStart - b.span.cleanStart)
 }
 
-function overlapsExistingCitation(
-  citations: Citation[],
-  start: number,
-  end: number,
-): boolean {
+function overlapsExistingCitation(citations: Citation[], start: number, end: number): boolean {
   for (const c of citations) {
     if (c.span.cleanEnd <= start) continue
     if (c.span.cleanStart >= end) continue

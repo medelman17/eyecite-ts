@@ -137,3 +137,46 @@ export interface StatutesAtLargeComponentSpans {
   year?: Span
   signal?: Span
 }
+
+/**
+ * Component spans for federal rule citations (type: "federalRule"). #576
+ */
+export interface FederalRuleComponentSpans {
+  ruleSet?: Span
+  rule?: Span
+  subsection?: Span
+  signal?: Span
+}
+
+/**
+ * Component spans for Restatement citations (type: "restatement"). #578
+ */
+export interface RestatementComponentSpans {
+  edition?: Span
+  subject?: Span
+  section?: Span
+  subsection?: Span
+  signal?: Span
+}
+
+/**
+ * Component spans for treatise citations (type: "treatise"). #579
+ */
+export interface TreatiseComponentSpans {
+  volume?: Span
+  title?: Span
+  section?: Span
+  year?: Span
+  signal?: Span
+}
+
+/**
+ * Component spans for A.L.R. annotation citations (type: "annotation"). #581
+ */
+export interface AnnotationComponentSpans {
+  volume?: Span
+  series?: Span
+  page?: Span
+  year?: Span
+  signal?: Span
+}

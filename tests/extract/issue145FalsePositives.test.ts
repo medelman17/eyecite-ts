@@ -175,14 +175,25 @@ describe("issue #145: false positive case citations", () => {
       expect(cits.every((c) => c.confidence <= 0.1)).toBe(true)
     })
 
-    it("flags footnote marker 'Fed. R. Civ. P.' as false positive", () => {
+    // Post-#576: `Fed. R. Civ. P. 50` is now correctly extracted as a
+    // `federalRule` citation rather than treated as a phantom case
+    // citation. The leading `3` is no longer harvested as a case volume.
+    it("recognizes 'Fed. R. Civ. P. 50' as a federal rule, not a phantom case (#576)", () => {
       const cits = extractCitations("3 Fed. R. Civ. P. 50")
-      expect(cits.every((c) => c.confidence <= 0.1)).toBe(true)
+      // No phantom case citation should appear; only the federalRule.
+      expect(cits.filter((c) => c.type === "case")).toHaveLength(0)
+      const rules = cits.filter((c) => c.type === "federalRule")
+      expect(rules).toHaveLength(1)
+      if (rules[0]?.type === "federalRule") {
+        expect(rules[0].ruleSet).toBe("civil")
+        expect(rules[0].rule).toBe("50")
+      }
     })
 
-    it("removes footnote markers with filterFalsePositives: true", () => {
+    it("removes any residual phantom case for 'Fed. R. Civ. P.' with filterFalsePositives: true", () => {
       const cits = extractCitations("3 Fed. R. Civ. P. 50", { filterFalsePositives: true })
-      expect(cits).toHaveLength(0)
+      // The federalRule citation survives; no case citation should remain.
+      expect(cits.filter((c) => c.type === "case")).toHaveLength(0)
     })
 
     it("preserves real citations alongside false positives", () => {

@@ -8,7 +8,9 @@ import type {
 } from "./citation"
 
 /**
- * Type guard: narrows Citation to a full citation (case, statute, journal, neutral, publicLaw, federalRegister, statutesAtLarge, constitutional).
+ * Type guard: narrows Citation to a full citation (case, statute, journal,
+ * neutral, publicLaw, federalRegister, statutesAtLarge, constitutional,
+ * federalRule, restatement, treatise, annotation).
  */
 export function isFullCitation(citation: Citation): citation is FullCitation {
   return (
@@ -20,7 +22,11 @@ export function isFullCitation(citation: Citation): citation is FullCitation {
     citation.type === "publicLaw" ||
     citation.type === "federalRegister" ||
     citation.type === "statutesAtLarge" ||
-    citation.type === "constitutional"
+    citation.type === "constitutional" ||
+    citation.type === "federalRule" ||
+    citation.type === "restatement" ||
+    citation.type === "treatise" ||
+    citation.type === "annotation"
   )
 }
 
