@@ -20,12 +20,14 @@ import { parseBody } from "./parseBody"
  *  Connector is optional — bare `N USC NNNN` and `N CFR NNNN` forms omit it.
  *  Trailing `[AS]?` on the U.S.C. variant covers both `U.S.C.A.` (West) and
  *  `U.S.C.S.` (LEXIS); both annotated editions canonicalize to `U.S.C.`
- *  below. #428 #584 */
+ *  below. Title→code separator admits an optional comma so the comma-
+ *  after-title prose form (`Title 18, U.S.C. § 3742`) tokenized by
+ *  statutePatterns parses cleanly here. #428 #584 #586 */
 const FEDERAL_SECTION_RE =
-  /^(\d+)\s+(U\.?S\.?C\.?[AS]?\.?|USC[AS]?|United\s+States\s+Code|C\.?F\.?R\.?|Code\s+of\s+Federal\s+Regulations)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?|Part|pt\.)?\s*(.+)$/d
+  /^(\d+)\s*,?\s+(U\.?S\.?C\.?[AS]?\.?|USC[AS]?|United\s+States\s+Code|C\.?F\.?R\.?|Code\s+of\s+Federal\s+Regulations)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?|Part|pt\.)?\s*(.+)$/d
 /** Regex to parse federal token: title + code + Part + body */
 const FEDERAL_PART_RE =
-  /^(\d+)\s+(U\.?S\.?C\.?[AS]?\.?|USC[AS]?|United\s+States\s+Code|C\.?F\.?R\.?|Code\s+of\s+Federal\s+Regulations)\s+(?:Part|pt\.)\s+(.+)$/d
+  /^(\d+)\s*,?\s+(U\.?S\.?C\.?[AS]?\.?|USC[AS]?|United\s+States\s+Code|C\.?F\.?R\.?|Code\s+of\s+Federal\s+Regulations)\s+(?:Part|pt\.)\s+(.+)$/d
 
 /**
  * Extract a federal statute citation (USC or CFR) from a tokenized match.

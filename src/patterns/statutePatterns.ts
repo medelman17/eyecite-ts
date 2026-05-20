@@ -42,8 +42,18 @@ export const statutePatterns: Pattern[] = [
     // Code-name body `U\.?S\.?C\.?[AS]?\.?` admits a trailing `A` (West
     // U.S.C.A.) or `S` (LEXIS U.S.C.S.); both annotated editions
     // canonicalize to `U.S.C.` in extractFederal. #584
+    //
+    // Title→code separator admits an optional comma (`Title 18, U.S.C.
+    // § 3742`) — appellate panels write the comma form as often as the
+    // bare `Title NN U.S.C.` prose. The no-comma form previously
+    // worked by accident (the embedded `18 U.S.C. § 3742` substring
+    // matched with the leading `Title` word left outside the match);
+    // the comma form broke that accident because `18, U.S.C.` cannot
+    // satisfy `\d+\s+U\.S\.C\.`. The `\s*,?\s+` separator requires at
+    // least one space after the optional comma so malformed `18,U.S.C.`
+    // (no space) does not tokenize. #586
     regex:
-      /\b(\d+)\s+(?:U\.?S\.?C\.?[AS]?\.?|USC[AS]?|United\s+States\s+Code)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s*,?\s+(?:U\.?S\.?C\.?[AS]?\.?|USC[AS]?|United\s+States\s+Code)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
     description:
       'U.S. Code citations (U.S.C., USC, USCA, USCS, "United States Code") with optional §/Section connector — #428 #584',
     type: "statute",
