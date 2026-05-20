@@ -15,7 +15,14 @@
  */
 
 import type { Pattern } from "@/patterns"
-import { casePatterns, journalPatterns, neutralPatterns, statutePatterns } from "@/patterns"
+import {
+  casePatterns,
+  federalRulePatterns,
+  journalPatterns,
+  neutralPatterns,
+  secondaryAuthorityPatterns,
+  statutePatterns,
+} from "@/patterns"
 import { shortFormPatterns } from "@/patterns/shortForm"
 import type { Span } from "@/types/span"
 
@@ -81,6 +88,8 @@ export function tokenize(
   patterns: Pattern[] = [
     ...casePatterns,
     ...statutePatterns,
+    ...federalRulePatterns,
+    ...secondaryAuthorityPatterns,
     ...journalPatterns,
     ...neutralPatterns,
     ...shortFormPatterns,

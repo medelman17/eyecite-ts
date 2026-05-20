@@ -54,8 +54,7 @@ export const statutePatterns: Pattern[] = [
     // accepts multi-hyphen `---` (post `normalizeDashes` rewrite). #591
     regex:
       /\b(\d+)\s+C\.?F\.?R\.?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
-    description:
-      'Code of Federal Regulations with optional Part/§/Section connector — #428',
+    description: "Code of Federal Regulations with optional Part/§/Section connector — #428",
     type: "statute",
   },
   {
@@ -73,6 +72,43 @@ export const statutePatterns: Pattern[] = [
     regex:
       /\b(?:I\.R\.C\.|IRC)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
     description: 'Internal Revenue Code: "I.R.C. § 1367", "IRC § 1341" — #376',
+    type: "statute",
+  },
+  {
+    // U.S. Sentencing Guidelines: `U.S.S.G. § 2K2.4(b)`. The Guidelines
+    // are organized by chapter/section without a U.S. Code title, so the
+    // citation folds under `statute` with `code="U.S.S.G."` and no `title`.
+    // Compact `USSG` (no periods) is accepted as an alias. #577
+    //
+    // Section body permits internal dots (`2K2.4`, `3B1.1`) and the
+    // standard `(a)(1)...` subsection chain. Trailing sentence period is
+    // excluded by the internal-`.` rule (dot only followed by alphanumeric).
+    id: "ussg",
+    regex:
+      /\b(?:U\.S\.S\.G\.|USSG)\s*§§?\s*(\d+(?:[A-Za-z0-9-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
+    description: 'U.S. Sentencing Guidelines: "U.S.S.G. § 2K2.4(b)", "USSG § 3E1.1" — #577',
+    type: "statute",
+  },
+  {
+    // Bankruptcy Code alias — `Bankruptcy Code § 548(a)(1)(B)(i)` and the
+    // postfix form `§ 547 of the Bankruptcy Code`. Both are normalized to
+    // `title=11, code="U.S.C."` by the extractor for downstream consistency
+    // with explicit `11 U.S.C. § …` citations. #585
+    //
+    // Two regex variants share a single patternId because they collapse to
+    // the same shape after extraction; the pattern with the higher
+    // specificity (postfix form) is listed first so it wins overlap dedup.
+    id: "bankruptcy-code-postfix",
+    regex:
+      /§§?\s*(\d+(?:[A-Za-z0-9-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)\s+of\s+the\s+Bankruptcy\s+Code/g,
+    description: 'Bankruptcy Code postfix alias: "§ 547 of the Bankruptcy Code" → 11 U.S.C. — #585',
+    type: "statute",
+  },
+  {
+    id: "bankruptcy-code-prefix",
+    regex: /\bBankruptcy\s+Code\s*§§?\s*(\d+(?:[A-Za-z0-9-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
+    description:
+      'Bankruptcy Code prefix alias: "Bankruptcy Code § 548(a)(1)(B)(i)" → 11 U.S.C. — #585',
     type: "statute",
   },
   {
@@ -248,8 +284,7 @@ export const statutePatterns: Pattern[] = [
     //   (3) paragraph body (subparagraphs + et seq.).
     regex:
       /\bIll\.?\s*Rev\.?\s*Stat\.?,?\s+(\d{4}),?\s+[Cc]h(?:ap)?\.\s+(\d+[A-Z]?),?\s+pars?\.\s+(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
-    description:
-      "Illinois Revised Statutes (pre-1993): Ill. Rev. Stat. YYYY, ch. N, par. N",
+    description: "Illinois Revised Statutes (pre-1993): Ill. Rev. Stat. YYYY, ch. N, par. N",
     type: "statute",
   },
   {
@@ -333,8 +368,7 @@ export const statutePatterns: Pattern[] = [
     id: "idaho-postfix",
     regex:
       /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+Idaho\s+Code(?:\s+Ann\.?)?/g,
-    description:
-      'Idaho postfix statute form: "Section 23-908(4), Idaho Code" — #360',
+    description: 'Idaho postfix statute form: "Section 23-908(4), Idaho Code" — #360',
     type: "statute",
   },
   {
@@ -361,8 +395,7 @@ export const statutePatterns: Pattern[] = [
     id: "tca-postfix",
     regex:
       /(?<![A-Za-z])(?:[Ss]ections?|[Ss]ec\.?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+T\.?C\.?A\.?/g,
-    description:
-      'Tennessee Code Annotated postfix form: "§ 39-904, T.C.A." — #398',
+    description: 'Tennessee Code Annotated postfix form: "§ 39-904, T.C.A." — #398',
     type: "statute",
   },
   {
@@ -376,8 +409,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) chapter body in NN.NN form.
     id: "rcw-chapter-postfix",
     regex: /\b[Cc]hapter\s+(\d+\.\d+)\s+RCW/g,
-    description:
-      'Washington RCW chapter postfix form: "chapter 49.60 RCW" — #408',
+    description: 'Washington RCW chapter postfix form: "chapter 49.60 RCW" — #408',
     type: "statute",
   },
   {
@@ -396,8 +428,7 @@ export const statutePatterns: Pattern[] = [
     id: "state-admin-code",
     regex:
       /\b(?:(NMAC)\s+(\d+\.\d+\.\d+\.\d+(?:\([A-Z]\))?)|(?<=^|[^A-Za-z])(\d+\.\d+\.\d+\.\d+(?:\([A-Z]\))?)\s+(NMAC)|(OAR)\s+(\d+-\d+-\d+)|(COMAR)\s+(\d+\.\d+\.\d+\.\d+[A-Z]?)|(IDAPA)\s+(\d+\.\d+\.\d+\.\d+\.\d+)|(?<=^|[^A-Za-z])(\d+\.\d+\.\d+(?:\(\d+\))?),\s+(ARM)\b)/g,
-    description:
-      'State admin codes NMAC/OAR/COMAR/IDAPA/ARM — #438',
+    description: "State admin codes NMAC/OAR/COMAR/IDAPA/ARM — #438",
     type: "statute",
   },
   {
@@ -446,8 +477,7 @@ export const statutePatterns: Pattern[] = [
     id: "rigl-1956",
     regex:
       /\bG\.?\s*L\.?\s+1956\s*(?:\((\d{4})\s+Reenactment\))?\s*,?\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
-    description:
-      'Rhode Island General Laws 1956: "G.L. 1956 (1969 Reenactment) §11-23-1" — #393',
+    description: 'Rhode Island General Laws 1956: "G.L. 1956 (1969 Reenactment) §11-23-1" — #393',
     type: "statute",
   },
   {
@@ -483,8 +513,7 @@ export const statutePatterns: Pattern[] = [
     id: "minn-st-year-edition",
     regex:
       /\bMinn\.?\s+(?:Stat|St)\.?\s+(19\d{2}),\s*§\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\)|\[[^\]]*\])*)/g,
-    description:
-      'Minnesota Statutes year-edition form: "Minn. St. 1971, § 176.66" — #371',
+    description: 'Minnesota Statutes year-edition form: "Minn. St. 1971, § 176.66" — #371',
     type: "statute",
   },
   {
@@ -501,8 +530,7 @@ export const statutePatterns: Pattern[] = [
     id: "ksa-year-edition",
     regex:
       /\bK\.?\s*S\.?\s*A\.?\s+(\d{4})(?:\s+(Supp\.?))?\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9])|,(?=\d))*(?:\([^)]*\))*)/g,
-    description:
-      'Kansas Statutes Annotated year-edition: "K.S.A. 2009 Supp. 44-501(d)(2)" — #367',
+    description: 'Kansas Statutes Annotated year-edition: "K.S.A. 2009 Supp. 44-501(d)(2)" — #367',
     type: "statute",
   },
   {
@@ -515,8 +543,7 @@ export const statutePatterns: Pattern[] = [
     //
     // Captures: (1) edition year, (2) section body.
     id: "ic-year-edition",
-    regex:
-      /\bIC\s+(\d{4}),\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
+    regex: /\bIC\s+(\d{4}),\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
     description: 'Indiana Code year-edition form: "IC 1971, 35-13-4-4" — #363',
     type: "statute",
   },
@@ -550,8 +577,7 @@ export const statutePatterns: Pattern[] = [
     //
     // Captures: (1) optional 1931 year, (2) section body.
     id: "wv-code-1931",
-    regex:
-      /\bCode,?(?:\s+(1931))?,\s+(\d+-\d+[A-Z]?-\d+(?:[A-Za-z0-9])?(?:\([A-Za-z0-9]+\))*)/g,
+    regex: /\bCode,?(?:\s+(1931))?,\s+(\d+-\d+[A-Z]?-\d+(?:[A-Za-z0-9])?(?:\([A-Za-z0-9]+\))*)/g,
     description:
       'West Virginia historical Code 1931: "Code 1931, 49-6-3, as amended" / "Code, 14-2-13" — #406',
     type: "statute",
@@ -669,8 +695,7 @@ export const statutePatterns: Pattern[] = [
     id: "ala-tit-bare",
     regex:
       /\bTit\.\s+(\d+),?\s+§\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)(?:,?\s+Code(?:\s+of\s+Alabama)?,?\s+(\d{4})(?:,?\s+(?:as\s+)?[Rr]ecompiled\s+(\d{4}))?)?/g,
-    description:
-      'Alabama Code (abbreviated `Tit.` form): "Tit. 52, § 361" — #343',
+    description: 'Alabama Code (abbreviated `Tit.` form): "Tit. 52, § 361" — #343',
     type: "statute",
   },
 ]

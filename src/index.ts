@@ -26,6 +26,8 @@
 // ============================================================================
 
 export type {
+  AnnotationCitation,
+  AnnotationComponentSpans,
   CaseComponentSpans,
   Citation,
   CitationBase,
@@ -39,6 +41,8 @@ export type {
   ExtractorMap,
   FederalRegisterCitation,
   FederalRegisterComponentSpans,
+  FederalRuleCitation,
+  FederalRuleComponentSpans,
   FullCaseCitation,
   FullCitation,
   FullCitationType,
@@ -52,6 +56,8 @@ export type {
   ParentheticalType,
   PublicLawCitation,
   PublicLawComponentSpans,
+  RestatementCitation,
+  RestatementComponentSpans,
   ShortFormCaseCitation,
   ShortFormCitation,
   ShortFormCitationType,
@@ -63,6 +69,8 @@ export type {
   SubsequentHistoryEntry,
   SupraCitation,
   TransformationMap,
+  TreatiseCitation,
+  TreatiseComponentSpans,
   Warning,
 } from "./types"
 
@@ -92,14 +100,18 @@ export { cleanText } from "./clean"
 export type { CleanTextResult } from "./clean/cleanText"
 // Extraction Functions (for advanced use cases)
 export {
+  extractAnnotation,
   extractCase,
   extractConstitutional,
   extractFederalRegister,
+  extractFederalRule,
   extractJournal,
   extractNeutral,
   extractPublicLaw,
+  extractRestatement,
   extractStatute,
   extractStatutesAtLarge,
+  extractTreatise,
 } from "./extract"
 export { normalizeCourt } from "./extract/courtNormalization"
 export type { PinciteInfo } from "./extract/pincite"

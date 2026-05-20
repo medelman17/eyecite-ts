@@ -318,28 +318,54 @@
       "category": "court-rules",
       "description": "Federal Rule of Civil Procedure",
       "text": "Fed. R. Civ. P. 12(b)(6)",
-      "expected": []
+      "expected": [
+        {
+          "type": "federalRule",
+          "ruleSet": "civil",
+          "rule": "12",
+          "subsection": "(b)(6)"
+        }
+      ]
     },
     {
       "id": "court-rule-fre",
       "category": "court-rules",
       "description": "Federal Rule of Evidence",
       "text": "Fed. R. Evid. 702",
-      "expected": []
+      "expected": [
+        {
+          "type": "federalRule",
+          "ruleSet": "evidence",
+          "rule": "702"
+        }
+      ]
     },
     {
       "id": "court-rule-frap",
       "category": "court-rules",
       "description": "Federal Rule of Appellate Procedure",
       "text": "Fed. R. App. P. 32(a)(7)(B)",
-      "expected": []
+      "expected": [
+        {
+          "type": "federalRule",
+          "ruleSet": "appellate",
+          "rule": "32",
+          "subsection": "(a)(7)(B)"
+        }
+      ]
     },
     {
       "id": "court-rule-frcrp",
       "category": "court-rules",
       "description": "Federal Rule of Criminal Procedure",
       "text": "Fed. R. Crim. P. 11",
-      "expected": []
+      "expected": [
+        {
+          "type": "federalRule",
+          "ruleSet": "criminal",
+          "rule": "11"
+        }
+      ]
     },
     {
       "id": "executive-order",
@@ -359,14 +385,28 @@
       "category": "secondary-sources",
       "description": "Restatement (Second) of Torts",
       "text": "Restatement (Second) of Torts § 402A (Am. L. Inst. 1965)",
-      "expected": []
+      "expected": [
+        {
+          "type": "restatement",
+          "edition": "Second",
+          "subject": "Torts",
+          "section": "402A"
+        }
+      ]
     },
     {
       "id": "restatement-contracts",
       "category": "secondary-sources",
       "description": "Restatement (Second) of Contracts",
       "text": "Restatement (Second) of Contracts § 90 (Am. L. Inst. 1981)",
-      "expected": []
+      "expected": [
+        {
+          "type": "restatement",
+          "edition": "Second",
+          "subject": "Contracts",
+          "section": "90"
+        }
+      ]
     },
     {
       "id": "model-penal-code",

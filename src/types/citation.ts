@@ -1,12 +1,16 @@
 import type {
+  AnnotationComponentSpans,
   CaseComponentSpans,
   ConstitutionalComponentSpans,
   FederalRegisterComponentSpans,
+  FederalRuleComponentSpans,
   JournalComponentSpans,
   NeutralComponentSpans,
   PublicLawComponentSpans,
+  RestatementComponentSpans,
   StatuteComponentSpans,
   StatutesAtLargeComponentSpans,
+  TreatiseComponentSpans,
 } from "./componentSpans"
 import type { Span } from "./span"
 
@@ -23,6 +27,10 @@ export type CitationType =
   | "federalRegister"
   | "statutesAtLarge"
   | "constitutional"
+  | "federalRule"
+  | "restatement"
+  | "treatise"
+  | "annotation"
   | "id"
   | "supra"
   | "shortFormCase"
@@ -676,6 +684,114 @@ export interface StatutesAtLargeCitation extends CitationBase {
 }
 
 /**
+ * Federal Rules of Procedure citation (#576).
+ *
+ * Covers the four primary federal rule sets (civil, criminal, evidence,
+ * appellate) plus bankruptcy. Both the abbreviated Bluebook form
+ * (`Fed. R. Civ. P. 56`) and the spelled-out form
+ * (`Federal Rule of Civil Procedure 56`) parse to the same shape.
+ *
+ * @example "Fed. R. Civ. P. 56" → { ruleSet: "civil", rule: "56" }
+ * @example "Fed. R. Crim. P. 12(b)" → { ruleSet: "criminal", rule: "12", subsection: "(b)" }
+ * @example "Fed. R. Evid. 401" → { ruleSet: "evidence", rule: "401" }
+ * @example "Fed. R. App. P. 4(a)" → { ruleSet: "appellate", rule: "4", subsection: "(a)" }
+ * @example "Fed. R. Bankr. P. 7001" → { ruleSet: "bankruptcy", rule: "7001" }
+ */
+export interface FederalRuleCitation extends CitationBase {
+  type: "federalRule"
+  /** Which rule set the citation refers to */
+  ruleSet: "civil" | "criminal" | "evidence" | "appellate" | "bankruptcy"
+  /** Rule number (string to preserve leading zeros / non-numeric suffixes) */
+  rule: string
+  /** Subsection chain (e.g., "(b)(6)") — undefined when not cited */
+  subsection?: string
+
+  /** Precise text positions for each parsed component of this citation. */
+  spans?: FederalRuleComponentSpans
+}
+
+/**
+ * Restatement citation (#578).
+ *
+ * Restatements of the Law are secondary legal authority published by the
+ * American Law Institute. Citations follow the Bluebook form `Restatement
+ * (Edition) of Subject § Section`.
+ *
+ * @example "Restatement (Second) of Torts § 402A"
+ *   → { edition: "Second", subject: "Torts", section: "402A" }
+ * @example "Restatement (Third) of the Law Governing Lawyers § 1"
+ *   → { edition: "Third", subject: "the Law Governing Lawyers", section: "1" }
+ */
+export interface RestatementCitation extends CitationBase {
+  type: "restatement"
+  /** Restatement edition (First, Second, Third, Fourth) */
+  edition: "First" | "Second" | "Third" | "Fourth"
+  /** Subject matter (e.g., "Torts", "Contracts", "the Law Governing Lawyers") */
+  subject: string
+  /** Section number (string to preserve letter suffixes like "402A") */
+  section: string
+  /** Subsection chain (e.g., "(1)(b)") — undefined when not cited */
+  subsection?: string
+
+  /** Precise text positions for each parsed component of this citation. */
+  spans?: RestatementComponentSpans
+}
+
+/**
+ * Legal treatise citation (#579).
+ *
+ * Treatises are multi-volume secondary authorities (Wright & Miller,
+ * Williston, Moore's, Nimmer, Corbin, Witkin, etc.). Citations are
+ * heterogeneous, but the common pattern is `Volume Author/Title § Section`.
+ *
+ * @example "5 Wright & Miller, Federal Practice and Procedure § 1290"
+ *   → { volume: 5, title: "Wright & Miller, Federal Practice and Procedure", section: "1290" }
+ * @example "1 Nimmer on Copyright § 5.05[A]"
+ *   → { volume: 1, title: "Nimmer on Copyright", section: "5.05[A]" }
+ */
+export interface TreatiseCitation extends CitationBase {
+  type: "treatise"
+  /** Volume number (string for hyphenated volumes) */
+  volume: number | string
+  /** Title/author body as it appears in the citation */
+  title: string
+  /** Section number / locator (string to preserve dots and bracketed suffixes) */
+  section: string
+  /** Edition + year, when present in trailing parenthetical (e.g., "5th ed. 2008") */
+  edition?: string
+  /** Publication year (if extracted from parenthetical) */
+  year?: number
+
+  /** Precise text positions for each parsed component of this citation. */
+  spans?: TreatiseComponentSpans
+}
+
+/**
+ * Annotation citation (#581).
+ *
+ * The American Law Reports (A.L.R.) series publishes annotations on
+ * narrow legal issues — these look like case citations
+ * (`100 A.L.R.2d 1234`) but are secondary authority, not case law.
+ *
+ * @example "100 A.L.R.2d 1234" → { series: "A.L.R.2d", volume: 100, page: 1234 }
+ * @example "23 A.L.R. Fed. 3d 456" → { series: "A.L.R. Fed. 3d", volume: 23, page: 456 }
+ */
+export interface AnnotationCitation extends CitationBase {
+  type: "annotation"
+  /** A.L.R. series identifier (`A.L.R.`, `A.L.R.2d`, `A.L.R. Fed.`, etc.) */
+  series: string
+  /** Volume number */
+  volume: number
+  /** Page number where the annotation begins */
+  page: number
+  /** Publication year (if extracted from parenthetical) */
+  year?: number
+
+  /** Precise text positions for each parsed component of this citation. */
+  spans?: AnnotationComponentSpans
+}
+
+/**
  * Docket-number-only case citation (no traditional reporter assignment).
  *
  * Used for very recent decisions identified by docket/slip number, common for:
@@ -933,6 +1049,10 @@ export type Citation =
   | FederalRegisterCitation
   | StatutesAtLargeCitation
   | ConstitutionalCitation
+  | FederalRuleCitation
+  | RestatementCitation
+  | TreatiseCitation
+  | AnnotationCitation
   | IdCitation
   | SupraCitation
   | ShortFormCaseCitation
@@ -950,6 +1070,10 @@ export type FullCitationType =
   | "federalRegister"
   | "statutesAtLarge"
   | "constitutional"
+  | "federalRule"
+  | "restatement"
+  | "treatise"
+  | "annotation"
 export type ShortFormCitationType = "id" | "supra" | "shortFormCase"
 
 /**
@@ -965,6 +1089,10 @@ export type FullCitation =
   | FederalRegisterCitation
   | StatutesAtLargeCitation
   | ConstitutionalCitation
+  | FederalRuleCitation
+  | RestatementCitation
+  | TreatiseCitation
+  | AnnotationCitation
 
 /**
  * Union of all short-form citation types (Id., supra, short-form case).

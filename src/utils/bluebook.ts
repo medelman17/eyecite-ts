@@ -147,5 +147,33 @@ export function toBluebook(citation: Citation): string {
       const page = citation.page !== undefined ? ` ${citation.page}` : ""
       return `${citation.volume} ${reporter}${page}`
     }
+
+    case "federalRule": {
+      // Bluebook canonical abbreviated form.
+      const ruleSetAbbrev: Record<typeof citation.ruleSet, string> = {
+        civil: "Civ. P.",
+        criminal: "Crim. P.",
+        evidence: "Evid.",
+        appellate: "App. P.",
+        bankruptcy: "Bankr. P.",
+      }
+      const subsection = citation.subsection ?? ""
+      return `Fed. R. ${ruleSetAbbrev[citation.ruleSet]} ${citation.rule}${subsection}`
+    }
+
+    case "restatement": {
+      const subsection = citation.subsection ?? ""
+      return `Restatement (${citation.edition}) of ${citation.subject} § ${citation.section}${subsection}`
+    }
+
+    case "treatise": {
+      const section = `§ ${citation.section}`
+      return `${citation.volume} ${citation.title} ${section}`
+    }
+
+    case "annotation": {
+      const year = citation.year !== undefined ? ` (${citation.year})` : ""
+      return `${citation.volume} ${citation.series} ${citation.page}${year}`
+    }
   }
 }

@@ -209,18 +209,85 @@ function isImplausibleReporter(reporter: string): boolean {
  */
 const SINGLE_DIGIT_PROSE_WORDS: ReadonlySet<string> = new Set([
   // Prepositions / conjunctions / articles
-  "the", "a", "an", "in", "on", "at", "but", "and", "for", "by", "to",
-  "with", "from", "as", "if", "so", "nor", "yet", "not", "no", "then",
-  "when", "where", "who", "what", "how", "that", "this", "these", "those",
+  "the",
+  "a",
+  "an",
+  "in",
+  "on",
+  "at",
+  "but",
+  "and",
+  "for",
+  "by",
+  "to",
+  "with",
+  "from",
+  "as",
+  "if",
+  "so",
+  "nor",
+  "yet",
+  "not",
+  "no",
+  "then",
+  "when",
+  "where",
+  "who",
+  "what",
+  "how",
+  "that",
+  "this",
+  "these",
+  "those",
   // Pronouns
-  "he", "she", "it", "they", "we", "his", "her", "its", "their", "our",
+  "he",
+  "she",
+  "it",
+  "they",
+  "we",
+  "his",
+  "her",
+  "its",
+  "their",
+  "our",
   // Common verbs
-  "was", "were", "is", "are", "has", "had", "been", "being",
-  "did", "does", "do", "may", "shall", "will", "would", "could", "should",
-  "held", "said", "found", "made", "took", "gave", "see", "also",
+  "was",
+  "were",
+  "is",
+  "are",
+  "has",
+  "had",
+  "been",
+  "being",
+  "did",
+  "does",
+  "do",
+  "may",
+  "shall",
+  "will",
+  "would",
+  "could",
+  "should",
+  "held",
+  "said",
+  "found",
+  "made",
+  "took",
+  "gave",
+  "see",
+  "also",
   // Month names (after HTML stripping, "¶2 In July 2016" → "2 In July 2016")
-  "january", "february", "march", "april", "june",
-  "july", "august", "september", "october", "november", "december",
+  "january",
+  "february",
+  "march",
+  "april",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
 ])
 
 /** Maximum plausible volume number for US reporters.
@@ -259,10 +326,7 @@ function isImplausibleVolume(citation: Citation): boolean {
   // `2024 WL 12345`) routinely exceed the reporter-volume cap. Treat
   // values in the plausible-year window as legitimate volumes; truly
   // large numbers (zip codes ≥ 10000, future-year noise) still flag.
-  if (
-    caseCit.volume >= MIN_PLAUSIBLE_YEAR_VOLUME &&
-    caseCit.volume <= MAX_PLAUSIBLE_YEAR_VOLUME
-  ) {
+  if (caseCit.volume >= MIN_PLAUSIBLE_YEAR_VOLUME && caseCit.volume <= MAX_PLAUSIBLE_YEAR_VOLUME) {
     return false
   }
   return true
@@ -324,6 +388,33 @@ function isSuspiciousSmallVolume(citation: Citation): boolean {
 }
 
 /**
+ * Issue #582: Federal-rule phantom — `1983 Fed.R.Civ.P. 17(b)` and similar
+ * shapes get tokenized by the broad state-reporter regex as `{volume: 1983,
+ * reporter: "Fed.R.Civ.P.", page: 17}`. The volume is actually a year that
+ * happens to sit next to a federal-rule citation.
+ *
+ * Post-#576 the federal-rule extractor wins overlap dedup so the phantom
+ * never gets emitted in the live pipeline. This check is defense in depth:
+ * a `case` whose volume sits in the plausible-year window AND whose
+ * reporter is the `Fed. R.` / `Fed.R.` prefix family (Civ.P., Crim.P.,
+ * Evid., App.P., Bankr.P.) is unconditionally rejected.
+ *
+ * Real Federal Reporter series (`Fed. Cl.`, `F. App'x`, `F. Supp.`) are
+ * unaffected — the prefix is `Fed. R.` / `Fed.R.` specifically, which is
+ * unique to the federal rules of procedure.
+ */
+const FED_RULE_FAMILY_PREFIX = /^Fed\.\s?R\./i
+
+function isFederalRulePhantom(citation: Citation): boolean {
+  if (citation.type !== "case" && citation.type !== "shortFormCase") return false
+  const c = citation as FullCaseCitation | ShortFormCaseCitation
+  if (typeof c.volume !== "number") return false
+  if (c.volume < MIN_PLAUSIBLE_YEAR_VOLUME || c.volume > MAX_PLAUSIBLE_YEAR_VOLUME) return false
+  if (!c.reporter) return false
+  return FED_RULE_FAMILY_PREFIX.test(c.reporter)
+}
+
+/**
  * Issue #547: A `case` (or `shortFormCase`) citation whose original-text span
  * contains a `\n` is a structural false positive.
  *
@@ -346,11 +437,7 @@ function isLineCrossingCitation(citation: Citation, originalText?: string): bool
   if (!originalText) return false
   if (citation.type !== "case" && citation.type !== "shortFormCase") return false
   const { originalStart, originalEnd } = citation.span
-  if (
-    originalStart < 0 ||
-    originalEnd > originalText.length ||
-    originalEnd <= originalStart
-  ) {
+  if (originalStart < 0 || originalEnd > originalText.length || originalEnd <= originalStart) {
     return false
   }
   const nlIdx = originalText.indexOf("\n", originalStart)
@@ -363,10 +450,16 @@ function isLineCrossingCitation(citation: Citation, originalText?: string): bool
 function isFalsePositive(citation: Citation, originalText?: string): boolean {
   const reporter = getReporter(citation)
   if (reporter && BLOCKED_REPORTERS.has(reporter.toLowerCase().trim())) return true
-  if (reporter && (citation.type === "case" || citation.type === "shortFormCase") && isImplausibleReporter(reporter)) return true
+  if (
+    reporter &&
+    (citation.type === "case" || citation.type === "shortFormCase") &&
+    isImplausibleReporter(reporter)
+  )
+    return true
   if (isImplausibleVolume(citation)) return true
   if (isDocketNumberVolume(citation)) return true
   if (isSuspiciousSmallVolume(citation)) return true
+  if (isFederalRulePhantom(citation)) return true
   if (isLineCrossingCitation(citation, originalText)) return true
 
   const year = getYear(citation)
@@ -389,7 +482,10 @@ function collectFalsePositiveReasons(citation: Citation, originalText?: string):
     if (BLOCKED_REPORTERS.has(normalized)) {
       reasons.push(`Reporter "${reporter}" is a known non-US source`)
     }
-    if ((citation.type === "case" || citation.type === "shortFormCase") && isImplausibleReporter(reporter)) {
+    if (
+      (citation.type === "case" || citation.type === "shortFormCase") &&
+      isImplausibleReporter(reporter)
+    ) {
       reasons.push(`Reporter "${reporter}" contains prose words or is implausibly long`)
     }
   }
@@ -412,6 +508,13 @@ function collectFalsePositiveReasons(citation: Citation, originalText?: string):
     const caseCit = citation as FullCaseCitation | ShortFormCaseCitation
     reasons.push(
       `Small volume (${caseCit.volume}) with unrecognized reporter "${caseCit.reporter}" — likely a paragraph or footnote marker`,
+    )
+  }
+
+  if (isFederalRulePhantom(citation)) {
+    const caseCit = citation as FullCaseCitation | ShortFormCaseCitation
+    reasons.push(
+      `Year-shaped volume (${caseCit.volume}) with Fed. R. family reporter "${caseCit.reporter}" — likely a federal-rule citation mis-tokenized as case (issue #582)`,
     )
   }
 
