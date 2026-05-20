@@ -1900,24 +1900,48 @@ interface CollectedParentheticals {
 }
 
 /**
+ * Hard safety ceiling on how far the paren depth-tracker scans past
+ * `maxLookahead` when chasing a matching close paren that lives beyond the
+ * window. 10,000 chars is well past anything legal text produces (the
+ * longest explanatory parentheticals in modern caselaw run ~1500 chars).
+ * The scanner exits the moment depth returns to 0, so the ceiling is only
+ * touched on pathological inputs (unclosed parens). See #528.
+ */
+const PAREN_CLOSE_HARD_CEILING = 10000
+
+/**
  * Collect all top-level parenthetical blocks starting from a position.
  * Uses depth tracking to handle nested parens. Continues scanning through
  * chained parentheticals and subsequent history signals.
  *
  * @param text - Full text to scan
  * @param startPos - Position to start scanning (typically after citation core)
- * @param maxLookahead - Maximum characters to scan forward (default 500)
+ * @param maxLookahead - Soft cap on how far the scanner looks for a NEW
+ *   parenthetical or signal (default 2000 chars — comfortably larger than
+ *   the worst-case modern explanatory paren and any trailing history
+ *   clause). The pre-#528 default was 500, which silently dropped any
+ *   explanatory paren whose closing `)` fell past the limit AND any history
+ *   clause that followed it.
+ *
+ *   Once an opening `(` is found inside the window, the depth-tracking loop
+ *   chases the matching `)` up to `PAREN_CLOSE_HARD_CEILING` chars from the
+ *   citation, so a paren whose body overflows `maxLookahead` is still
+ *   captured intact. Linear walk + early termination keeps the perf cost
+ *   bounded.
  * @returns Collected parentheticals with associated signals
  */
 function collectParentheticals(
   text: string,
   startPos: number,
-  maxLookahead = 500,
+  maxLookahead = 2000,
 ): CollectedParentheticals {
   const parens: RawParenthetical[] = []
   const signals: CollectedParentheticals["signals"] = []
   let pos = startPos
   const endLimit = Math.min(text.length, startPos + maxLookahead)
+  // Hard ceiling for the inner depth-tracking loop. Allows a paren whose
+  // closing `)` lives outside `endLimit` to still be captured intact (#528).
+  const hardEndLimit = Math.min(text.length, startPos + PAREN_CLOSE_HARD_CEILING)
   let pendingSignal: RawSignal | undefined
 
   // Skip past any pincite text between core citation and parentheticals.
@@ -1961,12 +1985,14 @@ function collectParentheticals(
       break
     }
 
-    // Found opening paren — track depth to find matching close
+    // Found opening paren — track depth to find matching close.
+    // Allow the inner loop to run up to `hardEndLimit` so a paren whose
+    // body overflows the soft `maxLookahead` is still captured intact.
     const parenStart = pos
     let depth = 0
     const contentStart = pos + 1
 
-    while (pos < endLimit) {
+    while (pos < hardEndLimit) {
       const char = text[pos]
       if (char === "(") {
         depth++
