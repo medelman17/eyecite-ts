@@ -284,6 +284,138 @@ describe("cleanText position tracking", () => {
     const result = cleanText(input, [stripHtmlTags])
     expect(result.cleaned).toBe("Smith v. Doe, 500 F.2d 123")
   })
+
+  // #546 — TransformationMap catastrophic collapse.
+  //
+  // Two failure modes both produce the same downstream symptom (originalStart ===
+  // originalEnd, downstream slice returns empty string or unrelated text):
+  //   1. `stripHtmlTags` greedily matches a stray `<` … `>` across thousands of
+  //      chars of legitimate prose (OCR artifacts in CAP opinions).
+  //   2. `rebuildPositionMaps` lookahead picks a false-positive alignment when
+  //      adjacent tag deletions sit back-to-back (e.g. `<span>A</span><span>B</span>`).
+  describe("issue #546: TransformationMap catastrophic collapse", () => {
+    it("stripHtmlTags does not eat prose between stray `<` and `>`", () => {
+      // Two stray angle brackets several hundred chars apart should not be
+      // treated as one giant tag — they're OCR/typesetter artifacts. The
+      // current greedy regex deletes everything in between (~hundreds of
+      // chars). The fix requires the first char after `<` to be a letter
+      // or `/`, otherwise it isn't a tag.
+      const filler = "a".repeat(200) + " plaintiff " + "b".repeat(200)
+      const input = `prefix te< waive ${filler} da> suffix`
+
+      const result = cleanText(input, [stripHtmlTags])
+
+      // Cleaner must not delete the prose between the stray brackets.
+      expect(result.cleaned).toContain("waive")
+      expect(result.cleaned).toContain("plaintiff")
+      expect(result.cleaned).toContain("suffix")
+      // Length should be unchanged (no real tags to strip).
+      expect(result.cleaned.length).toBe(input.length)
+    })
+
+    it("stripHtmlTags is still permissive for real tags with attributes", () => {
+      // Legit HTML must still strip correctly. The proposed fix tightens the
+      // regex but keeps `<letter or /...>` patterns valid.
+      const input = '<span class="citation" data-id="x">500 F.2d 123</span>'
+      const result = cleanText(input, [stripHtmlTags])
+      expect(result.cleaned).toBe("500 F.2d 123")
+    })
+
+    it("position map remains intact through adjacent same-tag deletions", () => {
+      // The cal-app-2d/222 pattern: every Nth word wrapped in
+      // `<span class="word">…</span>`. With adjacent tag deletions, the
+      // CONFIRM_LEN=3 check inside the lookahead fails (because the char
+      // right after a correct alignment is `<` — the start of the next
+      // deleted tag), so the algorithm picks a far-away false-positive
+      // match and collapses hundreds of clean positions to one orphan
+      // origPos.
+      const text =
+        "BRAY, P. J. In a consolidated appeal in three cases, appellants " +
+        "in each respective case, who were plaintiffs or petitioners " +
+        "therein, appeal from adverse judgments in favor of the respective " +
+        "defendants on the action between the parties hereto."
+      let count = 0
+      const html = text.replace(/\b(\w+)\b/g, (m) => {
+        count++
+        return count % 3 === 0 ? `<span class="word">${m}</span>` : m
+      })
+
+      const result = cleanText(html, [stripHtmlTags])
+
+      // Sanity: cleaning yielded the original prose.
+      expect(result.cleaned).toBe(text)
+
+      // No origPos should be the target of more than a handful of clean
+      // positions. A truly correct map yields ~3-5 collisions max around
+      // word/tag boundaries — the bug produces single origPositions with
+      // 100+ clean positions mapped to them.
+      const counts = new Map<number, number>()
+      for (const [, orig] of result.transformationMap.cleanToOriginal) {
+        counts.set(orig, (counts.get(orig) ?? 0) + 1)
+      }
+      const maxCollision = Math.max(...counts.values())
+      expect(maxCollision).toBeLessThanOrEqual(10)
+
+      // Every clean position should map to a strictly increasing origPos
+      // (within the small slack permitted by adjacent-deletion collisions).
+      let prev = -1
+      for (let i = 0; i < result.cleaned.length; i++) {
+        const orig = result.transformationMap.cleanToOriginal.get(i)
+        expect(orig).toBeDefined()
+        // Original positions must be monotonically non-decreasing — the
+        // catastrophic-collapse bug produces huge backwards/forwards jumps.
+        expect(orig as number).toBeGreaterThanOrEqual(prev)
+        prev = orig as number
+      }
+    })
+
+    it("clean→original mapping never points to an unrelated region", () => {
+      // Heavier variant of the cal-app-2d/222 pattern — every 3rd word in
+      // a multi-paragraph passage is wrapped in `<span class="word">…</span>`.
+      // The current bug produces collapsed `cleanToOriginal` mappings for
+      // ~all of the prose after a few hundred chars, sending downstream
+      // text slicing to a completely unrelated paragraph.
+      const text =
+        "BRAY, P. J. In a consolidated appeal in three cases, appellants " +
+        "in each respective case, who were plaintiffs or petitioners " +
+        "therein, appeal from adverse judgments in favor of the respective " +
+        "defendants on the action between the parties hereto. See " +
+        "500 F.2d 123 (5th Cir. 1974) and 81 Cal.App.2d 811 and 203 Cal. 665 " +
+        "and 265 P. 806 supra. Compare 100 F.3d 50 (9th Cir. 1996)."
+      let count = 0
+      const html = text.replace(/\b(\w+)\b/g, (m) => {
+        count++
+        return count % 3 === 0 ? `<span class="word">${m}</span>` : m
+      })
+
+      // Default cleaner pipeline (what extractCitations uses).
+      const result = cleanText(html)
+      expect(result.cleaned).toBe(text)
+
+      // For every clean position, the mapped origPos must point to a
+      // location whose 30-char window in the original HTML contains the
+      // cleaned character (tag-stripped) at that index. The bug sends
+      // clean positions to far-away regions where the corresponding char
+      // does not appear.
+      const errors: string[] = []
+      for (let cleanIdx = 0; cleanIdx < result.cleaned.length; cleanIdx++) {
+        const orig =
+          result.transformationMap.cleanToOriginal.get(cleanIdx) ?? -1
+        const expectedChar = result.cleaned[cleanIdx]
+        const window = html.slice(Math.max(0, orig - 5), orig + 30)
+        // Strip tags from the window to see prose only.
+        const proseWindow = window.replace(/<[^>]*>/g, "")
+        if (!proseWindow.includes(expectedChar)) {
+          errors.push(
+            `clean[${cleanIdx}]=${JSON.stringify(expectedChar)} → origPos=${orig}, ` +
+              `but ${JSON.stringify(proseWindow.slice(0, 30))} does not contain it`,
+          )
+          if (errors.length >= 3) break
+        }
+      }
+      expect(errors).toEqual([])
+    })
+  })
 })
 
 describe("normalizeDashes (issue #54)", () => {
