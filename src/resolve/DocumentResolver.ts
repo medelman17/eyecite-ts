@@ -440,28 +440,17 @@ export class DocumentResolver {
       )
     }
 
-    // Score each candidate. Family-match dominates (Id.'s pincite shape
-    // tells us which family of authority the writer intended). Recency
-    // breaks ties — candidates are pushed in reverse document order, so
-    // the first match at a given score is the most recent effective
+    // Pick the antecedent: family preference is a soft signal — when at
+    // least one candidate matches the preferred family (inferred from
+    // `Id.`'s pincite shape), pick the most recent of them; otherwise
+    // fall back to the most recent candidate regardless of family (#514).
+    // Recency wins automatically because candidates are pushed in reverse
+    // document order, so `candidates[0]` is the most recent effective
     // mention. Per Bluebook Rule 4.1, signal phrase does NOT affect
     // antecedent selection: `Id.` anchors to the immediately preceding
-    // cited authority regardless of whether that authority is introduced
-    // by `See`, `Cf.`, or any other signal (#498).
-    const score = (c: Candidate) => {
-      let s = 0
-      if (c.family === preferredFamily) s += 1000
-      return s
-    }
-    let best = candidates[0]
-    let bestScore = score(best)
-    for (let i = 1; i < candidates.length; i++) {
-      const s = score(candidates[i])
-      if (s > bestScore) {
-        best = candidates[i]
-        bestScore = s
-      }
-    }
+    // cited authority regardless of `See`, `Cf.`, etc. (#498).
+    const preferred = candidates.find((c) => c.family === preferredFamily)
+    const best = preferred ?? candidates[0]
 
     // Case-name window check: if the prose immediately before Id. names a
     // case that doesn't match the picked antecedent, downgrade confidence and
