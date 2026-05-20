@@ -219,4 +219,53 @@ describe("hyphenated neutral citations (#233)", () => {
       expect(neutrals[0].pincite).toBe(3)
     })
   })
+
+  // #532 — TN/IN docket numbers (e.g., `03A01-9103-CH-96`) match the
+  // 3-segment hyphenated neutral pattern when scanned in isolation. The
+  // resulting `year` is implausible (9103) and the document never
+  // contained a true neutral citation, so the cite must be suppressed.
+  describe("docket-shaped strings do NOT match neutral (#532)", () => {
+    it("`Case No. 03A01-9103-CH-96` produces zero neutral cites", () => {
+      const cits = extractCitations("Case No. 03A01-9103-CH-96")
+      const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
+      expect(neutrals).toHaveLength(0)
+    })
+
+    it("`Cause No. 03A01-9103-CH-96` produces zero neutral cites", () => {
+      const cits = extractCitations("Cause No. 03A01-9103-CH-96")
+      const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
+      expect(neutrals).toHaveLength(0)
+    })
+
+    it("`Docket No. 03A01-9103-CH-96` produces zero neutral cites", () => {
+      const cits = extractCitations("Docket No. 03A01-9103-CH-96")
+      const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
+      expect(neutrals).toHaveLength(0)
+    })
+
+    it("implausible year (9103) is rejected as neutral", () => {
+      const cits = extractCitations("Random 9103-CH-96 token in prose.")
+      const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
+      expect(neutrals).toHaveLength(0)
+    })
+
+    it("implausible year (1599) is rejected as neutral", () => {
+      const cits = extractCitations("Random 1599-CH-96 token in prose.")
+      const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
+      expect(neutrals).toHaveLength(0)
+    })
+
+    it("regression: a valid year inside a docket number still suppressed by Case No. prefix", () => {
+      const cits = extractCitations("Case No. 03A01-2010-CH-96")
+      const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
+      expect(neutrals).toHaveLength(0)
+    })
+
+    it("regression: legitimate neutral cite still matches", () => {
+      const cits = extractCitations("State v. Smith, 2010-NMSC-007.")
+      const neutrals = cits.filter((c): c is NeutralCitation => c.type === "neutral")
+      expect(neutrals).toHaveLength(1)
+      expect(neutrals[0].year).toBe(2010)
+    })
+  })
 })

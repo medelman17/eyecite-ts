@@ -1715,6 +1715,10 @@
       "text": "The First Amendment's protection of free speech has been interpreted broadly by the Supreme Court. See Brandenburg v. Ohio, 395 U.S. 444 (1969); New York Times Co. v. Sullivan, 376 U.S. 254 (1964). Under 42 U.S.C. § 1983, individuals may bring suit against state actors who violate their constitutional rights. See Monroe v. Pape, 365 U.S. 167 (1961). For scholarly analysis, see John Doe, Free Speech in the Digital Age, 120 Harv. L. Rev. 1000 (2007). The Court in Brandenburg held that the government cannot punish inflammatory speech unless it is directed to inciting imminent lawless action. Id. at 447.",
       "expected": [
         {
+          "type": "constitutional",
+          "amendment": 1
+        },
+        {
           "type": "case",
           "volume": 395,
           "reporter": "U.S.",
@@ -1840,6 +1844,10 @@
       "text": "The Fourth Amendment prohibits unreasonable searches and seizures. Katz v. United States, 389 U.S. 347 (1967). The exclusionary rule, established in Mapp v. Ohio, 367 U.S. 643 (1961), requires suppression of evidence obtained in violation of the Fourth Amendment. Exceptions include the good faith exception, see United States v. Leon, 468 U.S. 897 (1984), the inevitable discovery doctrine, see Nix v. Williams, 467 U.S. 431 (1984), and the independent source doctrine, see Segura v. United States, 468 U.S. 796 (1984). The automobile exception permits warrantless searches of vehicles based on probable cause. Carroll v. United States, 267 U.S. 132 (1925).",
       "expected": [
         {
+          "type": "constitutional",
+          "amendment": 4
+        },
+        {
           "type": "case",
           "volume": 389,
           "reporter": "U.S.",
@@ -1852,6 +1860,10 @@
           "reporter": "U.S.",
           "page": 643,
           "year": 1961
+        },
+        {
+          "type": "constitutional",
+          "amendment": 4
         },
         {
           "type": "case",
@@ -2670,6 +2682,10 @@
       "text": "The Due Process Clause of the Fourteenth Amendment provides both procedural and substantive protection. Procedural due process requires notice and an opportunity to be heard before the government deprives a person of life, liberty, or property. Mathews v. Eldridge, 424 U.S. 319 (1976). The three-factor balancing test from Mathews considers the private interest affected, the risk of erroneous deprivation, and the government's interest. Id. at 335. Substantive due process protects fundamental rights against government interference regardless of the procedures used. Washington v. Glucksberg, 521 U.S. 702 (1997). See also Obergefell v. Hodges, 576 U.S. 644 (2015); Lawrence v. Texas, 539 U.S. 558 (2003).",
       "expected": [
         {
+          "type": "constitutional",
+          "amendment": 14
+        },
+        {
           "type": "case",
           "volume": 424,
           "reporter": "U.S.",
@@ -2709,6 +2725,10 @@
       "description": "Second Amendment paragraph with recent decisions",
       "text": "The Second Amendment protects an individual right to keep and bear arms. District of Columbia v. Heller, 554 U.S. 570 (2008). This right was incorporated against the states in McDonald v. City of Chicago, 561 U.S. 742 (2010). The historical test for firearms regulations was established in New York State Rifle & Pistol Association Inc. v. Bruen, 597 U.S. 1 (2022). Under Bruen, the government must demonstrate that a regulation is consistent with the historical tradition of firearm regulation. Id. at 17. Lower courts have applied this framework extensively. See United States v. Rahimi, 61 F.4th 443 (5th Cir. 2023), cert. granted, 143 S. Ct. 2688 (2023).",
       "expected": [
+        {
+          "type": "constitutional",
+          "amendment": 2
+        },
         {
           "type": "case",
           "volume": 554,
@@ -3199,6 +3219,10 @@
       "description": "Eighth Amendment cruel and unusual punishment",
       "text": "The Eighth Amendment prohibits cruel and unusual punishment. The proportionality principle requires that sentences not be grossly disproportionate to the crime. Solem v. Helm, 463 U.S. 277 (1983). Capital punishment for juvenile offenders was held unconstitutional in Roper v. Simmons, 543 U.S. 551 (2005). Life without parole for juvenile non-homicide offenders was banned in Graham v. Florida, 560 U.S. 48 (2010), and mandatory life without parole for all juvenile offenders was prohibited in Miller v. Alabama, 567 U.S. 460 (2012). Id. at 465. See also Montgomery v. Louisiana, 577 U.S. 190 (2016).",
       "expected": [
+        {
+          "type": "constitutional",
+          "amendment": 8
+        },
         {
           "type": "case",
           "volume": 463,

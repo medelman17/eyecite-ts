@@ -781,6 +781,26 @@ const BARE_SECTION_CONTEXT_OVERRIDES: Record<string, BareSectionContext> = {
   MT: { jurisdiction: "MT", code: "MCA" },
 }
 
+/**
+ * Look for an explicit New Mexico signal (`NMSA`, `N.M.`, `N. M.`,
+ * `New Mexico`) in the cleaned text within ~200 chars before the citation
+ * start. Used to gate the default `NM` jurisdiction tag attached to bare
+ * `§ N-N-N` citations — without a nearby signal the shape is too generic
+ * to claim NM (#531).
+ */
+const NM_CONTEXT_WINDOW = 200
+// Match `NMSA`, `N.M.` (with optional space between letters and trailing
+// period), or `New Mexico` as a phrase. The `N.M.` form ends in `.` (a
+// non-word char), so we must NOT require a trailing `\b` — instead we
+// require the explicit `.` to anchor the right edge.
+const NM_CONTEXT_RE = /\bNMSA\b|\bN\.\s*M\.|\bNew\s+Mexico\b/
+
+function hasNmContextNearby(cleaned: string, cleanStart: number): boolean {
+  const start = Math.max(0, cleanStart - NM_CONTEXT_WINDOW)
+  const window = cleaned.slice(start, cleanStart)
+  return NM_CONTEXT_RE.test(window)
+}
+
 function inheritBareSectionJurisdiction(
   citations: Citation[],
   cleaned: string,
@@ -821,6 +841,16 @@ function inheritBareSectionJurisdiction(
     if (context) {
       cite.jurisdiction = context.jurisdiction
       cite.code = context.code
+      continue
+    }
+
+    // #531: NM is the historical default for bare `§ N-N-N` shapes, but the
+    // shape itself is too generic (Virginia, Alabama, and others use it
+    // too). Require an explicit NM signal nearby; otherwise drop the
+    // jurisdiction so downstream consumers don't trust a guess.
+    if (!hasNmContextNearby(cleaned, cite.span.cleanStart)) {
+      cite.jurisdiction = undefined
+      cite.code = undefined
     }
   }
 }

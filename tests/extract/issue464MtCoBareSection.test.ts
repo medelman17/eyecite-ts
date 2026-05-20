@@ -55,12 +55,15 @@ describe("issue #464 — MT/CO bare-section context routing", () => {
       expect(sts[1].jurisdiction).toBe("CO")
     })
 
-    it("bare `§ 13-25-130` with NO Colorado context still routes NM (default preserved)", () => {
+    it("bare `§ 13-25-130` with NO Colorado context is left untagged (#531)", () => {
       const text = "§ 13-25-130 alone."
       const cites = extractCitations(text)
       const sts = statutes(cites)
       expect(sts).toHaveLength(1)
-      expect(sts[0].jurisdiction).toBe("NM")
+      // Per #531, the bare 3-hyphen shape is too generic to default to NM
+      // without an explicit signal. The cite is still extracted, just
+      // jurisdiction-less.
+      expect(sts[0].jurisdiction).toBeUndefined()
     })
   })
 

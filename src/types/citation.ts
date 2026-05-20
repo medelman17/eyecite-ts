@@ -457,7 +457,13 @@ export interface FullCaseCitation extends CitationBase {
 export interface StatuteCitation extends CitationBase {
   type: "statute"
   title?: number
-  code: string
+  /**
+   * Code identifier (e.g. "U.S.C.", "Va. Code", "Fla. Stat."). Optional
+   * because the bare-section forms (`§ N-N-N`) may surface with no
+   * jurisdiction signal at all — in that case `code` is omitted and the
+   * cite is reported as a generic statutory reference.
+   */
+  code?: string
   section: string
   /** Subsection/pincite chain, e.g. "(a)(1)(A)" */
   subsection?: string

@@ -1160,6 +1160,10 @@
       "text": "The Eighth Amendment forbids the execution of intellectually disabled persons. Atkins v. Virginia, 536 U.S. 304 (2002). The Court later held that juveniles cannot receive the death penalty. Roper v. Simmons, 543 U.S. 551, 578 (2005) (holding that the Eighth and Fourteenth Amendments forbid imposition of the death penalty on offenders who were under 18 when their crimes were committed). See also Kennedy v. Louisiana, 554 U.S. 407 (2008) (striking down the death penalty for child rape) (citing Coker v. Georgia, 433 U.S. 584 (1977)). The Sixth Amendment requires jury findings on aggravating factors. Ring v. Arizona, 536 U.S. 584 (2002), overruling Walton v. Arizona, 497 U.S. 639 (1990). For analysis, see 120 Yale L.J. 1578 (2011).",
       "expected": [
         {
+          "type": "constitutional",
+          "amendment": 8
+        },
+        {
           "type": "case",
           "volume": 536,
           "reporter": "U.S.",
@@ -1175,6 +1179,10 @@
           "year": 2005
         },
         {
+          "type": "constitutional",
+          "amendment": 14
+        },
+        {
           "type": "case",
           "volume": 554,
           "reporter": "U.S.",
@@ -1187,6 +1195,10 @@
           "reporter": "U.S.",
           "page": 584,
           "year": 1977
+        },
+        {
+          "type": "constitutional",
+          "amendment": 6
         },
         {
           "type": "case",
@@ -1532,6 +1544,10 @@
         {
           "type": "id",
           "pincite": 17
+        },
+        {
+          "type": "constitutional",
+          "amendment": 2
         },
         {
           "type": "case",

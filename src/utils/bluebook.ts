@@ -59,7 +59,10 @@ export function toBluebook(citation: Citation): string {
       const section = `\u00A7 ${citation.section}`
       const subsection = citation.subsection ?? ""
       const etSeq = citation.hasEtSeq ? " et seq." : ""
-      return `${title}${citation.code} ${section}${subsection}${etSeq}`
+      // `code` may be absent when an untagged bare-section cite was emitted
+      // (#531) — fall back to just the section in that case.
+      const code = citation.code ? `${citation.code} ` : ""
+      return `${title}${code}${section}${subsection}${etSeq}`
     }
 
     case "constitutional": {

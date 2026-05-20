@@ -59,6 +59,18 @@ function resolveJurisdiction(prefix: string): string | undefined {
 }
 
 /**
+ * Canonical short-name for the jurisdiction prefix, used to build the
+ * `code` field for VA / AL named-code citations (#530). The named-code
+ * registry only stores the bare suffix (`"Code"`, `"Code Ann."`); without
+ * re-attaching the prefix here the consumer sees `code: "Code"` which is
+ * useless for downstream linkers.
+ */
+const JURISDICTION_PREFIX: Record<string, string> = {
+  VA: "Va.",
+  AL: "Ala.",
+}
+
+/**
  * Strip common trailing/leading suffixes from code name text to produce a
  * lookup key for the namedCodes registry.
  *
@@ -134,6 +146,18 @@ export function extractNamedCode(
         const entry = findNamedCode(jurisdiction, cleaned)
         // Store the cleaned name (e.g., "Penal" not "Penal Code"); fall back to raw if no registry hit
         code = entry ? cleaned : rawCodeName.trim()
+        // #530: VA and AL have a single registry entry whose patterns are
+        // bare `"Code"` / `"Code Ann."`. After cleanCodeName trims the
+        // trailing " Ann.", the surviving token is just `"Code"`, which
+        // collapses every Va./Ala. citation to the same useless string.
+        // Re-attach the jurisdiction prefix from the original token so
+        // consumers see `"Va. Code"` / `"Va. Code Ann."` / `"Ala. Code"`.
+        const prefix = JURISDICTION_PREFIX[jurisdiction]
+        if (prefix && entry) {
+          // Preserve the raw suffix shape (Code vs. Code Ann.) by reusing
+          // the normalized rawCodeName rather than the registry lookup key.
+          code = `${prefix} ${rawCodeName.trim().replace(/\s+/g, " ")}`
+        }
       } else {
         code = rawCodeName.trim()
       }

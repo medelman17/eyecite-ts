@@ -13,13 +13,31 @@
 
 import type { Pattern } from "./casePatterns"
 
+// #532 — Year must be plausible (1700-2199) to weed out docket-shape
+// strings like `03A01-9103-CH-96` whose middle segment (9103) is a
+// docket index that happens to fit 4 digits. Using a tight prefix
+// alternation rather than `\d{4}` keeps the regex anchored.
+const PLAUSIBLE_YEAR = String.raw`(?:1[789]\d{2}|2[01]\d{2})`
+
+// #532 — Docket prefixes (`Case No.`, `Cause No.`, `Docket No.`, `No.`)
+// are followed by a sequence of `<word>-<word>-<word>` tokens that
+// looks identical to a hyphenated neutral cite. We negative-lookbehind
+// for the docket prefix so the neutral pattern declines to match in
+// that context. The Case/Cause/Docket variants are explicit; bare `No.`
+// is left alone because legitimate neutral cites are sometimes
+// introduced as `held in No. 2010-NMSC-007`.
+const NOT_AFTER_DOCKET_PREFIX = String.raw`(?<!(?:Case|Cause|Docket)\s+No\.\s+[A-Za-z0-9-]{0,40})`
+
 export const neutralPatterns: Pattern[] = [
   {
     // Mississippi 4-segment form: year-caseType-number-appellateTrack. Listed
     // before the 3-segment hyphenated pattern so it wins on the longer match
     // (e.g., "2010-CT-01234-SCT"). (#233)
     id: "state-vendor-neutral-hyphenated-ms",
-    regex: /\b(\d{4})-([A-Z]+)-(\d+)-([A-Z]+)\b/g,
+    regex: new RegExp(
+      `${NOT_AFTER_DOCKET_PREFIX}\\b(${PLAUSIBLE_YEAR})-([A-Z]+)-(\\d+)-([A-Z]+)\\b`,
+      "g",
+    ),
     description:
       'Mississippi 4-segment vendor-neutral (e.g., "2010-CT-01234-SCT", "2015-CA-00567-COA")',
     type: "neutral",
@@ -30,7 +48,10 @@ export const neutralPatterns: Pattern[] = [
     // with an uppercase letter and may contain lowercase (so the Ohio token
     // matches). (#233)
     id: "state-vendor-neutral-hyphenated",
-    regex: /\b(\d{4})-([A-Z][A-Za-z]+)-(\d+)\b/g,
+    regex: new RegExp(
+      `${NOT_AFTER_DOCKET_PREFIX}\\b(${PLAUSIBLE_YEAR})-([A-Z][A-Za-z]+)-(\\d+)\\b`,
+      "g",
+    ),
     description:
       'Hyphenated vendor-neutral (e.g., "2010-NMSC-007", "2024-Ohio-764", "2020-NCSC-118")',
     type: "neutral",
@@ -72,9 +93,13 @@ export const neutralPatterns: Pattern[] = [
     type: "neutral",
   },
   {
+    // Accepts both the canonical abbreviated form (`Pub. L. No. 116-283`,
+    // `Pub. L. 116-283`) and the spelled-out form (`Public Law 116-127`,
+    // `Public Law No. 116-127`). #533
     id: "public-law",
-    regex: /\bPub\.\s?L\.(?:\s?No\.)?\s?(\d+-\d+)\b/g,
-    description: 'Public Law citations (e.g., "Pub. L. No. 117-58" or "Pub. L. 116-283")',
+    regex: /\b(?:Pub\.\s?L\.|Public\s+Law)(?:\s?No\.)?\s?(\d+-\d+)\b/g,
+    description:
+      'Public Law citations: "Pub. L. No. 117-58", "Pub. L. 116-283", "Public Law 116-127", "Public Law No. 116-127"',
     type: "publicLaw",
   },
   {

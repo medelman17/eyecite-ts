@@ -53,9 +53,10 @@ export function extractPublicLaw(
 ): PublicLawCitation {
   const { text, span } = token
 
-  // Parse congress-lawNumber using regex
-  // Pattern: "Pub. L." (with optional "No.") + congress number + "-" + law number
-  const publicLawRegex = /Pub\.\s?L\.(?:\s?No\.)?\s?(\d+)-(\d+)/d
+  // Parse congress-lawNumber using regex.
+  // Pattern: `Pub. L.` / `Public Law` (with optional `No.`) + congress number
+  // + `-` + law number. The spelled-out `Public Law` form is per #533.
+  const publicLawRegex = /(?:Pub\.\s?L\.|Public\s+Law)(?:\s?No\.)?\s?(\d+)-(\d+)/d
   const match = publicLawRegex.exec(text)
 
   if (!match) {
