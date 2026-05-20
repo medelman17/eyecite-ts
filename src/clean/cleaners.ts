@@ -8,6 +8,23 @@
 /**
  * Remove all HTML tags from text.
  *
+ * Three pre-passes run before the generic tag stripper:
+ *
+ *   1. `<script>...</script>` bodies are deleted in full. Browsers never
+ *      render script source as text, but a naive tag stripper would keep
+ *      the JS body — including string literals like `"999 F.2d 999"` —
+ *      and the tokenizer would happily emit a phantom citation from it
+ *      (#559).
+ *   2. `<style>...</style>` bodies are deleted in full for the same
+ *      reason (CSS `content:` values, comments, etc.).
+ *   3. `<![CDATA[...]]>` markers are stripped while their bodies are
+ *      preserved. The generic tag regex treats the entire CDATA section
+ *      as one greedy "tag" (the leading `!` is allowed and there is no
+ *      `>` inside until the very end), which previously DELETED the
+ *      citation embedded in the section (#561).
+ *
+ * After those pre-passes, generic tag stripping runs:
+ *
  * When a tag (or run of adjacent tags) sits between two word characters,
  * insert a single space in its place to preserve the token boundary.
  * Without this guard, adjacent reporter citations separated only by a
@@ -38,20 +55,45 @@
  * @example
  * stripHtmlTags("the value < 3 means")
  * // => "the value < 3 means"   // stray `<` is not a tag — left alone
+ *
+ * @example
+ * stripHtmlTags('<script>x = "999 F.2d 999";</script><p>500 F.2d 123</p>')
+ * // => "500 F.2d 123"          // script body deleted (#559)
+ *
+ * @example
+ * stripHtmlTags("<![CDATA[500 F.2d 123]]>")
+ * // => "500 F.2d 123"          // CDATA markers stripped, body kept (#561)
  */
 export function stripHtmlTags(text: string): string {
-  // Collapse adjacent tag runs together so the boundary check sees the
-  // characters surrounding the whole run, not each tag individually.
+  // Pre-pass 1+2: delete script/style bodies (tag + body + close tag).
+  // Body matching is non-greedy across any character (including newlines)
+  // so the shortest matching close wins — pathological unclosed openers
+  // therefore do not eat the rest of the document. The `[^>]*` after the
+  // tag name absorbs attributes (`<script type="..." src="...">`). The
+  // close tag's name match is case-insensitive via the `i` flag.
+  let stripped = text.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "")
+  stripped = stripped.replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, "")
+
+  // Pre-pass 3: unwrap CDATA sections — keep the body, drop the markers.
+  // Done BEFORE the generic tag regex because that regex would otherwise
+  // match the entire `<![CDATA[…]]>` span as one greedy "tag" and delete
+  // the citation inside it (#561). Non-greedy + `[\s\S]` for multi-line
+  // sections.
+  stripped = stripped.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+
+  // Generic tag stripping. Collapse adjacent tag runs together so the
+  // boundary check sees the characters surrounding the whole run, not
+  // each tag individually.
   //
   // Tag shape: `<` followed by a letter / `/` / `!`, then any non-`>`
   // characters except newline (real HTML tags never contain raw newlines —
   // CR/LF inside an attribute value is technically allowed but vanishingly
   // rare; this restriction is what stops the greedy match across a long
   // body of prose containing stray angle brackets, #546).
-  return text.replace(/(?:<[a-zA-Z/!][^>\n\r]*>)+/g, (match, offset: number) => {
-    const before = offset > 0 ? text[offset - 1] : ""
+  return stripped.replace(/(?:<[a-zA-Z/!][^>\n\r]*>)+/g, (match, offset: number) => {
+    const before = offset > 0 ? stripped[offset - 1] : ""
     const afterIdx = offset + match.length
-    const after = afterIdx < text.length ? text[afterIdx] : ""
+    const after = afterIdx < stripped.length ? stripped[afterIdx] : ""
     return /\w/.test(before) && /\w/.test(after) ? " " : ""
   })
 }
