@@ -143,12 +143,30 @@ describe("issue #549 — no overlapping spans across tokenizer collisions", () =
       expect(cites.find((c) => c.type === "id")).toBeDefined()
       expect(cites.filter((c) => c.type === "case").length).toBe(2)
     })
+
+    it("`vol Ibid. page` produces id-only (Ibid. variant of #549)", () => {
+      // Mirrors the `45 Id. 318` repro. IBID_PATTERN received the same
+      // negative-lookahead fix as ID_PATTERN; this test pins that the fix
+      // covers both regex shapes, not just `Id.`.
+      const text = "Hawkins v. Giles, 45 Ibid. 318"
+      const cites = extractCitations(text)
+      expect(findOverlapPairs(cites)).toEqual([])
+
+      const id = cites.find((c) => c.type === "id")
+      expect(id).toBeDefined()
+
+      const phantomCase = cites.find(
+        (c) => c.type === "case" && c.span.cleanStart >= 18 && c.matchedText?.includes("Ibid."),
+      )
+      expect(phantomCase).toBeUndefined()
+    })
   })
 
   describe("audit-style sanity check: no overlap pairs across all three repros", () => {
     const repros = [
       "Barrett, supra, 229 Conn. 274-76",
       "Hawkins v. Giles, 45 Id. 318",
+      "Hawkins v. Giles, 45 Ibid. 318",
       "Chapter 29.82.160. Chapter 29.82 RCW",
     ]
 

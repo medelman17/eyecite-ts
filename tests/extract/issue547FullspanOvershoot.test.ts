@@ -33,7 +33,7 @@ import { beforeAll, describe, expect, it } from "vitest"
 import { extractCitations } from "@/extract/extractCitations"
 import { applyFalsePositiveFilters } from "@/extract/filterFalsePositives"
 import { loadReporters } from "@/data/reporters"
-import type { FullCaseCitation } from "@/types/citation"
+import type { FullCaseCitation, ShortFormCaseCitation } from "@/types/citation"
 import type { Span } from "@/types/span"
 
 /** Helper to create a minimal case citation with explicit original-text span */
@@ -61,6 +61,34 @@ function makeCaseAt(
     volume,
     reporter,
     page,
+  }
+}
+
+/** Helper to create a minimal shortFormCase citation with explicit original-text span */
+function makeShortFormCaseAt(
+  reporter: string,
+  volume: number | string,
+  pincite: number,
+  originalStart: number,
+  originalEnd: number,
+): ShortFormCaseCitation {
+  const span: Span = {
+    cleanStart: originalStart,
+    cleanEnd: originalEnd,
+    originalStart,
+    originalEnd,
+  }
+  return {
+    type: "shortFormCase",
+    text: "",
+    span,
+    confidence: 0.8,
+    matchedText: "",
+    processTimeMs: 0,
+    patternsChecked: 1,
+    volume,
+    reporter,
+    pincite,
   }
 }
 
@@ -132,6 +160,32 @@ describe("issue #547: fullSpan overshoots on line-crossing false positives", () 
       }
       const result = applyFalsePositiveFilters([cit], false, text)
       expect((result[0] as FullCaseCitation).fullSpan).toBeDefined()
+    })
+
+    it("flags a shortFormCase whose original-text slice contains \\n (penalize mode)", () => {
+      // The predicate explicitly handles `shortFormCase` alongside `case`,
+      // but the integration repros above only exercise `case`. This pins
+      // the `shortFormCase` branch so a future refactor can't silently
+      // drop it.
+      const text = "foo 100 Bar\nat 5 qux"
+      const cit = makeShortFormCaseAt("Bar", 100, 5, 4, 16)
+      // sanity: confirm the synthetic span spans the newline
+      expect(text.slice(4, 16)).toContain("\n")
+
+      const result = applyFalsePositiveFilters([cit], false, text)
+      expect(result).toHaveLength(1)
+      expect(result[0].confidence).toBe(0.1)
+      const lineWarning = result[0].warnings?.find((w) =>
+        w.message.toLowerCase().includes("line break"),
+      )
+      expect(lineWarning, "should attach a line-break warning").toBeDefined()
+    })
+
+    it("removes a shortFormCase line-crossing cite in remove mode", () => {
+      const text = "foo 100 Bar\nat 5 quxxxxxxx Smith, 500 F.2d at 125"
+      const lineCrossingShort = makeShortFormCaseAt("Bar", 100, 5, 4, 16)
+      const result = applyFalsePositiveFilters([lineCrossingShort], true, text)
+      expect(result).toHaveLength(0)
     })
   })
 
