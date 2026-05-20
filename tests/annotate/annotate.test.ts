@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { annotate } from "@/annotate/annotate"
+import { extractCitations } from "@/extract/extractCitations"
 import type { Citation } from "@/types/citation"
 import type { Span } from "@/types/span"
 
@@ -663,6 +664,89 @@ describe("annotate", () => {
       // but the REPLACEMENT happens at fullSpan positions
       expect(result.text).toBe('See <a href="/cases/500-123">500 F.2d 123</a>')
       expect(result.skipped).toHaveLength(0)
+    })
+
+    it("does not produce nested cite tags or mid-token truncation for parallel reporters (#543)", () => {
+      // Parallel reporters: all three citations have fullSpan that extends back to
+      // "Roe v. Wade" and forward to "(1973)". Sorting by span.originalStart instead
+      // of fullSpan.originalStart, plus failing to skip overlapping wraps, produced
+      // nested <cite> tags and mid-word truncation like "L. Ed. 2</cite>d".
+      const text =
+        "In Roe v. Wade, 410 U.S. 113, 93 S.Ct. 705, 35 L.Ed.2d 147 (1973), the Court held..."
+      const citations = extractCitations(text)
+
+      const result = annotate(text, citations, {
+        template: { before: "<cite>", after: "</cite>" },
+        useFullSpan: true,
+      })
+
+      // No nested <cite> tags (literal or HTML-escaped) — the wrap output must be flat.
+      expect(result.text).not.toMatch(/<cite>[^<]*<cite>/)
+      expect(result.text).not.toContain("&lt;cite&gt;")
+      expect(result.text).not.toContain("&amp;lt;cite&amp;gt;")
+
+      // No mid-token truncation: every recognisable reporter token must still be
+      // contiguous (no </cite> appearing inside a reporter abbreviation).
+      expect(result.text).not.toMatch(/L\.\s*Ed\.\s*2<\/cite>d/)
+      expect(result.text).not.toMatch(/U\.\s*S<\/cite>\.\s*1/)
+      expect(result.text).not.toMatch(/S\.\s*Ct<\/cite>\./)
+
+      // The wrap should encompass at least the outermost fullSpan exactly once.
+      const openCount = (result.text.match(/<cite>/g) ?? []).length
+      const closeCount = (result.text.match(/<\/cite>/g) ?? []).length
+      expect(openCount).toBe(closeCount)
+      expect(openCount).toBeGreaterThanOrEqual(1)
+
+      // When wraps overlap, only the outermost should remain — the others must
+      // surface in `skipped` so callers know they were not annotated.
+      expect(result.skipped.length).toBeGreaterThanOrEqual(citations.length - 1)
+    })
+
+    it("sorts by fullSpan.originalStart when useFullSpan is true so reverse splice is safe", () => {
+      // Two citations whose CORE spans appear in order [A, B] but whose fullSpans
+      // disagree on ordering. Sorting by span.originalStart (A.span=10, B.span=20)
+      // would splice B first (correct), but if their fullSpans overlap
+      // (A.fullSpan=[0, 30], B.fullSpan=[15, 25]), the inner B wrap corrupts A.
+      // With fullSpan-aware sorting AND overlap skip, A wins and B is skipped.
+      const text = "Smith v. Jones, 100 U.S. 1, 200 U.S. 2 (1900) more text"
+      const citationA: Citation = {
+        type: "case",
+        text: "100 U.S. 1",
+        span: { cleanStart: 16, cleanEnd: 26, originalStart: 16, originalEnd: 26 },
+        matchedText: "100 U.S. 1",
+        confidence: 0.9,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 100,
+        reporter: "U.S.",
+        page: 1,
+        fullSpan: { cleanStart: 0, cleanEnd: 45, originalStart: 0, originalEnd: 45 },
+      }
+      const citationB: Citation = {
+        type: "case",
+        text: "200 U.S. 2",
+        span: { cleanStart: 28, cleanEnd: 38, originalStart: 28, originalEnd: 38 },
+        matchedText: "200 U.S. 2",
+        confidence: 0.9,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 200,
+        reporter: "U.S.",
+        page: 2,
+        fullSpan: { cleanStart: 28, cleanEnd: 45, originalStart: 28, originalEnd: 45 },
+      }
+
+      const result = annotate(text, [citationA, citationB], {
+        template: { before: "<cite>", after: "</cite>" },
+        useFullSpan: true,
+      })
+
+      // Outer wrap survives intact; inner is skipped.
+      expect(result.text).toBe(
+        "<cite>Smith v. Jones, 100 U.S. 1, 200 U.S. 2 (1900)</cite> more text",
+      )
+      expect(result.skipped).toHaveLength(1)
+      expect(result.skipped[0]).toBe(citationB)
     })
   })
 })

@@ -58,31 +58,61 @@ export function annotate<C extends Citation = Citation>(
     callback,
   } = options
 
-  // Sort reverse to avoid position shifts invalidating subsequent annotations
-  const sorted = [...citations].sort((a, b) => {
-    const aPos = useCleanText ? a.span.cleanStart : a.span.originalStart
-    const bPos = useCleanText ? b.span.cleanStart : b.span.originalStart
-    return bPos - aPos // Reverse for backward iteration
+  // Resolve each citation to its actual wrap range up-front. When useFullSpan
+  // is true, the wrap region is the citation's fullSpan (if present), so the
+  // sort and overlap checks must agree on that range — sorting by the core
+  // span.originalStart while wrapping the fullSpan corrupts parallel-reporter
+  // sequences whose fullSpans all share an endpoint (issue #543).
+  type Resolved = {
+    citation: C
+    start: number
+    end: number
+  }
+  const resolved: Resolved[] = citations.map((citation) => {
+    const span =
+      useFullSpan && "fullSpan" in citation && citation.fullSpan ? citation.fullSpan : citation.span
+    return {
+      citation,
+      start: useCleanText ? span.cleanStart : span.originalStart,
+      end: useCleanText ? span.cleanEnd : span.originalEnd,
+    }
   })
+
+  // Sort ascending by start position. Tie-break on wider range first (smaller
+  // end last) so that when two wraps share a start, the outer (longer) one is
+  // processed first and the inner one is skipped via overlap detection.
+  const ascending = [...resolved].sort((a, b) => {
+    if (a.start !== b.start) return a.start - b.start
+    return b.end - a.end
+  })
+
+  // Overlap detection: walk ascending and skip any wrap whose range overlaps
+  // (intersects) the currently-selected outer wrap. Two wraps overlap when
+  // one starts before the other ends — the inner one is discarded.
+  const skipped: Citation[] = []
+  const accepted: Resolved[] = []
+  let activeEnd = -1
+  for (const item of ascending) {
+    if (item.start < activeEnd) {
+      // Overlaps the previously-accepted wrap — skip this citation
+      skipped.push(item.citation)
+      continue
+    }
+    accepted.push(item)
+    activeEnd = item.end
+  }
+
+  // Process accepted wraps in reverse so splicing earlier ranges doesn't
+  // shift later (rightmost) positions.
+  const ordered = [...accepted].sort((a, b) => b.start - a.start)
 
   let result = text
   const positionMap = new Map<number, number>()
-  const skipped: Citation[] = []
 
-  for (const citation of sorted) {
-    // Determine which span to use
-    let start: number
-    let end: number
-
-    if (useFullSpan && "fullSpan" in citation && citation.fullSpan) {
-      // Full span mode: case name through parenthetical
-      start = useCleanText ? citation.fullSpan.cleanStart : citation.fullSpan.originalStart
-      end = useCleanText ? citation.fullSpan.cleanEnd : citation.fullSpan.originalEnd
-    } else {
-      // Default mode: core citation only
-      start = useCleanText ? citation.span.cleanStart : citation.span.originalStart
-      end = useCleanText ? citation.span.cleanEnd : citation.span.originalEnd
-    }
+  for (const item of ordered) {
+    const { citation } = item
+    let start = item.start
+    let end = item.end
 
     // Snap positions out of HTML tags when annotating original text
     if (!useCleanText) {
