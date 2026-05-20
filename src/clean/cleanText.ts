@@ -188,47 +188,114 @@ function rebuildPositionMaps(
       // original position.  Scale to the length delta with a reasonable floor.
       const maxLookAhead = Math.max(40, Math.abs(beforeText.length - afterText.length) + 10)
 
-      // Find the closest CONFIRMED match in both directions simultaneously.
-      // A "confirmed" match requires that at least CONFIRM_LEN characters
-      // after the match point also align.  This prevents greedy false matches
-      // (Issue #161) where, e.g., normalizeDashes expands "—" → "---" and the
-      // deletion lookahead grabs a "-" from a nearby page range instead.
+      // Find the closest confirmed match in each direction.
+      //
+      // "Confirmation depth" is the run of consecutive matching characters
+      // starting at the candidate alignment point.  Strong confirmation
+      // (CONFIRM_LEN chars) is the high-confidence threshold that
+      // dismisses single-character false matches like #161 (normalizeDashes
+      // expanding "—" → "---" near a "-" in a page range).
+      //
+      // The strict-only rule is unsafe for HTML with adjacent tag
+      // deletions (Issue #546).  Two patterns break it:
+      //   (a) After the CORRECT la (one tag's worth), the very next
+      //       before-character is `<` (the next tag's opener), so strict
+      //       confirm fails — the algorithm then accepts a much farther
+      //       coincidental 3-gram match.
+      //   (b) Coincidental 3-gram matches frequently land *inside*
+      //       attribute values like `class="word"`, because short bigrams
+      //       like `an`/`th`/`on` happen often in both prose and HTML.
+      //
+      // Fix: track BOTH the shortest la with strong confirmation
+      // (`bestStrong*`) AND the shortest la with a weak match (the head
+      // matched, and the very next char in before-text is `<` — the
+      // structural signal that another deletion follows immediately,
+      // i.e. `bestWeak*`).  Then pick whichever has the smaller
+      // displacement.  When the strong match is closer (or no weak
+      // candidate exists), the longer-confirmation reading wins and
+      // still protects against single-character coincidences like #161.
       const CONFIRM_LEN = 3
-      let bestDelLA = -1
-      let bestInsLA = -1
+      let bestStrongDelLA = -1
+      let bestWeakDelLA = -1
+      let bestStrongInsLA = -1
+      let bestWeakInsLA = -1
+
+      const matchDepth = (bi0: number, ai0: number): number => {
+        let d = 1
+        while (
+          d < CONFIRM_LEN &&
+          bi0 + d < beforeText.length &&
+          ai0 + d < afterText.length &&
+          beforeText[bi0 + d] === afterText[ai0 + d]
+        ) {
+          d++
+        }
+        return d
+      }
 
       for (let la = 1; la <= maxLookAhead; la++) {
         // Check deletion direction (skipping chars in before)
-        if (bestDelLA < 0 && beforeIdx + la < beforeText.length) {
+        if (
+          (bestStrongDelLA < 0 || bestWeakDelLA < 0) &&
+          beforeIdx + la < beforeText.length
+        ) {
           if (beforeText[beforeIdx + la] === afterText[afterIdx]) {
-            let ok = true
-            for (let c = 1; c < CONFIRM_LEN; c++) {
-              const bi = beforeIdx + la + c
-              const ai = afterIdx + c
-              if (bi >= beforeText.length || ai >= afterText.length) break
-              if (beforeText[bi] !== afterText[ai]) { ok = false; break }
+            const depth = matchDepth(beforeIdx + la, afterIdx)
+            if (bestStrongDelLA < 0 && depth >= CONFIRM_LEN) {
+              bestStrongDelLA = la
             }
-            if (ok) bestDelLA = la
+            // Weak match: the failing chars in beforeText are `<`, which
+            // is a strong signal another deletion follows immediately.
+            // (depth includes the head match; we examine the very next
+            // char after the matched run.)
+            if (
+              bestWeakDelLA < 0 &&
+              beforeText[beforeIdx + la + depth] === "<"
+            ) {
+              bestWeakDelLA = la
+            }
           }
         }
 
         // Check insertion direction (skipping chars in after)
-        if (bestInsLA < 0 && afterIdx + la < afterText.length) {
+        if (
+          (bestStrongInsLA < 0 || bestWeakInsLA < 0) &&
+          afterIdx + la < afterText.length
+        ) {
           if (beforeText[beforeIdx] === afterText[afterIdx + la]) {
-            let ok = true
-            for (let c = 1; c < CONFIRM_LEN; c++) {
-              const bi = beforeIdx + c
-              const ai = afterIdx + la + c
-              if (bi >= beforeText.length || ai >= afterText.length) break
-              if (beforeText[bi] !== afterText[ai]) { ok = false; break }
+            const depth = matchDepth(beforeIdx, afterIdx + la)
+            if (bestStrongInsLA < 0 && depth >= CONFIRM_LEN) {
+              bestStrongInsLA = la
             }
-            if (ok) bestInsLA = la
+            if (
+              bestWeakInsLA < 0 &&
+              beforeText[beforeIdx + depth] === "<"
+            ) {
+              bestWeakInsLA = la
+            }
           }
         }
 
-        // Stop early if we found matches in both directions
-        if (bestDelLA >= 0 && bestInsLA >= 0) break
+        // Stop early once strong matches exist in both directions — the
+        // weak fallback only matters when strong matches are absent or
+        // unusably far away.
+        if (bestStrongDelLA >= 0 && bestStrongInsLA >= 0) break
       }
+
+      // Resolve weak vs strong per direction.  When both are present we
+      // prefer the SHORTER displacement: a weak match flagged by a `<`
+      // next-character is a strong structural signal that we're sitting
+      // exactly at a real tag boundary, so the shorter la is the local
+      // edit and the longer la is a coincidental match deeper in the
+      // document.  When the strong la is the shorter one (or weak is
+      // absent), keep the strong match.
+      const pick = (strong: number, weak: number): number => {
+        if (strong < 0) return weak
+        if (weak < 0) return strong
+        return weak < strong ? weak : strong
+      }
+      const bestDelLA = pick(bestStrongDelLA, bestWeakDelLA)
+      const bestInsLA = pick(bestStrongInsLA, bestWeakInsLA)
 
       // Pick the shorter confirmed match (prefer smaller displacement)
       if (bestDelLA >= 0 && (bestInsLA < 0 || bestDelLA <= bestInsLA)) {

@@ -18,6 +18,15 @@
  * Non-word neighbors (spaces, punctuation, the start or end of the
  * string) keep the original behavior: tags are removed with no insertion.
  *
+ * The tag-matching regex is intentionally conservative — only opening
+ * sequences that look like real HTML (`<` followed by a letter, `/`, or
+ * `!` for `<!doctype>`/`<!--…-->`) are stripped. This prevents OCR
+ * artifacts in CAP opinions — e.g. a stray `<` in `to< waive any
+ * objection` paired with a stray `>` thousands of characters later — from
+ * triggering a catastrophic greedy match that deletes legitimate prose
+ * (#546). Genuine `<` characters in prose (math, code samples) are left
+ * intact.
+ *
  * @example
  * stripHtmlTags("Smith v. <b>Doe</b>, 500 F.2d 123")
  * // => "Smith v. Doe, 500 F.2d 123"
@@ -25,11 +34,21 @@
  * @example
  * stripHtmlTags('100 F.3d 200<footnote>200 F.3d 300</footnote>')
  * // => "100 F.3d 200 200 F.3d 300 "
+ *
+ * @example
+ * stripHtmlTags("the value < 3 means")
+ * // => "the value < 3 means"   // stray `<` is not a tag — left alone
  */
 export function stripHtmlTags(text: string): string {
   // Collapse adjacent tag runs together so the boundary check sees the
   // characters surrounding the whole run, not each tag individually.
-  return text.replace(/(?:<[^>]+>)+/g, (match, offset: number) => {
+  //
+  // Tag shape: `<` followed by a letter / `/` / `!`, then any non-`>`
+  // characters except newline (real HTML tags never contain raw newlines —
+  // CR/LF inside an attribute value is technically allowed but vanishingly
+  // rare; this restriction is what stops the greedy match across a long
+  // body of prose containing stray angle brackets, #546).
+  return text.replace(/(?:<[a-zA-Z/!][^>\n\r]*>)+/g, (match, offset: number) => {
     const before = offset > 0 ? text[offset - 1] : ""
     const afterIdx = offset + match.length
     const after = afterIdx < text.length ? text[afterIdx] : ""
