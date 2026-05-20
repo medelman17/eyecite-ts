@@ -67,4 +67,29 @@ describe("Issue #504: supra resolution with `Party v. Party` caption", () => {
     const supra = citations.find((c) => c.type === "supra")!
     expect(supra.resolution?.resolvedTo).toBe(citations.indexOf(full))
   })
+
+  it("prefers the full-caption antecedent over an unrelated stronger split-half match", () => {
+    const text =
+      "Ruth Realty Co. v. Tax Commission, 222 Or. 290, 294, 353 P.2d 524 (1960). " +
+      "Crane v. Commissioner, 331 U.S. 1, 67 S. Ct. 1047, 91 L. Ed. 1301 (1946). " +
+      "Ruth Realty Co. v. Commission, supra."
+    const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
+    const ruthIndex = citations.findIndex(
+      (c) => c.type === "case" && c.caseName === "Ruth Realty Co. v. Tax Commission",
+    )
+    const craneIndex = citations.findIndex(
+      (c) => c.type === "case" && c.caseName === "Crane v. Commissioner",
+    )
+    const supra = citations.find((c) => c.type === "supra")
+
+    expect(ruthIndex).not.toBe(-1)
+    expect(craneIndex).not.toBe(-1)
+    expect(supra).toBeDefined()
+    const resolvedTarget = citations[supra?.resolution?.resolvedTo ?? -1]
+    expect(resolvedTarget?.type).toBe("case")
+    if (resolvedTarget?.type === "case") {
+      expect(resolvedTarget.caseName).toBe("Ruth Realty Co. v. Tax Commission")
+    }
+    expect(supra?.resolution?.resolvedTo).not.toBe(craneIndex)
+  })
 })
