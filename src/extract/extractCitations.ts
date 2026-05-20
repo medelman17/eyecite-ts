@@ -487,8 +487,15 @@ export function extractCitations(
   // only scan backward for citations that still lack a signal.
   detectLeadingSignals(citations, cleaned)
 
-  // Step 4.9: Apply false positive filters (blocklist + year heuristic)
-  const filtered = applyFalsePositiveFilters(citations, options?.filterFalsePositives ?? false)
+  // Step 4.9: Apply false positive filters (blocklist + year heuristic).
+  // Passing `text` (the original pre-cleaning input) lets the filter detect
+  // citations whose span crosses a hard line break in the source — those are
+  // structural false positives that the cleaner makes invisible (#547).
+  const filtered = applyFalsePositiveFilters(
+    citations,
+    options?.filterFalsePositives ?? false,
+    text,
+  )
 
   // Step 4.95: Tag citations with footnote metadata
   if (cleanFootnoteMap) {

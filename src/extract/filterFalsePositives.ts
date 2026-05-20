@@ -324,15 +324,50 @@ function isSuspiciousSmallVolume(citation: Citation): boolean {
 }
 
 /**
+ * Issue #547: A `case` (or `shortFormCase`) citation whose original-text span
+ * contains a `\n` is a structural false positive.
+ *
+ * Real reporter abbreviations are atomic — they never wrap a hard line break,
+ * and a single citation's volume-reporter-page core is short enough to fit on
+ * one line in any reasonable formatting. (Truly OCR-wrapped citations like
+ * `F. Sup-\np. 3d` are stitched by `rejoinHyphenatedWords` before whitespace
+ * normalization, leaving no `\n` inside the span.) When the cleaner collapses
+ * `\n` → space, the broad state-reporter tokenizer can match across the
+ * (now-invisible) line break — pulling section headings, form-label lines,
+ * or address blocks into a phantom citation. Across 758 case citations in a
+ * 100-opinion CAP sample, every cite crossing a newline was a confirmed
+ * false positive.
+ *
+ * Requires the original `text` to inspect the pre-cleaning slice. Returns
+ * false when `originalText` is not provided (preserves backward compatibility
+ * for callers that hold only the parsed citation).
+ */
+function isLineCrossingCitation(citation: Citation, originalText?: string): boolean {
+  if (!originalText) return false
+  if (citation.type !== "case" && citation.type !== "shortFormCase") return false
+  const { originalStart, originalEnd } = citation.span
+  if (
+    originalStart < 0 ||
+    originalEnd > originalText.length ||
+    originalEnd <= originalStart
+  ) {
+    return false
+  }
+  const nlIdx = originalText.indexOf("\n", originalStart)
+  return nlIdx !== -1 && nlIdx < originalEnd
+}
+
+/**
  * Check if a citation is a likely false positive (short-circuit, no allocations).
  */
-function isFalsePositive(citation: Citation): boolean {
+function isFalsePositive(citation: Citation, originalText?: string): boolean {
   const reporter = getReporter(citation)
   if (reporter && BLOCKED_REPORTERS.has(reporter.toLowerCase().trim())) return true
   if (reporter && (citation.type === "case" || citation.type === "shortFormCase") && isImplausibleReporter(reporter)) return true
   if (isImplausibleVolume(citation)) return true
   if (isDocketNumberVolume(citation)) return true
   if (isSuspiciousSmallVolume(citation)) return true
+  if (isLineCrossingCitation(citation, originalText)) return true
 
   const year = getYear(citation)
   if (year !== undefined && year < MIN_PLAUSIBLE_YEAR) return true
@@ -345,7 +380,7 @@ function isFalsePositive(citation: Citation): boolean {
  * Returns an empty array if the citation is clean.
  * Only called in penalize mode where we need the reason strings for warnings.
  */
-function collectFalsePositiveReasons(citation: Citation): string[] {
+function collectFalsePositiveReasons(citation: Citation, originalText?: string): string[] {
   const reasons: string[] = []
 
   const reporter = getReporter(citation)
@@ -380,6 +415,12 @@ function collectFalsePositiveReasons(citation: Citation): string[] {
     )
   }
 
+  if (isLineCrossingCitation(citation, originalText)) {
+    reasons.push(
+      "Citation span crosses a hard line break in the source — likely a section heading, form field, or address mis-tokenized as volume + reporter + page (issue #547)",
+    )
+  }
+
   const year = getYear(citation)
   if (year !== undefined && year < MIN_PLAUSIBLE_YEAR) {
     reasons.push(`Year ${year} predates US legal reporting (threshold: ${MIN_PLAUSIBLE_YEAR})`)
@@ -393,9 +434,17 @@ function collectFalsePositiveReasons(citation: Citation): string[] {
  *
  * @param citations - Extracted citations (may be mutated in penalize mode)
  * @param remove - If true, remove flagged citations. If false, penalize confidence + add warning.
+ * @param originalText - Original (pre-cleaning) source text. Required for the
+ *   line-crossing check (#547) which inspects the raw bytes of the cite span.
+ *   When omitted, the line-crossing check is skipped to preserve backward
+ *   compatibility for callers that hold only parsed citations.
  * @returns Filtered array (same reference if remove=false, new array if remove=true and items removed)
  */
-export function applyFalsePositiveFilters(citations: Citation[], remove: boolean): Citation[] {
+export function applyFalsePositiveFilters(
+  citations: Citation[],
+  remove: boolean,
+  originalText?: string,
+): Citation[] {
   // Hard-reject pass: unconditionally drop unambiguous garbage like
   // `<day> <Month> <year>` date misparses (#302). These are never legitimate
   // citations under any policy, so they should not survive even when the
@@ -403,14 +452,14 @@ export function applyFalsePositiveFilters(citations: Citation[], remove: boolean
   const hardFiltered = citations.filter((c) => !isMonthNameDateMisparse(c))
 
   if (remove) {
-    return hardFiltered.filter((c) => !isFalsePositive(c))
+    return hardFiltered.filter((c) => !isFalsePositive(c, originalText))
   }
 
   for (const citation of hardFiltered) {
     // Skip if already penalized (idempotency guard)
     if (citation.confidence === FLAGGED_CONFIDENCE && citation.warnings?.length) continue
 
-    const reasons = collectFalsePositiveReasons(citation)
+    const reasons = collectFalsePositiveReasons(citation, originalText)
     if (reasons.length > 0) {
       citation.confidence = FLAGGED_CONFIDENCE
       const warnings: Warning[] = reasons.map((message) => ({
@@ -419,6 +468,18 @@ export function applyFalsePositiveFilters(citations: Citation[], remove: boolean
         position: { start: citation.span.originalStart, end: citation.span.originalEnd },
       }))
       citation.warnings = [...(citation.warnings || []), ...warnings]
+      // Strip `fullSpan` on flagged `case` citations (#547). The case-name
+      // backward scan that produced fullSpan ran against the same false-
+      // positive shape, so the span almost always overshoots into surrounding
+      // prose (section headings, form labels, addresses). Removing it lets
+      // downstream consumers (annotate, citationBounds, document/proseOffsets)
+      // fall back to the cite-core span, which remains internally consistent.
+      if (citation.type === "case") {
+        const caseCit = citation as FullCaseCitation
+        if (caseCit.fullSpan !== undefined) {
+          caseCit.fullSpan = undefined
+        }
+      }
     }
   }
 
