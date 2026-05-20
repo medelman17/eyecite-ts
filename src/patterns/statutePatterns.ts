@@ -52,10 +52,16 @@ export const statutePatterns: Pattern[] = [
     // satisfy `\d+\s+U\.S\.C\.`. The `\s*,?\s+` separator requires at
     // least one space after the optional comma so malformed `18,U.S.C.`
     // (no space) does not tokenize. #586
+    //
+    // Code→connector separator also admits an optional comma (`42
+    // U.S.C., § 1983`) — this style appears in older opinions and
+    // some agency/regulatory publications. The Sprint F year-paren
+    // guard `(?![^)]*\d{4})` lives INSIDE the subsection body (after
+    // the section digits) and is preserved intact by this fix. #587
     regex:
-      /\b(\d+)\s*,?\s+(?:U\.?S\.?C\.?[AS]?\.?|USC[AS]?|United\s+States\s+Code)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s*,?\s+(?:U\.?S\.?C\.?[AS]?\.?|USC[AS]?|United\s+States\s+Code)\s*,?\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
     description:
-      'U.S. Code citations (U.S.C., USC, USCA, USCS, "United States Code") with optional §/Section connector — #428 #584',
+      'U.S. Code citations (U.S.C., USC, USCA, USCS, "United States Code") with optional §/Section connector — #428 #584 #586 #587',
     type: "statute",
   },
   {
@@ -67,10 +73,14 @@ export const statutePatterns: Pattern[] = [
     // the year-paren guard rationale. Optional `-(N)` range trailer
     // captured for parseBody to surface as `subsectionRange`. Dash class
     // accepts multi-hyphen `---` (post `normalizeDashes` rewrite). #591
+    //
+    // Code→connector separator admits an optional comma (`12 C.F.R.,
+    // § 226`) — symmetric to the USC fix for #587. The Sprint F
+    // year-paren guard `(?![^)]*\d{4})` is preserved intact.
     regex:
-      /\b(\d+)\s+C\.?F\.?R\.?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s+C\.?F\.?R\.?\s*,?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
     description:
-      'Code of Federal Regulations with optional Part/§/Section connector — #428',
+      'Code of Federal Regulations with optional Part/§/Section connector — #428 #587',
     type: "statute",
   },
   {
