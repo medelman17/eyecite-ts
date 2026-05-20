@@ -430,6 +430,11 @@ export function extractCitations(
     citations.push(citation)
   }
 
+  // Step 4.35: Detect bare-prefix `§§ N, N` lists that lack any code
+  // identifier in front of the §§ marker. These never produce a head cite
+  // through normal tokenization, so seed a head before expansion. (#563)
+  detectBareSectionLists(citations, cleaned, transformationMap)
+
   // Step 4.4: Expand plural-section statute lists (`§§ N, N` /
   // `§§ N and N`) into one statute citation per section. (#453)
   expandPluralSectionList(citations, cleaned, transformationMap)
@@ -875,6 +880,102 @@ const BARE_PARTY_BLOCKED_NAMES = new Set([
 ])
 
 /**
+ * Detect bare-prefix `§§ N, N[, N]…` lists that the tokenizer skipped because
+ * there is no recognizable code identifier in front of the `§§` marker. The
+ * tokenizer only emits a head when a code-name regex matches; naked sequences
+ * like `§§ 12940, 12945, 12950` or `Code §§ 19.2-81 and 18.2-266` thus drop
+ * silently. This pass scans the cleaned text for such sequences and seeds a
+ * head citation for each section so the existing `expandPluralSectionList`
+ * pass can pick up the remainder. (#563)
+ *
+ * Conservative anchoring:
+ *   - Requires `§§` literally (singular `§ N` is too ambiguous on its own).
+ *   - Section grammar matches the same shape as `expandPluralSectionList`.
+ *   - At least two sections must appear (single bare `§§ N` is suspect).
+ *   - Skips ranges of the form `§§ N-M` so the head/tail get a single span.
+ *   - Skips any range that overlaps an existing citation.
+ *   - The `code` field is set to a generic marker (`"§"`) when no prefix is
+ *     identified; jurisdiction is left undefined so downstream inheritance
+ *     passes can populate it. When a `Code` prefix immediately precedes the
+ *     `§§`, `code` is set to `"Code"` to preserve the user's intent.
+ */
+function detectBareSectionLists(
+  citations: Citation[],
+  cleaned: string,
+  transformationMap: TransformationMap,
+): void {
+  const sectionPart =
+    "\\d[\\w-]*(?:\\.[\\d\\w-]+)*(?:\\([A-Za-z0-9]+\\))*"
+  // Allow optional `Code` (or `Code Ann.`) prefix immediately before `§§`.
+  // Anchor on `§§` followed by whitespace + a section. The list itself is
+  // detected by `expandPluralSectionList` once the head is in place; we only
+  // need to identify a starting position. The two-section minimum is enforced
+  // by lookahead.
+  const headRe = new RegExp(
+    `(?:\\b(Code(?:\\s+Ann\\.?)?)\\s+)?§§\\s+(${sectionPart})(?=\\s*(?:,\\s*|\\s+and\\s+|\\s+to\\s+)${sectionPart})`,
+    "g",
+  )
+
+  const newCitations: Citation[] = []
+  let match: RegExpExecArray | null
+  while ((match = headRe.exec(cleaned)) !== null) {
+    const fullMatch = match[0]
+    const prefix = match[1]
+    const sectionText = match[2]
+    const start = match.index
+    const end = start + fullMatch.length
+
+    if (overlapsExistingCitation(citations, start, end)) continue
+
+    const sectionStart = start + fullMatch.length - sectionText.length
+    const sectionEnd = end
+
+    const { originalStart, originalEnd } = resolveOriginalSpan(
+      { cleanStart: start, cleanEnd: end },
+      transformationMap,
+    )
+    const sectionOrig = resolveOriginalSpan(
+      { cleanStart: sectionStart, cleanEnd: sectionEnd },
+      transformationMap,
+    )
+
+    const code = prefix ? prefix.replace(/\s+/g, " ").trim() : "§"
+
+    const head: import("@/types/citation").StatuteCitation = {
+      type: "statute",
+      text: fullMatch,
+      span: {
+        cleanStart: start,
+        cleanEnd: end,
+        originalStart,
+        originalEnd,
+      },
+      // Bare-prefix lists are inherently low-confidence — no code identifier
+      // means no jurisdiction grounding.
+      confidence: 0.5,
+      matchedText: fullMatch,
+      processTimeMs: 0,
+      patternsChecked: 1,
+      code,
+      section: sectionText,
+      spans: {
+        section: {
+          cleanStart: sectionStart,
+          cleanEnd: sectionEnd,
+          originalStart: sectionOrig.originalStart,
+          originalEnd: sectionOrig.originalEnd,
+        },
+      },
+    }
+    newCitations.push(head)
+  }
+
+  if (newCitations.length === 0) return
+  citations.push(...newCitations)
+  citations.sort((a, b) => a.span.cleanStart - b.span.cleanStart)
+}
+
+/**
  * Expand a plural `§§ N, N` (or `§§ N and N`) statute reference into one
  * StatuteCitation per section. The tokenizer captures only the FIRST
  * section; this pass walks the text right after a `§§`-marked statute
@@ -892,7 +993,12 @@ function expandPluralSectionList(
   cleaned: string,
   transformationMap: TransformationMap,
 ): void {
-  const sectionPart = "\\d[\\w-]*(?:\\([A-Za-z0-9]+\\))*"
+  // Section grammar accepts: leading digit, then any word/hyphen run, with
+  // optional dotted suffixes (`19.2-81`, `12940.5`) and optional subsection
+  // chain (`(A)`, `(1)`, `(b)(14)`). The dotted extension was added in #563
+  // so bare `Code §§ 19.2-81 and 18.2-266` siblings are picked up.
+  const sectionPart =
+    "\\d[\\w-]*(?:\\.[\\d\\w-]+)*(?:\\([A-Za-z0-9]+\\))*"
   const connectorPart = "\\s*,\\s*|\\s+and\\s+|\\s+to\\s+"
   const continuationRe = new RegExp(
     `^(?:${connectorPart})(${sectionPart})`,
