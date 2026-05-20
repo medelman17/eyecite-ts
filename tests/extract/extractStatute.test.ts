@@ -2582,6 +2582,9 @@ describe("extractStatute", () => {
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("NJ")
         expect(cites[0].section).toBe("2:100-26")
+        // Spaced/no-period variants normalize to canonical `N.J.S.A.`
+        // (not the dotless `NJS` shorthand).
+        expect(cites[0].code).toBe("N.J.S.A.")
       }
     })
 
@@ -2593,6 +2596,7 @@ describe("extractStatute", () => {
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("NJ")
         expect(cites[0].section).toBe("2C:35-5")
+        expect(cites[0].code).toBe("N.J.S.A.")
       }
     })
   })

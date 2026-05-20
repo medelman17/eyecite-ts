@@ -261,10 +261,13 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
   // ── New Jersey ─────────────────────────────────────────────────────────────
   // Inter-letter spacing tolerance — `N. J. S. A.` (with whitespace between
   // every letter) is common in older NJ Super and NJ reporters. Canonical
-  // is `N.J.S.A.` (Bluebook). #593
+  // is `N.J.S.A.` (Bluebook) — placed LAST so the stripped-form fallback
+  // in `findAbbreviatedCode` resolves whitespace/no-period variants
+  // (`N. J. S. A.`, `NJSA`, `NJS`) to the canonical `N.J.S.A.` form rather
+  // than the bare `NJS` shorthand that was previously emitted. #593
   {
     jurisdiction: "NJ",
-    abbreviations: ["N.J.S.A.", "NJSA", "N.J.S.", "NJS"],
+    abbreviations: ["N.J.S.", "NJSA", "NJS", "N.J.S.A."],
     regexFragment: "N\\.?\\s*J\\.?\\s*S(?:tat)?\\.?\\s*A?\\.?",
   },
   // ── Delaware ───────────────────────────────────────────────────────────────
