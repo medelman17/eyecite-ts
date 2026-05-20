@@ -116,11 +116,43 @@ const CURRENT_YEAR = new Date().getFullYear()
 /** Common US reporters for confidence boost. Exact match to avoid substring false positives.
  *  Shared across extractCase and extractShortForms.
  *
+ *  ## Why this set matters (#555)
+ *
+ *  This fallback is the *only* reporter signal in degraded mode — that is, when
+ *  the reporters-db has not been loaded via `await loadReporters()`. The async
+ *  loader is opt-in (`extractCitations` is synchronous and cannot await it), so
+ *  in practice the vast majority of real callers — including the audit script
+ *  in `scripts/audit-confidence.ts` — never see DB-backed reporter validation.
+ *  An entry that the cleaner can never produce is dead weight and silently
+ *  drops the citation by 0.30 confidence.
+ *
+ *  ## Entries are POST-CLEANING forms
+ *
+ *  `cleaners.ts:normalizeReporterSpacing` collapses inner spaces in known
+ *  reporter abbreviations (`S. Ct.` → `S.Ct.`, `L. Ed. 2d` → `L.Ed.2d`,
+ *  `F. Supp. 2d` → `F.Supp.2d`, the general `Letter. Digit` ordinal rule).
+ *  Pre-#555 the set was authored against the Bluebook canonical (with spaces),
+ *  which after cleaning never matched anything. The post-cleaning canonical is
+ *  what the extractor actually hands to the fallback check, so that's what we
+ *  store here.
+ *
+ *  ## State reporters
+ *
+ *  State reporters absent from the set used to all fall through to 0.65
+ *  (or lower if no court parenthetical). The audit surfaced `Mass.`, `Va.`,
+ *  `Pa.`, `Idaho`, `Cal.4th`, `Cal.Rptr.2d` as the worst offenders (100% of
+ *  occurrences scored < 0.7). We include those and a small set of close
+ *  cousins (`Cal.5th`, `Cal.Rptr.`, `Cal.Rptr.3d`, `Cal.App.*`) so the
+ *  full Cal. family lands consistently. We intentionally do NOT dump every
+ *  US state abbreviation — single-letter state forms could create
+ *  false-positive boosts on non-reporter text.
+ *
  *  Future editions are pre-registered defensively (#234) so the eventual rollout
  *  of F.5th / N.E.4th / etc. does not silently regress confidence scores. The
  *  generalized federal-reporter regex captures these formats; this set ensures
  *  they earn the +0.3 reporter-match boost out of the box. */
 export const COMMON_REPORTERS: ReadonlySet<string> = new Set([
+  // ── Federal Reporter ────────────────────────────────────────────────────
   "F.",
   "F.2d",
   "F.3d",
@@ -128,11 +160,35 @@ export const COMMON_REPORTERS: ReadonlySet<string> = new Set([
   "F.5th",
   "F.6th",
   "F.7th",
+  // ── United States Reports & SCOTUS-adjacent (#555) ──────────────────────
+  // Post-cleaning canonicals (cleaner collapses `S. Ct.` → `S.Ct.`,
+  // `L. Ed. 2d` → `L.Ed.2d`). The spaced forms remain for defensiveness in
+  // case a code path skips the cleaner.
   "U.S.",
+  "S.Ct.",
   "S. Ct.",
+  "L.Ed.",
   "L. Ed.",
+  "L.Ed.2d",
   "L. Ed. 2d",
+  "L.Ed.3d",
   "L. Ed. 3d",
+  // ── Federal Supplement & Appendix (#555) ────────────────────────────────
+  "F.Supp.",
+  "F. Supp.",
+  "F.Supp.2d",
+  "F. Supp. 2d",
+  "F.Supp.3d",
+  "F. Supp. 3d",
+  "F.Supp.4th",
+  "F. Supp. 4th",
+  "F.Supp.5th",
+  "F. Supp. 5th",
+  "F.Supp.6th",
+  "F. Supp. 6th",
+  "F.App'x",
+  "F. App'x",
+  // ── Regional reporters ──────────────────────────────────────────────────
   "P.",
   "P.2d",
   "P.3d",
@@ -155,17 +211,36 @@ export const COMMON_REPORTERS: ReadonlySet<string> = new Set([
   "S.W.2d",
   "S.W.3d",
   "S.W.4th",
+  // ── Southern Reporter (#555: cleaner produces `So.2d` not `So. 2d`) ─────
   "So.",
+  "So.2d",
   "So. 2d",
+  "So.3d",
   "So. 3d",
+  "So.4th",
   "So. 4th",
-  "F. Supp.",
-  "F. Supp. 2d",
-  "F. Supp. 3d",
-  "F. Supp. 4th",
-  "F. Supp. 5th",
-  "F. Supp. 6th",
-  "F. App'x",
+  // ── State reporters from the #555 audit ─────────────────────────────────
+  // 100% of occurrences scored < 0.7 pre-fix.
+  "Mass.",
+  "Va.",
+  "Pa.",
+  "Idaho",
+  // ── California reporters (#555) ─────────────────────────────────────────
+  // `Cal.4th` and `Cal.Rptr.2d` were audited misses; the full Cal. family
+  // shares the same cleaner pattern and benefits identically.
+  "Cal.",
+  "Cal.2d",
+  "Cal.3d",
+  "Cal.4th",
+  "Cal.5th",
+  "Cal.Rptr.",
+  "Cal.Rptr.2d",
+  "Cal.Rptr.3d",
+  "Cal.App.",
+  "Cal.App.2d",
+  "Cal.App.3d",
+  "Cal.App.4th",
+  "Cal.App.5th",
 ])
 
 /**

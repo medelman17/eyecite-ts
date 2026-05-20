@@ -526,6 +526,15 @@ export function extractCitations(
  * For now, this function immediately resolves with the same results as
  * the synchronous version.
  *
+ * Note (#555): a previous version of this fix had `extractCitationsAsync`
+ * auto-await `loadReporters()` so the DB-backed reporter validation kicked
+ * in automatically on the async path. That coupled the core bundle to the
+ * data chunk and tripped the size-limit esbuild config (which cannot
+ * resolve the `data/reporters.json` dynamic import from `dist/index.mjs`).
+ * Pre-existing dist runtime issues with the JSON resolution path also
+ * surfaced. The async auto-load was deferred to a follow-up that can
+ * address both concerns together.
+ *
  * @param text - Raw text to extract citations from
  * @param options - Optional customization (cleaners, patterns, resolve)
  * @returns Promise resolving to array of citations (or ResolvedCitation[] if resolve: true)
