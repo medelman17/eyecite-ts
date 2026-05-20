@@ -1,5 +1,34 @@
 # eyecite-ts
 
+## 0.21.7
+
+### Patch Changes
+
+- [#614](https://github.com/medelman17/eyecite-ts/pull/614) [`64c9fc7`](https://github.com/medelman17/eyecite-ts/commit/64c9fc7c89ac906472755890a108cc1aec88aad7) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): drop tokens properly overlapped by higher-priority tokens during dedup (#558)
+
+  Block-element fusion in HTML input — e.g. `<p>500 F.2d 123</p><p>Then citing 600 F.2d 234</p>` — cleaned to `500 F.2d 123 Then citing 600 F.2d 234`. The broad journal regex then matched `123 Then citing 600` as a phantom journal cite that overlapped the trailing page of the first real cite AND the leading volume of the second. The previous dedup pass only handled strict containment, so the phantom slipped through alongside the two real federal-reporter citations.
+
+  A second dedup pass now walks the surviving tokens in priority order and drops any token properly overlapped by a higher-priority kept token. Strict containment is still handled by the first pass; equal-priority overlaps are still preserved. The two real `500 F.2d 123` and `600 F.2d 234` cites survive, the phantom journal does not. Cleaned text and span positions are unchanged.
+
+  Closes #558. Sprint A's #583 word-neighbor space insertion already prevented the worst form of fusion (digits → letters with no separator); this commit removes the secondary symptom.
+
+- [#614](https://github.com/medelman17/eyecite-ts/pull/614) [`64c9fc7`](https://github.com/medelman17/eyecite-ts/commit/64c9fc7c89ac906472755890a108cc1aec88aad7) Thanks [@medelman17](https://github.com/medelman17)! - fix(clean): close three HTML-entity decoder gaps in `decodeHtmlEntities` (#562)
+
+  Three bugs:
+
+  - `&ndash;` and `&mdash;` were not in the named-entity table. Both are common in legal text (page-range pincites like `100&ndash;105` and stylistic dashes in court opinions like `as such&mdash;a court of equity`). Both are now decoded to the corresponding Unicode dashes; downstream `normalizeDashes` then rewrites them to ASCII hyphens (or the blank-page `---` placeholder for standalone em-dashes).
+  - The hex numeric-entity regex required a lowercase `x` (`&#x167;`), but `x` is case-insensitive in the HTML numeric form — `&#X167;` should decode identically. The regex now uses the `i` flag.
+  - `String.fromCharCode` silently truncates code points above `0xFFFF` (it expects a UTF-16 code unit, not a code point). `&#128512;` for U+1F600 GRINNING FACE produced an empty string. The decoder now uses `String.fromCodePoint` with a bounds check so out-of-range values (> 0x10FFFF) fall back to the original entity instead of throwing `RangeError`.
+
+- [#614](https://github.com/medelman17/eyecite-ts/pull/614) [`64c9fc7`](https://github.com/medelman17/eyecite-ts/commit/64c9fc7c89ac906472755890a108cc1aec88aad7) Thanks [@medelman17](https://github.com/medelman17)! - fix(clean): strip `<script>` / `<style>` bodies and unwrap `<![CDATA[…]]>` markers in `stripHtmlTags` (#559, #561)
+
+  `stripHtmlTags` previously ran a single tag-shape regex over the whole document, with two side effects:
+
+  - `<script>` / `<style>` bodies were preserved (only the opening and closing tags were stripped), so JS string literals like `"999 F.2d 999"` and CSS `content:` values leaked into the cleaned text and the tokenizer happily emitted phantom citations from them (#559).
+  - `<![CDATA[…]]>` sections matched the tag regex as one greedy "tag" (the leading `!` was in the allowed set and the section contains no `>` until the very end), so the entire body — including any embedded citation — was deleted (#561).
+
+  `stripHtmlTags` now runs three pre-passes before the generic tag-stripper: delete `<script>…</script>` bodies in full, delete `<style>…</style>` bodies in full, and unwrap `<![CDATA[…]]>` markers (keep the body, drop the markup). Script/style body matching is non-greedy so an unclosed opener does not eat the rest of the document.
+
 ## 0.21.6
 
 ### Patch Changes
