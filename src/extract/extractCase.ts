@@ -63,11 +63,37 @@ const VALID_SIGNALS = new Set([
  * Multi-word signals are listed first so "See also" matches before "See".
  * The trailing `,?` accommodates combined `, e.g.` signals (Bluebook Rule 1.3)
  * whose source-text form has a trailing comma between the signal and citation.
+ *
+ * Each whitespace gap inside a multi-word signal is permitted as `\s*,?\s+` so
+ * older typesetting variants like `See, also,` (extra inter-word comma) and
+ * `See e.g.,` (spaced `e.g.`) are stripped alongside the canonical Bluebook
+ * forms. This mirrors PR #503's relaxation for signal *detection* in
+ * detectStringCites.ts (#506).
+ *
+ * Additionally, a small set of prose connectors that commonly follow a signal
+ * are stripped here (`the case of`, `the opinion (filed at this term )?in`).
+ * Without this, captions like `See also the case of the King v. ...` carry
+ * `See also the case of` into the captured caseName.
  */
 const SIGNAL_STRIP_REGEX = (() => {
   const sorted = [...VALID_SIGNALS].sort((a, b) => b.length - a.length)
-  const alternatives = sorted.map((s) => s.replace(/\s+/g, "\\s+").replace(/\./g, "\\."))
-  return new RegExp(`^(${alternatives.join("|")}),?\\s+`, "i")
+  const alternatives = sorted.map((s) =>
+    // Whitespace between signal words tolerates an extra `, ` separator
+    // (e.g., `See, also,` for `See also`, `See, generally,` for `See generally`).
+    // Internal literal commas (from canonical forms like `see, e.g.`) are
+    // made optional so the bare typesetting variant `See e.g.,` also matches.
+    // Periods in `e.g.` / `cf.` tolerate an extra space (e.g., `See e. g.,`).
+    s
+      .replace(/\s+/g, "\\s*,?\\s+")
+      .replace(/,\s*/g, ",?\\s*")
+      .replace(/\./g, "\\.\\s*"),
+  )
+  // Optional prose connector after the signal: `the case of`, `the opinion
+  // (filed at this term )?in`. The connector is consumed lazily — only when
+  // present — and is followed by mandatory whitespace before the party name.
+  const proseConnector =
+    "(?:the\\s+(?:case\\s+of(?:\\s+the)?|opinion(?:\\s+filed\\s+at\\s+this\\s+term)?\\s+in)\\s+)?"
+  return new RegExp(`^(${alternatives.join("|")}),?\\s+${proseConnector}`, "i")
 })()
 
 /** Parse a volume string as number when purely numeric, string when hyphenated */
@@ -1160,6 +1186,63 @@ const LA_DOCKET_BOUNDARY_REGEX =
   /,?\s*(\d{2,4}-[A-Z\d-]+)(?:,\s*p\.\s*\d+)?\s*\((La\.[^)]*?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\),\s*/g
 
 /**
+ * Find the rightmost `(` in `text` that wraps a caption + (eventually) the
+ * citation core — i.e., the open-paren of a `(Name v. Name, vol Reporter
+ * page)` envelope (#512). Returns the position immediately AFTER the `(`
+ * (so callers can `substring` from it), or `-1` when no such paren exists.
+ *
+ * Detection heuristic: scan right-to-left for `(`. The first one whose
+ * unbalanced suffix contains a `v.`-style anchor or a procedural prefix
+ * is the wrapping paren. We don't require the matching `)` to be present
+ * (the trailing `)` lives past the citation core).
+ *
+ * The matching is intentionally narrow:
+ * - Only `(` immediately followed (after optional whitespace) by a
+ *   capitalized word that participates in a v.-style or procedural
+ *   caption qualifies. Plain parens like `(sequestration)` or
+ *   `(entry of a money judgment)` are skipped.
+ * - The `v.` / procedural prefix must appear within the paren-suffix to
+ *   coreStart, ensuring we don't truncate when the paren wraps something
+ *   else (a date-paren, court-paren, explanatory paren, ...).
+ * - If a complete v.-style caption already exists BEFORE the candidate
+ *   `(`, that `(` is an inline admin parenthetical (`Spence v. Hintze
+ *   (In re Hintze), ...` — #241) and must NOT be used as a boundary;
+ *   stripping past it would destroy the real caption.
+ */
+function findCaptionWrapperParen(text: string): number {
+  // Quick reject: no `(` in text.
+  if (text.indexOf("(") === -1) return -1
+  // Scan right-to-left for `(`.
+  for (let i = text.length - 1; i >= 0; i--) {
+    if (text[i] !== "(") continue
+    const after = text.substring(i + 1)
+    // The content must START with optional whitespace + a capital letter
+    // — a paren around lowercase prose ("(sequestration)") is not a
+    // caption wrapper.
+    if (!/^\s*[A-Z]/.test(after)) continue
+    // Look for a v.-style anchor OR a procedural prefix within the paren
+    // body up to where the precedingText ends (which is the citation
+    // core position).
+    const looksLikeCaption =
+      /\s+vs?\.?\s+[A-Z]/.test(after) ||
+      /^\s*(?:In\s+re|Ex\s+parte|Matter\s+of|Estate\s+of|State\s+ex\s+rel\.|United\s+States\s+ex\s+rel\.|People\s+ex\s+rel\.)\b/.test(
+        after,
+      )
+    if (!looksLikeCaption) continue
+    // Admin-paren guard (#241): if a complete `Name v. Name` caption
+    // already lives BEFORE this `(`, the `(` introduces an inline
+    // explanatory clause (`Spence v. Hintze (In re Hintze)`) — it is not
+    // a wrapping caption boundary. Skip it.
+    const before = text.substring(0, i)
+    if (/[A-Z][A-Za-z0-9.'&\-/]+(?:\s+[A-Z][A-Za-z0-9.'&\-/]+)*\s+vs?\.?\s+[A-Z]/.test(before)) {
+      continue
+    }
+    return i + 1
+  }
+  return -1
+}
+
+/**
  * Extract case name via backward search from citation core.
  * Looks for "v." pattern or procedural prefixes (In re, Ex parte, Matter of).
  *
@@ -1341,6 +1424,35 @@ export function extractCaseName(
   if (lastBoundaryIndex !== -1) {
     precedingText = precedingText.substring(lastBoundaryIndex)
     adjustedSearchStart = searchStart + lastBoundaryIndex
+  }
+
+  // Issue #509: When the citation core sits inside a sentence-internal
+  // parenthetical that does NOT also contain the caption — i.e.,
+  // `Name, (vol Reporter page)` — the precedingText ends with `, (` and the
+  // V_CASE_NAME_REGEX never matches because it anchors on a trailing comma
+  // or year-paren. Strip a trailing `(\s*$` so the caption (which lives
+  // outside the paren) is reachable.
+  //
+  // This is safe relative to #512 (`(Name v. Name, vol Reporter page)`)
+  // because the caption is INSIDE the wrapping paren in that case, so
+  // precedingText ends with `, ` not `(`.
+  precedingText = precedingText.replace(/\(\s*$/, "")
+
+  // Issue #512: When the caption sits INSIDE the wrapping parenthetical
+  // (`(Name v. Name, vol Reporter page)`), the backward scan must stop
+  // at the wrapping paren's open `(`. Otherwise the V_CASE_NAME_REGEX
+  // greedily absorbs the host sentence ahead of the `(` (which is allowed
+  // by the regex's `[A-Za-z0-9\s.,'&()/-]` character class for all-caps
+  // prose). This is the COMPLEMENT of the trailing-paren strip above.
+  //
+  // Detect the rightmost `(` whose contents contain a `v.`-style caption
+  // shape (or procedural prefix) — that's the wrapping paren. Truncate
+  // precedingText to start just after it so the regex sees only the
+  // caption.
+  const openParenStop = findCaptionWrapperParen(precedingText)
+  if (openParenStop !== -1) {
+    precedingText = precedingText.substring(openParenStop)
+    adjustedSearchStart += openParenStop
   }
 
   // Priority 1: Standard "v." or "vs." format with comma before citation
@@ -1547,13 +1659,30 @@ export function extractCaseName(
     if (!SENTENCE_INITIAL_WORDS.has(firstWordClean)) {
       // Skip multi-citation strings (joined by semicolons)
       if (!caption.includes(";")) {
-        const nameStart = adjustedSearchStart + leadingWsLen + signalStripLen
-        return { caseName: caption, nameStart, precedingDocketMeta }
+        // Reject literal short-form citation markers as captions (#517).
+        // When the tokenizer can't match a token like `Id., 584 N.Y.S.2d 744`
+        // (older parallel-reporter Id. form not handled by ID_PATTERN), the
+        // backward scan picks up the bare `Id.` token as a single-party
+        // caption. `Id.` / `Ibid.` are never legitimate party names.
+        if (!isShortFormMarker(caption)) {
+          const nameStart = adjustedSearchStart + leadingWsLen + signalStripLen
+          return { caseName: caption, nameStart, precedingDocketMeta }
+        }
       }
     }
   }
 
   return undefined
+}
+
+/**
+ * Returns true when `caption` is a literal short-form citation marker
+ * (Id., Ibid., supra) rather than a real party name (#517). Comparison
+ * is case-insensitive and tolerates a trailing period.
+ */
+function isShortFormMarker(caption: string): boolean {
+  const normalized = caption.trim().toLowerCase().replace(/\.$/, "")
+  return normalized === "id" || normalized === "ibid" || normalized === "supra"
 }
 
 /** A raw parenthetical block extracted from text */
@@ -2680,6 +2809,11 @@ export function extractCase(
       // - Trailing `(YYYY)` or `(Court YYYY)` → strip whole paren.
       // - Trailing `, NNNN <reporter token>` → strip the parallel-cite
       //   start, e.g., `State v. Lane, 1998 MT 76` → `State v. Lane`.
+      // - Trailing `, COURT, MONTH DAY, YYYY` or bare `, YYYY` — the
+      //   old-style "name, date, citation" form (Picard v. United Aircraft,
+      //   2 Cir., May 28, 1942, 128 F.2d 632; Seymour v. Osborne, 1870, 11
+      //   Wall. 516) — strip and harvest the year (#511).
+      let oldStyleYear: number | undefined
       if (caseName) {
         // Trailing parenthetical (year or court+year)
         caseName = caseName.replace(/\s*\((?:[^()]*\s)?\d{4}\)\s*$/, "").trim()
@@ -2689,6 +2823,32 @@ export function extractCase(
           .trim()
         // Trailing comma + neutral-cite shape (YYYY <state> NN)
         caseName = caseName.replace(/,\s+\d{4}\s+[A-Z]+\s+\d+\s*$/, "").trim()
+        // Old-style `, COURT, MONTH DAY, YYYY` prefix (#511). Court is
+        // `[0-9]+\s+Cir.|App.|Ct.` or just `[A-Z][a-z]+.` shapes; we keep
+        // the match narrow so it doesn't strip legitimate trailing tokens.
+        const oldStyleCourtDate =
+          /,\s+\d{1,2}(?:st|nd|rd|th)?\s+(?:Cir|App|Ct|Dist|Cir\.\s+App)\.,\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},\s+(\d{4})\s*$/
+        const courtDateMatch = oldStyleCourtDate.exec(caseName)
+        if (courtDateMatch) {
+          oldStyleYear = Number.parseInt(courtDateMatch[1], 10)
+          caseName = caseName.replace(oldStyleCourtDate, "").trim()
+        } else {
+          // Bare `, YYYY` prefix (Seymour v. Osborne, 1870; MacPherson v.
+          // Buick Motor Co., 1916). Only when the year stands alone right
+          // before the citation core — restrict to 1700-2099 to keep the
+          // strip conservative.
+          const bareYear = /,\s+((?:17|18|19|20)\d{2})\s*$/
+          const bareMatch = bareYear.exec(caseName)
+          if (bareMatch) {
+            oldStyleYear = Number.parseInt(bareMatch[1], 10)
+            caseName = caseName.replace(bareYear, "").trim()
+          }
+        }
+      }
+      // Surface the harvested year on the citation when one wasn't already
+      // captured from a trailing parenthetical (#511).
+      if (oldStyleYear !== undefined && !year) {
+        year = oldStyleYear
       }
 
       // CSM year-first form puts the year *before* volume-reporter-page
