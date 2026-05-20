@@ -136,6 +136,28 @@ describe("detectTextFootnotes", () => {
     expect(text.slice(zones[0].start, zones[0].end)).not.toContain("400 F.3d 500")
   })
 
+  // #540 — indented `N.` lines were being read as new markers, splitting
+  // one footnote into multiple spurious zones.
+  it("does not treat indented numbered sub-list items as new markers", () => {
+    const text = [
+      "Body text.",
+      "",
+      "----------",
+      "",
+      "1. The first footnote contains:",
+      "  1. Sub-list item one.",
+      "  2. Another sub-list item.",
+      "2. The second real footnote.",
+    ].join("\n")
+    const zones = detectTextFootnotes(text)
+    expect(zones).toHaveLength(2)
+    expect(zones[0].footnoteNumber).toBe(1)
+    expect(zones[1].footnoteNumber).toBe(2)
+    // The sub-list items belong to footnote 1, not separate zones
+    expect(text.slice(zones[0].start, zones[0].end)).toContain("Sub-list item one.")
+    expect(text.slice(zones[0].start, zones[0].end)).toContain("Another sub-list item.")
+  })
+
   it("caps last footnote zone at a subsequent separator line", () => {
     const text = [
       "Body 100 U.S. 200.",

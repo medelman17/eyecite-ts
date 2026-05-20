@@ -5,11 +5,16 @@ const SEPARATOR_RE = /^\s*[-_]{5,}\s*$/m
 
 /**
  * Source pattern for footnote markers at line start.
- * Captures the footnote number from whichever group matches.
+ *
+ * Captures the footnote number from whichever group matches. Anchored at
+ * column 0 (no leading whitespace tolerated): indented `  1. ` / `  2. `
+ * sub-list items inside a footnote body would otherwise be misread as new
+ * markers, splitting a single footnote into multiple zones (#540).
+ *
  * Created as a fresh RegExp per call to avoid shared mutable lastIndex state.
  */
 const MARKER_SRC =
-  /^\s*(?:FN\s*(\d+)[.\s:)]|\[(\d+)\]\s|n\.\s*(\d+)\s|(\d+)\.\s)/gm.source
+  /^(?:FN\s*(\d+)[.\s:)]|\[(\d+)\]\s|n\.\s*(\d+)\s|(\d+)\.\s)/gm.source
 
 /**
  * Pattern for an ALL-CAPS section heading on its own line, optionally
@@ -84,7 +89,7 @@ export function detectTextFootnotes(text: string): FootnoteMap {
 /**
  * Find where the footnote section ends after the marker at `markerStart`.
  *
- * Looks (after the marker line) for any of:
+ * Walks the lines after the marker's first line and looks for any of:
  *  - a separator line (`-----` / `_____`, 5+ chars)
  *  - a blank line followed by an ALL-CAPS heading line
  *
@@ -93,32 +98,48 @@ export function detectTextFootnotes(text: string): FootnoteMap {
 function findFootnoteSectionEnd(text: string, markerStart: number): number {
   // Skip past the marker's own line so we don't terminate immediately on it.
   const firstLineEnd = text.indexOf("\n", markerStart)
-  const scanFrom = firstLineEnd >= 0 ? firstLineEnd + 1 : text.length
+  if (firstLineEnd < 0) return text.length
+  const scanFrom = firstLineEnd + 1
   if (scanFrom >= text.length) return text.length
 
-  // Look for next separator line.
-  const sepRe = /^\s*[-_]{5,}\s*$/gm
-  sepRe.lastIndex = scanFrom
-  const sepHit = sepRe.exec(text)
-  const sepBoundary = sepHit ? sepHit.index : Number.POSITIVE_INFINITY
+  // Walk line by line from scanFrom.
+  let lineStart = scanFrom
+  let prevBlank = false
+  while (lineStart < text.length) {
+    const nl = text.indexOf("\n", lineStart)
+    const lineEnd = nl < 0 ? text.length : nl
+    const raw = text.slice(lineStart, lineEnd)
+    const trimmed = raw.trim()
 
-  // Look for blank-line + ALL-CAPS heading boundary.
-  // A blank line means \n followed (optionally by whitespace) by \n.
-  const blankRe = /\n[ \t]*\n/g
-  blankRe.lastIndex = scanFrom
-  let blankHit: RegExpExecArray | null
-  let headingBoundary = Number.POSITIVE_INFINITY
-  while ((blankHit = blankRe.exec(text)) !== null) {
-    const lineStart = blankHit.index + blankHit[0].length
-    // Read to end-of-line at lineStart
-    const lineEnd = text.indexOf("\n", lineStart)
-    const line = text.slice(lineStart, lineEnd < 0 ? text.length : lineEnd)
-    if (POST_FOOTNOTE_HEADING_RE.test(line.trim())) {
-      headingBoundary = blankHit.index
-      break
+    // Separator line — boundary is the start of this line.
+    if (/^[-_]{5,}$/.test(trimmed)) {
+      return lineStart
     }
+
+    // Blank-line + ALL-CAPS heading — boundary is the start of the blank line.
+    if (prevBlank && trimmed !== "" && POST_FOOTNOTE_HEADING_RE.test(trimmed)) {
+      // The previous line was blank, so this current line is the heading.
+      // Boundary should be the start of the blank line (one line back).
+      const blankLineStart = previousLineStart(text, lineStart)
+      return blankLineStart
+    }
+
+    prevBlank = trimmed === ""
+    if (nl < 0) break
+    lineStart = nl + 1
   }
 
-  const boundary = Math.min(sepBoundary, headingBoundary)
-  return boundary === Number.POSITIVE_INFINITY ? text.length : boundary
+  return text.length
+}
+
+/**
+ * Return the start index of the line that ends at `currentLineStart - 1`.
+ */
+function previousLineStart(text: string, currentLineStart: number): number {
+  if (currentLineStart <= 0) return 0
+  // currentLineStart points to the char right after a `\n`.  The previous
+  // line's `\n` is at currentLineStart - 1.  Walk back to find the `\n`
+  // before that, then add 1.
+  const prevNl = text.lastIndexOf("\n", currentLineStart - 2)
+  return prevNl < 0 ? 0 : prevNl + 1
 }
