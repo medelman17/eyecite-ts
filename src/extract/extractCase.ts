@@ -2762,7 +2762,12 @@ export function extractCase(
   // so the trailing year paren is found AND fullSpan extends through it.
   let postChainStart = span.cleanEnd
   if (cleanedText && siblings && siblings.length > 0) {
-    const CHAIN_BRIDGE_REGEX = /^[\s,\d\-–—]*$/
+    // Semicolons (#551) are accepted as parallel-chain separators alongside
+    // commas — Michigan-style citations write `390 Mich 355, 359; 212 NW2d
+    // 190 (1973)` where the `; ` separates the two parallel members. Without
+    // semicolons in the bridge class, the first cite's post-chain scan would
+    // stop at the semicolon and the trailing `(1973)` would not propagate.
+    const CHAIN_BRIDGE_REGEX = /^[\s,;\d\-–—]*$/
     while (true) {
       const next = siblings.find(
         (s) =>

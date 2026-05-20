@@ -121,31 +121,32 @@ export function detectParallelCitations(tokens: Token[], cleanedText = ""): Map<
         break
       }
 
-      // Gap text between primary and secondary cite must be one of two shapes:
+      // Gap text between primary and secondary cite must be one of these shapes:
       //
-      //   Tight comma: ", " (no pincite between cites)
-      //     "374 N.J. Super. 448, 864 A.2d 1191"
+      //   Tight separator: ", " or "; " (no pincite between cites)
+      //     "374 N.J. Super. 448, 864 A.2d 1191"        (Bluebook)
+      //     "390 Mich 355; 212 NW2d 190"                (Michigan, #551)
       //
-      //   Pincite-between: ", PINCITE_LIST, " — the Bluebook-canonical form
+      //   Pincite-between: ", PINCITE_LIST<,;> " — the Bluebook-canonical form
       //   per Indigo Book R12.3, where the primary's pincite sits between
       //   the two parallel cites.
-      //     "374 N.J. Super. 448, 453-55, 864 A.2d 1191"
-      //     "410 U.S. 113, 115, 153, 93 S. Ct. 705"  (multi-pincite list)
+      //     "374 N.J. Super. 448, 453-55, 864 A.2d 1191"           (Bluebook)
+      //     "410 U.S. 113, 115, 153, 93 S. Ct. 705"                 (multi-pincite)
+      //     "390 Mich 355, 359; 212 NW2d 190"                       (Michigan, #551)
       //
       // A PINCITE is anything `parsePincite()` accepts — page, range, star,
       // paragraph, footnote, etc. Reusing parsePincite keeps it as the single
       // source of truth for "what counts as a pincite" and means future
       // pincite improvements propagate here automatically.
       //
-      // Punctuation other than commas inside the segment list (e.g.
-      // `, 453; 460, `) deliberately fails — `parsePincite("453; 460")`
-      // returns null, the segment-by-segment validation fails, and the gap
-      // is rejected. That's correct: semicolons don't appear in legitimate
-      // pincite lists.
-      const tight = /^,\s*$/.test(gapText)
+      // Semicolons are accepted at the OUTER boundary only (the separator
+      // between the last pincite and the next reporter token). Pincite lists
+      // themselves still use commas — `parsePincite("453; 460")` returns null
+      // and a bare `, 453; 460, ` gap would correctly fail.
+      const tight = /^[,;]\s*$/.test(gapText)
       let pinciteBetween = false
       if (!tight) {
-        const inner = gapText.match(/^,\s*(.+?)\s*,\s*$/)
+        const inner = gapText.match(/^,\s*(.+?)\s*[,;]\s*$/)
         if (inner) {
           const segments = inner[1].split(/\s*,\s*/)
           pinciteBetween =
