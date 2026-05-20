@@ -430,9 +430,19 @@ export function extractCitations(
     citations.push(citation)
   }
 
+  // Step 4.35: Detect bare-prefix `§§ N, N` lists that lack any code
+  // identifier in front of the §§ marker. These never produce a head cite
+  // through normal tokenization, so seed a head before expansion. (#563)
+  detectBareSectionLists(citations, cleaned, transformationMap)
+
   // Step 4.4: Expand plural-section statute lists (`§§ N, N` /
   // `§§ N and N`) into one statute citation per section. (#453)
   expandPluralSectionList(citations, cleaned, transformationMap)
+
+  // Step 4.42: Bare `§ N` after a full statute citation is a short-form
+  // statute reference that inherits title / code / jurisdiction from its
+  // antecedent (`§ X; see also § Y`). (#567)
+  detectBareSectionShortForms(citations, cleaned, transformationMap)
 
   // Step 4.5: Link subsequent history citations using Union-Find.
   // Three-phase approach: match signals → union chains → aggregate entries.
@@ -786,13 +796,13 @@ const BARE_SECTION_CONTEXT_OVERRIDES: Record<string, BareSectionContext> = {
  * `New Mexico`) in the cleaned text within ~200 chars before the citation
  * start. Used to gate the default `NM` jurisdiction tag attached to bare
  * `§ N-N-N` citations — without a nearby signal the shape is too generic
- * to claim NM (#531).
+ * to claim NM. (#565, originally #531)
+ *
+ * The `N.M.` form ends in `.` (a non-word char), so we must NOT require a
+ * trailing `\b` — instead we require the explicit `.` to anchor the right
+ * edge of the `N.M.` alternative.
  */
 const NM_CONTEXT_WINDOW = 200
-// Match `NMSA`, `N.M.` (with optional space between letters and trailing
-// period), or `New Mexico` as a phrase. The `N.M.` form ends in `.` (a
-// non-word char), so we must NOT require a trailing `\b` — instead we
-// require the explicit `.` to anchor the right edge.
 const NM_CONTEXT_RE = /\bNMSA\b|\bN\.\s*M\.|\bNew\s+Mexico\b/
 
 function hasNmContextNearby(cleaned: string, cleanStart: number): boolean {
@@ -844,9 +854,10 @@ function inheritBareSectionJurisdiction(
       continue
     }
 
-    // #531: NM is the historical default for bare `§ N-N-N` shapes, but the
-    // shape itself is too generic (Virginia, Alabama, and others use it
-    // too). Require an explicit NM signal nearby; otherwise drop the
+    // #565 (originally #531): NM is the historical default for bare
+    // `§ N-N-N` shapes, but the shape itself is too generic (Virginia,
+    // Alabama, and others use it too). Require an explicit NM signal
+    // nearby; otherwise drop the
     // jurisdiction so downstream consumers don't trust a guess.
     if (!hasNmContextNearby(cleaned, cite.span.cleanStart)) {
       cite.jurisdiction = undefined
@@ -905,6 +916,102 @@ const BARE_PARTY_BLOCKED_NAMES = new Set([
 ])
 
 /**
+ * Detect bare-prefix `§§ N, N[, N]…` lists that the tokenizer skipped because
+ * there is no recognizable code identifier in front of the `§§` marker. The
+ * tokenizer only emits a head when a code-name regex matches; naked sequences
+ * like `§§ 12940, 12945, 12950` or `Code §§ 19.2-81 and 18.2-266` thus drop
+ * silently. This pass scans the cleaned text for such sequences and seeds a
+ * head citation for each section so the existing `expandPluralSectionList`
+ * pass can pick up the remainder. (#563)
+ *
+ * Conservative anchoring:
+ *   - Requires `§§` literally (singular `§ N` is too ambiguous on its own).
+ *   - Section grammar matches the same shape as `expandPluralSectionList`.
+ *   - At least two sections must appear (single bare `§§ N` is suspect).
+ *   - Skips ranges of the form `§§ N-M` so the head/tail get a single span.
+ *   - Skips any range that overlaps an existing citation.
+ *   - The `code` field is set to a generic marker (`"§"`) when no prefix is
+ *     identified; jurisdiction is left undefined so downstream inheritance
+ *     passes can populate it. When a `Code` prefix immediately precedes the
+ *     `§§`, `code` is set to `"Code"` to preserve the user's intent.
+ */
+function detectBareSectionLists(
+  citations: Citation[],
+  cleaned: string,
+  transformationMap: TransformationMap,
+): void {
+  const sectionPart =
+    "\\d[\\w-]*(?:\\.[\\d\\w-]+)*(?:\\([A-Za-z0-9]+\\))*"
+  // Allow optional `Code` (or `Code Ann.`) prefix immediately before `§§`.
+  // Anchor on `§§` followed by whitespace + a section. The list itself is
+  // detected by `expandPluralSectionList` once the head is in place; we only
+  // need to identify a starting position. The two-section minimum is enforced
+  // by lookahead.
+  const headRe = new RegExp(
+    `(?:\\b(Code(?:\\s+Ann\\.?)?)\\s+)?§§\\s+(${sectionPart})(?=\\s*(?:,\\s*|\\s+and\\s+|\\s+to\\s+)${sectionPart})`,
+    "g",
+  )
+
+  const newCitations: Citation[] = []
+  let match: RegExpExecArray | null
+  while ((match = headRe.exec(cleaned)) !== null) {
+    const fullMatch = match[0]
+    const prefix = match[1]
+    const sectionText = match[2]
+    const start = match.index
+    const end = start + fullMatch.length
+
+    if (overlapsExistingCitation(citations, start, end)) continue
+
+    const sectionStart = start + fullMatch.length - sectionText.length
+    const sectionEnd = end
+
+    const { originalStart, originalEnd } = resolveOriginalSpan(
+      { cleanStart: start, cleanEnd: end },
+      transformationMap,
+    )
+    const sectionOrig = resolveOriginalSpan(
+      { cleanStart: sectionStart, cleanEnd: sectionEnd },
+      transformationMap,
+    )
+
+    const code = prefix ? prefix.replace(/\s+/g, " ").trim() : "§"
+
+    const head: import("@/types/citation").StatuteCitation = {
+      type: "statute",
+      text: fullMatch,
+      span: {
+        cleanStart: start,
+        cleanEnd: end,
+        originalStart,
+        originalEnd,
+      },
+      // Bare-prefix lists are inherently low-confidence — no code identifier
+      // means no jurisdiction grounding.
+      confidence: 0.5,
+      matchedText: fullMatch,
+      processTimeMs: 0,
+      patternsChecked: 1,
+      code,
+      section: sectionText,
+      spans: {
+        section: {
+          cleanStart: sectionStart,
+          cleanEnd: sectionEnd,
+          originalStart: sectionOrig.originalStart,
+          originalEnd: sectionOrig.originalEnd,
+        },
+      },
+    }
+    newCitations.push(head)
+  }
+
+  if (newCitations.length === 0) return
+  citations.push(...newCitations)
+  citations.sort((a, b) => a.span.cleanStart - b.span.cleanStart)
+}
+
+/**
  * Expand a plural `§§ N, N` (or `§§ N and N`) statute reference into one
  * StatuteCitation per section. The tokenizer captures only the FIRST
  * section; this pass walks the text right after a `§§`-marked statute
@@ -922,11 +1029,18 @@ function expandPluralSectionList(
   cleaned: string,
   transformationMap: TransformationMap,
 ): void {
-  const sectionPart = "\\d[\\w-]*(?:\\([A-Za-z0-9]+\\))*"
+  // Section grammar accepts: leading digit, then any word/hyphen run, with
+  // optional dotted suffixes (`19.2-81`, `12940.5`) and optional subsection
+  // chain (`(A)`, `(1)`, `(b)(14)`). The dotted extension was added in #563
+  // so bare `Code §§ 19.2-81 and 18.2-266` siblings are picked up.
+  const sectionPart =
+    "\\d[\\w-]*(?:\\.[\\d\\w-]+)*(?:\\([A-Za-z0-9]+\\))*"
   const connectorPart = "\\s*,\\s*|\\s+and\\s+|\\s+to\\s+"
   const continuationRe = new RegExp(
     `^(?:${connectorPart})(${sectionPart})`,
   )
+  // `et seq.` immediately after a sibling — owner detection. (#566)
+  const TRAILING_ET_SEQ_RE = /^\s*et\s+seq\.?/i
 
   const newCitations: Citation[] = []
 
@@ -950,11 +1064,19 @@ function expandPluralSectionList(
         transformationMap,
       )
 
+      // Owner detection for `et seq.` (#566): only set `hasEtSeq` on the
+      // sibling that the token immediately follows. The blanket spread of
+      // `...cite` would otherwise propagate the head's flag (if any) to
+      // every sibling.
+      const trailing = cleaned.slice(sectionEnd, sectionEnd + 20)
+      const siblingHasEtSeq = TRAILING_ET_SEQ_RE.test(trailing)
+
       const continuation: import("@/types/citation").StatuteCitation = {
         ...cite,
         text: sectionText,
         matchedText: sectionText,
         section: sectionText,
+        sectionRange: undefined,
         span: {
           cleanStart: sectionStart,
           cleanEnd: sectionEnd,
@@ -965,11 +1087,116 @@ function expandPluralSectionList(
         // to the head section.
         subsection: undefined,
         pincite: undefined,
+        hasEtSeq: siblingHasEtSeq || undefined,
         spans: undefined,
       }
       newCitations.push(continuation)
 
       cursor = sectionEnd
+    }
+  }
+
+  if (newCitations.length === 0) return
+  citations.push(...newCitations)
+  citations.sort((a, b) => a.span.cleanStart - b.span.cleanStart)
+}
+
+/**
+ * Detect bare `§ N` short-form statute references that inherit title /
+ * code / jurisdiction from an earlier full statute citation. After a full
+ * cite establishes a code, follow-on bare `§ N` is a Bluebook short-form
+ * statute reference (analogous to Id. for cases). The tokenizer never
+ * matches these because the patterns all require a code identifier; this
+ * pass walks the text between full statute citations and emits an inherited
+ * sibling for each bare `§ N` it finds. (#567)
+ *
+ * Conservative anchoring:
+ *   - Must follow a full statute citation (one with `title` AND `code`).
+ *   - The antecedent's code must be a well-known full-form code (`U.S.C.`,
+ *     `C.F.R.`, or a state named-code with `jurisdiction` set) — the bare
+ *     `§ N-N-N` shape that the NM dispatcher already handles is left alone.
+ *   - Three-hyphen state section shapes (`32A-2-7`, `41-2-2`) are skipped
+ *     here so the NM dispatcher pipeline keeps owning them.
+ *   - The section grammar is `\d[\w]*(?:\.[\w]+)*` — purely numeric or
+ *     numeric+letter (`1985`, `1028A`), optionally dotted (`122.26`). No
+ *     hyphens, so state-style sections don't false-match.
+ *   - Skip any region that already overlaps an existing citation.
+ *   - Maximum scan window of 300 chars from the antecedent's end so we
+ *     don't link references too far apart.
+ */
+function detectBareSectionShortForms(
+  citations: Citation[],
+  cleaned: string,
+  transformationMap: TransformationMap,
+): void {
+  const BARE_SECTION_RE =
+    /(?<![A-Za-z\d-])§\s*(\d[\w]*(?:\.[\w]+)*(?:\([A-Za-z0-9.]+\))*)/g
+  const SCAN_WINDOW = 300
+
+  // Snapshot the input list — we'll push results to newCitations and sort.
+  const newCitations: Citation[] = []
+
+  for (let i = 0; i < citations.length; i++) {
+    const cite = citations[i]
+    if (cite.type !== "statute") continue
+    // Antecedent must have a code identifier — full citations always do.
+    // State named-codes (Cal. Penal, NY Penal Law) carry no `title` but
+    // still establish a code, so we don't require title.
+    if (!cite.code) continue
+    // Skip when the antecedent itself was a bare-section that the NM
+    // dispatcher already owns — those are heuristic and we don't want
+    // inherited follow-ons riding on a guess.
+    if (cite.code === "NMSA 1978") continue
+
+    const start = cite.span.cleanEnd
+    // Stop scanning at the next statute citation (it'll become its own
+    // antecedent) or at the scan window.
+    let end = Math.min(start + SCAN_WINDOW, cleaned.length)
+    for (let j = i + 1; j < citations.length; j++) {
+      const next = citations[j]
+      if (next.span.cleanStart >= start && next.span.cleanStart < end) {
+        end = next.span.cleanStart
+      }
+    }
+    if (end <= start) continue
+
+    const window = cleaned.slice(start, end)
+    BARE_SECTION_RE.lastIndex = 0
+    let match: RegExpExecArray | null
+    while ((match = BARE_SECTION_RE.exec(window)) !== null) {
+      const absStart = start + match.index
+      const absEnd = absStart + match[0].length
+      if (overlapsExistingCitation(citations, absStart, absEnd)) continue
+
+      const sectionText = match[1]
+      // Skip three-hyphen state-section shapes — the NM pipeline owns these.
+      if (/^\d+[A-Z]?-\d+[A-Z]?-\d+/.test(sectionText)) continue
+
+      const { originalStart, originalEnd } = resolveOriginalSpan(
+        { cleanStart: absStart, cleanEnd: absEnd },
+        transformationMap,
+      )
+
+      const inherited: import("@/types/citation").StatuteCitation = {
+        type: "statute",
+        text: match[0],
+        span: {
+          cleanStart: absStart,
+          cleanEnd: absEnd,
+          originalStart,
+          originalEnd,
+        },
+        // Slightly lower than head; the inheritance is heuristic.
+        confidence: Math.max(0.6, cite.confidence - 0.1),
+        matchedText: match[0],
+        processTimeMs: 0,
+        patternsChecked: 1,
+        title: cite.title,
+        code: cite.code,
+        section: sectionText,
+        jurisdiction: cite.jurisdiction,
+      }
+      newCitations.push(inherited)
     }
   }
 

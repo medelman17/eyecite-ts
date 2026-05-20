@@ -61,7 +61,17 @@ export function extractFederal(
     title = undefined
   }
 
-  const { section, subsection, hasEtSeq } = parseBody(rawBody)
+  const { section: parsedSection, sectionRangeEnd, subsection, hasEtSeq } = parseBody(rawBody)
+
+  // Federal `§§ N-M` range form (#564): split into structured range with
+  // `section` = start so existing consumers keep working. The matchedText
+  // §§ marker is the disambiguator — a singular `§ N-M` on a USC citation
+  // would be unprecedented and stays as a single section.
+  const isRange = sectionRangeEnd !== undefined && /§§/.test(text)
+  const section = isRange ? parsedSection.split("-")[0] : parsedSection
+  const sectionRange = isRange
+    ? { start: section, end: sectionRangeEnd as string }
+    : undefined
 
   // Translate positions
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
@@ -115,6 +125,7 @@ export function extractFederal(
     title,
     code,
     section,
+    sectionRange,
     subsection,
     pincite: subsection,
     jurisdiction: "US",

@@ -641,6 +641,18 @@ export class DocumentResolver {
     if (!citation.partyName) return undefined // Standalone supra — cannot resolve by party name
     const currentIndex = this.context.citationIndex
     const fullPartyName = this.normalizePartyName(citation.partyName)
+    const vSplit = fullPartyName.split(/\s+vs?\.\s+/)
+
+    if (vSplit.length === 2) {
+      const captionMatch = this.queryFullCaptionSupra(
+        vSplit[0].trim(),
+        vSplit[1].trim(),
+        currentIndex,
+      )
+      if (captionMatch) {
+        return this.createSupraSuccess(citation, captionMatch)
+      }
+    }
 
     // #504: split `Plaintiff v. Defendant` into individual party-name queries
     // so each half can match the BK-tree's per-name index. Querying the
@@ -648,7 +660,6 @@ export class DocumentResolver {
     // The combined query is kept first as a tiebreaker for non-caption forms
     // (e.g., `Walker & Horwich, supra` should still query the joined string).
     const queries: string[] = [fullPartyName]
-    const vSplit = fullPartyName.split(/\s+vs?\.\s+/)
     if (vSplit.length === 2) {
       for (const half of vSplit) {
         const trimmed = half.trim()
@@ -675,18 +686,64 @@ export class DocumentResolver {
       )
     }
 
+    return this.createSupraSuccess(citation, bestMatch)
+  }
+
+  private createSupraSuccess(
+    citation: SupraCitation,
+    match: { index: number; similarity: number },
+  ): ResolutionResult {
     // Return successful resolution with confidence based on similarity
     const warnings: string[] = []
-    if (bestMatch.similarity < 1.0) {
-      warnings.push(`Fuzzy match: similarity ${bestMatch.similarity.toFixed(2)}`)
+    if (match.similarity < 1.0) {
+      warnings.push(`Fuzzy match: similarity ${match.similarity.toFixed(2)}`)
     }
 
     return {
-      resolvedTo: bestMatch.index,
+      resolvedTo: match.index,
       antecedentIndex: this.findImmediatePredecessor(citation),
-      confidence: bestMatch.similarity,
+      confidence: match.similarity,
       warnings: warnings.length > 0 ? warnings : undefined,
     }
+  }
+
+  /**
+   * Match a full-caption supra (`Plaintiff v. Defendant, supra`) against a
+   * single prior case whose plaintiff and defendant both agree. This prevents
+   * an unrelated case with a stronger one-sided fuzzy match from beating the
+   * intended antecedent.
+   */
+  private queryFullCaptionSupra(
+    plaintiffQuery: string,
+    defendantQuery: string,
+    currentIndex: number,
+  ): { index: number; similarity: number } | undefined {
+    if (!plaintiffQuery || !defendantQuery) return undefined
+
+    let best: { index: number; similarity: number } | undefined
+    for (let i = currentIndex - 1; i >= 0; i--) {
+      const candidate = this.citations[i]
+      if (candidate.type !== "case") continue
+      if (!this.isWithinScope(i, currentIndex, true)) continue
+
+      const plaintiffSimilarity = this.partyNameSimilarity(
+        plaintiffQuery,
+        candidate.plaintiffNormalized ?? candidate.plaintiff,
+      )
+      const defendantSimilarity = this.partyNameSimilarity(
+        defendantQuery,
+        candidate.defendantNormalized ?? candidate.defendant,
+      )
+      if (plaintiffSimilarity < this.options.partyMatchThreshold) continue
+      if (defendantSimilarity < this.options.partyMatchThreshold) continue
+
+      const similarity = Math.min(plaintiffSimilarity, defendantSimilarity)
+      if (!best || similarity > best.similarity) {
+        best = { index: i, similarity }
+      }
+    }
+
+    return best
   }
 
   /**
@@ -726,6 +783,43 @@ export class DocumentResolver {
       }
     }
     return best
+  }
+
+  private partyNameSimilarity(query: string, candidate: string | undefined): number {
+    if (!candidate) return 0
+
+    const normalizedQuery = this.normalizePartyName(query)
+    const normalizedCandidate = this.normalizePartyName(candidate)
+    if (!normalizedQuery || !normalizedCandidate) return 0
+    if (normalizedQuery === normalizedCandidate) return 1.0
+    if (
+      this.containsTokenSequence(normalizedCandidate, normalizedQuery) ||
+      this.containsTokenSequence(normalizedQuery, normalizedCandidate)
+    ) {
+      return 0.95
+    }
+
+    const distance = levenshteinDistance(normalizedQuery, normalizedCandidate)
+    const maxLength = Math.max(normalizedQuery.length, normalizedCandidate.length)
+    return maxLength === 0 ? 1.0 : 1 - distance / maxLength
+  }
+
+  private containsTokenSequence(haystack: string, needle: string): boolean {
+    const haystackTokens = haystack.split(" ").filter(Boolean)
+    const needleTokens = needle.split(" ").filter(Boolean)
+    if (needleTokens.length === 0 || needleTokens.length > haystackTokens.length) return false
+
+    for (let i = 0; i <= haystackTokens.length - needleTokens.length; i++) {
+      let matches = true
+      for (let j = 0; j < needleTokens.length; j++) {
+        if (haystackTokens[i + j] !== needleTokens[j]) {
+          matches = false
+          break
+        }
+      }
+      if (matches) return true
+    }
+    return false
   }
 
   /**
@@ -1015,9 +1109,22 @@ export class DocumentResolver {
    * Normalizes party name for matching.
    */
   private normalizePartyName(name: string): string {
-    return name
+    let normalized = name
+
+    normalized = normalized.replace(/\bet\s+al\.?/gi, "")
+    normalized = normalized.replace(/\s+(?:d\/b\/a|[fna]\/k\/a)\b.*/gi, "")
+    normalized = normalized.replace(/\s+aka\b.*/gi, "")
+
+    let prev = ""
+    while (prev !== normalized) {
+      prev = normalized
+      normalized = normalized.replace(/,?\s*(Inc|LLC|Corp|Ltd|Co|LLP|LP|P\.C)\.?$/gi, "")
+    }
+
+    return normalized
+      .replace(/^(The|A|An)\s+/i, "")
       .toLowerCase()
-      .replace(/\s+/g, " ") // Normalize whitespace
+      .replace(/\s+/g, " ")
       .trim()
   }
 

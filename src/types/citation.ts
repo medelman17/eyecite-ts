@@ -458,13 +458,33 @@ export interface StatuteCitation extends CitationBase {
   type: "statute"
   title?: number
   /**
-   * Code identifier (e.g. "U.S.C.", "Va. Code", "Fla. Stat."). Optional
-   * because the bare-section forms (`§ N-N-N`) may surface with no
-   * jurisdiction signal at all — in that case `code` is omitted and the
-   * cite is reported as a generic statutory reference.
+   * Code identifier (`U.S.C.`, `NMSA 1978`, `Penal`, `Va. Code`, etc.).
+   * Optional because bare-section citations with no nearby jurisdictional
+   * signal drop both `code` and `jurisdiction` rather than guessing.
+   * (#565, originally #531)
    */
   code?: string
-  section: string
+  /**
+   * Section identifier. Optional because some forms cite the chapter alone
+   * (e.g. Massachusetts `G.L. c. 93A` — see `chapter` below). #569
+   */
+  section?: string
+  /**
+   * Structured representation of a `§§ N-M` range. Populated only for
+   * citations where the section field is unambiguously a numeric range
+   * (typically federal `28 U.S.C. §§ 591-99`). Hyphenated state-style
+   * sections (`19.2-81`, `32A-2-7`) are NOT ranges and leave this
+   * undefined. `start` is mirrored on the `section` field for backward
+   * compatibility. (#564)
+   */
+  sectionRange?: { start: string; end: string }
+  /**
+   * Chapter identifier for citations that use a chapter+section layout,
+   * notably Massachusetts (`G.L. c. 93A`, `M.G.L.A. c. 93, § 14`).
+   * Previously the chapter number was leaking into `code`; populated
+   * separately as of #569.
+   */
+  chapter?: string
   /** Subsection/pincite chain, e.g. "(a)(1)(A)" */
   subsection?: string
   /** 2-letter state code or "US" when unambiguously identified */
