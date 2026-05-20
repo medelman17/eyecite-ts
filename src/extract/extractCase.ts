@@ -320,9 +320,20 @@ const PINCITE_REGEX =
 const PAREN_REGEX = /\(([^)]+)\)/
 
 /** Look-ahead pattern for parenthetical after token. Skips pincite text
- *  (including star-pagination) before the court/year parenthetical. */
+ *  (including star-pagination) before the court/year parenthetical.
+ *
+ *  Pincite-skip prefix grammar mirrors the leading branch of
+ *  LOOKAHEAD_PINCITE_REGEX so the same shapes are accepted:
+ *    - `, [at] [pp.|pages] *N[-N]`  (comma form)
+ *    - ` at [pp.|pages] *N[-N]`     (at form without comma; #552)
+ *
+ *  Before #552 only the comma form was accepted, so
+ *  `491 S.W.2d 636 at 638 (1973)` lost the trailing `(1973)` paren —
+ *  the leading ` at 638` could not be consumed and the regex failed.
+ *  The at-form is repeatable too (rare in practice, but the comma form
+ *  already was), so the entire prefix is wrapped in `(?:...)*`. */
 const LOOKAHEAD_PAREN_REGEX =
-  /^(?:,\s*(?:at\s+)?\*?\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d+)?\s*\(([^)]+)\)/
+  /^(?:(?:,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?|\s+at\s+(?:(?:pp?\.|pages?)\s*)?)\*?\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d+)?\s*\(([^)]+)\)/
 
 /** Extracts pincite from look-ahead text.
  *  Accepts five prefix forms:
