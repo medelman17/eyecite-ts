@@ -63,11 +63,37 @@ const VALID_SIGNALS = new Set([
  * Multi-word signals are listed first so "See also" matches before "See".
  * The trailing `,?` accommodates combined `, e.g.` signals (Bluebook Rule 1.3)
  * whose source-text form has a trailing comma between the signal and citation.
+ *
+ * Each whitespace gap inside a multi-word signal is permitted as `\s*,?\s+` so
+ * older typesetting variants like `See, also,` (extra inter-word comma) and
+ * `See e.g.,` (spaced `e.g.`) are stripped alongside the canonical Bluebook
+ * forms. This mirrors PR #503's relaxation for signal *detection* in
+ * detectStringCites.ts (#506).
+ *
+ * Additionally, a small set of prose connectors that commonly follow a signal
+ * are stripped here (`the case of`, `the opinion (filed at this term )?in`).
+ * Without this, captions like `See also the case of the King v. ...` carry
+ * `See also the case of` into the captured caseName.
  */
 const SIGNAL_STRIP_REGEX = (() => {
   const sorted = [...VALID_SIGNALS].sort((a, b) => b.length - a.length)
-  const alternatives = sorted.map((s) => s.replace(/\s+/g, "\\s+").replace(/\./g, "\\."))
-  return new RegExp(`^(${alternatives.join("|")}),?\\s+`, "i")
+  const alternatives = sorted.map((s) =>
+    // Whitespace between signal words tolerates an extra `, ` separator
+    // (e.g., `See, also,` for `See also`, `See, generally,` for `See generally`).
+    // Internal literal commas (from canonical forms like `see, e.g.`) are
+    // made optional so the bare typesetting variant `See e.g.,` also matches.
+    // Periods in `e.g.` / `cf.` tolerate an extra space (e.g., `See e. g.,`).
+    s
+      .replace(/\s+/g, "\\s*,?\\s+")
+      .replace(/,\s*/g, ",?\\s*")
+      .replace(/\./g, "\\.\\s*"),
+  )
+  // Optional prose connector after the signal: `the case of`, `the opinion
+  // (filed at this term )?in`. The connector is consumed lazily — only when
+  // present — and is followed by mandatory whitespace before the party name.
+  const proseConnector =
+    "(?:the\\s+(?:case\\s+of(?:\\s+the)?|opinion(?:\\s+filed\\s+at\\s+this\\s+term)?\\s+in)\\s+)?"
+  return new RegExp(`^(${alternatives.join("|")}),?\\s+${proseConnector}`, "i")
 })()
 
 /** Parse a volume string as number when purely numeric, string when hyphenated */
