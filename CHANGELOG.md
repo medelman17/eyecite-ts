@@ -1,5 +1,48 @@
 # eyecite-ts
 
+## 0.21.6
+
+### Patch Changes
+
+- [#609](https://github.com/medelman17/eyecite-ts/pull/609) [`e59b265`](https://github.com/medelman17/eyecite-ts/commit/e59b2654b8f55c48196151764eb3df756f51609b) Thanks [@medelman17](https://github.com/medelman17)! - fix(score): broaden mid-sentence `Id.` penalty to recognize preceding Bluebook signal phrases (#557)
+
+  `extractShortForms.ts` was clamping `Id.` confidence to 0.4 when the citation followed a sentence-level signal like `See`, `See also`, `Compare`, `Accord`, `Contra`, `See generally`, `But see`, `See, e.g.`, `E.g.`, or `But see, e.g.` — the existing punctuation check only accepted `.;)\]—:` so signals ending on alphabetic characters or a comma were misread as mid-sentence prose. About 66% of `id` citations in a 300-opinion CAP-corpus audit landed at exactly 0.4 because of this. The context check now also matches a trailing signal phrase (mirroring `SIGNAL_PATTERNS` in `detectStringCites.ts`) and uses a 60-char lookback window so signals after a real preceding citation (`... (1974). See id.`) no longer trip the penalty either. `Id.` after lowercase prose ("The Id. card", "His Id.") still gets the 0.4 cap.
+
+- [#612](https://github.com/medelman17/eyecite-ts/pull/612) [`bb11feb`](https://github.com/medelman17/eyecite-ts/commit/bb11feb7427640b570b6dc1724133685966728d4) Thanks [@medelman17](https://github.com/medelman17)! - Restore the +0.3 reporter-match confidence boost for SCOTUS, F.Supp._, So._, and common state reporters in degraded mode (#555).
+
+  `cleaners.normalizeReporterSpacing` collapses inner spaces in known reporter abbreviations (`S. Ct.` → `S.Ct.`, `L. Ed. 2d` → `L.Ed.2d`, `F. Supp. 2d` → `F.Supp.2d`, `So. 2d` → `So.2d`). The `COMMON_REPORTERS` fallback set used by `extractCase.ts` was authored against the pre-cleaning Bluebook canonicals — so those spaced entries were dead and never matched anything the extractor actually produced. State reporters from the audit (`Mass.`, `Va.`, `Pa.`, `Idaho`) and the Cal. family (`Cal.4th`, `Cal.Rptr.2d`, etc.) were absent entirely. The fallback only matters when reporters-db has not been loaded — but `extractCitations` is synchronous and never auto-loads it, so this code path is hit on every default invocation.
+
+  Result, pre-fix: a 300-opinion CAP-corpus audit found 100% of `S.Ct.` / `L.Ed.2d` / `Mass.` / `Cal.Rptr.2d` / `Va.` citations scoring 0.65 (or lower without a court parenthetical) instead of the 0.95 they should reach. Mean case-citation confidence: 0.46, with 81% under 0.7.
+
+  `COMMON_REPORTERS` now uses the post-cleaning canonical forms (no inner spaces) and explicitly includes the audited state reporters and the full Cal. family. The spaced Bluebook forms are kept alongside for defensiveness in case a code path skips the cleaner. The fix surfaces both ways: the existing `extractCase.ts` confidence scoring and the `extractShortForms.ts` short-form reporter check both benefit, since both consume the same set.
+
+  Auto-loading the reporters-db from `extractCitationsAsync` was considered as a complementary fix but deferred — it couples the core bundle to the data chunk and surfaces a separate pre-existing dist-runtime path-resolution issue that warrants its own focused PR.
+
+- [#611](https://github.com/medelman17/eyecite-ts/pull/611) [`960ef84`](https://github.com/medelman17/eyecite-ts/commit/960ef8472138ef1b9c0232f8f87f15fa54e30b2b) Thanks [@medelman17](https://github.com/medelman17)! - Recompute confidence for parallel-cite secondary citations after `inheritParallelCaseName` propagates the shared caption (#556).
+
+  `inheritParallelCaseName` runs as a post-pass and mutates `caseName` / `plaintiff` / `defendant` onto each secondary cite in a parallel-cite group (e.g. `93 S. Ct. 705` and `35 L. Ed. 2d 147` in `Roe v. Wade, 410 U.S. 113, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973)`). But each secondary's `confidence` was already locked in by `buildCaseCitation()` when its `caseName` was still `undefined`, so the score missed the `+0.15` caseName signal it now qualifies for. CAP-corpus audit (300 opinions): roughly 94% of citations that had a full case name, a year, and a court but landed under 0.7 confidence were parallel secondaries stuck at the pre-inheritance score.
+
+  Fix:
+
+  - Extract the case-citation confidence formula out of `buildCaseCitation` into a pure helper `computeCaseConfidence({ reporter, year, caseName, court, hasBlankPage })`.
+  - Call it from the original site (no behavior change for citations that don't go through inheritance).
+  - After `inheritParallelCaseName` mutates the caption fields on a secondary, recompute its confidence with the same helper so the inherited `caseName` registers in the score.
+
+  The recompute only fires on secondaries whose `caseName` was previously undefined (the inheritance loop already short-circuits for ones that already have one). Primary cites and non-parallel cites are untouched.
+
+  Concrete deltas for repros in the issue:
+
+  - `Roe v. Wade, 410 U.S. 113, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973)` — each secondary picks up +0.15 (`0.5 → 0.65` for the SCOTUS secondaries, bounded by the reporter-database lookup tracked separately by #555).
+  - `Nixon v. Nixon, 329 Pa. 256, 198 A. 154 (1938)` — `198 A. 154` rises from 0.70 to 0.85.
+  - `People v. Smith (2001) 24 Cal.4th 849 [102 Cal.Rptr.2d 731]` — `102 Cal.Rptr.2d 731` rises from 0.20 to 0.35.
+
+- [#598](https://github.com/medelman17/eyecite-ts/pull/598) [`67b4aae`](https://github.com/medelman17/eyecite-ts/commit/67b4aaedece1b0ddb6e3c608c09fff95405d1f9e) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): prefer same-case full-caption supra matches
+
+  `Plaintiff v. Defendant, supra` resolution now first looks for a single
+  antecedent whose plaintiff and defendant both match the caption. This prevents
+  an unrelated case with a stronger one-sided fuzzy match from beating the
+  intended antecedent.
+
 ## 0.21.5
 
 ### Patch Changes
