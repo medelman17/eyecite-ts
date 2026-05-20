@@ -44,16 +44,26 @@ export interface PinciteInfo {
  *  `at`. Routes the rest of the string into paragraph parsing. (#204) */
 const PARA_PREFIX_REGEX = /^(?:at\s+)?(?:¶¶?|paras?\.?)\s*/i
 
-/** Body of a paragraph pincite once the marker has been consumed: `N` or `N-M`. */
-const PARA_NUM_REGEX = /^(\d+)(?:\s*[-–—]\s*(\d+))?\s*$/
+/** Body of a paragraph pincite once the marker has been consumed: `N` or `N-M`.
+ *  Range separator includes tilde (`~`) for OCR-artifact tolerance (#516). */
+const PARA_NUM_REGEX = /^(\d+)(?:\s*[-–—~]\s*(\d+))?\s*$/
 
 /** Matches: optional "at ", optional "*" (star pagination), digits, optional
- *  "-/–/—[*]digits", optional "n./nn./note digits" with optional range end.
+ *  "-/–/—/~[*]digits", optional "n./nn./note digits" with optional range end.
  *  The footnote separator accepts a comma+space variant (`, fn. 3` — common
  *  in California opinions, #311) in addition to the canonical whitespace
- *  separator. `fn` / `fns` are recognized alongside `n` / `nn` / `note`. */
+ *  separator. `fn` / `fns` are recognized alongside `n` / `nn` / `note`.
+ *  Tilde (`~`) is accepted as a range separator alongside hyphen and dashes
+ *  for OCR-artifact tolerance (#516). */
 const PINCITE_PARSE_REGEX =
-  /^(?:at\s+)?(\*?)(\d+)(?:[-–—]\*?(\d+))?(?:\s*,)?\s*(?:(?:nn?|fns?|note)\s*\.?\s*(\d+)(?:[-–—](\d+))?)?$/i
+  /^(?:at\s+)?(\*?)(\d+)(?:[-–—~]\*?(\d+))?(?:\s*,)?\s*(?:(?:nn?|fns?|note)\s*\.?\s*(\d+)(?:[-–—~](\d+))?)?$/i
+
+/** Footnote-only pincite — no page digits, just `n. 7`, `note 7`, `nn. 3-5`,
+ *  `fn. 4` (#515). Surfaces when the cited material is on the citation's
+ *  start page and the author references only the footnote. Accepts an
+ *  optional leading `at `. */
+const FOOTNOTE_ONLY_PINCITE_REGEX =
+  /^(?:at\s+)?(?:nn?|fns?|note)\s*\.?\s*(\d+)(?:[-–—~](\d+))?$/i
 
 /**
  * Parse a pincite string into structured components.
@@ -92,6 +102,24 @@ export function parsePincite(raw: string): PinciteInfo | null {
       return result
     }
     // Falls through to page parsing if the body isn't a clean number — defensive.
+  }
+
+  // Footnote-only pincite (`n. 7`, `note 7`, `nn. 3-5`, `fn. 4`). Checked
+  // before the page parser because the page parser requires leading digits
+  // and would reject these forms. (#515)
+  const footnoteOnly = FOOTNOTE_ONLY_PINCITE_REGEX.exec(trimmed)
+  if (footnoteOnly) {
+    const footnote = Number.parseInt(footnoteOnly[1], 10)
+    const footnoteEnd = footnoteOnly[2]
+      ? Number.parseInt(footnoteOnly[2], 10)
+      : undefined
+    const result: PinciteInfo = {
+      footnote,
+      isRange: footnoteEnd !== undefined,
+      raw: trimmed,
+    }
+    if (footnoteEnd !== undefined) result.footnoteEnd = footnoteEnd
+    return result
   }
 
   const match = PINCITE_PARSE_REGEX.exec(trimmed)

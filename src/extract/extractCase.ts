@@ -187,8 +187,30 @@ const LOOKAHEAD_PAREN_REGEX =
 // either `\s+` (the original `768 n.3` form) or `,\s+` (the California
 // `768, fn. 3` form). `fn` / `fns` are added to the alternation alongside
 // `n` / `nn` / `note`.
+//
+// Terminator class (#505): in addition to sentence punctuation and closing
+// brackets, accept `:` (block-quote intro), `[` (bracketed parallel cite),
+// `»` (OCR artifact), and the four common curly/straight quote characters
+// (`"`, `"`, `'`, `'`, `"`). Frequency ~6–10 per 1,000 cites in the wild.
+//
+// Page-prefix forms (#510): accept spelled-out `page` / `pages` in addition
+// to the abbreviated `p.` / `pp.` so full-case citations match the
+// short-form extractor's accepted prefixes (#344).
+//
+// Star-pagination range (#513): page body now allows `*` on BOTH ends of
+// the range (`*10-*11`), matching the short-form extractor (#201).
+//
+// Range separators (#516): tilde (`~`) is accepted as a range separator
+// alongside hyphen / en-dash / em-dash. Tilde shows up as an OCR artifact
+// in some scanned reporters and PDF dehyphenators.
+//
+// Footnote-only pincite (#515): a footnote reference without a preceding
+// page (`, n. 7` / `, note 7` / `, nn. 3-5` / `, fn. 4`) is accepted as
+// the trailing alternation. `parsePincite` surfaces this as
+// `pinciteInfo.footnote` with `page=undefined`. The leading `at` prefix is
+// allowed for symmetry with the page-bearing forms.
 const LOOKAHEAD_PINCITE_REGEX =
-  /^(?:\s+at\s+(?:pp?\.\s*)?|,\s*(?:at\s+(?:pp?\.\s*)?)?)(\*?\d+(?:-\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)(?=$|[.,;)(\]]|\s(?![A-Z]))/d
+  /^(?:\s+at\s+(?:(?:pp?\.|pages?)\s*)?|,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?)(\*?\d+(?:[-–—~]\*?\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)?|¶¶?\s*\d+(?:[-–—~]\d+)?|paras?\.?\s*\d+(?:[-–—~]\d+)?|(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)(?=$|[.,:;)([\]»"'“”‘’]|\s(?![A-Z]))/d
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
@@ -206,17 +228,24 @@ const PAREN_SKIP_REGEX = /[\s,]/
 // Parallel-cite disambiguation: tighten the trailing whitespace branch to
 // reject `\s+[A-Z]` (a parallel-cite reporter token). Allow bracket close
 // `]` as a terminator so bracketed parallel pincites still capture.
+//
+// Terminator class mirrors LOOKAHEAD_PINCITE_REGEX (#505): accept `:`, `[`,
+// `»`, and curly/straight quotes as additional terminators.
+//
+// Range separators include tilde (#516).
 const ADDITIONAL_PINCITE_REGEX =
-  /^,\s*(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)(?=$|[.,;)(\]]|\s(?![A-Z]))/
+  /^,\s*(\*?\d+(?:[-–—~]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)?)(?=$|[.,:;)([\]»"'“”‘’]|\s(?![A-Z]))/
 
 /** Pincite text that appears between core citation and parentheticals.
  *  Matches: comma-separated page numbers/ranges and optional note refs.
  *  E.g., ", 199 n.2", ", 999-1000", ", 130 n.5", ", at p. 115" (CSM, #236),
- *  ", ¶ 12" / ", paras. 12-14" (paragraph form, #204).
+ *  ", ¶ 12" / ", paras. 12-14" (paragraph form, #204),
+ *  ", at page 115" / ", at pages 100-105" (spelled-out form, #510).
+ *  Range separators include `~` (OCR artifact, #516).
  *  The outer `+` is intentionally greedy to handle multi-pincite citations
  *  (e.g., ", 199, 205, 210"). Safe because the scan window is bounded by maxLookahead. */
 const PINCITE_SKIP_REGEX =
-  /^(?:,\s*(?:(?:at\s+(?:pp?\.\s*)?)?\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:n|note)\s*\.?\s*\d+)?|(?:at\s+)?(?:¶¶?|paras?\.?)\s*\d+(?:[-–—]\d+)?))+/
+  /^(?:,\s*(?:(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?\*?\d+(?:[-–—~]\*?\d+)?(?:\s+(?:n|note)\s*\.?\s*\d+)?|(?:at\s+)?(?:¶¶?|paras?\.?)\s*\d+(?:[-–—~]\d+)?))+/
 
 /**
  * Signal normalization table. Longer patterns first so "aff'd on other grounds"

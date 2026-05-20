@@ -23,9 +23,17 @@ import { parsePincite, type PinciteInfo } from "./pincite"
  *  accepts paragraph-marker pincites `, ¶ N` / `, ¶¶ N-M` / `, paras. N-M`
  *  for state neutral-cite forms like `2015-NMCA-072, ¶ 2` where the
  *  paragraph numbering is the canonical pinpoint format (#311). When the
- *  pincite is a paragraph form, `at` is optional. */
+ *  pincite is a paragraph form, `at` is optional.
+ *
+ *  Parallel-cite disambiguation (#507): in Ohio Bluebook chains like
+ *  `100 Ohio St.3d 152, 2003-Ohio-5372, 797 N.E.2d 71` the neutral cite
+ *  was greedily consuming `797` (the next parallel's volume) as a pincite.
+ *  The trailing lookahead now rejects matches where the digit sequence is
+ *  followed by whitespace + capital letter (a parallel reporter token).
+ *  Star-pagination, paragraph, and explicit `at`-keyword forms are exempted
+ *  from this guard because they cannot be confused with a parallel cite. */
 const NEUTRAL_PINCITE_LOOKAHEAD =
-  /^(?:\s+at\s+|,\s*(?:at\s+(?:pp?\.\s*)?)?)(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)/d
+  /^(?:\s+at\s+|,\s*(?:at\s+(?:pp?\.\s*)?)?)(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)(?=$|[.,:;)([\]»"'“”‘’]|\s(?![A-Z]))/d
 
 /** Trailing `(court date)` parenthetical lookahead for database cites.
  *  Allows optional intervening pincite (`, at *3`) per #191. The body
