@@ -2112,14 +2112,17 @@ export function parseParenthetical(content: string): {
   // unpublished table decision. Checked before en banc/per curiam.
   if (/^plurality\s+opinion\b/i.test(content.trim())) {
     result.disposition = "plurality opinion"
+    clearCourtIfDisposition(result, "plurality opinion")
     return result
   }
   if (/^mem\.\s*$/i.test(content.trim())) {
     result.disposition = "mem."
+    clearCourtIfDisposition(result, "mem.")
     return result
   }
   if (/^unpublished\s+table\s+decision\b/i.test(content.trim())) {
     result.disposition = "unpublished table decision"
+    clearCourtIfDisposition(result, "unpublished table decision")
     return result
   }
 
@@ -2131,13 +2134,41 @@ export function parseParenthetical(content: string): {
   // — added as a separate disposition value to preserve the CA distinction.
   if (/\ben banc\b\s*$/i.test(content.trim())) {
     result.disposition = "en banc"
+    clearCourtIfDisposition(result, "en banc")
   } else if (/\bin bank\b\s*$/i.test(content.trim())) {
     result.disposition = "in bank"
+    clearCourtIfDisposition(result, "in bank")
   } else if (/\bper curiam\b\s*$/i.test(content.trim())) {
     result.disposition = "per curiam"
+    clearCourtIfDisposition(result, "per curiam")
   }
 
   return result
+}
+
+/**
+ * Strip a disposition phrase from `result.court` when the court field is *only*
+ * the disposition text (e.g., `(per curiam)` content yields
+ * `court="per curiam"` from `stripDateFromCourt`, since it returns any
+ * letter-bearing string after stripping date components). Disposition is
+ * orthogonal to court — keeping both with the same value lets the disposition
+ * leak into the court field downstream, overriding reporter-based inference
+ * (e.g., SCOTUS for `455 U.S. 478 (1982) (per curiam)`). See #529.
+ *
+ * If court contains additional non-disposition text (e.g., `9th Cir. (en banc)`
+ * — pathological but theoretically possible), preserve it.
+ */
+function clearCourtIfDisposition(
+  result: { court?: string; courtStart?: number; courtEnd?: number },
+  disposition: string,
+): void {
+  if (!result.court) return
+  const normalized = result.court.trim().toLowerCase()
+  if (normalized === disposition.toLowerCase()) {
+    result.court = undefined
+    result.courtStart = undefined
+    result.courtEnd = undefined
+  }
 }
 
 /**
