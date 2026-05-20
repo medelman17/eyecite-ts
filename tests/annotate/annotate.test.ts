@@ -496,6 +496,82 @@ describe("annotate", () => {
     })
   })
 
+  describe("bare `<` characters (#544)", () => {
+    it("does not engulf prose around a bare `<` used as math/inequality", () => {
+      // Real OCR'd opinions contain bare `<` (e.g., `< 30%`). The previous
+      // `snapOutOfHtmlTags` implementation treated ANY position after an
+      // unpaired `<` as 'inside an HTML tag' and snapped citation start back
+      // to the bare `<`, swallowing prose between the bare `<` and the
+      // citation. The fix only treats `<` followed by `[a-zA-Z!/]` as a tag.
+      const text =
+        "When the rate is < 30% of revenue, see Smith v. Jones, 500 U.S. 100 (1991), the court reverses."
+      const citations = extractCitations(text)
+      expect(citations).toHaveLength(1)
+
+      const result = annotate(text, citations, {
+        template: { before: "<cite>", after: "</cite>" },
+      })
+
+      // Wrap covers ONLY the citation; the prose `< 30%` is untouched.
+      expect(result.text).toContain("< 30% of revenue")
+      expect(result.text).not.toContain("&lt; 30%")
+      expect(result.text).toBe(
+        "When the rate is < 30% of revenue, see Smith v. Jones, <cite>500 U.S. 100</cite> (1991), the court reverses.",
+      )
+      expect(result.skipped).toHaveLength(0)
+    })
+
+    it("does not engulf prose between bare `<` and a parallel-reporter cluster", () => {
+      // Confirms that a bare `<` early in the text doesn't bleed into
+      // subsequent citations. Without the fix, the first citation's start
+      // snapped backwards to the bare `<` and the wrap engulfed everything
+      // up to (and through) the citation.
+      const text =
+        "A < B (an aside) ... Roe v. Wade, 410 U.S. 113 (1973), and Casey, 505 U.S. 833 (1992)."
+      const citations = extractCitations(text)
+      expect(citations.length).toBeGreaterThanOrEqual(2)
+
+      const result = annotate(text, citations, {
+        template: { before: "<cite>", after: "</cite>" },
+      })
+
+      // No nested wraps — wraps cover only the citations themselves.
+      expect(result.text).not.toMatch(/<cite>[^<]*<cite>/)
+      // The bare `<` must remain literally (not escaped, not engulfed).
+      expect(result.text.startsWith("A < B (an aside)")).toBe(true)
+      // Each citation gets exactly one wrap pair.
+      const openCount = (result.text.match(/<cite>/g) ?? []).length
+      const closeCount = (result.text.match(/<\/cite>/g) ?? []).length
+      expect(openCount).toBe(closeCount)
+      expect(openCount).toBe(citations.length)
+    })
+
+    it("still snaps out of real HTML tags (regression guard)", () => {
+      // Make sure the narrower tag-detection rule does not regress the
+      // legitimate snap behaviour for actual HTML.
+      const text = '<a href="/x">See</a> 500 F.2d 123'
+      const citation = createCaseCitation(21, 33, "500 F.2d 123")
+      const result = annotate(text, [citation], {
+        template: { before: "<cite>", after: "</cite>" },
+        autoEscape: false,
+      })
+      expect(result.text).toBe('<a href="/x">See</a> <cite>500 F.2d 123</cite>')
+      expect(result.skipped).toHaveLength(0)
+    })
+
+    it("does not treat `<` followed by a digit or space as a tag", () => {
+      // Both `<3` (heart / age comparison) and `< text` (whitespace after `<`)
+      // appear in legal prose. Neither is a tag.
+      const text = "See if x <3 or y < text matches 500 F.2d 123 here"
+      const citation = createCaseCitation(32, 44, "500 F.2d 123")
+      const result = annotate(text, [citation], {
+        template: { before: "<cite>", after: "</cite>" },
+      })
+      expect(result.text).toBe("See if x <3 or y < text matches <cite>500 F.2d 123</cite> here")
+      expect(result.skipped).toHaveLength(0)
+    })
+  })
+
   describe("edge cases", () => {
     it("should handle empty citations array", () => {
       const text = "See 500 F.2d 123"

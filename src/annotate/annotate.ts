@@ -154,7 +154,13 @@ export function annotate<C extends Citation = Citation>(
 
 /**
  * Check if a position falls inside an HTML tag (between `<` and `>`).
- * Returns the index of the opening `<` if inside a tag, otherwise -1.
+ * Returns the tag's start/end indices if inside a tag, otherwise null.
+ *
+ * Real-world opinions (especially OCR output) contain bare `<` characters in
+ * prose (`A < B`, `rate is < 30%`). Treating every unpaired `<` as a tag-open
+ * caused `annotate` to engulf prose between the bare `<` and the next citation
+ * (issue #544). A `<` only opens a tag when followed (possibly after whitespace)
+ * by an ASCII letter, `!` (comments/doctype), or `/` (closing tag).
  */
 function findContainingTag(text: string, pos: number): { tagStart: number; tagEnd: number } | null {
   // Search backwards from pos for '<' without encountering '>' first
@@ -162,6 +168,11 @@ function findContainingTag(text: string, pos: number): { tagStart: number; tagEn
   while (i >= 0) {
     if (text[i] === ">") return null // Hit a tag close — we're outside
     if (text[i] === "<") {
+      if (!looksLikeTagOpen(text, i)) {
+        // Bare `<` (prose / math), not an HTML tag — keep walking backwards
+        i--
+        continue
+      }
       // Found opening '<' — now find the closing '>'
       let j = pos
       while (j < text.length) {
@@ -174,6 +185,20 @@ function findContainingTag(text: string, pos: number): { tagStart: number; tagEn
     i--
   }
   return null
+}
+
+/**
+ * True when the `<` at `ltIndex` plausibly opens an HTML tag, comment, or
+ * close-tag. Well-formed HTML tags have no whitespace between `<` and the
+ * tag-name character, so `<` must be IMMEDIATELY followed by an ASCII letter,
+ * `!` (comment/doctype), or `/` (closing tag). Everything else (digits,
+ * punctuation, whitespace, end-of-text) is treated as prose — e.g. `< 30%`,
+ * `< B`, `<3`, OCR noise like `<®=»`.
+ */
+function looksLikeTagOpen(text: string, ltIndex: number): boolean {
+  const next = text[ltIndex + 1]
+  if (next === undefined) return false
+  return /[a-zA-Z!/]/.test(next)
 }
 
 /**
