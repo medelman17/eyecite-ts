@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { annotate } from "@/annotate/annotate"
+import { extractCitations } from "@/extract/extractCitations"
 import type { Citation } from "@/types/citation"
 import type { Span } from "@/types/span"
 
@@ -495,6 +496,229 @@ describe("annotate", () => {
     })
   })
 
+  describe("bare `<` characters (#544)", () => {
+    it("does not engulf prose around a bare `<` used as math/inequality", () => {
+      // Real OCR'd opinions contain bare `<` (e.g., `< 30%`). The previous
+      // `snapOutOfHtmlTags` implementation treated ANY position after an
+      // unpaired `<` as 'inside an HTML tag' and snapped citation start back
+      // to the bare `<`, swallowing prose between the bare `<` and the
+      // citation. The fix only treats `<` followed by `[a-zA-Z!/]` as a tag.
+      const text =
+        "When the rate is < 30% of revenue, see Smith v. Jones, 500 U.S. 100 (1991), the court reverses."
+      const citations = extractCitations(text)
+      expect(citations).toHaveLength(1)
+
+      const result = annotate(text, citations, {
+        template: { before: "<cite>", after: "</cite>" },
+      })
+
+      // Wrap covers ONLY the citation; the prose `< 30%` is untouched.
+      expect(result.text).toContain("< 30% of revenue")
+      expect(result.text).not.toContain("&lt; 30%")
+      expect(result.text).toBe(
+        "When the rate is < 30% of revenue, see Smith v. Jones, <cite>500 U.S. 100</cite> (1991), the court reverses.",
+      )
+      expect(result.skipped).toHaveLength(0)
+    })
+
+    it("does not engulf prose between bare `<` and a parallel-reporter cluster", () => {
+      // Confirms that a bare `<` early in the text doesn't bleed into
+      // subsequent citations. Without the fix, the first citation's start
+      // snapped backwards to the bare `<` and the wrap engulfed everything
+      // up to (and through) the citation.
+      const text =
+        "A < B (an aside) ... Roe v. Wade, 410 U.S. 113 (1973), and Casey, 505 U.S. 833 (1992)."
+      const citations = extractCitations(text)
+      expect(citations.length).toBeGreaterThanOrEqual(2)
+
+      const result = annotate(text, citations, {
+        template: { before: "<cite>", after: "</cite>" },
+      })
+
+      // No nested wraps — wraps cover only the citations themselves.
+      expect(result.text).not.toMatch(/<cite>[^<]*<cite>/)
+      // The bare `<` must remain literally (not escaped, not engulfed).
+      expect(result.text.startsWith("A < B (an aside)")).toBe(true)
+      // Each citation gets exactly one wrap pair.
+      const openCount = (result.text.match(/<cite>/g) ?? []).length
+      const closeCount = (result.text.match(/<\/cite>/g) ?? []).length
+      expect(openCount).toBe(closeCount)
+      expect(openCount).toBe(citations.length)
+    })
+
+    it("still snaps out of real HTML tags (regression guard)", () => {
+      // Make sure the narrower tag-detection rule does not regress the
+      // legitimate snap behaviour for actual HTML.
+      const text = '<a href="/x">See</a> 500 F.2d 123'
+      const citation = createCaseCitation(21, 33, "500 F.2d 123")
+      const result = annotate(text, [citation], {
+        template: { before: "<cite>", after: "</cite>" },
+        autoEscape: false,
+      })
+      expect(result.text).toBe('<a href="/x">See</a> <cite>500 F.2d 123</cite>')
+      expect(result.skipped).toHaveLength(0)
+    })
+
+    it("does not treat `<` followed by a digit or space as a tag", () => {
+      // Both `<3` (heart / age comparison) and `< text` (whitespace after `<`)
+      // appear in legal prose. Neither is a tag.
+      const text = "See if x <3 or y < text matches 500 F.2d 123 here"
+      const citation = createCaseCitation(32, 44, "500 F.2d 123")
+      const result = annotate(text, [citation], {
+        template: { before: "<cite>", after: "</cite>" },
+      })
+      expect(result.text).toBe("See if x <3 or y < text matches <cite>500 F.2d 123</cite> here")
+      expect(result.skipped).toHaveLength(0)
+    })
+  })
+
+  describe("overlapping core spans (#545)", () => {
+    it("skips an inner citation nested inside another citation's core span", () => {
+      // Real-world: a statute false-positive's core span lands inside a case
+      // citation's core span. Before overlap detection, both wraps got spliced,
+      // chopping the outer wrap's closing sentinel into the middle of the
+      // inner wrap's text and producing malformed output.
+      const text = "Smith v. Jones, 500 F.2d 123 (1980), see also more text"
+      const outer: Citation = {
+        type: "case",
+        text: "500 F.2d 123",
+        span: { cleanStart: 0, cleanEnd: 28, originalStart: 0, originalEnd: 28 },
+        matchedText: "Smith v. Jones, 500 F.2d 123",
+        confidence: 0.9,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 500,
+        reporter: "F.2d",
+        page: 123,
+      }
+      const inner: Citation = {
+        type: "case",
+        text: "500 F.2d 1",
+        span: { cleanStart: 16, cleanEnd: 26, originalStart: 16, originalEnd: 26 },
+        matchedText: "500 F.2d 1",
+        confidence: 0.4, // Lower confidence — the false positive
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 500,
+        reporter: "F.2d",
+        page: 1,
+      }
+
+      const result = annotate(text, [outer, inner], {
+        template: { before: "<cite>", after: "</cite>" },
+      })
+
+      // Outer wins, inner is skipped, output is clean (no malformed sentinels).
+      expect(result.text).toBe(
+        "<cite>Smith v. Jones, 500 F.2d 123</cite> (1980), see also more text",
+      )
+      expect(result.skipped).toHaveLength(1)
+      expect(result.skipped[0]).toBe(inner)
+
+      // Sanity: open/close cite counts match (no truncated sentinels).
+      const openCount = (result.text.match(/<cite>/g) ?? []).length
+      const closeCount = (result.text.match(/<\/cite>/g) ?? []).length
+      expect(openCount).toBe(closeCount)
+    })
+
+    it("skips the lower-confidence citation when two overlap but neither nests", () => {
+      // Two citations whose core spans truly intersect (A=[10,20], B=[15,25]).
+      // Without confidence-aware tie-breaking, ordering by start position would
+      // keep A; if A is the false positive, the real citation gets dropped.
+      // The fix prefers the higher-confidence citation in this case.
+      const text = "x y z aaa BBB CCC DDD eee fff text after"
+      const falsePositive: Citation = {
+        type: "case",
+        text: "aaa BBB CCC",
+        span: { cleanStart: 6, cleanEnd: 17, originalStart: 6, originalEnd: 17 },
+        matchedText: "aaa BBB CCC",
+        confidence: 0.3, // Low confidence
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 1,
+        reporter: "X",
+        page: 1,
+      }
+      const realCitation: Citation = {
+        type: "case",
+        text: "CCC DDD eee",
+        span: { cleanStart: 14, cleanEnd: 25, originalStart: 14, originalEnd: 25 },
+        matchedText: "CCC DDD eee",
+        confidence: 0.95, // High confidence
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 2,
+        reporter: "Y",
+        page: 2,
+      }
+
+      const result = annotate(text, [falsePositive, realCitation], {
+        template: { before: "<cite>", after: "</cite>" },
+      })
+
+      // The higher-confidence citation survives; the lower-confidence one is skipped.
+      expect(result.skipped).toHaveLength(1)
+      expect(result.skipped[0]).toBe(falsePositive)
+      // No malformed sentinels.
+      const openCount = (result.text.match(/<cite>/g) ?? []).length
+      const closeCount = (result.text.match(/<\/cite>/g) ?? []).length
+      expect(openCount).toBe(closeCount)
+      expect(openCount).toBe(1)
+      // The kept wrap spans the real citation's range exactly.
+      expect(result.text).toContain("<cite>CCC DDD eee</cite>")
+    })
+
+    it("never produces malformed sentinels even with multiple overlaps", () => {
+      // Three citations all overlapping in a cluster — only the first
+      // accepted wrap should survive; the others must be skipped.
+      const text = "ALPHA BETA GAMMA DELTA EPSILON tail"
+      const a: Citation = {
+        type: "case",
+        text: "ALPHA BETA GAMMA",
+        span: { cleanStart: 0, cleanEnd: 16, originalStart: 0, originalEnd: 16 },
+        matchedText: "ALPHA BETA GAMMA",
+        confidence: 0.9,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 1,
+        reporter: "A",
+        page: 1,
+      }
+      const b: Citation = {
+        type: "case",
+        text: "BETA GAMMA DELTA",
+        span: { cleanStart: 6, cleanEnd: 22, originalStart: 6, originalEnd: 22 },
+        matchedText: "BETA GAMMA DELTA",
+        confidence: 0.5,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 2,
+        reporter: "B",
+        page: 2,
+      }
+      const c: Citation = {
+        type: "case",
+        text: "GAMMA DELTA EPSILON",
+        span: { cleanStart: 11, cleanEnd: 30, originalStart: 11, originalEnd: 30 },
+        matchedText: "GAMMA DELTA EPSILON",
+        confidence: 0.5,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 3,
+        reporter: "C",
+        page: 3,
+      }
+      const result = annotate(text, [a, b, c], {
+        template: { before: "<cite>", after: "</cite>" },
+      })
+      const openCount = (result.text.match(/<cite>/g) ?? []).length
+      const closeCount = (result.text.match(/<\/cite>/g) ?? []).length
+      expect(openCount).toBe(closeCount)
+      // Total skipped = total citations - accepted wraps
+      expect(result.skipped.length + openCount).toBe(3)
+    })
+  })
+
   describe("edge cases", () => {
     it("should handle empty citations array", () => {
       const text = "See 500 F.2d 123"
@@ -663,6 +887,89 @@ describe("annotate", () => {
       // but the REPLACEMENT happens at fullSpan positions
       expect(result.text).toBe('See <a href="/cases/500-123">500 F.2d 123</a>')
       expect(result.skipped).toHaveLength(0)
+    })
+
+    it("does not produce nested cite tags or mid-token truncation for parallel reporters (#543)", () => {
+      // Parallel reporters: all three citations have fullSpan that extends back to
+      // "Roe v. Wade" and forward to "(1973)". Sorting by span.originalStart instead
+      // of fullSpan.originalStart, plus failing to skip overlapping wraps, produced
+      // nested <cite> tags and mid-word truncation like "L. Ed. 2</cite>d".
+      const text =
+        "In Roe v. Wade, 410 U.S. 113, 93 S.Ct. 705, 35 L.Ed.2d 147 (1973), the Court held..."
+      const citations = extractCitations(text)
+
+      const result = annotate(text, citations, {
+        template: { before: "<cite>", after: "</cite>" },
+        useFullSpan: true,
+      })
+
+      // No nested <cite> tags (literal or HTML-escaped) — the wrap output must be flat.
+      expect(result.text).not.toMatch(/<cite>[^<]*<cite>/)
+      expect(result.text).not.toContain("&lt;cite&gt;")
+      expect(result.text).not.toContain("&amp;lt;cite&amp;gt;")
+
+      // No mid-token truncation: every recognisable reporter token must still be
+      // contiguous (no </cite> appearing inside a reporter abbreviation).
+      expect(result.text).not.toMatch(/L\.\s*Ed\.\s*2<\/cite>d/)
+      expect(result.text).not.toMatch(/U\.\s*S<\/cite>\.\s*1/)
+      expect(result.text).not.toMatch(/S\.\s*Ct<\/cite>\./)
+
+      // The wrap should encompass at least the outermost fullSpan exactly once.
+      const openCount = (result.text.match(/<cite>/g) ?? []).length
+      const closeCount = (result.text.match(/<\/cite>/g) ?? []).length
+      expect(openCount).toBe(closeCount)
+      expect(openCount).toBeGreaterThanOrEqual(1)
+
+      // When wraps overlap, only the outermost should remain — the others must
+      // surface in `skipped` so callers know they were not annotated.
+      expect(result.skipped.length).toBeGreaterThanOrEqual(citations.length - 1)
+    })
+
+    it("sorts by fullSpan.originalStart when useFullSpan is true so reverse splice is safe", () => {
+      // Two citations whose CORE spans appear in order [A, B] but whose fullSpans
+      // disagree on ordering. Sorting by span.originalStart (A.span=10, B.span=20)
+      // would splice B first (correct), but if their fullSpans overlap
+      // (A.fullSpan=[0, 30], B.fullSpan=[15, 25]), the inner B wrap corrupts A.
+      // With fullSpan-aware sorting AND overlap skip, A wins and B is skipped.
+      const text = "Smith v. Jones, 100 U.S. 1, 200 U.S. 2 (1900) more text"
+      const citationA: Citation = {
+        type: "case",
+        text: "100 U.S. 1",
+        span: { cleanStart: 16, cleanEnd: 26, originalStart: 16, originalEnd: 26 },
+        matchedText: "100 U.S. 1",
+        confidence: 0.9,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 100,
+        reporter: "U.S.",
+        page: 1,
+        fullSpan: { cleanStart: 0, cleanEnd: 45, originalStart: 0, originalEnd: 45 },
+      }
+      const citationB: Citation = {
+        type: "case",
+        text: "200 U.S. 2",
+        span: { cleanStart: 28, cleanEnd: 38, originalStart: 28, originalEnd: 38 },
+        matchedText: "200 U.S. 2",
+        confidence: 0.9,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 200,
+        reporter: "U.S.",
+        page: 2,
+        fullSpan: { cleanStart: 28, cleanEnd: 45, originalStart: 28, originalEnd: 45 },
+      }
+
+      const result = annotate(text, [citationA, citationB], {
+        template: { before: "<cite>", after: "</cite>" },
+        useFullSpan: true,
+      })
+
+      // Outer wrap survives intact; inner is skipped.
+      expect(result.text).toBe(
+        "<cite>Smith v. Jones, 100 U.S. 1, 200 U.S. 2 (1900)</cite> more text",
+      )
+      expect(result.skipped).toHaveLength(1)
+      expect(result.skipped[0]).toBe(citationB)
     })
   })
 })

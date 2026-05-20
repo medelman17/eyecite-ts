@@ -58,31 +58,85 @@ export function annotate<C extends Citation = Citation>(
     callback,
   } = options
 
-  // Sort reverse to avoid position shifts invalidating subsequent annotations
-  const sorted = [...citations].sort((a, b) => {
-    const aPos = useCleanText ? a.span.cleanStart : a.span.originalStart
-    const bPos = useCleanText ? b.span.cleanStart : b.span.originalStart
-    return bPos - aPos // Reverse for backward iteration
+  // Resolve each citation to its actual wrap range up-front. When useFullSpan
+  // is true, the wrap region is the citation's fullSpan (if present), so the
+  // sort and overlap checks must agree on that range — sorting by the core
+  // span.originalStart while wrapping the fullSpan corrupts parallel-reporter
+  // sequences whose fullSpans all share an endpoint (issue #543).
+  type Resolved = {
+    citation: C
+    start: number
+    end: number
+  }
+  const resolved: Resolved[] = citations.map((citation) => {
+    const span =
+      useFullSpan && "fullSpan" in citation && citation.fullSpan ? citation.fullSpan : citation.span
+    return {
+      citation,
+      start: useCleanText ? span.cleanStart : span.originalStart,
+      end: useCleanText ? span.cleanEnd : span.originalEnd,
+    }
   })
+
+  // Sort ascending by start position. Tie-break on wider range first (smaller
+  // end last) so that when two wraps share a start, the outer (longer) one is
+  // processed first and the inner one is skipped via overlap detection.
+  const ascending = [...resolved].sort((a, b) => {
+    if (a.start !== b.start) return a.start - b.start
+    return b.end - a.end
+  })
+
+  // Overlap detection: walk ascending and resolve any wrap whose range
+  // intersects the currently-accepted wrap (issues #543, #545). Two wraps
+  // overlap when one starts before the other ends.
+  //
+  // Resolution rule:
+  // - If one wrap fully contains the other, keep the outer (already accepted)
+  //   wrap so the entire cluster ends up under a single sentinel.
+  // - Otherwise (true intersection) prefer the higher-confidence citation —
+  //   this lets a real citation displace an earlier low-confidence false
+  //   positive that happens to start first.
+  // The discarded citation surfaces via `skipped`.
+  const skipped: Citation[] = []
+  const accepted: Resolved[] = []
+  for (const item of ascending) {
+    const last = accepted[accepted.length - 1]
+    if (last !== undefined && item.start < last.end) {
+      // Overlaps the most recently accepted wrap. Decide which wins.
+      const lastContainsItem = item.end <= last.end
+      if (lastContainsItem) {
+        // Inner wrap nested inside outer — drop the inner one
+        skipped.push(item.citation)
+        continue
+      }
+      // True intersection — prefer the higher-confidence citation
+      const lastConf = last.citation.confidence ?? 0
+      const itemConf = item.citation.confidence ?? 0
+      if (itemConf > lastConf) {
+        // Incoming wins — eject the previously-accepted wrap
+        accepted.pop()
+        skipped.push(last.citation)
+        accepted.push(item)
+      } else {
+        // Existing wrap wins (ties keep the earlier-starting one)
+        skipped.push(item.citation)
+      }
+      continue
+    }
+    accepted.push(item)
+  }
+
+  // Process accepted wraps in reverse so splicing earlier ranges doesn't
+  // shift later (rightmost) positions.
+  const ordered = [...accepted].sort((a, b) => b.start - a.start)
 
   let result = text
   const positionMap = new Map<number, number>()
-  const skipped: Citation[] = []
 
-  for (const citation of sorted) {
-    // Determine which span to use
-    let start: number
-    let end: number
-
-    if (useFullSpan && "fullSpan" in citation && citation.fullSpan) {
-      // Full span mode: case name through parenthetical
-      start = useCleanText ? citation.fullSpan.cleanStart : citation.fullSpan.originalStart
-      end = useCleanText ? citation.fullSpan.cleanEnd : citation.fullSpan.originalEnd
-    } else {
-      // Default mode: core citation only
-      start = useCleanText ? citation.span.cleanStart : citation.span.originalStart
-      end = useCleanText ? citation.span.cleanEnd : citation.span.originalEnd
-    }
+  for (const item of ordered) {
+    const { citation } = item
+    let start = item.start
+    let end = item.end
 
     // Snap positions out of HTML tags when annotating original text
     if (!useCleanText) {
@@ -124,7 +178,13 @@ export function annotate<C extends Citation = Citation>(
 
 /**
  * Check if a position falls inside an HTML tag (between `<` and `>`).
- * Returns the index of the opening `<` if inside a tag, otherwise -1.
+ * Returns the tag's start/end indices if inside a tag, otherwise null.
+ *
+ * Real-world opinions (especially OCR output) contain bare `<` characters in
+ * prose (`A < B`, `rate is < 30%`). Treating every unpaired `<` as a tag-open
+ * caused `annotate` to engulf prose between the bare `<` and the next citation
+ * (issue #544). A `<` only opens a tag when followed (possibly after whitespace)
+ * by an ASCII letter, `!` (comments/doctype), or `/` (closing tag).
  */
 function findContainingTag(text: string, pos: number): { tagStart: number; tagEnd: number } | null {
   // Search backwards from pos for '<' without encountering '>' first
@@ -132,6 +192,11 @@ function findContainingTag(text: string, pos: number): { tagStart: number; tagEn
   while (i >= 0) {
     if (text[i] === ">") return null // Hit a tag close — we're outside
     if (text[i] === "<") {
+      if (!looksLikeTagOpen(text, i)) {
+        // Bare `<` (prose / math), not an HTML tag — keep walking backwards
+        i--
+        continue
+      }
       // Found opening '<' — now find the closing '>'
       let j = pos
       while (j < text.length) {
@@ -144,6 +209,20 @@ function findContainingTag(text: string, pos: number): { tagStart: number; tagEn
     i--
   }
   return null
+}
+
+/**
+ * True when the `<` at `ltIndex` plausibly opens an HTML tag, comment, or
+ * close-tag. Well-formed HTML tags have no whitespace between `<` and the
+ * tag-name character, so `<` must be IMMEDIATELY followed by an ASCII letter,
+ * `!` (comment/doctype), or `/` (closing tag). Everything else (digits,
+ * punctuation, whitespace, end-of-text) is treated as prose — e.g. `< 30%`,
+ * `< B`, `<3`, OCR noise like `<®=»`.
+ */
+function looksLikeTagOpen(text: string, ltIndex: number): boolean {
+  const next = text[ltIndex + 1]
+  if (next === undefined) return false
+  return /[a-zA-Z!/]/.test(next)
 }
 
 /**
