@@ -70,6 +70,8 @@ export function toBluebook(citation: Citation): string {
       }
       // chapter-only OR section absent: emit `code c. chapter` (Mass)
       // or `code \u00A7` placeholder when neither field is present.
+      // (`code` may be absent when an untagged bare-section cite was emitted
+      // \u2014 #531/#565 \u2014 handled by the `citation.code ? ... : ""` ternary above.)
       if (chapter) return `${title}${code}${chapter}${etSeq}`
       return `${title}${code}\u00A7${etSeq}`
     }

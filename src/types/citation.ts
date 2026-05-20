@@ -458,7 +458,7 @@ export interface StatuteCitation extends CitationBase {
   type: "statute"
   title?: number
   /**
-   * Code identifier (`U.S.C.`, `NMSA 1978`, `Penal`, etc.).
+   * Code identifier (`U.S.C.`, `NMSA 1978`, `Penal`, `Va. Code`, etc.).
    * Optional because bare-section citations with no nearby jurisdictional
    * signal drop both `code` and `jurisdiction` rather than guessing.
    * (#565, originally #531)

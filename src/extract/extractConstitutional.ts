@@ -52,11 +52,64 @@ const ROMAN_TO_INT: Record<string, number> = {
   XXVII: 27,
 }
 
-/** Parse a Roman numeral or Arabic number string to an integer. */
+/**
+ * Lookup table for word-form amendment ordinals (#534).
+ * Both unit forms (`First`..`Twentieth`) and compound forms
+ * (`Twenty-First`..`Twenty-Seventh`) are supported in either
+ * hyphenated or space-separated style.
+ */
+const WORD_ORDINAL_TO_INT: Record<string, number> = {
+  first: 1,
+  second: 2,
+  third: 3,
+  fourth: 4,
+  fifth: 5,
+  sixth: 6,
+  seventh: 7,
+  eighth: 8,
+  ninth: 9,
+  tenth: 10,
+  eleventh: 11,
+  twelfth: 12,
+  thirteenth: 13,
+  fourteenth: 14,
+  fifteenth: 15,
+  sixteenth: 16,
+  seventeenth: 17,
+  eighteenth: 18,
+  nineteenth: 19,
+  twentieth: 20,
+  "twenty-first": 21,
+  "twenty-second": 22,
+  "twenty-third": 23,
+  "twenty-fourth": 24,
+  "twenty-fifth": 25,
+  "twenty-sixth": 26,
+  "twenty-seventh": 27,
+}
+
+/**
+ * Parse any supported numeral form (Roman, Arabic, ordinal abbreviation
+ * `5th` / `14th`, word form `Fifth` / `Twenty-Seventh`) to an integer.
+ * Returns undefined when the input is unrecognized.
+ */
 function parseNumeral(raw: string): number | undefined {
-  const upper = raw.toUpperCase()
+  if (!raw) return undefined
+  const trimmed = raw.trim()
+  // Word-form ordinals (case-insensitive; hyphen or space between parts)
+  const wordKey = trimmed.toLowerCase().replace(/\s+/g, "-")
+  if (wordKey in WORD_ORDINAL_TO_INT) return WORD_ORDINAL_TO_INT[wordKey]
+
+  // Ordinal abbreviation: strip the trailing letters (`5th` → `5`)
+  const ordinalMatch = /^(\d+)(?:st|nd|rd|th)$/i.exec(trimmed)
+  if (ordinalMatch) return Number.parseInt(ordinalMatch[1], 10)
+
+  // Roman numerals
+  const upper = trimmed.toUpperCase()
   if (upper in ROMAN_TO_INT) return ROMAN_TO_INT[upper]
-  const n = Number.parseInt(raw, 10)
+
+  // Plain Arabic numerals
+  const n = Number.parseInt(trimmed, 10)
   return Number.isNaN(n) ? undefined : n
 }
 
@@ -167,17 +220,26 @@ export function extractConstitutional(
   let section: string | undefined
   let clause: number | undefined
 
+  // BODY_TAIL groups (#534 — added inverse-shape `5th Amend.` branch):
+  //   1: numeral (canonical `art./amend. <numeral>` branch)
+  //   2: ordinal (inverse `<ordinal> amend.` branch)
+  //   3: section
+  //   4: clause
+  // Exactly one of group 1 or group 2 is populated per match.
   if (bodyMatch) {
-    const numeral = parseNumeral(bodyMatch[1])
+    const numeralText = bodyMatch[1] ?? bodyMatch[2]
+    const numeral = parseNumeral(numeralText)
+    const isInverseShape = bodyMatch[2] !== undefined
+    const isAmendment = isInverseShape || IS_AMENDMENT_RE.test(bodyMatch[0])
 
-    if (IS_AMENDMENT_RE.test(bodyMatch[0])) {
+    if (isAmendment) {
       amendment = numeral
     } else {
       article = numeral
     }
 
-    section = bodyMatch[2] || undefined
-    clause = bodyMatch[3] ? Number.parseInt(bodyMatch[3], 10) : undefined
+    section = bodyMatch[3] || undefined
+    clause = bodyMatch[4] ? Number.parseInt(bodyMatch[4], 10) : undefined
   }
 
   let jurisdiction: string | undefined
@@ -196,7 +258,10 @@ export function extractConstitutional(
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
   let confidence: number
-  if (token.patternId === "bare-article") {
+  if (token.patternId === "bare-article" || token.patternId === "bare-amendment-word") {
+    // #534: bare ordinal-prefix amendment forms lack the `Const.` anchor
+    // so confidence matches `bare-article`. Downstream consumers can
+    // filter low-confidence matches when stricter precision is needed.
     confidence = 0.5
   } else if (token.patternId === "bare-constitution") {
     confidence = 0.7
@@ -228,23 +293,30 @@ export function extractConstitutional(
     }
   }
 
-  // Body match groups for article/amendment, section, clause
-  // bodyMatch.indices[n] gives positions relative to the full token text
+  // Body match groups for article/amendment, section, clause.
+  // bodyMatch.indices[n] gives positions relative to the full token text.
+  // Group layout (see comment in body parser above):
+  //   1: numeral (canonical) — present for article OR canonical amendment
+  //   2: ordinal (inverse) — present only for ordinal-prefix amendments
+  //   3: section
+  //   4: clause
   if (bodyMatch?.indices) {
-    if (IS_AMENDMENT_RE.test(bodyMatch[0])) {
-      if (bodyMatch.indices[1]) {
-        spans.amendment = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[1], transformationMap)
+    const numeralIdx = bodyMatch.indices[1] ?? bodyMatch.indices[2]
+    const isInverseShape = bodyMatch[2] !== undefined
+    const isAmendment = isInverseShape || IS_AMENDMENT_RE.test(bodyMatch[0])
+    if (numeralIdx) {
+      const targetSpan = spanFromGroupIndex(span.cleanStart, numeralIdx, transformationMap)
+      if (isAmendment) {
+        spans.amendment = targetSpan
+      } else {
+        spans.article = targetSpan
       }
-    } else {
-      if (bodyMatch.indices[1]) {
-        spans.article = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[1], transformationMap)
-      }
-    }
-    if (bodyMatch.indices[2]) {
-      spans.section = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[2], transformationMap)
     }
     if (bodyMatch.indices[3]) {
-      spans.clause = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[3], transformationMap)
+      spans.section = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[3], transformationMap)
+    }
+    if (bodyMatch.indices[4]) {
+      spans.clause = spanFromGroupIndex(span.cleanStart, bodyMatch.indices[4], transformationMap)
     }
   }
 

@@ -32,6 +32,29 @@ describe("Footnote Integration Tests", () => {
       expect(citations[1].footnoteNumber).toBe(1)
     })
 
+    // #542 — cleaner fuses adjacent digits across HTML footnote tags
+    it("does not fuse adjacent digit citations across footnote tag boundary", () => {
+      const text = '100 F.3d 200<footnote label="3">200 F.3d 300</footnote>'
+      const citations = extractCitations(text, { detectFootnotes: true })
+
+      // Must produce TWO citations, not a fused "100 F.3d 200200"
+      expect(citations).toHaveLength(2)
+
+      // Body citation
+      const body = citations.find(
+        (c) => c.matchedText.includes("100 F.3d") && !c.inFootnote,
+      )
+      expect(body).toBeDefined()
+      expect(body?.matchedText).toContain("100 F.3d 200")
+      expect(body?.matchedText).not.toContain("200200")
+
+      // Footnote citation
+      const fn = citations.find((c) => c.inFootnote)
+      expect(fn).toBeDefined()
+      expect(fn?.matchedText).toContain("200 F.3d 300")
+      expect(fn?.footnoteNumber).toBe(3)
+    })
+
     it("multiple footnotes with separate citations", () => {
       // Uses <fn> tags (shorter) to stay within the position mapping system's
       // maxLookAhead=20 window when consecutive tags are stripped.
@@ -65,6 +88,45 @@ describe("Footnote Integration Tests", () => {
       expect(bodyCites.length).toBeGreaterThanOrEqual(1)
       expect(footnoteCites.length).toBeGreaterThanOrEqual(1)
       expect(footnoteCites[0].footnoteNumber).toBe(1)
+    })
+
+    // #541 — signature block + short separator + numbered list must not be
+    // misclassified as a footnote section.
+    it("does not misclassify signature block + numbered analysis as footnotes", () => {
+      const text = [
+        "Signed,",
+        "/s/ Judge Smith",
+        "",
+        "-----",
+        "",
+        "1. The first issue is whether 200 F.3d 100 controls.",
+        "2. The second issue is 300 F.3d 200.",
+      ].join("\n")
+      const citations = extractCitations(text, { detectFootnotes: true })
+      expect(citations.length).toBeGreaterThan(0)
+      for (const c of citations) {
+        expect(c.inFootnote).not.toBe(true)
+      }
+    })
+
+    // #539 — post-footnote ALL-CAPS section content must not be tagged as
+    // belonging to the trailing footnote.
+    it("does not annotate post-footnote ALL-CAPS section content as footnote", () => {
+      const text = [
+        "Body 100 U.S. 200.",
+        "",
+        "----------",
+        "",
+        "1. See 200 F.3d 100.",
+        "",
+        "GOVERNMENT BRIEF",
+        "",
+        "The court further holds that 400 F.3d 500 controls.",
+      ].join("\n")
+      const citations = extractCitations(text, { detectFootnotes: true })
+      const post = citations.find((c) => c.matchedText.includes("400 F.3d 500"))
+      expect(post).toBeDefined()
+      expect(post?.inFootnote).not.toBe(true)
     })
   })
 

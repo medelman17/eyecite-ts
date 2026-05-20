@@ -797,6 +797,10 @@ const BARE_SECTION_CONTEXT_OVERRIDES: Record<string, BareSectionContext> = {
  * start. Used to gate the default `NM` jurisdiction tag attached to bare
  * `§ N-N-N` citations — without a nearby signal the shape is too generic
  * to claim NM. (#565, originally #531)
+ *
+ * The `N.M.` form ends in `.` (a non-word char), so we must NOT require a
+ * trailing `\b` — instead we require the explicit `.` to anchor the right
+ * edge of the `N.M.` alternative.
  */
 const NM_CONTEXT_WINDOW = 200
 const NM_CONTEXT_RE = /\bNMSA\b|\bN\.\s*M\.|\bNew\s+Mexico\b/
@@ -850,8 +854,10 @@ function inheritBareSectionJurisdiction(
       continue
     }
 
-    // #565 (originally #531): the NM default for bare `§ N-N-N` shapes is
-    // too generic — without an explicit NM signal nearby, drop the
+    // #565 (originally #531): NM is the historical default for bare
+    // `§ N-N-N` shapes, but the shape itself is too generic (Virginia,
+    // Alabama, and others use it too). Require an explicit NM signal
+    // nearby; otherwise drop the
     // jurisdiction so downstream consumers don't trust a guess.
     if (!hasNmContextNearby(cleaned, cite.span.cleanStart)) {
       cite.jurisdiction = undefined

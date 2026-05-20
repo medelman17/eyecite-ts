@@ -59,6 +59,18 @@ function resolveJurisdiction(prefix: string): string | undefined {
 }
 
 /**
+ * Canonical short-name for the jurisdiction prefix, used to build the
+ * `code` field for VA / AL named-code citations (#530). The named-code
+ * registry only stores the bare suffix (`"Code"`, `"Code Ann."`); without
+ * re-attaching the prefix here the consumer sees `code: "Code"` which is
+ * useless for downstream linkers.
+ */
+const JURISDICTION_PREFIX: Record<string, string> = {
+  VA: "Va.",
+  AL: "Ala.",
+}
+
+/**
  * Strip common trailing/leading suffixes from code name text to produce a
  * lookup key for the namedCodes registry.
  *
@@ -140,10 +152,29 @@ export function extractNamedCode(
       // losing both jurisdiction and the `Code` suffix.
       // Lookup still uses the cleaned key for registry hits.
       const cleaned = cleanCodeName(rawCodeName)
+      // #530 + #568 reconciliation: `code` should carry the FULL identifier
+      // (jurisdiction prefix + body, e.g. "Cal. Civ. Code", "N.Y. Penal Law").
+      // For VA/AL, the named-code registry only stores bare "Code"/"Code Ann.",
+      // so re-attach the canonical jurisdiction prefix from JURISDICTION_PREFIX
+      // (`Va.`/`Ala.`) when the registry validates the entry. This normalizes
+      // long-form prefixes (e.g. "Alabama Code" → "Ala. Code") consistent with
+      // the bare-section guard's canonical output (#530).
       if (jurisdiction) {
-        findNamedCode(jurisdiction, cleaned) // side-effect-free validity check
+        const entry = findNamedCode(jurisdiction, cleaned)
+        const canonicalPrefix = JURISDICTION_PREFIX[jurisdiction]
+        if (canonicalPrefix && entry) {
+          // VA/AL: emit `Va. Code` / `Va. Code Ann.` / `Ala. Code`, preserving
+          // the raw suffix shape (Code vs. Code Ann.).
+          code = `${canonicalPrefix} ${rawCodeName.trim().replace(/\s+/g, " ")}`
+        } else {
+          // Other jurisdictions: keep the raw prefix as it appeared, plus the
+          // raw code body — `Cal. Civ. Code`, `N.Y. Penal Law`, etc. (#568)
+          code = `${rawPrefix} ${rawCodeName.trim()}`
+        }
+      } else {
+        // No jurisdiction resolved — still emit the full token shape.
+        code = `${rawPrefix} ${rawCodeName.trim()}`
       }
-      code = `${rawPrefix} ${rawCodeName.trim()}`
 
       rawBody = namedMatch[3]
     } else {

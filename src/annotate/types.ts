@@ -127,8 +127,11 @@ export interface AnnotationResult {
   /**
    * Citations that couldn't be annotated.
    *
-   * Currently empty (all citations are annotated if callback/template provided).
-   * Future versions may skip overlapping citations or invalid positions.
+   * Populated when:
+   * - Two citation wraps overlap (intersect or nest). The outer/higher-
+   *   confidence wrap wins; the other surfaces here (#543, #545).
+   * - A citation's positions snap to invalid coordinates inside an HTML tag
+   *   (#17), e.g. start >= end after snapping.
    */
   skipped: Citation[]
 }

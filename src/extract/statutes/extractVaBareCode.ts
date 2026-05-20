@@ -25,7 +25,11 @@ export function extractVaBareCode(
 ): StatuteCitation {
   const { text, span } = token
   const match = VA_BARE_CODE_RE.exec(text)!
-  const codeName = match[1].replace(/\s+/g, " ")
+  // #530: regardless of the surface form (`Code §` or `Virginia Code §`),
+  // surface the canonical jurisdictional prefix `"Va. Code"` in the
+  // `code` field. The raw match still drives the component span so the
+  // user-facing range covers the original text exactly.
+  const codeName = "Va. Code"
   const rawBody = match[2]
   const { section, subsection, hasEtSeq } = parseBody(rawBody)
 
