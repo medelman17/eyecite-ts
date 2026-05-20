@@ -1,0 +1,20 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "rootDir": "..",
+    "noEmit": true,
+    "isolatedDeclarations": false,
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": [
+    "./bughunt/**/*.ts",
+    "./check-bundle-size.ts",
+    "./demo-real-opinion.ts",
+    "./repro_546.ts",
+    "./repro_sprint_g.ts",
+    "../src/**/*.ts"
+  ],
+  "exclude": ["../node_modules", "../dist"]
+}
