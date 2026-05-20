@@ -27,6 +27,9 @@ mise.local.toml
 # Worktrees
 .worktrees/
 
+# Bughunt local artifacts
+.bughunt/
+
 # Tool/agent local files
 .claude/
 .planning/

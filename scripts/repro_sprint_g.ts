@@ -56,9 +56,7 @@ async function main() {
     console.log(`  -> ${cites.length} citations`)
     for (const c of cites) {
       if (c.type === "case") {
-        // @ts-expect-error reporter exists on case citation
         const rep = c.reporter
-        // @ts-expect-error normalizedReporter exists on case citation
         const norm = c.normalizedReporter
         console.log(`    type=${c.type} reporter=${JSON.stringify(rep)} normalized=${JSON.stringify(norm)} text=${JSON.stringify(c.matchedText)}`)
       } else {
