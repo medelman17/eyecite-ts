@@ -252,6 +252,38 @@ describe("cleanText position tracking", () => {
     // First character 't' is at position 0 in cleaned, position 11 in original (after "<div><span>")
     expect(result.transformationMap.cleanToOriginal.get(0)).toBe(11)
   })
+
+  // #542 — adjacent word characters separated by a stripped HTML tag must
+  // not be fused into a single token.
+  it("inserts a space when stripping a tag between adjacent word characters", () => {
+    const input = '100 F.3d 200<footnote label="3">200 F.3d 300</footnote>'
+    const result = cleanText(input, [stripHtmlTags])
+
+    // Cleaner must NOT produce the fused string "100 F.3d 200200 F.3d 300"
+    expect(result.cleaned).not.toContain("200200")
+    expect(result.cleaned).toContain("100 F.3d 200")
+    expect(result.cleaned).toContain("200 F.3d 300")
+
+    // Position of "100" must map to original "100"
+    const oneHundred = result.cleaned.indexOf("100")
+    expect(result.transformationMap.cleanToOriginal.get(oneHundred)).toBe(
+      input.indexOf("100"),
+    )
+
+    // Position of the second-zone "200 F.3d 300" must map to original
+    const twoHundred = result.cleaned.indexOf("200 F.3d 300")
+    expect(twoHundred).toBeGreaterThanOrEqual(0)
+    const origStart = result.transformationMap.cleanToOriginal.get(twoHundred)
+    expect(origStart).toBe(input.indexOf("200 F.3d 300"))
+  })
+
+  it("does not insert a space when tag sits between non-word characters", () => {
+    // Spaces and punctuation outside a tag are word-boundary friendly already;
+    // the cleaner must not introduce extra spaces here.
+    const input = "Smith v. <b>Doe</b>, 500 F.2d 123"
+    const result = cleanText(input, [stripHtmlTags])
+    expect(result.cleaned).toBe("Smith v. Doe, 500 F.2d 123")
+  })
 })
 
 describe("normalizeDashes (issue #54)", () => {
