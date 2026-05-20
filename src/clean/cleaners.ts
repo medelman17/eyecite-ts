@@ -18,6 +18,15 @@
  * Non-word neighbors (spaces, punctuation, the start or end of the
  * string) keep the original behavior: tags are removed with no insertion.
  *
+ * The tag-matching regex is intentionally conservative — only opening
+ * sequences that look like real HTML (`<` followed by a letter, `/`, or
+ * `!` for `<!doctype>`/`<!--…-->`) are stripped. This prevents OCR
+ * artifacts in CAP opinions — e.g. a stray `<` in `to< waive any
+ * objection` paired with a stray `>` thousands of characters later — from
+ * triggering a catastrophic greedy match that deletes legitimate prose
+ * (#546). Genuine `<` characters in prose (math, code samples) are left
+ * intact.
+ *
  * @example
  * stripHtmlTags("Smith v. <b>Doe</b>, 500 F.2d 123")
  * // => "Smith v. Doe, 500 F.2d 123"
@@ -25,11 +34,21 @@
  * @example
  * stripHtmlTags('100 F.3d 200<footnote>200 F.3d 300</footnote>')
  * // => "100 F.3d 200 200 F.3d 300 "
+ *
+ * @example
+ * stripHtmlTags("the value < 3 means")
+ * // => "the value < 3 means"   // stray `<` is not a tag — left alone
  */
 export function stripHtmlTags(text: string): string {
   // Collapse adjacent tag runs together so the boundary check sees the
   // characters surrounding the whole run, not each tag individually.
-  return text.replace(/(?:<[^>]+>)+/g, (match, offset: number) => {
+  //
+  // Tag shape: `<` followed by a letter / `/` / `!`, then any non-`>`
+  // characters except newline (real HTML tags never contain raw newlines —
+  // CR/LF inside an attribute value is technically allowed but vanishingly
+  // rare; this restriction is what stops the greedy match across a long
+  // body of prose containing stray angle brackets, #546).
+  return text.replace(/(?:<[a-zA-Z/!][^>\n\r]*>)+/g, (match, offset: number) => {
     const before = offset > 0 ? text[offset - 1] : ""
     const afterIdx = offset + match.length
     const after = afterIdx < text.length ? text[afterIdx] : ""
@@ -262,12 +281,18 @@ export function normalizeReporterSpacing(text: string): string {
 /**
  * Normalize typographical symbols and strip zero-width characters.
  *
- * Handles prime marks (common OCR substitution for apostrophes) and invisible
- * Unicode characters that can silently break regex pattern matching.
+ * Handles prime marks (common OCR substitution for apostrophes), the
+ * horizontal ellipsis (collapsed to the ASCII 3-dot form so cleaned text
+ * does not balloon into long dot leaders \u2014 #548), and invisible Unicode
+ * characters that can silently break regex pattern matching.
  *
  * @example
  * normalizeTypography("Doe\u2032s case")  // prime mark
  * // => "Doe's case"
+ *
+ * @example
+ * normalizeTypography("foo\u2026bar")  // horizontal ellipsis (#548)
+ * // => "foo...bar"
  *
  * @example
  * normalizeTypography("500\u200BF.2d")  // zero-width space
@@ -276,6 +301,7 @@ export function normalizeReporterSpacing(text: string): string {
 export function normalizeTypography(text: string): string {
   return text
     .replace(/[\u2032\u2035]/g, "'") // prime, reversed prime → apostrophe
+    .replace(/\u2026/g, "...") // horizontal ellipsis \u2192 3 ASCII dots (#548)
     .replace(/\u200B|\u200C|\u200D|\u2060|\uFEFF/g, "") // zero-width chars
 }
 

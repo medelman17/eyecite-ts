@@ -393,12 +393,12 @@ describe("extractStatute", () => {
 
     it("does not regress fully-qualified `Cal. Penal Code § 148`", () => {
       // The fully-qualified form continues to go through extractNamedCode and
-      // produces its own `code` shape ("Penal"), so the bare-code extractor
-      // should not also fire.
+      // produces its own `code` shape ("Cal. Penal Code" — full identifier
+      // per #568), so the bare-code extractor should not also fire.
       const cits = extractCitations("violates Cal. Penal Code § 148.")
       expect(cits).toHaveLength(1)
       if (cits[0].type === "statute") {
-        expect(cits[0].code).toBe("Penal")
+        expect(cits[0].code).toBe("Cal. Penal Code")
         expect(cits[0].jurisdiction).toBe("CA")
       }
     })
@@ -750,8 +750,9 @@ describe("extractStatute", () => {
       const citations = extractCitations("Cal. Penal Code § 187")
       expect(citations).toHaveLength(1)
       if (citations[0].type === "statute") {
-        // named-code pattern now fires before state-code; code stores cleaned name
-        expect(citations[0].code).toBe("Penal")
+        // named-code pattern fires before state-code; code stores the full
+        // identifier (jurisdiction + body + Code/Law) per #568.
+        expect(citations[0].code).toBe("Cal. Penal Code")
         expect(citations[0].section).toBe("187")
         expect(citations[0].jurisdiction).toBe("CA")
       }
@@ -771,7 +772,7 @@ describe("extractStatute", () => {
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].matchedText).toBe("California Penal Code § 549")
-        expect(cites[0].code).toBe("Penal")
+        expect(cites[0].code).toBe("California Penal Code")
         expect(cites[0].section).toBe("549")
         // matchedText must equal the slice from span coordinates
         const span = cites[0].span
@@ -1843,7 +1844,9 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("268A")
+        // #569 — chapter no longer leaks into code.
+        expect(cites[0].code).toBe("G.L.")
+        expect(cites[0].chapter).toBe("268A")
         expect(cites[0].jurisdiction).toBe("MA")
         expect(cites[0].section).toBe("25")
       }
@@ -1855,7 +1858,8 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("93A")
+        expect(cites[0].code).toBe("G.L.")
+        expect(cites[0].chapter).toBe("93A")
         expect(cites[0].jurisdiction).toBe("MA")
       }
     })
@@ -1866,9 +1870,12 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("93A")
+        // Spacing inside the corpus abbreviation collapses to "G. L." → "G. L."
+        // The chapter-only form leaves section undefined per #569.
+        expect(cites[0].code).toBe("G. L.")
+        expect(cites[0].chapter).toBe("93A")
         expect(cites[0].jurisdiction).toBe("MA")
-        expect(cites[0].section).toBe("")
+        expect(cites[0].section).toBeUndefined()
       }
     })
 
@@ -1878,7 +1885,8 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("90")
+        expect(cites[0].code).toBe("G.L.")
+        expect(cites[0].chapter).toBe("90")
         expect(cites[0].section).toBe("34M")
       }
     })
@@ -1889,7 +1897,8 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("272")
+        expect(cites[0].code).toBe("G.L.")
+        expect(cites[0].chapter).toBe("272")
         expect(cites[0].section).toBe("99E")
         expect(cites[0].subsection).toBe("(3)")
       }
@@ -1901,7 +1910,8 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("94C")
+        expect(cites[0].code).toBe("General Laws")
+        expect(cites[0].chapter).toBe("94C")
         expect(cites[0].section).toBe("32A")
         expect(cites[0].subsection).toBe("(a)")
       }
@@ -1913,7 +1923,8 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("93A")
+        expect(cites[0].code).toBe("Mass. Gen. Laws")
+        expect(cites[0].chapter).toBe("93A")
         expect(cites[0].jurisdiction).toBe("MA")
         expect(cites[0].section).toBe("2")
       }
@@ -2132,20 +2143,18 @@ describe("extractStatute", () => {
 
   describe("New Mexico bare-section form (#382)", () => {
     it("extracts `Section 32A-2-7(A)` (bare, letter-prefix first part)", () => {
-      // Pre-#531 this defaulted to NM. Now the bare 3-hyphen shape
-      // requires an explicit NM signal in context — provide one.
+      // With NMSA signal in scope, the bare-section claims NM.
+      // Pre-#531/#565 this defaulted to NM unconditionally. The merged
+      // behavior requires an explicit NM signal nearby; provide one.
       const cites = extractCitations(
-        "NMSA 1978 governs. Section 32A-2-7(A) requires.",
+        "Under NMSA 1978, Section 32A-2-7(A) requires.",
       ).filter((c) => c.type === "statute")
-      expect(cites.length).toBeGreaterThanOrEqual(2)
-      const bare = cites.find(
-        (c) => c.type === "statute" && /Section\s+32A-2-7/.test(c.matchedText),
-      )
-      if (bare?.type === "statute") {
-        expect(bare.code).toBe("NMSA 1978")
-        expect(bare.jurisdiction).toBe("NM")
-        expect(bare.section).toBe("32A-2-7")
-        expect(bare.subsection).toBe("(A)")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("NMSA 1978")
+        expect(cites[0].jurisdiction).toBe("NM")
+        expect(cites[0].section).toBe("32A-2-7")
+        expect(cites[0].subsection).toBe("(A)")
       }
     })
 
@@ -2161,11 +2170,10 @@ describe("extractStatute", () => {
     })
 
     it("extracts `§ 41-2-2` (symbol form, no subsection)", () => {
-      // Pre-#531 this defaulted to NM. Now the bare 3-hyphen shape
-      // requires an explicit NM signal in context — provide one.
-      const cites = extractCitations(
-        "Under New Mexico law, See § 41-2-2.",
-      ).filter((c) => c.type === "statute")
+      // Requires NM context to claim NMSA — per #531/#565 jurisdiction guard.
+      const cites = extractCitations("New Mexico law: see § 41-2-2.").filter(
+        (c) => c.type === "statute",
+      )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("NMSA 1978")
@@ -2476,16 +2484,14 @@ describe("extractStatute", () => {
       }
     })
 
-    it("regression: NM bare-section `Section 32A-2-7(A)` routes to NM when NMSA signal nearby (#531)", () => {
+    it("regression: NM bare-section `Section 32A-2-7(A)` routes to NM with NM context (#531/#565)", () => {
+      // Requires NM context per the #531/#565 jurisdiction guard.
       const cites = extractCitations(
-        "NMSA 1978 cited. Section 32A-2-7(A) requires.",
+        "Under NMSA 1978, Section 32A-2-7(A) requires.",
       ).filter((c) => c.type === "statute")
-      expect(cites.length).toBeGreaterThanOrEqual(2)
-      const bare = cites.find(
-        (c) => c.type === "statute" && /Section\s+32A-2-7/.test(c.matchedText),
-      )
-      if (bare?.type === "statute") {
-        expect(bare.jurisdiction).toBe("NM")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NM")
       }
     })
   })
@@ -3316,11 +3322,13 @@ describe("extractStatute", () => {
       }
     })
 
-    // #531 — Before the fix, a bare `§ N-N-N` with no surrounding NM
+    // #531/#565 — Before the fix, a bare `§ N-N-N` with no surrounding NM
     // signal still claimed NM jurisdiction. The pattern shape is too generic
     // (every state uses 3-hyphen sections somewhere) so we now require a
     // nearby `NMSA` / `N.M.` / `New Mexico` hint before tagging.
-    it("bare-section with NO preceding context drops NM tag (#531)", () => {
+    it("bare-section with NO preceding context drops NM tag (#531/#565)", () => {
+      // Previously defaulted to NM; the jurisdiction guard now drops both
+      // jurisdiction and code without an explicit NM signal nearby.
       const cites = extractCitations("Section 32A-2-7(A).").filter(
         (c) => c.type === "statute",
       )

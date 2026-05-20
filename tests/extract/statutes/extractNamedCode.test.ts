@@ -116,13 +116,16 @@ describe("extractNamedCode", () => {
     it("should extract Mass. Gen. Laws ch. 93A, § 2", () => {
       const c = extractNamedCode(makeToken("Mass. Gen. Laws ch. 93A, § 2", "mass-chapter"), map)
       expect(c.jurisdiction).toBe("MA")
-      expect(c.code).toBe("93A")
+      // #569 — chapter no longer leaks into code.
+      expect(c.code).toBe("Mass. Gen. Laws")
+      expect(c.chapter).toBe("93A")
       expect(c.section).toBe("2")
     })
     it("should extract M.G.L.A. c. 93, § 14", () => {
       const c = extractNamedCode(makeToken("M.G.L.A. c. 93, § 14", "mass-chapter"), map)
       expect(c.jurisdiction).toBe("MA")
-      expect(c.code).toBe("93")
+      expect(c.code).toBe("M.G.L.A.")
+      expect(c.chapter).toBe("93")
       expect(c.section).toBe("14")
     })
   })

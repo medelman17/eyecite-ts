@@ -118,6 +118,7 @@ export function extractNamedCode(
   let jurisdiction: string | undefined
   let code: string
   let rawBody: string
+  let chapter: string | undefined
   let massMatch: RegExpExecArray | null = null
   let namedMatch: RegExpExecArray | null = null
 
@@ -125,7 +126,12 @@ export function extractNamedCode(
     massMatch = MASS_CHAPTER_RE.exec(text)
     if (massMatch) {
       jurisdiction = "MA"
-      code = massMatch[2] // chapter number (e.g., "93A")
+      // #569 — `code` holds the corpus identifier as it appeared
+      // (`G.L.`, `Mass. Gen. Laws`, `M.G.L.A.`, `A.L.M.`,
+      // `General Laws`). The chapter number moves to the dedicated
+      // `chapter` field; section is the trailing `§ N` (when present).
+      code = massMatch[1].trim().replace(/\s+/g, " ")
+      chapter = massMatch[2]
       // Section body is optional — chapter-only citations like `G.L. c. 93A`
       // are valid. When absent, leave the section empty. (#364)
       rawBody = massMatch[3] ?? ""
@@ -138,28 +144,36 @@ export function extractNamedCode(
     namedMatch = NAMED_CODE_RE.exec(text)
     if (namedMatch) {
       jurisdiction = resolveJurisdiction(namedMatch[1])
+      const rawPrefix = namedMatch[1].trim()
       const rawCodeName = namedMatch[2]
+      // #568 — `code` is the FULL identifier (jurisdiction prefix +
+      // body + trailing `Code`/`Law`), not just the cleaned body. The
+      // previous behavior stored `Civ.` for `Cal. Civ. Code § 51`,
+      // losing both jurisdiction and the `Code` suffix.
+      // Lookup still uses the cleaned key for registry hits.
       const cleaned = cleanCodeName(rawCodeName)
-
+      // #530 + #568 reconciliation: `code` should carry the FULL identifier
+      // (jurisdiction prefix + body, e.g. "Cal. Civ. Code", "N.Y. Penal Law").
+      // For VA/AL, the named-code registry only stores bare "Code"/"Code Ann.",
+      // so re-attach the canonical jurisdiction prefix from JURISDICTION_PREFIX
+      // (`Va.`/`Ala.`) when the registry validates the entry. This normalizes
+      // long-form prefixes (e.g. "Alabama Code" → "Ala. Code") consistent with
+      // the bare-section guard's canonical output (#530).
       if (jurisdiction) {
-        // Look up in registry — use cleaned name as the lookup key
         const entry = findNamedCode(jurisdiction, cleaned)
-        // Store the cleaned name (e.g., "Penal" not "Penal Code"); fall back to raw if no registry hit
-        code = entry ? cleaned : rawCodeName.trim()
-        // #530: VA and AL have a single registry entry whose patterns are
-        // bare `"Code"` / `"Code Ann."`. After cleanCodeName trims the
-        // trailing " Ann.", the surviving token is just `"Code"`, which
-        // collapses every Va./Ala. citation to the same useless string.
-        // Re-attach the jurisdiction prefix from the original token so
-        // consumers see `"Va. Code"` / `"Va. Code Ann."` / `"Ala. Code"`.
-        const prefix = JURISDICTION_PREFIX[jurisdiction]
-        if (prefix && entry) {
-          // Preserve the raw suffix shape (Code vs. Code Ann.) by reusing
-          // the normalized rawCodeName rather than the registry lookup key.
-          code = `${prefix} ${rawCodeName.trim().replace(/\s+/g, " ")}`
+        const canonicalPrefix = JURISDICTION_PREFIX[jurisdiction]
+        if (canonicalPrefix && entry) {
+          // VA/AL: emit `Va. Code` / `Va. Code Ann.` / `Ala. Code`, preserving
+          // the raw suffix shape (Code vs. Code Ann.).
+          code = `${canonicalPrefix} ${rawCodeName.trim().replace(/\s+/g, " ")}`
+        } else {
+          // Other jurisdictions: keep the raw prefix as it appeared, plus the
+          // raw code body — `Cal. Civ. Code`, `N.Y. Penal Law`, etc. (#568)
+          code = `${rawPrefix} ${rawCodeName.trim()}`
         }
       } else {
-        code = rawCodeName.trim()
+        // No jurisdiction resolved — still emit the full token shape.
+        code = `${rawPrefix} ${rawCodeName.trim()}`
       }
 
       rawBody = namedMatch[3]
@@ -225,6 +239,11 @@ export function extractNamedCode(
   if (subsection) confidence += 0.05
   confidence = Math.min(confidence, 1.0)
 
+  // For Mass-chapter forms, an empty section means a chapter-only citation
+  // (`G.L. c. 93A`) — return `undefined` rather than empty string. (#569)
+  const sectionOut: string | undefined =
+    section === "" && chapter ? undefined : section
+
   return {
     type: "statute",
     text,
@@ -234,7 +253,8 @@ export function extractNamedCode(
     processTimeMs: 0,
     patternsChecked: 1,
     code,
-    section,
+    chapter,
+    section: sectionOut,
     subsection,
     pincite: subsection,
     jurisdiction,

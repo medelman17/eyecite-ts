@@ -168,6 +168,63 @@ export const COMMON_REPORTERS: ReadonlySet<string> = new Set([
   "F. App'x",
 ])
 
+/**
+ * Compute the multi-factor confidence score for a case citation.
+ *
+ * Pure helper over the five signals the case-citation scorer cares about.
+ * Factored out so post-pass mutations that change one of those signals
+ * (notably `inheritParallelCaseName`, which propagates `caseName` onto
+ * parallel-cite secondaries — #556) can re-derive confidence with the
+ * same formula instead of being silently stuck at the pre-mutation value.
+ *
+ * Formula:
+ *   - base 0.2
+ *   - +0.3 if reporter is known (reporters-db hit, falling back to COMMON_REPORTERS)
+ *   - +0.2 if year is present and <= current year
+ *   - +0.15 if caseName is present
+ *   - +0.1 if court is present
+ *   - cap 1.0, rounded to 0.01
+ *   - finally, blank-page placeholders floor at 0.5
+ */
+export function computeCaseConfidence(opts: {
+  reporter: string
+  year: number | undefined
+  caseName: string | undefined
+  court: string | undefined
+  hasBlankPage: boolean
+}): number {
+  const { reporter, year, caseName, court, hasBlankPage } = opts
+  let confidence = 0.2
+
+  const reportersDb = getReportersSync()
+  const dbMatch = reportersDb?.byAbbreviation.get(reporter.toLowerCase())
+  if (dbMatch && dbMatch.length > 0) {
+    confidence += 0.3
+  } else if (COMMON_REPORTERS.has(reporter)) {
+    confidence += 0.3
+  }
+
+  if (year !== undefined && year <= CURRENT_YEAR) {
+    confidence += 0.2
+  }
+
+  if (caseName) {
+    confidence += 0.15
+  }
+
+  if (court) {
+    confidence += 0.1
+  }
+
+  confidence = Math.round(Math.min(confidence, 1.0) * 100) / 100
+
+  if (hasBlankPage) {
+    confidence = Math.max(confidence, 0.5)
+  }
+
+  return confidence
+}
+
 /** Matches volume-reporter-page format in citation core, with optional nominative reporter parenthetical.
  *  Reporter character class includes `&` so the BIA `I&N Dec.` / `I. & N. Dec.`
  *  variants parse correctly (#244). */
@@ -3118,46 +3175,15 @@ export function extractCase(
   // Translate positions from clean → original (citation core only - span unchanged)
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-  // Calculate confidence score using multi-factor model.
-  // Base is low — unvalidated matches are uncertain. Real signals earn confidence.
-  let confidence = 0.2
-
-  // Known reporter: strong signal.
-  // Check reporters-db first (precise), fall back to common reporter set.
-  const reportersDb = getReportersSync()
-  const dbMatch = reportersDb?.byAbbreviation.get(reporter.toLowerCase())
-  if (dbMatch && dbMatch.length > 0) {
-    confidence += 0.3
-  } else if (COMMON_REPORTERS.has(reporter)) {
-    confidence += 0.3
-  }
-
-  // Year present and plausible: moderate signal
-  if (year !== undefined) {
-    if (year <= CURRENT_YEAR) {
-      confidence += 0.2
-    }
-  }
-
-  // Case name found: moderate signal
-  if (caseName) {
-    confidence += 0.15
-  }
-
-  // Court identified: confirmatory signal
-  if (court) {
-    confidence += 0.1
-  }
-
-  // Cap at 1.0 and round to avoid floating point artifacts (e.g., 0.7999...9)
-  confidence = Math.round(Math.min(confidence, 1.0) * 100) / 100
-
-  // Blank page citations: intentional placeholders (3+ underscores/dashes in legal
-  // briefs). The pattern is very specific so they deserve at least moderate confidence,
-  // but don't let them exceed the signals they actually have.
-  if (hasBlankPage) {
-    confidence = Math.max(confidence, 0.5)
-  }
+  // Confidence comes from a shared pure helper so post-pass mutations
+  // (e.g. inheritParallelCaseName, #556) can re-derive with the same formula.
+  const confidence = computeCaseConfidence({
+    reporter,
+    year,
+    caseName,
+    court,
+    hasBlankPage: hasBlankPage ?? false,
+  })
 
   return {
     type: "case",

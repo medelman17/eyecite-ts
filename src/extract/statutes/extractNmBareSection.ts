@@ -16,7 +16,7 @@ import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from 
 import { parseBody } from "./parseBody"
 
 const NM_BARE_SECTION_RE =
-  /^(?:§\s*|[Ss]ection\s+)(\d+[A-Z]?-\d+[A-Z]?-\d+[A-Z]?(?:\([A-Za-z0-9]+\))*)$/d
+  /^(?:§\s*|[Ss]ection\s+)(\d+[A-Z]?-\d+[A-Z]?-\d+[A-Z]?(?:\([A-Za-z0-9.]+\)|\[[A-Za-z0-9.]+\])*)$/d
 
 export function extractNmBareSection(
   token: Token,

@@ -15,8 +15,18 @@ const SUBSECTION_RE = /^([^([]+?)\s*((?:\([^)]*\)|\[[^\]]*\])*)$/
 /** Et seq. at end of string */
 const ET_SEQ_RE = /\s*et\s+seq\.?\s*$/i
 
+/**
+ * Plain numeric range (`591-99`, `1330-1332`) — used to detect federal
+ * `§§ N-M` ranges. State-style hyphenated sections (`19.2-81`, `32A-2-7`)
+ * are NOT matched: they either contain a dot (`19.2-81`), have a letter
+ * (`32A-2-7`), or have more than one hyphen (`41-2-2`). #564
+ */
+const PLAIN_NUMERIC_RANGE_RE = /^(\d+)-(\d+)$/
+
 export interface ParsedBody {
   section: string
+  /** Structured range end when section is a plain numeric range. #564 */
+  sectionRangeEnd?: string
   subsection?: string
   hasEtSeq: boolean
 }
@@ -39,13 +49,21 @@ export function parseBody(rawBody: string): ParsedBody {
   const subMatch = SUBSECTION_RE.exec(trimmed)
   const subGroups = subMatch?.[2]
 
+  const sectionBody = subMatch !== null && subGroups ? subMatch[1].trim() : trimmed
+
+  // Detect plain numeric range (e.g. `591-99`, `1330-1332`). Callers may use
+  // this to populate `sectionRange` and reset `section` to the start. #564
+  const rangeMatch = PLAIN_NUMERIC_RANGE_RE.exec(sectionBody)
+  const sectionRangeEnd = rangeMatch ? rangeMatch[2] : undefined
+
   if (subMatch !== null && subGroups) {
     return {
-      section: subMatch[1].trim(),
+      section: sectionBody,
+      sectionRangeEnd,
       subsection: subGroups,
       hasEtSeq,
     }
   }
 
-  return { section: trimmed, hasEtSeq }
+  return { section: sectionBody, sectionRangeEnd, hasEtSeq }
 }
