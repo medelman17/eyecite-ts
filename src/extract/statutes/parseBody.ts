@@ -66,7 +66,14 @@ export function parseBody(rawBody: string): ParsedBody {
 
   // Normalize CA-style keyword subsections (`, subd. (a)(8)`) to canonical
   // paren-chain (`(a)(8)`) before splitting. #589
-  const normalized = normalizeSubdKeyword(stripped)
+  let normalized = normalizeSubdKeyword(stripped)
+
+  // Collapse whitespace between consecutive paren/bracket subsection groups
+  // (`(a) (8)` → `(a)(8)`, `[a] [b]` → `[a][b]`) so SUBSECTION_RE's
+  // contiguous-paren alternation matches the full chain. Some patterns
+  // emit space-separated paren groups (`OCGA § 15-11-2 (8) (A)`) — without
+  // this normalization the second `(A)` was sliced off. #590
+  normalized = normalized.replace(/\)\s+\(/g, ")(").replace(/\]\s+\[/g, "][")
 
   // Split section from subsections: "1983(a)(1)" → section="1983", subsection="(a)(1)"
   const trimmed = normalized.trim()

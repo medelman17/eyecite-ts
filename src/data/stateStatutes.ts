@@ -86,7 +86,15 @@ export function buildAbbreviatedCodeRegex(): RegExp {
     // common in Idaho practice (#360) and harmless elsewhere.
     // Trailing subscript groups accept either parens or brackets — MSA uses
     // `[N]` for subdivisions (`MSA 23.710[252]`) #370.
-    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?|[Ss]ec\\.?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9])|,(?=\\d))*(?:\\([^)]*\\)|\\[[^\\]]*\\])*(?:\\s*et\\s+seq\\.?)?)`,
+    //
+    // Whitespace-tolerant subsection chain (#590): `OCGA § 15-11-2 (8) (A)`
+    // / `I.C. § 19-4907 (b)` — courts insert space between section digits
+    // and the subsection paren. Allow `\s*\(` everywhere a paren can
+    // appear; negative lookahead `(?![^)]*\d{4})` prevents any
+    // year-of-edition paren (`(1985)`, `(West 2018)`, `(Repl. 1996)`)
+    // from being absorbed as subsection so the post-process
+    // `attachStatuteYearParen` still binds them as `year`/`publisher`.
+    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?|[Ss]ec\\.?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9])|,(?=\\d))*(?:\\s*\\((?![^)]*\\d{4})[^)]*\\)|\\s*\\[[^\\]]*\\])*(?:\\s*et\\s+seq\\.?)?)`,
     "g",
   )
 }

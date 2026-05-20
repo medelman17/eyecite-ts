@@ -26,8 +26,14 @@ export const statutePatterns: Pattern[] = [
     // bare `N USC NNNN` form omits any connector. The leading `\b(\d+)`
     // title is the disambiguator from prose.
     id: "usc",
+    // Subsection parens may be preceded by whitespace (`§ 1101 (a)(43)`)
+    // but a year-of-edition paren (`§ 1983 (1976)`, `§ 1331 (West 2018)`)
+    // must NOT be absorbed — negative lookahead `(?![^)]*\d{4})` excludes
+    // any paren whose content contains a 4-digit year-like number, so
+    // the post-process `attachStatuteYearParen` still binds them as
+    // `year`/`publisher`. #590
     regex:
-      /\b(\d+)\s+(?:U\.?S\.?C\.?A?\.?|USCA?|United\s+States\s+Code)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s+(?:U\.?S\.?C\.?A?\.?|USCA?|United\s+States\s+Code)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*et\s+seq\.?)?)/g,
     description:
       'U.S. Code citations (U.S.C., USC, USCA, "United States Code") with optional §/Section connector — #428',
     type: "statute",
@@ -37,8 +43,10 @@ export const statutePatterns: Pattern[] = [
     // plus no-§ variants `42 CFR 447`, `45 CFR 303`, `29 CFR 1926`. The
     // connector (`§§?` / `Part` / `Section`) is OPTIONAL. #428
     id: "cfr",
+    // Whitespace-tolerant subsection chain (#590) — see `usc` comment for
+    // the year-paren guard rationale.
     regex:
-      /\b(\d+)\s+C\.?F\.?R\.?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s+C\.?F\.?R\.?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*et\s+seq\.?)?)/g,
     description:
       'Code of Federal Regulations with optional Part/§/Section connector — #428',
     type: "statute",
@@ -194,8 +202,12 @@ export const statutePatterns: Pattern[] = [
     //
     // Section body: period only allowed when followed by alphanumeric, so a
     // trailing sentence period is not absorbed (#283).
+    //
+    // Whitespace-tolerant subsection chain (#590): allow `\s*\(` between
+    // section digits and subsection paren, with negative lookahead to
+    // exclude year-of-edition parens (`(1976)`, `(West 2018)`).
     regex:
-      /\b(Mass\.?\s*Gen\.?\s*Laws|General\s+Laws|M\.?G\.?L\.?A?\.?|A\.?L\.?M\.?|G\.?\s*L\.?)\s*(?:ch\.?|c\.?)\s*(\w+)(?:,?\s*(?:§§?|[Ss]ec\.?|[Ss]ection)\s*(\w+(?:[\w/-]|\.(?=\w))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?))?/g,
+      /\b(Mass\.?\s*Gen\.?\s*Laws|General\s+Laws|M\.?G\.?L\.?A?\.?|A\.?L\.?M\.?|G\.?\s*L\.?)\s*(?:ch\.?|c\.?)\s*(\w+)(?:,?\s*(?:§§?|[Ss]ec\.?|[Ss]ection)\s*(\w+(?:[\w/-]|\.(?=\w))*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*et\s+seq\.?)?))?/g,
     description: 'Massachusetts chapter-based citations (e.g., "Mass. Gen. Laws ch. 93A, § 2")',
     type: "statute",
   },

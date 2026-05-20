@@ -27,8 +27,11 @@ import { parseBody } from "./parseBody"
 // Optional comma between code and connector (`Idaho Code, § N`) #360.
 // Trailing subscript groups accept either parens or brackets — MSA #370.
 // Internal comma allowed when followed by digit — Kansas `23-9,101` #367.
+// Whitespace-tolerant subsection chain (#590): subsection parens may be
+// preceded by `\s*`, with year-paren guard `(?![^)]*\d{4})` so
+// year-of-edition parens (`(1985)`, `(West 2018)`) are not absorbed.
 const ABBREVIATED_RE =
-  /^(?:(\d+)\s+)?(.+?)\s*,?\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9])|,(?=\d))*(?:\([^)]*\)|\[[^\]]*\])*(?:\s*et\s+seq\.?)?)$/d
+  /^(?:(\d+)\s+)?(.+?)\s*,?\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9])|,(?=\d))*(?:\s*\((?![^)]*\d{4})[^)]*\)|\s*\[[^\]]*\])*(?:\s*et\s+seq\.?)?)$/d
 
 export function extractAbbreviated(
   token: Token,

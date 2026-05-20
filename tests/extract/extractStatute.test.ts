@@ -2597,6 +2597,96 @@ describe("extractStatute", () => {
     })
   })
 
+  // #590 — Whitespace between the section number and the leading paren of
+  // the subsection chain previously dropped the entire subsection.
+  // `8 U.S.C. § 1101 (a)(43)` → subsection lost. Allow `\s*\(` everywhere
+  // a paren subsection group appears, with a negative lookahead so 4-digit
+  // year-of-edition parens (`(1976)`) are NOT absorbed.
+  describe("Space between section and subsection (#590)", () => {
+    it("extracts `8 U.S.C. § 1101 (a)(43)` → subsection (a)(43)", () => {
+      const cites = extractCitations("see 8 U.S.C. § 1101 (a)(43).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("1101")
+        expect(cites[0].subsection).toBe("(a)(43)")
+      }
+    })
+
+    it("extracts `OCGA § 15-11-2 (8) (A)` → subsection (8)(A)", () => {
+      const cites = extractCitations("see OCGA § 15-11-2 (8) (A).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("15-11-2")
+        expect(cites[0].subsection).toBe("(8)(A)")
+      }
+    })
+
+    it("extracts `I.C. § 19-4907 (b)` → subsection (b)", () => {
+      const cites = extractCitations("see I.C. § 19-4907 (b).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("19-4907")
+        expect(cites[0].subsection).toBe("(b)")
+      }
+    })
+
+    it("extracts `M.G.L. c. 106 § 1-205 (4)` → subsection (4)", () => {
+      const cites = extractCitations("see M.G.L. c. 106 § 1-205 (4).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("1-205")
+        expect(cites[0].subsection).toBe("(4)")
+      }
+    })
+
+    // Regression guards: year-of-edition parentheticals must NOT be
+    // absorbed as subsection.
+    it("does not absorb `(1976)` as subsection in `42 U.S.C. § 1983 (1976)`", () => {
+      const cites = extractCitations("42 U.S.C. § 1983 (1976)").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("1983")
+        expect(cites[0].subsection).toBeUndefined()
+        expect(cites[0].year).toBe(1976)
+      }
+    })
+
+    it("does not absorb `(West 2018)` as subsection in `28 U.S.C. § 1331 (West 2018)`", () => {
+      const cites = extractCitations("28 U.S.C. § 1331 (West 2018)").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("1331")
+        expect(cites[0].subsection).toBeUndefined()
+        expect(cites[0].year).toBe(2018)
+        expect(cites[0].publisher).toBe("West")
+      }
+    })
+
+    it("does not absorb `(1985)` as subsection in `HRS § 91-14(a) (1985)`", () => {
+      const cites = extractCitations("HRS § 91-14(a) (1985).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("91-14")
+        expect(cites[0].subsection).toBe("(a)")
+        expect(cites[0].year).toBe(1985)
+      }
+    })
+  })
+
   describe("Tennessee T.C.A. variants + postfix (#398)", () => {
     it("extracts `T.C.A. sec. 40-2407` (sec. connector)", () => {
       const cites = extractCitations("See T.C.A. sec. 40-2407.").filter(
