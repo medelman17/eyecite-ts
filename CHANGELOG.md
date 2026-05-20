@@ -1,5 +1,628 @@
 # eyecite-ts
 
+## 0.23.0
+
+### Minor Changes
+
+- [#626](https://github.com/medelman17/eyecite-ts/pull/626) [`6f10815`](https://github.com/medelman17/eyecite-ts/commit/6f10815c36ed8a2550c11275aba54607203be927) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): add Federal Rules of Procedure extractor (#576)
+
+  Recognizes citations to the four primary federal rule sets — Civil,
+  Criminal, Evidence, Appellate — plus Bankruptcy. Both the abbreviated
+  Bluebook form (`Fed. R. Civ. P. 56`) and the spelled-out form
+  (`Federal Rule of Civil Procedure 56`) parse to a new `federalRule`
+  citation type with `{ ruleSet, rule, subsection? }`. The compact
+  no-space form (`Fed.R.Civ.P. 56`) is also accepted.
+
+  `ruleSet` is one of `"civil" | "criminal" | "evidence" | "appellate" |
+"bankruptcy"`. The `rule` field is a string to preserve any leading
+  zeros or non-numeric suffixes; the optional `subsection` field captures
+  the chained `(b)(6)`-style suffix when present.
+
+  Pattern priority is inserted above `casePatterns` in the tokenizer so
+  the federal-rule match wins overlap dedup against the broad
+  state-reporter regex that previously mis-typed
+  `Fed. R. Civ. P. 12(b)(6)` as a phantom case citation (~58% of modern
+  federal opinions affected).
+
+  Public API additions:
+
+  - `FederalRuleCitation` interface (exported from package root)
+  - `extractFederalRule` extractor (exported from `@/extract`)
+  - `federalRulePatterns` array (exported from `@/patterns`)
+  - `FederalRuleComponentSpans` (exported from `@/types/componentSpans`)
+  - `"federalRule"` added to `CitationType` and `FullCitationType` unions
+  - `toBluebook` renders federal rules in canonical Bluebook form
+
+- [#626](https://github.com/medelman17/eyecite-ts/pull/626) [`6f10815`](https://github.com/medelman17/eyecite-ts/commit/6f10815c36ed8a2550c11275aba54607203be927) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): recognize U.S. Sentencing Guidelines citations (#577)
+
+  `U.S.S.G. § 2K2.4(b)` and the compact `USSG § 3E1.1` form are now
+  folded under the existing `statute` citation type with
+  `code: "U.S.S.G."` (no `title` — the Guidelines are organized by
+  chapter/section without a U.S. Code title number) and
+  `jurisdiction: "US"`.
+
+  Pattern `id: "ussg"` is added to `statutePatterns`; new dispatcher
+  case in `extractStatute` routes to `extractUssg`. Section body uses
+  the internal-`.` rule (`2K2.4` parses; trailing sentence period is
+  not absorbed) and captures `(a)(b)`-style subsection chains.
+
+  Folding under `statute` rather than introducing a dedicated
+  `sentencingGuideline` type is the lowest-friction choice: USSG
+  citations carry no metadata beyond what `StatuteCitation` already
+  exposes, and downstream consumers (annotate, bluebook formatting,
+  resolver) inherit the existing statute treatment for free.
+
+- [#626](https://github.com/medelman17/eyecite-ts/pull/626) [`6f10815`](https://github.com/medelman17/eyecite-ts/commit/6f10815c36ed8a2550c11275aba54607203be927) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): add Restatement extractor (#578)
+
+  Recognizes `Restatement (Edition) of Subject § Section` citations as
+  a new `restatement` citation type with `{ edition, subject, section,
+subsection? }` fields.
+
+  Edition accepts both spelled-out (`First`, `Second`, `Third`, `Fourth`)
+  and ordinal short forms (`1st`, `2d`, `3d`, `4th`), normalized to the
+  canonical spelled-out form. Subject body permits multi-word subjects
+  including `"the Law Governing Lawyers"`, `"Foreign Relations Law"`, etc.
+
+  Section parsing uses the internal-`.` rule so a trailing sentence
+  period is not absorbed (`Restatement (Second) of Trusts § 187.` →
+  `section: "187"`). Trailing court/publisher parentheticals like
+  `(Am. L. Inst. 1965)` are left for downstream parsing.
+
+  Public API additions:
+
+  - `RestatementCitation` interface
+  - `extractRestatement` extractor
+  - `restatement` pattern in `secondaryAuthorityPatterns`
+  - `RestatementComponentSpans`
+  - `"restatement"` added to `CitationType` and `FullCitationType` unions
+  - `toBluebook` renders Restatement in canonical Bluebook form
+
+- [#626](https://github.com/medelman17/eyecite-ts/pull/626) [`6f10815`](https://github.com/medelman17/eyecite-ts/commit/6f10815c36ed8a2550c11275aba54607203be927) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): add treatise extractor for common multi-volume works (#579)
+
+  Recognizes the most common federal and state treatises as a new
+  `treatise` citation type with `{ volume, title, section, edition?,
+year? }` fields. Initial allowlist covers:
+
+  - Federal practice: Wright & Miller (`Federal Practice and Procedure`),
+    Moore's Federal Practice, LaFave & Israel
+  - Contracts: Williston on Contracts, Corbin on Contracts
+  - IP: Nimmer on Copyright, McCarthy on Trademarks
+  - Torts: Prosser and Keeton on the Law of Torts
+  - Evidence: Wigmore, McCormick
+  - California: Witkin (Cal. Procedure, Summary of California Law)
+  - Administrative: Davis & Pierce
+  - Criminal: LaFave, Criminal Law
+
+  The allowlist approach is intentional — treatise citations are
+  heterogeneous and we'd rather miss an uncommon treatise than emit
+  false positives on arbitrary `<vol> Author, Book § N` prose. Adding
+  a treatise is a one-line change in `secondaryAuthorityPatterns.ts`.
+
+  Section parser handles dot-separated locators (`5.05`, `12.34`) and
+  bracketed sub-references common in Nimmer (`5.05[A]`). Edition
+  parenthetical (`5th ed. 2008`) is captured for the `edition` field
+  and the year is extracted into `year` via the existing plausible-year
+  filter.
+
+  Public API additions: `TreatiseCitation`, `extractTreatise`,
+  `treatise` pattern, `TreatiseComponentSpans`. `toBluebook` renders
+  treatises in volume + title + `§ section` form.
+
+- [#626](https://github.com/medelman17/eyecite-ts/pull/626) [`6f10815`](https://github.com/medelman17/eyecite-ts/commit/6f10815c36ed8a2550c11275aba54607203be927) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): add A.L.R. `annotation` citation type (#581)
+
+  Previously, A.L.R. citations like `100 A.L.R.2d 1234` were harvested by
+  the broad state-reporter regex and emitted as
+  `{ type: "case", reporter: "A.L.R.2d" }`. The American Law Reports
+  series is secondary authority (annotations on narrow legal issues), not
+  case law, so this mis-classification leaked into downstream consumers.
+
+  A new `annotation` citation type captures these correctly with
+  `{ series, volume, page, year? }`. The pattern recognizes the full
+  A.L.R. series family:
+
+  - `A.L.R.` (first series)
+  - `A.L.R.2d`, `A.L.R.3d`, `A.L.R.4th`, `A.L.R.5th`, `A.L.R.6th`, `A.L.R.7th`
+  - `A.L.R. Fed.`, `A.L.R. Fed. 2d`, `A.L.R. Fed. 3d`
+
+  Pattern priority is set above `casePatterns` so the A.L.R. match wins
+  overlap dedup against the state-reporter regex; the previous phantom
+  case citation is no longer emitted.
+
+  Public API additions: `AnnotationCitation`, `extractAnnotation`,
+  `alr-annotation` pattern, `AnnotationComponentSpans`. `"annotation"`
+  added to `CitationType` and `FullCitationType` unions. `toBluebook`
+  renders annotations as `<vol> <series> <page>` with optional `(year)`.
+
+- [#626](https://github.com/medelman17/eyecite-ts/pull/626) [`6f10815`](https://github.com/medelman17/eyecite-ts/commit/6f10815c36ed8a2550c11275aba54607203be927) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): recognize Bankruptcy Code alias and normalize to 11 U.S.C. (#585)
+
+  `Bankruptcy Code § 548(a)(1)(B)(i)` and the postfix form
+  `§ 547 of the Bankruptcy Code` are now extracted as `statute`
+  citations with `title: 11, code: "U.S.C.", jurisdiction: "US"`. The
+  alias is normalized to the equivalent explicit citation
+  (`11 U.S.C. § …`) so downstream consumers — resolver, annotator,
+  bluebook formatter — treat them identically.
+
+  Two new pattern IDs: `bankruptcy-code-prefix` for the conventional
+  form and `bankruptcy-code-postfix` for the `§ N of the Bankruptcy
+Code` form. Both route to `extractBankruptcyCode` which sets the
+  constant `title=11, code="U.S.C."` and parses the section/subsection
+  via the shared `parseBody` helper.
+
+  Real `11 U.S.C. § N` citations continue to win on overlap dedup so
+  this change does not shadow the existing extraction path.
+
+  ~3% of bankruptcy reporter opinions affected; normalize-to-USC is the
+  simplest fold per the design recommendation.
+
+### Patch Changes
+
+- [#624](https://github.com/medelman17/eyecite-ts/pull/624) [`27d74fd`](https://github.com/medelman17/eyecite-ts/commit/27d74fd16f75aafcfa0594446e20782e8f898d80) Thanks [@medelman17](https://github.com/medelman17)! - docs(CLAUDE.md): include `docket` and `constitutional` in CitationType enumeration (#575)
+
+  The "Type System" architecture note in `CLAUDE.md` listed only 10 of the 12 discriminator values, omitting `docket` and `constitutional`. The real `CitationType` union at `src/types/citation.ts:16-28` and the README's exhaustive `switch` example both list all 12. Updated the enumeration to match, in document order (`case | docket | statute | journal | neutral | publicLaw | federalRegister | statutesAtLarge | constitutional | id | supra | shortFormCase`). Docs only; no runtime change.
+
+- [#624](https://github.com/medelman17/eyecite-ts/pull/624) [`27d74fd`](https://github.com/medelman17/eyecite-ts/commit/27d74fd16f75aafcfa0594446e20782e8f898d80) Thanks [@medelman17](https://github.com/medelman17)! - docs(README): fix Post-Extraction Utilities example to match real signatures (#574)
+
+  The example block in "Post-Extraction Utilities" called `groupByCase`, `toReporterKey`, and `getSurroundingContext` with arguments that don't type-check. `groupByCase` requires `ResolvedCitation[]` (so the example now calls `extractCitations(text, { resolve: true })`), `toReporterKey` requires a `FullCaseCitation` (narrowed via `isCaseCitation`), and `getSurroundingContext` takes a `{ start, end }` span plus a `{ maxLength }` option — not the citation itself with `{ chars }`. The example output for `toReporterKey` is also corrected from `"500-F.2d-123"` to `"500 F.2d 123"` to match the real `formatKey` output. No runtime behaviour changes; docs only.
+
+- [#625](https://github.com/medelman17/eyecite-ts/pull/625) [`bc35997`](https://github.com/medelman17/eyecite-ts/commit/bc3599771a46db053a8c30e3a9f8ebd2c32e17f6) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): admit `<vol> <Reporter>, <page>` comma form (#570)
+
+  Old typesetting (and OCR over older volumes) inserts a comma between the
+  reporter abbreviation and the page number — `3 Den., 594`, `252 S. W., 20`,
+  `26 N. Y., 279`, `217 Ill. App., 427`, `125 N. E., 793`. Pre-fix every
+  probe returned 0 citations. Sample-and-judge attributed 70% of misses
+  across a 300-opinion sample to this single shape.
+
+  Two coordinated changes:
+
+  1. **Tokenizer patterns** (`src/patterns/casePatterns.ts`): the
+     `federal-reporter`, `supreme-court`, and `state-reporter` patterns
+     each get a second separator alternative `\s*,\s+` alongside the
+     canonical `\s+`. The comma branch carries a tighter trailing
+     lookahead `(?=$|[.;,)\]])` that rejects phantoms like
+     `10 Corp., 2025 NY Slip Op 00784` — the supposed "page" 2025 is
+     actually the start of the next (neutral) citation and the trailing
+     ` N` (whitespace + capital letter) is excluded by the constraint.
+
+  2. **`VOLUME_REPORTER_PAGE_REGEX`** (`src/extract/extractCase.ts`): the
+     single-regex extractor splits into a canonical pass plus a comma-form
+     fallback. Canonical runs first so synthetic token text containing a
+     trailing pincite (`500 F.2d 123, 125`) still resolves to
+     `reporter=F.2d`, `page=123`, `pincite=125`. The canonical regex also
+     gains the same trailing terminator lookahead, which causes inputs
+     like `33 Ill. App. 2d, 100` to fail the canonical pass and route
+     correctly to the comma form (avoiding the greedy backtrack to
+     `reporter=Ill. App.`, `page=2`).
+
+  Both branches share the same capture-group shape so downstream consumers
+  (span computation, nominative parenthetical, pincite scan) need no
+  changes.
+
+  Coverage: 28 new repro tests in
+  `tests/extract/issue570CommaBetweenReporterAndPage.test.ts` covering 9
+  state reporters with `,`-after-period forms, 9 multi-word state
+  reporters with internal periods, 3 federal-reporter comma forms, 3
+  SCOTUS comma forms, a phantom-suppression regression guard
+  (`3 Den., 594` produces exactly one cite), and 3 baseline tests pinning
+  the original whitespace-only forms.
+
+- [#625](https://github.com/medelman17/eyecite-ts/pull/625) [`bc35997`](https://github.com/medelman17/eyecite-ts/commit/bc3599771a46db053a8c30e3a9f8ebd2c32e17f6) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): wire `normalizedReporter` + add periodless variants (#571)
+
+  Compact reporter forms used by NY/IL/OH/CA/federal slip-ops (`725 F2d
+1091`, `24 Ill2d 270`, `60 Ill App2d 39`, `140 N.J.Eq. 496`, `17 Oh St
+649`, `125 OhioSt. 219`, `329 FedAppx. 1`) were extracted into a `case`
+  citation, but `normalizedReporter` stayed `undefined` — so downstream
+  consumers (`reporterKey`, `bluebook`, parallel-group matching) couldn't
+  link them to their canonical Bluebook form.
+
+  Two compounding causes, both fixed here:
+
+  1. **`normalizedReporter` was never populated.** The field was advertised
+     on `FullCaseCitation` and consumed by `src/utils/reporterKey.ts` and
+     `src/utils/bluebook.ts`, but the case extractor never wrote it. Even
+     inputs whose variation entries WERE in reporters-db (`NE2d`, `P2d`)
+     came back with `normalizedReporter: undefined`. New helper
+     `resolveNormalizedReporter` (`src/extract/extractCase.ts`) looks the
+     reporter literal up via `byAbbreviation` — matches an edition key
+     directly when one exists, otherwise resolves through the
+     `variations` map. Returns `undefined` when reporters-db is not
+     loaded (preserves degraded-mode behaviour) or when the literal is
+     unknown.
+
+  2. **Missing variations.** Even with the wiring in place, several
+     periodless / no-space forms had no DB entry to resolve against. Added
+     to `data/reporters.json`:
+
+     - `F.` (Federal Reporter): `F2d`, `F2d.`
+     - `F. App'x` (Federal Appendix): `FedAppx`, `FedAppx.`
+     - `Ill.` (Illinois Reports): `Ill2d`
+     - `Ill. App.` (Illinois Appellate): `Ill App2d`, `Ill App3d`,
+       `IllApp2d`, `IllApp3d`
+     - `Ohio St.` (Ohio State): `Oh St`, `Oh St 2d`, `Oh St 3d`,
+       `Oh St.`, `OhSt.`, `OhioSt.`, `OhioSt.2d`, `OhioSt.3d`
+     - `N.J. Eq.` (NJ Equity): `N.J.Eq.`, `NJ Eq.`, `NJEq.`
+
+  Coverage: 15 new tests in
+  `tests/extract/issue571PeriodlessReporterNormalization.test.ts`
+  covering pre-existing baselines (NE2d, P2d), all newly-added variants
+  for federal / Illinois / Ohio / NJ reporters, canonical-edition
+  regression guards (F.2d / U.S. / N.E.2d resolve to themselves), the
+  post-cleaning Cal.4th → reporters-db `Cal. 4th` mapping (pins the
+  inner-space mismatch documented in #555), and the unknown-reporter
+  fallback path (no DB hit → `normalizedReporter` stays `undefined`).
+
+- [#625](https://github.com/medelman17/eyecite-ts/pull/625) [`bc35997`](https://github.com/medelman17/eyecite-ts/commit/bc3599771a46db053a8c30e3a9f8ebd2c32e17f6) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): disambiguate `Black.` SCOTUS vs Blackford by era (#572)
+
+  Two reporters share the `Black.` abbreviation:
+
+  - `Black` — Black's Supreme Court Reports (SCOTUS, 1861-1862)
+  - `Blackf.` — Indiana Reports, Blackford (1817-1847)
+
+  The literal `Black.` is listed in reporters-db as a variation of
+  `Blackf.`, so every input citation `<vol> Black. <page>` was normalizing
+  to `Blackf.` — even when surrounded by SCOTUS context like
+  `Dred Scott v. Sandford, 1 Black. 219 (U.S. 1862)`.
+
+  Adds an era heuristic in `resolveNormalizedReporter`
+  (`src/extract/extractCase.ts`): when the captured reporter literal is
+  `Black.` (case-insensitive) AND a parsed year falls inside the SCOTUS
+  window [1861, 1862] inclusive, the result switches to `Black`. Outside
+  that window — or when no year was extracted — the default `Blackf.`
+  resolution stands. The literal `reporter` field is preserved verbatim;
+  only `normalizedReporter` shifts.
+
+  Deliberately narrow: only fires on the `Black.` literal (so direct
+  `Blackf.` inputs and other shared abbreviations are unaffected), only
+  shifts the normalized form (not the raw reporter), and only when the
+  year evidence is unambiguous. Picked option (b) from the issue's
+  three-option discussion as the cleanest balance.
+
+  Coverage: 14 new tests in
+  `tests/extract/issue572BlackEraDisambiguation.test.ts` covering the
+  SCOTUS era (4 cases at 1861 / 1862), the Indiana era (5 cases at 1820,
+  1840, 1847, plus 1860 and 1870 boundary years that fall outside the
+  SCOTUS window), the no-year fallback (defaults to Blackf.), and direct
+  `Blackf.` inputs (heuristic does not fire — even when paired with a
+  SCOTUS-era year).
+
+- [#626](https://github.com/medelman17/eyecite-ts/pull/626) [`6f10815`](https://github.com/medelman17/eyecite-ts/commit/6f10815c36ed8a2550c11275aba54607203be927) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): reject `<year> Fed.R.X.X. N` case-shape false positives (#582)
+
+  Pre-fix behavior: the broad state-reporter regex matched
+  `1983 Fed.R.Civ.P. 17` as `{ volume: 1983, reporter: "Fed.R.Civ.P.",
+page: 17 }` — a phantom case citation where `1983` was an incidental
+  year sitting next to a federal-rule citation. The existing volume cap
+  in `isSuspiciousSmallVolume` only triggered for volumes 1–20, so the
+  1900s-2099 window slipped through.
+
+  The primary cure is the new federal-rule extractor from #576, which
+  wins overlap dedup against the state-reporter match and emits a clean
+  `federalRule` citation. This change adds the defense-in-depth filter
+  the issue called for:
+
+  - New `isFederalRulePhantom` check in `filterFalsePositives.ts` flags
+    any `case` citation whose volume is in `[1900, 2099]` AND whose
+    reporter matches `/^Fed\.\s?R\./i` (i.e., the `Fed. R.` / `Fed.R.`
+    federal-rule family — `Civ.P.`, `Crim.P.`, `Evid.`, `App.P.`,
+    `Bankr.P.`).
+  - Real Federal Reporter series (`Fed. Cl.`, `F. App'x`, `F. Supp.`)
+    are unaffected — the `Fed. R.` prefix is unique to the federal rules.
+  - Wired into both `isFalsePositive` (hard reject) and
+    `collectFalsePositiveReasons` (soft flag + warning) for parity with
+    the existing FP filters.
+
+  Behavior: in `filterFalsePositives: true` mode the phantom is removed;
+  in default mode it gets confidence `0.1` and a warning explaining the
+  mis-tokenization.
+
+- [#629](https://github.com/medelman17/eyecite-ts/pull/629) [`00743a1`](https://github.com/medelman17/eyecite-ts/commit/00743a125211252bc7f189591a0d0843bec8c52a) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): recognize U.S.C.S. (LEXIS-annotated US Code) variant (#584)
+
+  Documented examples:
+
+  - `26 U.S.C.S. § 7433`
+  - `42 U.S.C.S. § 1983 (LEXIS 2020)`
+  - `28 U.S.C.S. § 1331(a)`
+
+  The USC tokenizer regex accepted West's annotated `U.S.C.A.` (trailing
+  `A?`) but never LEXIS's annotated `U.S.C.S.`, so every USCS citation
+  silently disappeared. Extend the trailing-letter alternative from `A?`
+  to `[AS]?` (and the no-period `USCA?` to `USC[AS]?`) in both
+  `src/patterns/statutePatterns.ts` (the tokenizer) and
+  `src/extract/statutes/extractFederal.ts` (the parser used for
+  extraction). Both annotated editions normalize to canonical `U.S.C.`
+  through the existing `stripped.includes("CFR")` else-branch — no
+  extractor logic change is required beyond accepting the wider regex.
+
+  The Sprint F `(?![^)]*\d{4})` year-paren lookahead is preserved
+  intact, so a trailing `(LEXIS 2020)` still routes to the post-process
+  year/publisher binder; `(LEXIS through 2020)` (lowercase intermediate
+  token) does not match the canonical publisher-year shape and is
+  correctly left unbound while the citation core still extracts.
+
+- [#629](https://github.com/medelman17/eyecite-ts/pull/629) [`00743a1`](https://github.com/medelman17/eyecite-ts/commit/00743a125211252bc7f189591a0d0843bec8c52a) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): accept comma between `Title NN` and `U.S.C.` (#586)
+
+  Documented examples:
+
+  - `Title 18, U.S.C. § 3742`
+  - `Title 8, U.S.C. § 1326`
+  - `Title 15, U.S.C. § 78`
+  - `Title 42, U.S.C. § 1983(a)`
+
+  The USC tokenizer regex required `\b(\d+)\s+U\.S\.C\.` — only a bare
+  whitespace separator between the title digits and the code
+  abbreviation. The comma-free prose form `Title 18 U.S.C. § 3742`
+  worked by accident: the embedded `18 U.S.C. § 3742` substring matched
+  with the leading `Title` word left outside the match. The comma form
+  `Title 18, U.S.C. § 3742` (equally common in federal appellate
+  opinions) broke that accident because `18, U.S.C.` could not satisfy
+  `\d+\s+U\.S\.C\.`, so every comma-after-title citation silently
+  disappeared.
+
+  Allow an optional comma between the title digits and the code
+  abbreviation by changing the separator from `\s+` to `\s*,?\s+` in:
+
+  - `src/patterns/statutePatterns.ts` (the `usc` tokenizer)
+  - `src/extract/statutes/extractFederal.ts` (`FEDERAL_SECTION_RE`
+    and `FEDERAL_PART_RE`)
+
+  The `\s*,?\s+` shape requires at least one space after the optional
+  comma, so the malformed `18,U.S.C.` (no space) still does not
+  tokenize. CFR was left unchanged in this commit (the issue scope is
+  USC); a follow-up could mirror the change for `Title NN, C.F.R.`
+  if real-world coverage demands it.
+
+- [#629](https://github.com/medelman17/eyecite-ts/pull/629) [`00743a1`](https://github.com/medelman17/eyecite-ts/commit/00743a125211252bc7f189591a0d0843bec8c52a) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): accept comma between code abbreviation and `§` (#587)
+
+  Documented examples:
+
+  - `45 U.S.C., § 151`
+  - `11 U.S.C., § 362`
+  - `28 U.S.C., § 636`
+  - `12 C.F.R., § 226`
+  - `42 U.S.C., § 1983 (1976)` (year-paren still binds)
+  - `Title 18, U.S.C., § 3742` (composes with #586)
+
+  The USC and CFR tokenizer regexes had `\s*` between the code
+  abbreviation and the (optional) section connector. A comma in that
+  position (`42 U.S.C., § 1983`) rejected the match — the comma is
+  neither whitespace nor a valid connector — so every citation in
+  this older / regulatory style silently disappeared.
+
+  Allow optional comma between code and connector by changing the
+  separator from `\s*` to `\s*,?\s*` in:
+
+  - `src/patterns/statutePatterns.ts` (the `usc` and `cfr` tokenizers)
+  - `src/extract/statutes/extractFederal.ts` (`FEDERAL_SECTION_RE`
+    and `FEDERAL_PART_RE`)
+
+  Sprint F's negative lookahead `(?![^)]*\d{4})` lives INSIDE the
+  subsection body (after the section digits) and is preserved intact
+  by this fix — the comma tolerance is added BEFORE the section.
+  `attachStatuteYearParen` continues to bind trailing year/publisher
+  parentheticals on comma-prefixed citations (verified by the
+  regression tests in `issue587CommaBeforeSection.test.ts`).
+
+- [#627](https://github.com/medelman17/eyecite-ts/pull/627) [`ebd0f2a`](https://github.com/medelman17/eyecite-ts/commit/ebd0f2a78909bca7001709d748e3a33632838eae) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): attach California `, subd.` / `paragraph` / `par.` subsection
+  keywords to the `subsection` field (#589)
+
+  California opinions write subsections with an explicit keyword between the
+  section number and the paren chain — `Pen. Code, § 1238, subd. (a)(8)`,
+  `Welf. & Inst. Code, § 111, subd. (c)`, `Code Civ. Proc., § 430.10, subd.
+(e)`. The previous tokenizer body regex stopped at the section number; the
+  `, subd. (X)` tail was sliced off the match entirely, leaving every CA
+  `subd.` citation with `subsection: undefined`. Documented as 100% of CA
+  `subd.` citations affected — every California opinion citing Penal /
+  Probate / Vehicle / Welfare-and-Institutions / Civil-Procedure codes loses
+  the subsection.
+
+  Three coordinated changes:
+
+  - `src/data/caBareCodes.ts` (`buildCaBareCodeRegex`) — tokenizer body group
+    now optionally consumes `,?\s+(?:subd\.|subdivision|paragraph(s)?|par(s)?\.)\s+
+\((X)\)(\((Y)\))*` so the matched token includes the keyword tail.
+  - `src/patterns/statutePatterns.ts` (`named-code`) — same keyword tail
+    appended to the section group so fully-qualified `Cal. Penal Code §
+1238, subd. (a)` is captured in full.
+  - `src/extract/statutes/parseBody.ts` — new `normalizeSubdKeyword`
+    helper rewrites `1238, subd. (a)(8)` to `1238(a)(8)` (and collapses
+    `(a) (8)` → `(a)(8)`) before the SUBSECTION_RE split, so the existing
+    section/subsection routing works unchanged.
+
+  The keyword alternation accepts singular/plural (`paragraph(s)`, `par(s)`),
+  abbreviated/spelled-out (`subd.` / `subdivision`), and tolerates the
+  optional leading comma. Bracket subscripts (`[a]`) are also accepted to
+  match the NY `[3-a]` convention.
+
+- [#627](https://github.com/medelman17/eyecite-ts/pull/627) [`ebd0f2a`](https://github.com/medelman17/eyecite-ts/commit/ebd0f2a78909bca7001709d748e3a33632838eae) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): allow whitespace between section number and subsection
+  paren (#590)
+
+  Documented examples:
+
+  - `8 U.S.C. § 1101 (a)(43)`
+  - `OCGA § 15-11-2 (8) (A)`
+  - `I.C. § 19-4907 (b)`
+  - `M.G.L. c. 106 § 1-205 (4)`
+
+  The previous federal / abbreviated / mass-chapter tokenizer body
+  regexes required the leading subsection paren to be adjacent to the
+  section digits (`§ 1101(a)`). A single space between section number
+  and subsection paren (typical court style for many state and federal
+  opinions) silently dropped the subsection.
+
+  Five coordinated changes:
+
+  - `src/patterns/statutePatterns.ts` (`usc`, `cfr`, `mass-chapter`) —
+    subsection paren alternative now accepts `\s*\(...\)`.
+  - `src/data/stateStatutes.ts` (`buildAbbreviatedCodeRegex`) — same
+    whitespace tolerance applied to the dynamically-built
+    abbreviated-code regex.
+  - `src/extract/statutes/extractAbbreviated.ts` (`ABBREVIATED_RE`) —
+    same shape mirrored in the extractor's anchored regex.
+  - `src/extract/statutes/parseBody.ts` — collapse `)\s+(` and `]\s+[`
+    inside the body before splitting so `(8) (A)` → `(8)(A)` for the
+    SUBSECTION_RE match.
+
+  All four tokenizer / extractor changes carry a negative lookahead
+  `(?![^)]*\d{4})` so a year-of-edition parenthetical (`(1976)`,
+  `(West 2018)`, `(Repl. 1996)`) is NOT absorbed as subsection — the
+  existing post-process `attachStatuteYearParen` continues to bind
+  those parens as `year`/`publisher`/`editionLabel`. Existing tests
+  asserting `year=1976`, `publisher="West"`, etc. all continue to
+  pass without modification.
+
+- [#627](https://github.com/medelman17/eyecite-ts/pull/627) [`ebd0f2a`](https://github.com/medelman17/eyecite-ts/commit/ebd0f2a78909bca7001709d748e3a33632838eae) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): capture subsection range endpoints (`(a)-(b)`,
+  `(9)—(16)`) (#591)
+
+  Range subsections like `35 U.S.C. §§ 311(a)-(b)`, `37 C.F.R. §
+42.107(a)-(b)`, and `77 P.S. § 513(9) — (16)` previously dropped the
+  second endpoint. `subsection` captured only `(a)` / `(9)`; the
+  `-(b)` / `— (16)` tail was sliced off and the `matchedText` did not
+  include the range — downstream consumers had no signal that a range
+  was even cited.
+
+  Adds structured `subsectionRange: { start, end }` on `StatuteCitation`:
+
+  - `src/types/citation.ts` — new optional field, mirrors the existing
+    `sectionRange` pattern (#564). `subsection` continues to carry the
+    start endpoint for backward compatibility.
+  - `src/extract/statutes/parseBody.ts` — new `SUBSECTION_RANGE_TRAILER_RE`
+    detects a trailing `-(X)` / `—(X)` after the paren chain and slices
+    it off the body. The dash class accepts multi-hyphen `---` (which
+    `normalizeDashes` produces from a standalone em-dash like `(9) —
+(16)` → `(9) --- (16)`) so the cleaned form still matches. Returns
+    the captured endpoint as `subsectionRangeEnd` in `ParsedBody`.
+  - `src/patterns/statutePatterns.ts` (`usc`, `cfr`) and
+    `src/data/stateStatutes.ts` (`buildAbbreviatedCodeRegex`) —
+    tokenizer body groups now consume the optional dash + paren trailer
+    so the token's matched text includes the full range.
+  - `src/extract/statutes/extractAbbreviated.ts` and
+    `src/extract/statutes/extractFederal.ts` — propagate
+    `subsectionRangeEnd` into the new `subsectionRange` field when a
+    subsection start is present.
+
+  Plain `(a)(1)` chains (no trailing dash) continue to leave
+  `subsectionRange` undefined.
+
+- [#627](https://github.com/medelman17/eyecite-ts/pull/627) [`ebd0f2a`](https://github.com/medelman17/eyecite-ts/commit/ebd0f2a78909bca7001709d748e3a33632838eae) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): recognize bare NY CPLR citations (`CPLR 3025 (b)`,
+  `C.P.L.R. § 3211`) (#592)
+
+  NY courts dominantly cite the Civil Practice Law and Rules as bare `CPLR
+NNNN` with no `N.Y.` prefix and no `§` connector — `CPLR 3025 (b)`,
+  `CPLR 3211 (a) (4)`, `CPLR 3108`, `CPLR 4518 [a]`. Documented as ~42
+  hits across a 600-opinion sample; every NY case using the CPLR was
+  losing the citation entirely. Dotted (`C.P.L.R.`) and §-prefixed
+  (`CPLR § 3211`) variants were also missing because no abbreviated-code
+  or named-code alternation owned the `CPLR` token.
+
+  Adds a dedicated `ny-cplr-bare` tokenizer pattern and an
+  `extractNyCplrBare` extractor:
+
+  - `src/patterns/statutePatterns.ts` — new pattern recognizing
+    `(?:N\.Y\.\s*)?C\.?\s*P\.?\s*L\.?\s*R\.?\s*(?:§§?\s*)?<digits>...`
+    with optional paren/bracket subsection chain. Placed BEFORE the
+    generic `named-code` alternation so the longer optional-`N.Y.`
+    prefix subsumes the named-code match for fully-qualified
+    `N.Y. C.P.L.R. § 211` citations and the canonical `N.Y. C.P.L.R.`
+    code string is emitted regardless of input form.
+  - `src/extract/statutes/extractNyCplrBare.ts` — new extractor that
+    collapses interior whitespace between paren groups
+    (`(a) (4)` → `(a)(4)`) before delegating to `parseBody`. Always
+    emits `code: "N.Y. C.P.L.R."` and `jurisdiction: "NY"`.
+  - `src/extract/extractStatute.ts` — dispatch the new `ny-cplr-bare`
+    patternId to the new extractor.
+
+  False-positive guard: bare `CPLR` without a trailing digit
+  ("The CPLR governs procedure.") does not match because the mandatory
+  section-digit group has no acceptable backoff.
+
+- [#627](https://github.com/medelman17/eyecite-ts/pull/627) [`ebd0f2a`](https://github.com/medelman17/eyecite-ts/commit/ebd0f2a78909bca7001709d748e3a33632838eae) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): accept N.J.S.A. with inter-letter spacing (`N. J. S. A.`)
+
+  - normalize whitespace/no-period variants to canonical `N.J.S.A.` (#593)
+
+  The previous NJ regex fragment required no whitespace between the
+  inter-letter periods, so `N. J. S. A. 2:100-26` (whitespace between
+  every letter — common in older NJ Super and NJ reporters) failed to
+  tokenize. Documented as 38 hits across a 600-opinion sample.
+
+  Two coordinated changes to `src/data/stateStatutes.ts`:
+
+  - Extend the NJ regex fragment from
+    `N\.?J\.?\s*S(?:tat)?\.?\s*A?\.?` to
+    `N\.?\s*J\.?\s*S(?:tat)?\.?\s*A?\.?` so whitespace is permitted
+    between every letter pair. Same tolerance pattern already used for
+    Pennsylvania (`Pa.C.S.` / `Pa. C.S.` / `Pa. C. S.`) and Ohio
+    (`R.C.` / `R. C.`).
+  - Reorder the `abbreviations` array so `N.J.S.A.` is LAST (canonical
+    Bluebook form). `findAbbreviatedCode`'s stripped-form fallback emits
+    the LAST entry as the normalized `code` for spaced/no-period
+    variants — previously the last entry was the bare shorthand `NJS`,
+    so `N. J. S. A.` resolved with `code="NJS"` rather than the
+    expected canonical `code="N.J.S.A."`. The reordering matches the
+    Arizona pattern (`["Ariz. Rev. Stat. Ann.", "Ariz. Rev. Stat.",
+"A.R.S."]`) where the canonical Bluebook abbreviation is last.
+
+- [#627](https://github.com/medelman17/eyecite-ts/pull/627) [`ebd0f2a`](https://github.com/medelman17/eyecite-ts/commit/ebd0f2a78909bca7001709d748e3a33632838eae) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): route NYC Admin Code citations to NY (not Georgia) (#594)
+
+  `N.Y.C. Admin. Code § 8-107(1)(a)` (and the spelled-out `New York City
+Administrative Code § 8-107(1)(a)`) previously matched the Georgia
+  pre-1983 `Code §` fallback. The bare `Code § 8-107` suffix slotted into
+  the GA pattern, so the citation extracted as `code: "Code"`,
+  `jurisdiction: "GA"` — the entire NYC prefix was silently dropped and
+  the jurisdiction was wrong.
+
+  Adds a dedicated `nyc-admin-code` tokenizer pattern and
+  `extractNycAdminCode` extractor:
+
+  - `src/patterns/statutePatterns.ts` — new pattern recognizing both
+    abbreviated (`N.Y.C. Admin. Code`) and spelled-out (`New York City
+Administrative Code`) prefixes plus the two-part hyphen section
+    body. Listed BEFORE `ga-pre-1983` so the longer prefix-qualified
+    match wins span dedup.
+  - `src/extract/statutes/extractNycAdminCode.ts` — new extractor that
+    always emits `code: "N.Y.C. Admin. Code"` (canonical) and
+    `jurisdiction: "NY"`.
+  - `src/extract/extractStatute.ts` — dispatch the new patternId.
+
+  The GA `Code §` fallback still owns plain `Code § N-N` citations
+  without an NYC prefix, so existing pre-1983 GA support is unchanged.
+
+- [#627](https://github.com/medelman17/eyecite-ts/pull/627) [`ebd0f2a`](https://github.com/medelman17/eyecite-ts/commit/ebd0f2a78909bca7001709d748e3a33632838eae) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): accept Illinois `chap.` (full spelling) in Ill. Rev. Stat.
+  citations (#595)
+
+  The pre-1993 Illinois Revised Statutes pattern required `ch.` exactly;
+  `Ill. Rev. Stat. 1955, chap. 38, par. 602` (with full-spelled `chap.`)
+  was missed. Both `ch.` and `chap.` are common in modern Illinois opinions
+  when citing the historical statutory text.
+
+  `src/patterns/statutePatterns.ts` (`ill-rev-stat`) and
+  `src/extract/statutes/extractIllRevStat.ts` — extend the chapter
+  keyword from `[Cc]h\.` to `[Cc]h(?:ap)?\.` so both abbreviated and
+  full-spelled forms tokenize. Lowercase/uppercase initial letter is
+  preserved.
+
+- [#629](https://github.com/medelman17/eyecite-ts/pull/629) [`00743a1`](https://github.com/medelman17/eyecite-ts/commit/00743a125211252bc7f189591a0d0843bec8c52a) Thanks [@medelman17](https://github.com/medelman17)! - test(extract): lock in year-glued-subsection behavior (#588)
+
+  Documented examples:
+
+  - `42 U.S.C. § 1472(c)(2000)` → `subsection="(c)"`, `year=2000`
+  - `49 U.S.C. § 10502(a)(2000)` → `subsection="(a)"`, `year=2000`
+  - `42 U.S.C. § 1472(c)(50)` → `subsection="(c)(50)"`, `year=undefined`
+  - `42 U.S.C. § 1331(a)(West 2018)` → `publisher="West"`, `year=2018`
+
+  Compact `§ NNNN(c)(YYYY)` forms (no whitespace before the year
+  parenthetical) used to merge the year into the subsection chain
+  because the year-paren absorber only ran when whitespace separated
+  the subsection from the year. Sprint F (#590) added a negative
+  lookahead `(?![^)]*\d{4})` to the USC/CFR subsection body that
+  rejects any parenthetical containing four consecutive digits — the
+  fix composes orthogonally with the post-process
+  `attachStatuteYearParen` binder which accepts zero leading
+  whitespace (`^\s*\(`), so the compact form now binds year correctly
+  as a side-effect of Sprint F.
+
+  This changeset adds `tests/extract/issue588YearGluedSubsection.test.ts`
+  to lock in that post-Sprint-F behavior so future changes to the
+  subsection / year-paren shape cannot silently regress it. No
+  runtime change.
+
 ## 0.22.1
 
 ### Patch Changes
@@ -48,7 +671,7 @@
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-      275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+        275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -74,7 +697,7 @@
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-      People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+        People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
