@@ -572,6 +572,153 @@ describe("annotate", () => {
     })
   })
 
+  describe("overlapping core spans (#545)", () => {
+    it("skips an inner citation nested inside another citation's core span", () => {
+      // Real-world: a statute false-positive's core span lands inside a case
+      // citation's core span. Before overlap detection, both wraps got spliced,
+      // chopping the outer wrap's closing sentinel into the middle of the
+      // inner wrap's text and producing malformed output.
+      const text = "Smith v. Jones, 500 F.2d 123 (1980), see also more text"
+      const outer: Citation = {
+        type: "case",
+        text: "500 F.2d 123",
+        span: { cleanStart: 0, cleanEnd: 28, originalStart: 0, originalEnd: 28 },
+        matchedText: "Smith v. Jones, 500 F.2d 123",
+        confidence: 0.9,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 500,
+        reporter: "F.2d",
+        page: 123,
+      }
+      const inner: Citation = {
+        type: "case",
+        text: "500 F.2d 1",
+        span: { cleanStart: 16, cleanEnd: 26, originalStart: 16, originalEnd: 26 },
+        matchedText: "500 F.2d 1",
+        confidence: 0.4, // Lower confidence — the false positive
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 500,
+        reporter: "F.2d",
+        page: 1,
+      }
+
+      const result = annotate(text, [outer, inner], {
+        template: { before: "<cite>", after: "</cite>" },
+      })
+
+      // Outer wins, inner is skipped, output is clean (no malformed sentinels).
+      expect(result.text).toBe(
+        "<cite>Smith v. Jones, 500 F.2d 123</cite> (1980), see also more text",
+      )
+      expect(result.skipped).toHaveLength(1)
+      expect(result.skipped[0]).toBe(inner)
+
+      // Sanity: open/close cite counts match (no truncated sentinels).
+      const openCount = (result.text.match(/<cite>/g) ?? []).length
+      const closeCount = (result.text.match(/<\/cite>/g) ?? []).length
+      expect(openCount).toBe(closeCount)
+    })
+
+    it("skips the lower-confidence citation when two overlap but neither nests", () => {
+      // Two citations whose core spans truly intersect (A=[10,20], B=[15,25]).
+      // Without confidence-aware tie-breaking, ordering by start position would
+      // keep A; if A is the false positive, the real citation gets dropped.
+      // The fix prefers the higher-confidence citation in this case.
+      const text = "x y z aaa BBB CCC DDD eee fff text after"
+      const falsePositive: Citation = {
+        type: "case",
+        text: "aaa BBB CCC",
+        span: { cleanStart: 6, cleanEnd: 17, originalStart: 6, originalEnd: 17 },
+        matchedText: "aaa BBB CCC",
+        confidence: 0.3, // Low confidence
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 1,
+        reporter: "X",
+        page: 1,
+      }
+      const realCitation: Citation = {
+        type: "case",
+        text: "CCC DDD eee",
+        span: { cleanStart: 14, cleanEnd: 25, originalStart: 14, originalEnd: 25 },
+        matchedText: "CCC DDD eee",
+        confidence: 0.95, // High confidence
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 2,
+        reporter: "Y",
+        page: 2,
+      }
+
+      const result = annotate(text, [falsePositive, realCitation], {
+        template: { before: "<cite>", after: "</cite>" },
+      })
+
+      // The higher-confidence citation survives; the lower-confidence one is skipped.
+      expect(result.skipped).toHaveLength(1)
+      expect(result.skipped[0]).toBe(falsePositive)
+      // No malformed sentinels.
+      const openCount = (result.text.match(/<cite>/g) ?? []).length
+      const closeCount = (result.text.match(/<\/cite>/g) ?? []).length
+      expect(openCount).toBe(closeCount)
+      expect(openCount).toBe(1)
+      // The kept wrap spans the real citation's range exactly.
+      expect(result.text).toContain("<cite>CCC DDD eee</cite>")
+    })
+
+    it("never produces malformed sentinels even with multiple overlaps", () => {
+      // Three citations all overlapping in a cluster — only the first
+      // accepted wrap should survive; the others must be skipped.
+      const text = "ALPHA BETA GAMMA DELTA EPSILON tail"
+      const a: Citation = {
+        type: "case",
+        text: "ALPHA BETA GAMMA",
+        span: { cleanStart: 0, cleanEnd: 16, originalStart: 0, originalEnd: 16 },
+        matchedText: "ALPHA BETA GAMMA",
+        confidence: 0.9,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 1,
+        reporter: "A",
+        page: 1,
+      }
+      const b: Citation = {
+        type: "case",
+        text: "BETA GAMMA DELTA",
+        span: { cleanStart: 6, cleanEnd: 22, originalStart: 6, originalEnd: 22 },
+        matchedText: "BETA GAMMA DELTA",
+        confidence: 0.5,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 2,
+        reporter: "B",
+        page: 2,
+      }
+      const c: Citation = {
+        type: "case",
+        text: "GAMMA DELTA EPSILON",
+        span: { cleanStart: 11, cleanEnd: 30, originalStart: 11, originalEnd: 30 },
+        matchedText: "GAMMA DELTA EPSILON",
+        confidence: 0.5,
+        processTimeMs: 0,
+        patternsChecked: 1,
+        volume: 3,
+        reporter: "C",
+        page: 3,
+      }
+      const result = annotate(text, [a, b, c], {
+        template: { before: "<cite>", after: "</cite>" },
+      })
+      const openCount = (result.text.match(/<cite>/g) ?? []).length
+      const closeCount = (result.text.match(/<\/cite>/g) ?? []).length
+      expect(openCount).toBe(closeCount)
+      // Total skipped = total citations - accepted wraps
+      expect(result.skipped.length + openCount).toBe(3)
+    })
+  })
+
   describe("edge cases", () => {
     it("should handle empty citations array", () => {
       const text = "See 500 F.2d 123"

@@ -86,20 +86,44 @@ export function annotate<C extends Citation = Citation>(
     return b.end - a.end
   })
 
-  // Overlap detection: walk ascending and skip any wrap whose range overlaps
-  // (intersects) the currently-selected outer wrap. Two wraps overlap when
-  // one starts before the other ends — the inner one is discarded.
+  // Overlap detection: walk ascending and resolve any wrap whose range
+  // intersects the currently-accepted wrap (issues #543, #545). Two wraps
+  // overlap when one starts before the other ends.
+  //
+  // Resolution rule:
+  // - If one wrap fully contains the other, keep the outer (already accepted)
+  //   wrap so the entire cluster ends up under a single sentinel.
+  // - Otherwise (true intersection) prefer the higher-confidence citation —
+  //   this lets a real citation displace an earlier low-confidence false
+  //   positive that happens to start first.
+  // The discarded citation surfaces via `skipped`.
   const skipped: Citation[] = []
   const accepted: Resolved[] = []
-  let activeEnd = -1
   for (const item of ascending) {
-    if (item.start < activeEnd) {
-      // Overlaps the previously-accepted wrap — skip this citation
-      skipped.push(item.citation)
+    const last = accepted[accepted.length - 1]
+    if (last !== undefined && item.start < last.end) {
+      // Overlaps the most recently accepted wrap. Decide which wins.
+      const lastContainsItem = item.end <= last.end
+      if (lastContainsItem) {
+        // Inner wrap nested inside outer — drop the inner one
+        skipped.push(item.citation)
+        continue
+      }
+      // True intersection — prefer the higher-confidence citation
+      const lastConf = last.citation.confidence ?? 0
+      const itemConf = item.citation.confidence ?? 0
+      if (itemConf > lastConf) {
+        // Incoming wins — eject the previously-accepted wrap
+        accepted.pop()
+        skipped.push(last.citation)
+        accepted.push(item)
+      } else {
+        // Existing wrap wins (ties keep the earlier-starting one)
+        skipped.push(item.citation)
+      }
       continue
     }
     accepted.push(item)
-    activeEnd = item.end
   }
 
   // Process accepted wraps in reverse so splicing earlier ranges doesn't
