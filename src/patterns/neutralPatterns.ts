@@ -93,9 +93,13 @@ export const neutralPatterns: Pattern[] = [
     type: "neutral",
   },
   {
+    // Accepts both the canonical abbreviated form (`Pub. L. No. 116-283`,
+    // `Pub. L. 116-283`) and the spelled-out form (`Public Law 116-127`,
+    // `Public Law No. 116-127`). #533
     id: "public-law",
-    regex: /\bPub\.\s?L\.(?:\s?No\.)?\s?(\d+-\d+)\b/g,
-    description: 'Public Law citations (e.g., "Pub. L. No. 117-58" or "Pub. L. 116-283")',
+    regex: /\b(?:Pub\.\s?L\.|Public\s+Law)(?:\s?No\.)?\s?(\d+-\d+)\b/g,
+    description:
+      'Public Law citations: "Pub. L. No. 117-58", "Pub. L. 116-283", "Public Law 116-127", "Public Law No. 116-127"',
     type: "publicLaw",
   },
   {

@@ -168,6 +168,54 @@ describe("Other extraction functions", () => {
 
       expect(citation.confidence).toBe(0.9)
     })
+
+    // #533 — Statutes that spell out `Public Law` (rather than abbreviating
+    // to `Pub. L.`) should also tokenize and extract correctly. This shows
+    // up in House/Senate reports and in opinions that introduce a Pub. L.
+    // citation without prior abbreviation.
+    it("extracts spelled-out `Public Law 116-127` (#533)", () => {
+      const cites = extractCitations("Public Law 116-127 was enacted in 2020.").filter(
+        (c) => c.type === "publicLaw",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "publicLaw") {
+        expect(cites[0].congress).toBe(116)
+        expect(cites[0].lawNumber).toBe(127)
+      }
+    })
+
+    it("extracts spelled-out `Public Law No. 116-127` (#533)", () => {
+      const cites = extractCitations("Public Law No. 116-127").filter(
+        (c) => c.type === "publicLaw",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "publicLaw") {
+        expect(cites[0].congress).toBe(116)
+        expect(cites[0].lawNumber).toBe(127)
+      }
+    })
+
+    it("regression: abbreviated `Pub. L. 116-283` continues to work (#533)", () => {
+      const cites = extractCitations("See Pub. L. 116-283.").filter(
+        (c) => c.type === "publicLaw",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "publicLaw") {
+        expect(cites[0].congress).toBe(116)
+        expect(cites[0].lawNumber).toBe(283)
+      }
+    })
+
+    it("regression: abbreviated `Pub. L. No. 116-283` continues to work (#533)", () => {
+      const cites = extractCitations("See Pub. L. No. 116-283.").filter(
+        (c) => c.type === "publicLaw",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "publicLaw") {
+        expect(cites[0].congress).toBe(116)
+        expect(cites[0].lawNumber).toBe(283)
+      }
+    })
   })
 
   describe("extractFederalRegister", () => {
