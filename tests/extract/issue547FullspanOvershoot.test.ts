@@ -198,27 +198,21 @@ describe("issue #547: fullSpan overshoots on line-crossing false positives", () 
 
     it("flags the line-crossing cite to confidence ≤ 0.1", () => {
       const cits = extractCitations(text)
-      const phantom = cits.find((c) =>
-        c.matchedText.includes("1-602 Applications"),
-      )
+      const phantom = cits.find((c) => c.matchedText.includes("1-602 Applications"))
       expect(phantom, "phantom cite should be extracted under broad regex").toBeDefined()
       expect(phantom!.confidence).toBeLessThanOrEqual(0.1)
     })
 
     it("strips fullSpan from the flagged phantom (no preceding prose leaks)", () => {
       const cits = extractCitations(text)
-      const phantom = cits.find((c) =>
-        c.matchedText.includes("1-602 Applications"),
-      )
+      const phantom = cits.find((c) => c.matchedText.includes("1-602 Applications"))
       expect(phantom).toBeDefined()
       expect((phantom as FullCaseCitation).fullSpan).toBeUndefined()
     })
 
     it("removes the phantom entirely when filterFalsePositives is true", () => {
       const cits = extractCitations(text, { filterFalsePositives: true })
-      const phantom = cits.find((c) =>
-        c.matchedText.includes("1-602 Applications"),
-      )
+      const phantom = cits.find((c) => c.matchedText.includes("1-602 Applications"))
       expect(phantom).toBeUndefined()
     })
   })
@@ -233,18 +227,14 @@ describe("issue #547: fullSpan overshoots on line-crossing false positives", () 
 
     it("flags the address-shaped phantom", () => {
       const cits = extractCitations(text)
-      const phantom = cits.find((c) =>
-        c.matchedText.includes("5713 Monona Drive"),
-      )
+      const phantom = cits.find((c) => c.matchedText.includes("5713 Monona Drive"))
       expect(phantom).toBeDefined()
       expect(phantom!.confidence).toBeLessThanOrEqual(0.1)
     })
 
     it("does not surface address text in fullSpan", () => {
       const cits = extractCitations(text)
-      const phantom = cits.find((c) =>
-        c.matchedText.includes("5713 Monona Drive"),
-      )
+      const phantom = cits.find((c) => c.matchedText.includes("5713 Monona Drive"))
       expect((phantom as FullCaseCitation).fullSpan).toBeUndefined()
     })
   })
@@ -256,23 +246,33 @@ describe("issue #547: fullSpan overshoots on line-crossing false positives", () 
       "2. Fed. R. Civ. P. 56\n" +
       "Fed. R. Civ.’ P. 56(a) provides that a court may grant summary judgment."
 
-    it("flags the smart-quote-artifact FRCP phantom (was conf 0.45 before fix)", () => {
+    it("no longer surfaces the smart-quote-artifact FRCP phantom (#576 supersedes #547 fix)", () => {
+      // The federal-rule extractor (#576) recognizes the well-formed
+      // `Fed. R. Civ. P. 56` on the heading line and wins overlap dedup
+      // against the smart-quote-broken state-reporter match that follows.
+      // The net effect is stronger than the original #547 fix: no phantom
+      // case citation is emitted at all.
       const cits = extractCitations(text)
-      // Smart-quote `’` is normalized to `'` by the cleaner, so the matchedText
-      // contains "Fed. R. Civ.' P." (ASCII apostrophe).
       const phantom = cits.find(
         (c) => c.type === "case" && c.matchedText.includes("Fed. R. Civ.' P."),
       )
-      expect(phantom, "phantom cite from FRCP rule should extract under broad regex").toBeDefined()
-      expect(phantom!.confidence).toBeLessThanOrEqual(0.1)
+      expect(phantom).toBeUndefined()
+      // The legitimate FRCP rule still extracts as federalRule.
+      const rule = cits.find((c) => c.type === "federalRule")
+      expect(rule).toBeDefined()
     })
 
-    it("strips fullSpan so heading line above does not leak", () => {
+    it("no remaining case-type citation has a leaking fullSpan from the section heading", () => {
       const cits = extractCitations(text)
-      const phantom = cits.find(
-        (c) => c.type === "case" && c.matchedText.includes("Fed. R. Civ.' P."),
-      )
-      expect((phantom as FullCaseCitation).fullSpan).toBeUndefined()
+      const cases = cits.filter((c) => c.type === "case") as FullCaseCitation[]
+      // Either no case citations, or none with a fullSpan that crosses the
+      // newline boundary (defensive against future regressions).
+      for (const c of cases) {
+        if (c.fullSpan) {
+          const slice = text.slice(c.fullSpan.originalStart, c.fullSpan.originalEnd)
+          expect(slice.includes("dispute despite")).toBe(false)
+        }
+      }
     })
   })
 

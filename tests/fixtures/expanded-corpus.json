@@ -2778,6 +2778,11 @@
       "text": "Class certification under Federal Rule of Civil Procedure 23 requires satisfaction of four prerequisites: numerosity, commonality, typicality, and adequacy. Wal-Mart Stores Inc. v. Dukes, 564 U.S. 338 (2011). For classes seeking monetary damages under Rule 23(b)(3), the court must also find that common questions predominate and that a class action is superior. Amchem Products Inc. v. Windsor, 521 U.S. 591 (1997). The Supreme Court has addressed class arbitration waivers in AT&T Mobility LLC v. Concepcion, 563 U.S. 333 (2011), and Epic Systems Corp. v. Lewis, 584 U.S. 497 (2018).",
       "expected": [
         {
+          "type": "federalRule",
+          "ruleSet": "civil",
+          "rule": "23"
+        },
+        {
           "type": "case",
           "volume": 564,
           "reporter": "U.S.",

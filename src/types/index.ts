@@ -1,4 +1,5 @@
 export type {
+  AnnotationCitation,
   Citation,
   CitationBase,
   CitationOfType,
@@ -9,6 +10,7 @@ export type {
   DocketCitation,
   ExtractorMap,
   FederalRegisterCitation,
+  FederalRuleCitation,
   FullCaseCitation,
   FullCitation,
   FullCitationType,
@@ -19,6 +21,7 @@ export type {
   Parenthetical,
   ParentheticalType,
   PublicLawCitation,
+  RestatementCitation,
   ShortFormCaseCitation,
   ShortFormCitation,
   ShortFormCitationType,
@@ -26,6 +29,7 @@ export type {
   StatutesAtLargeCitation,
   SubsequentHistoryEntry,
   SupraCitation,
+  TreatiseCitation,
   Warning,
 } from "./citation"
 export {
@@ -37,14 +41,18 @@ export {
 } from "./guards"
 export type { Span, TransformationMap } from "./span"
 export type {
+  AnnotationComponentSpans,
   CaseComponentSpans,
   ConstitutionalComponentSpans,
   FederalRegisterComponentSpans,
+  FederalRuleComponentSpans,
   JournalComponentSpans,
   NeutralComponentSpans,
   PublicLawComponentSpans,
+  RestatementComponentSpans,
   StatuteComponentSpans,
   StatutesAtLargeComponentSpans,
+  TreatiseComponentSpans,
 } from "./componentSpans"
 
 export { spanFromGroupIndex } from "./span"

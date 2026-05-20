@@ -1,17 +1,21 @@
 import { describe, expect, it } from "vitest"
 import { toBluebook } from "../../src/utils"
 import type {
+  AnnotationCitation,
   ConstitutionalCitation,
   FederalRegisterCitation,
+  FederalRuleCitation,
   FullCaseCitation,
   IdCitation,
   JournalCitation,
   NeutralCitation,
   PublicLawCitation,
+  RestatementCitation,
   ShortFormCaseCitation,
   StatuteCitation,
   StatutesAtLargeCitation,
   SupraCitation,
+  TreatiseCitation,
 } from "../../src/types/citation"
 
 /** Minimal CitationBase fields for test fixtures */
@@ -384,6 +388,92 @@ describe("toBluebook", () => {
         page: 123,
       }
       expect(toBluebook(cite)).toBe("500 F.2d 123")
+    })
+  })
+
+  describe("FederalRuleCitation (#576)", () => {
+    it("formats Fed. R. Civ. P.", () => {
+      const cite: FederalRuleCitation = {
+        ...BASE,
+        type: "federalRule",
+        ruleSet: "civil",
+        rule: "56",
+      }
+      expect(toBluebook(cite)).toBe("Fed. R. Civ. P. 56")
+    })
+
+    it("includes subsection", () => {
+      const cite: FederalRuleCitation = {
+        ...BASE,
+        type: "federalRule",
+        ruleSet: "criminal",
+        rule: "12",
+        subsection: "(b)(6)",
+      }
+      expect(toBluebook(cite)).toBe("Fed. R. Crim. P. 12(b)(6)")
+    })
+
+    it("formats Evid. (no trailing P.)", () => {
+      const cite: FederalRuleCitation = {
+        ...BASE,
+        type: "federalRule",
+        ruleSet: "evidence",
+        rule: "401",
+      }
+      expect(toBluebook(cite)).toBe("Fed. R. Evid. 401")
+    })
+  })
+
+  describe("RestatementCitation (#578)", () => {
+    it("formats Restatement (Second) of Torts § 402A", () => {
+      const cite: RestatementCitation = {
+        ...BASE,
+        type: "restatement",
+        edition: "Second",
+        subject: "Torts",
+        section: "402A",
+      }
+      expect(toBluebook(cite)).toBe("Restatement (Second) of Torts § 402A")
+    })
+  })
+
+  describe("TreatiseCitation (#579)", () => {
+    it("formats Wright & Miller", () => {
+      const cite: TreatiseCitation = {
+        ...BASE,
+        type: "treatise",
+        volume: 5,
+        title: "Wright & Miller, Federal Practice and Procedure",
+        section: "1290",
+      }
+      expect(toBluebook(cite)).toBe(
+        "5 Wright & Miller, Federal Practice and Procedure § 1290",
+      )
+    })
+  })
+
+  describe("AnnotationCitation (#581)", () => {
+    it("formats A.L.R. annotation", () => {
+      const cite: AnnotationCitation = {
+        ...BASE,
+        type: "annotation",
+        series: "A.L.R.2d",
+        volume: 100,
+        page: 1234,
+      }
+      expect(toBluebook(cite)).toBe("100 A.L.R.2d 1234")
+    })
+
+    it("includes year when present", () => {
+      const cite: AnnotationCitation = {
+        ...BASE,
+        type: "annotation",
+        series: "A.L.R.3d",
+        volume: 50,
+        page: 250,
+        year: 1972,
+      }
+      expect(toBluebook(cite)).toBe("50 A.L.R.3d 250 (1972)")
     })
   })
 })

@@ -19,6 +19,7 @@ import type { StatuteCitation } from "@/types/citation"
 import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 import { extractAbbreviated } from "./statutes/extractAbbreviated"
 import { extractAlaCode1940 } from "./statutes/extractAlaCode1940"
+import { extractBankruptcyCode } from "./statutes/extractBankruptcyCode"
 import { extractCaBareCode } from "./statutes/extractCaBareCode"
 import { extractChapterAct } from "./statutes/extractChapterAct"
 import { extractColoradoProse } from "./statutes/extractColoradoProse"
@@ -46,6 +47,7 @@ import { extractRsaChapter } from "./statutes/extractRsaChapter"
 import { extractRcwChapterPostfix } from "./statutes/extractRcwChapterPostfix"
 import { extractStateAdminCode } from "./statutes/extractStateAdminCode"
 import { extractTcaPostfix } from "./statutes/extractTcaPostfix"
+import { extractUssg } from "./statutes/extractUssg"
 import { extractVaBareCode } from "./statutes/extractVaBareCode"
 import { extractWiStatsPostfix } from "./statutes/extractWiStatsPostfix"
 import { extractWvCode1931 } from "./statutes/extractWvCode1931"
@@ -159,6 +161,11 @@ export function extractStatute(
       return extractIcYearEdition(token, transformationMap)
     case "irc":
       return extractIrc(token, transformationMap)
+    case "ussg":
+      return extractUssg(token, transformationMap)
+    case "bankruptcy-code-prefix":
+    case "bankruptcy-code-postfix":
+      return extractBankruptcyCode(token, transformationMap)
     case "idaho-postfix":
       return extractIdahoPostfix(token, transformationMap)
     case "ksa-year-edition":
