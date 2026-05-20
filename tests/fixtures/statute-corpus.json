@@ -225,6 +225,6 @@
   },
   {
     "text": "Mass. Gen. Laws ch. 93A, § 2",
-    "expected": [{ "type": "statute", "code": "93A", "section": "2", "jurisdiction": "MA" }]
+    "expected": [{ "type": "statute", "code": "Mass. Gen. Laws", "section": "2", "jurisdiction": "MA" }]
   }
 ]

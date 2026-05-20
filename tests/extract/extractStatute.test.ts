@@ -1844,7 +1844,9 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("268A")
+        // #569 — chapter no longer leaks into code.
+        expect(cites[0].code).toBe("G.L.")
+        expect(cites[0].chapter).toBe("268A")
         expect(cites[0].jurisdiction).toBe("MA")
         expect(cites[0].section).toBe("25")
       }
@@ -1856,7 +1858,8 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("93A")
+        expect(cites[0].code).toBe("G.L.")
+        expect(cites[0].chapter).toBe("93A")
         expect(cites[0].jurisdiction).toBe("MA")
       }
     })
@@ -1867,9 +1870,12 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("93A")
+        // Spacing inside the corpus abbreviation collapses to "G. L." → "G. L."
+        // The chapter-only form leaves section undefined per #569.
+        expect(cites[0].code).toBe("G. L.")
+        expect(cites[0].chapter).toBe("93A")
         expect(cites[0].jurisdiction).toBe("MA")
-        expect(cites[0].section).toBe("")
+        expect(cites[0].section).toBeUndefined()
       }
     })
 
@@ -1879,7 +1885,8 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("90")
+        expect(cites[0].code).toBe("G.L.")
+        expect(cites[0].chapter).toBe("90")
         expect(cites[0].section).toBe("34M")
       }
     })
@@ -1890,7 +1897,8 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("272")
+        expect(cites[0].code).toBe("G.L.")
+        expect(cites[0].chapter).toBe("272")
         expect(cites[0].section).toBe("99E")
         expect(cites[0].subsection).toBe("(3)")
       }
@@ -1902,7 +1910,8 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("94C")
+        expect(cites[0].code).toBe("General Laws")
+        expect(cites[0].chapter).toBe("94C")
         expect(cites[0].section).toBe("32A")
         expect(cites[0].subsection).toBe("(a)")
       }
@@ -1914,7 +1923,8 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("93A")
+        expect(cites[0].code).toBe("Mass. Gen. Laws")
+        expect(cites[0].chapter).toBe("93A")
         expect(cites[0].jurisdiction).toBe("MA")
         expect(cites[0].section).toBe("2")
       }

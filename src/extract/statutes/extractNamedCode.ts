@@ -106,6 +106,7 @@ export function extractNamedCode(
   let jurisdiction: string | undefined
   let code: string
   let rawBody: string
+  let chapter: string | undefined
   let massMatch: RegExpExecArray | null = null
   let namedMatch: RegExpExecArray | null = null
 
@@ -113,7 +114,12 @@ export function extractNamedCode(
     massMatch = MASS_CHAPTER_RE.exec(text)
     if (massMatch) {
       jurisdiction = "MA"
-      code = massMatch[2] // chapter number (e.g., "93A")
+      // #569 — `code` holds the corpus identifier as it appeared
+      // (`G.L.`, `Mass. Gen. Laws`, `M.G.L.A.`, `A.L.M.`,
+      // `General Laws`). The chapter number moves to the dedicated
+      // `chapter` field; section is the trailing `§ N` (when present).
+      code = massMatch[1].trim().replace(/\s+/g, " ")
+      chapter = massMatch[2]
       // Section body is optional — chapter-only citations like `G.L. c. 93A`
       // are valid. When absent, leave the section empty. (#364)
       rawBody = massMatch[3] ?? ""
@@ -202,6 +208,11 @@ export function extractNamedCode(
   if (subsection) confidence += 0.05
   confidence = Math.min(confidence, 1.0)
 
+  // For Mass-chapter forms, an empty section means a chapter-only citation
+  // (`G.L. c. 93A`) — return `undefined` rather than empty string. (#569)
+  const sectionOut: string | undefined =
+    section === "" && chapter ? undefined : section
+
   return {
     type: "statute",
     text,
@@ -211,7 +222,8 @@ export function extractNamedCode(
     processTimeMs: 0,
     patternsChecked: 1,
     code,
-    section,
+    chapter,
+    section: sectionOut,
     subsection,
     pincite: subsection,
     jurisdiction,

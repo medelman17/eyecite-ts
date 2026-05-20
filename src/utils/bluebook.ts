@@ -56,13 +56,22 @@ export function toBluebook(citation: Citation): string {
 
     case "statute": {
       const title = citation.title !== undefined ? `${citation.title} ` : ""
-      const section = `\u00A7 ${citation.section}`
+      // section may be absent (e.g. Massachusetts chapter-only like
+      // `G.L. c. 93A` \u2014 #569). Render the chapter form when present and
+      // omit the trailing `\u00A7 <section>` if there is no section.
+      const code = citation.code ? `${citation.code} ` : ""
+      const chapter = citation.chapter ? `c. ${citation.chapter}` : ""
       const subsection = citation.subsection ?? ""
       const etSeq = citation.hasEtSeq ? " et seq." : ""
-      // code may be undefined when the bare-section jurisdiction guard
-      // drops both code and jurisdiction (#565). Render as just `\u00A7 <section>`.
-      const code = citation.code ? `${citation.code} ` : ""
-      return `${title}${code}${section}${subsection}${etSeq}`
+      if (citation.section !== undefined && citation.section !== "") {
+        const section = `\u00A7 ${citation.section}`
+        const sep = chapter ? ", " : ""
+        return `${title}${code}${chapter}${sep}${section}${subsection}${etSeq}`
+      }
+      // chapter-only OR section absent: emit `code c. chapter` (Mass)
+      // or `code \u00A7` placeholder when neither field is present.
+      if (chapter) return `${title}${code}${chapter}${etSeq}`
+      return `${title}${code}\u00A7${etSeq}`
     }
 
     case "constitutional": {

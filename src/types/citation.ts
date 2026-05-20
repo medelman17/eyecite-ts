@@ -464,7 +464,11 @@ export interface StatuteCitation extends CitationBase {
    * (#565, originally #531)
    */
   code?: string
-  section: string
+  /**
+   * Section identifier. Optional because some forms cite the chapter alone
+   * (e.g. Massachusetts `G.L. c. 93A` — see `chapter` below). #569
+   */
+  section?: string
   /**
    * Structured representation of a `§§ N-M` range. Populated only for
    * citations where the section field is unambiguously a numeric range
@@ -474,6 +478,13 @@ export interface StatuteCitation extends CitationBase {
    * compatibility. (#564)
    */
   sectionRange?: { start: string; end: string }
+  /**
+   * Chapter identifier for citations that use a chapter+section layout,
+   * notably Massachusetts (`G.L. c. 93A`, `M.G.L.A. c. 93, § 14`).
+   * Previously the chapter number was leaking into `code`; populated
+   * separately as of #569.
+   */
+  chapter?: string
   /** Subsection/pincite chain, e.g. "(a)(1)(A)" */
   subsection?: string
   /** 2-letter state code or "US" when unambiguously identified */
