@@ -468,9 +468,18 @@ export class DocumentResolver {
     // flag ambiguity (without refusing to commit).
     const { confidence, warnings } = this.applyCaseNameWindowCheck(best.index, citation)
 
+    // #508: `antecedentIndex` mirrors `resolvedTo` on the success path so
+    // consumers see one source of truth. The pre-fix code called
+    // `findImmediatePredecessor` here, which walks the array by position and
+    // ignores the family / scope filters the primary chase applied — that
+    // produced disagreement when an intervening citation of a different
+    // family sat between the picked antecedent and the `Id.` (e.g.,
+    // case → statute → Id. at 5: resolvedTo=case, antecedentIndex=statute).
+    // `findImmediatePredecessor` remains the fallback for the unresolved-
+    // short-form chain (above) where no `resolvedTo` is available.
     return {
       resolvedTo: best.index,
-      antecedentIndex: this.findImmediatePredecessor(citation),
+      antecedentIndex: best.index,
       confidence,
       warnings,
     }
