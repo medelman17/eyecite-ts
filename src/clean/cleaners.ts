@@ -281,12 +281,18 @@ export function normalizeReporterSpacing(text: string): string {
 /**
  * Normalize typographical symbols and strip zero-width characters.
  *
- * Handles prime marks (common OCR substitution for apostrophes) and invisible
- * Unicode characters that can silently break regex pattern matching.
+ * Handles prime marks (common OCR substitution for apostrophes), the
+ * horizontal ellipsis (collapsed to the ASCII 3-dot form so cleaned text
+ * does not balloon into long dot leaders \u2014 #548), and invisible Unicode
+ * characters that can silently break regex pattern matching.
  *
  * @example
  * normalizeTypography("Doe\u2032s case")  // prime mark
  * // => "Doe's case"
+ *
+ * @example
+ * normalizeTypography("foo\u2026bar")  // horizontal ellipsis (#548)
+ * // => "foo...bar"
  *
  * @example
  * normalizeTypography("500\u200BF.2d")  // zero-width space
@@ -295,6 +301,7 @@ export function normalizeReporterSpacing(text: string): string {
 export function normalizeTypography(text: string): string {
   return text
     .replace(/[\u2032\u2035]/g, "'") // prime, reversed prime → apostrophe
+    .replace(/\u2026/g, "...") // horizontal ellipsis \u2192 3 ASCII dots (#548)
     .replace(/\u200B|\u200C|\u200D|\u2060|\uFEFF/g, "") // zero-width chars
 }
 

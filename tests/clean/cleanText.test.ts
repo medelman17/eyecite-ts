@@ -531,6 +531,18 @@ describe("normalizeTypography (issue #11)", () => {
   it("leaves normal text unchanged", () => {
     expect(normalizeTypography("Smith v. Doe, 500 F.2d 123")).toBe("Smith v. Doe, 500 F.2d 123")
   })
+
+  // #548 — horizontal ellipsis (U+2026) must collapse to the ASCII 3-dot
+  // form explicitly (and NOT a 10-dot leader). The expansion still inflates
+  // the cleaned length, but cap it at the standard Bluebook 3-dot ellipsis
+  // so downstream span math stays bounded.
+  it("converts horizontal ellipsis (U+2026) to three ASCII dots (#548)", () => {
+    expect(normalizeTypography("foo…bar")).toBe("foo...bar")
+  })
+
+  it("converts consecutive ellipses to runs of three dots each (#548)", () => {
+    expect(normalizeTypography("………")).toBe(".........")
+  })
 })
 
 describe("stripDiacritics — opt-in OCR cleaner (issue #11)", () => {
