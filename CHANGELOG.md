@@ -1,5 +1,350 @@
 # eyecite-ts
 
+## 0.22.1
+
+### Patch Changes
+
+- [#621](https://github.com/medelman17/eyecite-ts/pull/621) [`3323c2c`](https://github.com/medelman17/eyecite-ts/commit/3323c2cbc36e9a318172e2965940b0b9acd34da8) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): plausibility-filter extracted years to drop OCR artifacts and
+  page-number leaks (#523)
+
+  Without a sanity range check, any 4-digit number harvested into the year
+  slot was accepted. OCR-mangled values like `1372` (intended `1972`) and
+  `1076` (intended `1976`) slipped through silently; #522's page-number leak
+  (`3021` mistaken for a year) was a related symptom that a trivial range
+  check would have caught upfront.
+
+  Adds `isPlausibleYear(year)` exported from `src/extract/dates.ts`, with the
+  range `[1700, currentYear + 1]` (inclusive). The lower bound matches the
+  practical floor of U.S. citation corpora; the `currentYear + 1` cap
+  tolerates opinions filed right around the new year.
+
+  Applied at every site that publishes a `year` field from a raw `\d{4}`
+  match — defense-in-depth across the parser:
+
+  - `parseDate` (one check per pattern branch, plus the year-only fallback).
+    Implausible years cause the matcher to return `undefined` rather than
+    reporting a bad year with month/day.
+  - `extractCase` case-name backsearch: both the `v.` (`V_CASE_NAME_REGEX`)
+    and the procedural-prefix (`PROCEDURAL_PREFIX_REGEX`) CSM `(court year)`
+    paths.
+  - `extractJournal` lookahead `(YYYY)` paren.
+  - `extractFederalRegister` paren year.
+  - `extractStatutesAtLarge` paren year.
+
+  Neutral citations (`2020 IL 12345`) are intentionally not filtered: the
+  year is a structural component of the citation pattern itself, not an
+  optional metadata field, so an implausible year there indicates the entire
+  match is suspect — handled upstream by the tokenizer's strict year-prefix
+  patterns.
+
+  One pre-existing two-digit-year test (`1/1/50` → 2050) is updated to use
+  `1/1/27` → 2027 so the pivot-boundary assertion does not collide with the
+  new plausibility cap; the two-digit pivot itself (`<=50` → 21st century,
+  `>50` → 20th) is unchanged.
+
+- [#621](https://github.com/medelman17/eyecite-ts/pull/621) [`3323c2c`](https://github.com/medelman17/eyecite-ts/commit/3323c2cbc36e9a318172e2965940b0b9acd34da8) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): Georgia-style parenthesized parallel cite propagates the
+  trailing year to the inner member (#524)
+
+  In Georgia opinions (and a handful of other state systems), a parallel
+  citation is wrapped in parens:
+
+      275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+
+  The inner cite `569 SE2d 502` is the parenthesized parallel; the
+  trailing `(2002)` is the shared year for both members. Before this fix,
+  the inner cite got `year=undefined` because the lookahead-paren scan saw
+  `) (2002)` immediately after the page and bailed — the leading `)`
+  blocked `LOOKAHEAD_PAREN_REGEX` (which requires a `(` after at most
+  whitespace + an optional pincite).
+
+  The fix consumes a single leading close-paren or close-bracket (with
+  optional whitespace) before running LOOKAHEAD_PAREN_REGEX, so the inner
+  cite can reach the trailing year paren. The outer Ga cite already gets
+  2002 via the `postChainStart` chain-skip logic; this patch fills in the
+  inner member.
+
+  Only one close-bracket is stripped — deeper nesting (e.g., `))`) is too
+  ambiguous to attribute safely. Bracketed parallel `[569 SE2d 502]
+(2002)` is also handled. Volume hit-rate: ~15-50 per 300 GA-reporter
+  opinions.
+
+- [#621](https://github.com/medelman17/eyecite-ts/pull/621) [`3323c2c`](https://github.com/medelman17/eyecite-ts/commit/3323c2cbc36e9a318172e2965940b0b9acd34da8) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): semicolon-separated parallel cites propagate year and link
+  into a group (#551)
+
+  Michigan (and a handful of other states) write parallel citations with
+  `;` instead of `,`:
+
+      People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+
+  Before this fix, the Mich cite got `year=undefined` and the two members
+  were not grouped. This was the single highest-volume year defect in the
+  corpus — 40/48 of the observed missed-year cases were Michigan-style
+  semicolon parallels.
+
+  Two changes, both narrowly scoped:
+
+  1. `src/extract/detectParallel.ts`: extend the gap-shape gate to accept
+     `;` at the outer boundary (between the last pincite and the next
+     reporter token).
+
+     - Tight: `^[,;]\s*$` (was `^,\s*$`)
+     - Pincite-between: `^,\s*PINCITE_LIST\s*[,;]\s*$` (was just `,`)
+       Pincite lists themselves still require comma-separation; `parsePincite`
+       rejects `;` segments. The shared-paren gate already in this function
+       (rejecting `A (year); B (year)` shapes) continues to keep string-cite
+       semantics intact.
+
+  2. `src/extract/extractCase.ts` CHAIN_BRIDGE_REGEX: add `;` to the
+     bridge class (`/^[\s,;\d\-–—]*$/`). Without this, even with the group
+     detected, the post-chain scan in the FIRST member would stop at the
+     semicolon and the trailing year paren would not be reachable.
+
+  One pre-existing test (`does not link citations separated by semicolon`)
+  asserted that ANY semicolon-separated pair must be rejected — that is
+  now an explicit MICHIGAN-style positive case, with the rationale
+  documented inline. A new negative test (`does NOT link semicolon-
+separated cites with their own parens (string cite)`) pins down the
+  opposite shape so the regression coverage is unchanged in spirit.
+
+  Listed as a precondition for #507 (Ohio neutral parallel pincite
+  inheritance), which depends on parallel-group membership.
+
+- [#621](https://github.com/medelman17/eyecite-ts/pull/621) [`3323c2c`](https://github.com/medelman17/eyecite-ts/commit/3323c2cbc36e9a318172e2965940b0b9acd34da8) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): preserve trailing `(year)` paren after a bare `at`-pincite
+  (#552)
+
+  `Smith v. Jones, 491 S.W.2d 636 at 638 (1973)` returned `pincite=638`,
+  `year=undefined`, `court=undefined`. The LOOKAHEAD_PINCITE_REGEX captured
+  the at-pincite correctly, but LOOKAHEAD_PAREN_REGEX only accepted the
+  comma form (`,\s*[at\s+]?\d+`) as a pincite-skip prefix. With ` at 638`
+  (no leading comma), the regex failed to advance past the pincite and
+  never reached the trailing `(1973)` paren. The comma-bearing forms
+  (`, 638 (1973)`, `, at 638 (1973)`) already worked.
+
+  Extends LOOKAHEAD_PAREN_REGEX to accept ` at [pp.|pages] *N[-N]` as an
+  alternative pincite-skip prefix, mirroring the leading branch of
+  LOOKAHEAD_PINCITE_REGEX:
+
+      /^(?:(?:,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?
+            |\s+at\s+(?:(?:pp?\.|pages?)\s*)?)
+          \*?\d+(?:-\d+)?)*
+       (?:\s+(?:n|note)\s*\.?\s*\d+)?\s*\(([^)]+)\)/
+
+  Covers star-pagination (`at *3`), spelled-out page prefix (`at p. 638`,
+  `at pp. 638-640`, `at page 638`), and ranges (`at 638-640`). Existing
+  comma-bearing forms continue to work; the at-form is repeatable for
+  parity with the comma form.
+
+- [#621](https://github.com/medelman17/eyecite-ts/pull/621) [`3323c2c`](https://github.com/medelman17/eyecite-ts/commit/3323c2cbc36e9a318172e2965940b0b9acd34da8) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): accept hyphenated-year parens like `(1965-1966)` on journal
+  citations (#553)
+
+  Case citations already handle the hyphenated-year paren correctly because
+  they route the parenthetical through `parseDate`, which falls through to
+  the year-only matcher and returns the first 4-digit year. The journal
+  extractor used a tighter custom regex (`/\((?:.*?\s)?(\d{4})\)/`) that
+  required the year to abut the closing paren, so `(1965-1966)` and the
+  shorthand `(1965-66)` returned `year=undefined`.
+
+  The fix extends the regex to absorb an optional trailing `[-–—]\d{2,4}`
+  range:
+
+      /\((?:.*?\s)?(\d{4})(?:[-–—]\d{2,4})?\)/d
+
+  Only the leading 4-digit year is exported (matching the case-cite
+  semantics). Hyphen, en-dash, and em-dash separators are all accepted —
+  typographic dashes show up in journal volume runs.
+
+  Component spans still point at the captured group 1 (the first year), so
+  position information remains consistent with the case-cite path.
+
+- [#621](https://github.com/medelman17/eyecite-ts/pull/621) [`3323c2c`](https://github.com/medelman17/eyecite-ts/commit/3323c2cbc36e9a318172e2965940b0b9acd34da8) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): parse ISO, European, and missing-space-after-period date
+  formats in `parseDate` (#554)
+
+  Before this fix, `parseDate` silently dropped the month and day for any
+  date format outside the two US-style forms (`Jan. 15, 2020`, `January 15,
+2020`) and `MM/DD/YYYY`. ISO 8601 (`2020-06-15`), ISO with slashes
+  (`2020/06/15`), European order (`15 June 2020`, `15 Jun 2020`), and the
+  common OCR artifact `Jan.15, 1990` (no space after the period) all fell
+  through to the year-only matcher and produced `year: 2020` (or 1990) with
+  no month/day.
+
+  Four new branches are added between the existing patterns:
+
+  1. **ISO 8601** — `\b(\d{4})([-/])(\d{1,2})\2(\d{1,2})\b`, placed BEFORE
+     the US numeric matcher so the leading 4-digit group is unambiguously a
+     year. The back-reference on the separator (`\2`) requires both
+     separators to match, preventing `2020-06/15` from being half-parsed.
+  2. **Missing-space-after-period** — folded into the abbreviated-month
+     regex by changing the gap between month abbreviation and day from
+     `\.?\s+` to `(?:\.?\s+|\.\s*)`. This accepts `Jan. 15`, `Jan 15`, and
+     `Jan.15` but still rejects bare `Jan15` (the period or space is
+     required as an anchor).
+  3. **European day-month-year** — `\b(\d{1,2})\s+(month|abbr)\.?\s+
+(\d{4})\b`, placed AFTER the US matchers so `Jan. 15, 2020` is read
+     left-to-right as month-day-year and is not re-interpreted as a
+     day-month-year string.
+  4. (No code change needed for ISO-slash beyond branch #1 — the
+     back-reference handles both `-` and `/`.)
+
+  Year-only fallback is preserved so unrecognized formats still surface a
+  year when one is present in the string.
+
+## 0.22.0
+
+### Minor Changes
+
+- [#617](https://github.com/medelman17/eyecite-ts/pull/617) [`8109366`](https://github.com/medelman17/eyecite-ts/commit/8109366b324b9e9f0cec3ebeee190883a7d269a3) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): chained subsequent history attaches each link's entry to its
+  immediate parent, not the chain root (#527)
+
+  In a chain like `<root>, aff'd, <A>, cert. denied, <B>`, A is the
+  affirmance of the root and B is the cert. denial OF A (not of the
+  original root). The scanner already correctly attached `affirmed` to the
+  root and `cert. denied` to A. The Union-Find linker then collapsed
+  everything into a single component and aggregated all entries onto the
+  root, with two visible defects:
+
+  - A lost its own `subsequentHistoryEntries` (the linker cleared them
+    during aggregation), so the trailing chain link was effectively
+    dropped from A.
+  - B's `subsequentHistoryOf` pointed back at the root rather than at A,
+    breaking downstream `citationGraph` "history-of" edges.
+
+  The linker now skips Union-Find aggregation entirely. Each child resolves
+  to the lowest-indexed parent that paired with it (the primary cite of the
+  immediately-preceding chain link, naturally found via the scanner's own
+  position-based pairing). Entries stay where the scanner attached them.
+
+  This is a behavior change for the shape of `subsequentHistoryEntries`
+  across multi-link chains — the original cite now holds ONLY its direct
+  child's signal, with downstream signals living on the intermediate cites.
+  Existing tests that asserted "all entries on root" were updated to the
+  correct semantics.
+
+### Patch Changes
+
+- [#617](https://github.com/medelman17/eyecite-ts/pull/617) [`8109366`](https://github.com/medelman17/eyecite-ts/commit/8109366b324b9e9f0cec3ebeee190883a7d269a3) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): stop nested-paren content from leaking page numbers as `year`
+  and prose body as `court` (#522)
+
+  The metadata-paren regexes (`PAREN_REGEX`, `LOOKAHEAD_PAREN_REGEX`) match
+  non-greedy `[^)]+`, so a paren that contains a nested paren —
+  `(quoting United States v. Janis, 428 U.S. 433, 458, 96 S.Ct. 3021, 49
+L.Ed.2d 1046 (1976))` — was truncated at the first `)`. `parseParenthetical`
+  then picked up the first 4-digit token as the year (the page number `3021`)
+  and the entire truncated prose body as the court. SCOTUS opinions hit this
+  constantly because explanatory `(quoting/citing/see ... (YYYY))` patterns
+  are everywhere.
+
+  The fix adds `isNonMetadataParenContent(content)`, used everywhere a
+  parenthetical is about to be fed to `parseParenthetical`. The helper
+  recognises three explanatory-paren shapes that must never produce metadata:
+  unbalanced parens (regex truncated past an inner `(`), a leading signal
+  word, or a nested `(YYYY)` paren in the body. Hit any of these → skip
+  metadata extraction. Year/court fields stay unset on the outer cite, and
+  the SCOTUS / circuit / state reporter inference downstream applies as if
+  the paren were absent. The full balanced paren is then captured by
+  `collectParentheticals` (depth-tracking) and surfaced through
+  `parentheticals` with the correct signal type (`quoting`, `citing`, etc.).
+
+- [#617](https://github.com/medelman17/eyecite-ts/pull/617) [`8109366`](https://github.com/medelman17/eyecite-ts/commit/8109366b324b9e9f0cec3ebeee190883a7d269a3) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): raise `collectParentheticals` lookahead so long explanatory
+  parens and any trailing history clause survive (#528)
+
+  The scanner's `maxLookahead=500` silently dropped any explanatory
+  parenthetical whose closing `)` fell past the 500-char window — and the
+  trailing history clause (`cert. denied, ...`, `aff'd, ...`) after it.
+  Modern caselaw explanatory parens routinely run hundreds of characters,
+  so this fired often enough to be a real defect.
+
+  The default soft cap is now 2000 chars (4× the old limit), and once an
+  opening `(` is seen inside the window the depth-tracking inner loop is
+  allowed to chase the matching `)` up to a 10,000-char hard ceiling. That
+  way a paren whose body overflows the soft window is still captured intact,
+  and the scanner can keep walking after it to pick up trailing history
+  signals. Perf is unchanged on representative opinions (linear walk, early
+  termination on the first non-paren / non-signal character).
+
+- [#617](https://github.com/medelman17/eyecite-ts/pull/617) [`8109366`](https://github.com/medelman17/eyecite-ts/commit/8109366b324b9e9f0cec3ebeee190883a7d269a3) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): stop disposition keywords from leaking into the `court` field (#529)
+
+  `(per curiam)`, `(en banc)`, `(in bank)`, `(plurality opinion)`, `(mem.)`,
+  and `(unpublished table decision)` parens were being written to both
+  `court` and `disposition`. The disposition string overwrote the
+  reporter-based court inference, so `455 U.S. 478 (1982) (per curiam)`
+  returned `court="per curiam"` instead of `court="scotus"`. Disposition is
+  orthogonal to court — it describes how an opinion was issued, not which
+  court issued it. The parser now clears `court` (and the matching span
+  offsets) whenever it equals the disposition text it just recognised, so
+  SCOTUS / circuit / state inference survives a trailing disposition paren.
+
+## 0.21.7
+
+### Patch Changes
+
+- [#614](https://github.com/medelman17/eyecite-ts/pull/614) [`64c9fc7`](https://github.com/medelman17/eyecite-ts/commit/64c9fc7c89ac906472755890a108cc1aec88aad7) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): drop tokens properly overlapped by higher-priority tokens during dedup (#558)
+
+  Block-element fusion in HTML input — e.g. `<p>500 F.2d 123</p><p>Then citing 600 F.2d 234</p>` — cleaned to `500 F.2d 123 Then citing 600 F.2d 234`. The broad journal regex then matched `123 Then citing 600` as a phantom journal cite that overlapped the trailing page of the first real cite AND the leading volume of the second. The previous dedup pass only handled strict containment, so the phantom slipped through alongside the two real federal-reporter citations.
+
+  A second dedup pass now walks the surviving tokens in priority order and drops any token properly overlapped by a higher-priority kept token. Strict containment is still handled by the first pass; equal-priority overlaps are still preserved. The two real `500 F.2d 123` and `600 F.2d 234` cites survive, the phantom journal does not. Cleaned text and span positions are unchanged.
+
+  Closes #558. Sprint A's #583 word-neighbor space insertion already prevented the worst form of fusion (digits → letters with no separator); this commit removes the secondary symptom.
+
+- [#614](https://github.com/medelman17/eyecite-ts/pull/614) [`64c9fc7`](https://github.com/medelman17/eyecite-ts/commit/64c9fc7c89ac906472755890a108cc1aec88aad7) Thanks [@medelman17](https://github.com/medelman17)! - fix(clean): close three HTML-entity decoder gaps in `decodeHtmlEntities` (#562)
+
+  Three bugs:
+
+  - `&ndash;` and `&mdash;` were not in the named-entity table. Both are common in legal text (page-range pincites like `100&ndash;105` and stylistic dashes in court opinions like `as such&mdash;a court of equity`). Both are now decoded to the corresponding Unicode dashes; downstream `normalizeDashes` then rewrites them to ASCII hyphens (or the blank-page `---` placeholder for standalone em-dashes).
+  - The hex numeric-entity regex required a lowercase `x` (`&#x167;`), but `x` is case-insensitive in the HTML numeric form — `&#X167;` should decode identically. The regex now uses the `i` flag.
+  - `String.fromCharCode` silently truncates code points above `0xFFFF` (it expects a UTF-16 code unit, not a code point). `&#128512;` for U+1F600 GRINNING FACE produced an empty string. The decoder now uses `String.fromCodePoint` with a bounds check so out-of-range values (> 0x10FFFF) fall back to the original entity instead of throwing `RangeError`.
+
+- [#614](https://github.com/medelman17/eyecite-ts/pull/614) [`64c9fc7`](https://github.com/medelman17/eyecite-ts/commit/64c9fc7c89ac906472755890a108cc1aec88aad7) Thanks [@medelman17](https://github.com/medelman17)! - fix(clean): strip `<script>` / `<style>` bodies and unwrap `<![CDATA[…]]>` markers in `stripHtmlTags` (#559, #561)
+
+  `stripHtmlTags` previously ran a single tag-shape regex over the whole document, with two side effects:
+
+  - `<script>` / `<style>` bodies were preserved (only the opening and closing tags were stripped), so JS string literals like `"999 F.2d 999"` and CSS `content:` values leaked into the cleaned text and the tokenizer happily emitted phantom citations from them (#559).
+  - `<![CDATA[…]]>` sections matched the tag regex as one greedy "tag" (the leading `!` was in the allowed set and the section contains no `>` until the very end), so the entire body — including any embedded citation — was deleted (#561).
+
+  `stripHtmlTags` now runs three pre-passes before the generic tag-stripper: delete `<script>…</script>` bodies in full, delete `<style>…</style>` bodies in full, and unwrap `<![CDATA[…]]>` markers (keep the body, drop the markup). Script/style body matching is non-greedy so an unclosed opener does not eat the rest of the document.
+
+## 0.21.6
+
+### Patch Changes
+
+- [#609](https://github.com/medelman17/eyecite-ts/pull/609) [`e59b265`](https://github.com/medelman17/eyecite-ts/commit/e59b2654b8f55c48196151764eb3df756f51609b) Thanks [@medelman17](https://github.com/medelman17)! - fix(score): broaden mid-sentence `Id.` penalty to recognize preceding Bluebook signal phrases (#557)
+
+  `extractShortForms.ts` was clamping `Id.` confidence to 0.4 when the citation followed a sentence-level signal like `See`, `See also`, `Compare`, `Accord`, `Contra`, `See generally`, `But see`, `See, e.g.`, `E.g.`, or `But see, e.g.` — the existing punctuation check only accepted `.;)\]—:` so signals ending on alphabetic characters or a comma were misread as mid-sentence prose. About 66% of `id` citations in a 300-opinion CAP-corpus audit landed at exactly 0.4 because of this. The context check now also matches a trailing signal phrase (mirroring `SIGNAL_PATTERNS` in `detectStringCites.ts`) and uses a 60-char lookback window so signals after a real preceding citation (`... (1974). See id.`) no longer trip the penalty either. `Id.` after lowercase prose ("The Id. card", "His Id.") still gets the 0.4 cap.
+
+- [#612](https://github.com/medelman17/eyecite-ts/pull/612) [`bb11feb`](https://github.com/medelman17/eyecite-ts/commit/bb11feb7427640b570b6dc1724133685966728d4) Thanks [@medelman17](https://github.com/medelman17)! - Restore the +0.3 reporter-match confidence boost for SCOTUS, F.Supp._, So._, and common state reporters in degraded mode (#555).
+
+  `cleaners.normalizeReporterSpacing` collapses inner spaces in known reporter abbreviations (`S. Ct.` → `S.Ct.`, `L. Ed. 2d` → `L.Ed.2d`, `F. Supp. 2d` → `F.Supp.2d`, `So. 2d` → `So.2d`). The `COMMON_REPORTERS` fallback set used by `extractCase.ts` was authored against the pre-cleaning Bluebook canonicals — so those spaced entries were dead and never matched anything the extractor actually produced. State reporters from the audit (`Mass.`, `Va.`, `Pa.`, `Idaho`) and the Cal. family (`Cal.4th`, `Cal.Rptr.2d`, etc.) were absent entirely. The fallback only matters when reporters-db has not been loaded — but `extractCitations` is synchronous and never auto-loads it, so this code path is hit on every default invocation.
+
+  Result, pre-fix: a 300-opinion CAP-corpus audit found 100% of `S.Ct.` / `L.Ed.2d` / `Mass.` / `Cal.Rptr.2d` / `Va.` citations scoring 0.65 (or lower without a court parenthetical) instead of the 0.95 they should reach. Mean case-citation confidence: 0.46, with 81% under 0.7.
+
+  `COMMON_REPORTERS` now uses the post-cleaning canonical forms (no inner spaces) and explicitly includes the audited state reporters and the full Cal. family. The spaced Bluebook forms are kept alongside for defensiveness in case a code path skips the cleaner. The fix surfaces both ways: the existing `extractCase.ts` confidence scoring and the `extractShortForms.ts` short-form reporter check both benefit, since both consume the same set.
+
+  Auto-loading the reporters-db from `extractCitationsAsync` was considered as a complementary fix but deferred — it couples the core bundle to the data chunk and surfaces a separate pre-existing dist-runtime path-resolution issue that warrants its own focused PR.
+
+- [#611](https://github.com/medelman17/eyecite-ts/pull/611) [`960ef84`](https://github.com/medelman17/eyecite-ts/commit/960ef8472138ef1b9c0232f8f87f15fa54e30b2b) Thanks [@medelman17](https://github.com/medelman17)! - Recompute confidence for parallel-cite secondary citations after `inheritParallelCaseName` propagates the shared caption (#556).
+
+  `inheritParallelCaseName` runs as a post-pass and mutates `caseName` / `plaintiff` / `defendant` onto each secondary cite in a parallel-cite group (e.g. `93 S. Ct. 705` and `35 L. Ed. 2d 147` in `Roe v. Wade, 410 U.S. 113, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973)`). But each secondary's `confidence` was already locked in by `buildCaseCitation()` when its `caseName` was still `undefined`, so the score missed the `+0.15` caseName signal it now qualifies for. CAP-corpus audit (300 opinions): roughly 94% of citations that had a full case name, a year, and a court but landed under 0.7 confidence were parallel secondaries stuck at the pre-inheritance score.
+
+  Fix:
+
+  - Extract the case-citation confidence formula out of `buildCaseCitation` into a pure helper `computeCaseConfidence({ reporter, year, caseName, court, hasBlankPage })`.
+  - Call it from the original site (no behavior change for citations that don't go through inheritance).
+  - After `inheritParallelCaseName` mutates the caption fields on a secondary, recompute its confidence with the same helper so the inherited `caseName` registers in the score.
+
+  The recompute only fires on secondaries whose `caseName` was previously undefined (the inheritance loop already short-circuits for ones that already have one). Primary cites and non-parallel cites are untouched.
+
+  Concrete deltas for repros in the issue:
+
+  - `Roe v. Wade, 410 U.S. 113, 93 S. Ct. 705, 35 L. Ed. 2d 147 (1973)` — each secondary picks up +0.15 (`0.5 → 0.65` for the SCOTUS secondaries, bounded by the reporter-database lookup tracked separately by #555).
+  - `Nixon v. Nixon, 329 Pa. 256, 198 A. 154 (1938)` — `198 A. 154` rises from 0.70 to 0.85.
+  - `People v. Smith (2001) 24 Cal.4th 849 [102 Cal.Rptr.2d 731]` — `102 Cal.Rptr.2d 731` rises from 0.20 to 0.35.
+
+- [#598](https://github.com/medelman17/eyecite-ts/pull/598) [`67b4aae`](https://github.com/medelman17/eyecite-ts/commit/67b4aaedece1b0ddb6e3c608c09fff95405d1f9e) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): prefer same-case full-caption supra matches
+
+  `Plaintiff v. Defendant, supra` resolution now first looks for a single
+  antecedent whose plaintiff and defendant both match the caption. This prevents
+  an unrelated case with a stronger one-sided fuzzy match from beating the
+  intended antecedent.
+
 ## 0.21.5
 
 ### Patch Changes

@@ -11,6 +11,7 @@ import type { Token } from "@/tokenize"
 import type { FederalRegisterCitation } from "@/types/citation"
 import type { FederalRegisterComponentSpans } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
+import { isPlausibleYear } from "./dates"
 
 /**
  * Extracts Federal Register citation metadata from a tokenized citation.
@@ -74,9 +75,11 @@ export function extractFederalRegister(
 
   // Extract optional year in parentheses
   // Pattern: "(year)" or "(month day, year)"
+  // Plausibility filter (#523): drop OCR-mangled or page-number years.
   const yearRegex = /\((?:.*?\s)?(\d{4})\)/
   const yearMatch = yearRegex.exec(text)
-  const year = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
+  const rawYear = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
+  const year = rawYear !== undefined && isPlausibleYear(rawYear) ? rawYear : undefined
 
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)

@@ -156,7 +156,15 @@ describe("detectParallelCitations", () => {
       expect(result.size).toBe(0)
     })
 
-    it("does not link citations separated by semicolon", () => {
+    it("links semicolon-separated citations sharing a parenthetical (#551)", () => {
+      // Before #551, the parser explicitly refused to link semicolon-
+      // separated cites — assuming `;` always demarcates distinct cases.
+      // Michigan and a few other states actually use `;` between parallel
+      // members (`390 Mich 355; 212 NW2d 190 (1973)`), and the shared paren
+      // is the same disambiguator the comma form uses. Court-compatibility
+      // checking (e.g., "F.2d and F. Supp. can't be the same case") is not
+      // the responsibility of the syntactic parallel detector — that lives
+      // downstream. Here we only verify the syntactic shape.
       const cleaned = "500 F.2d 123; 200 F. Supp. 456 (1974)"
       const tokens: Token[] = [
         {
@@ -168,6 +176,33 @@ describe("detectParallelCitations", () => {
         {
           text: "200 F. Supp. 456",
           span: { cleanStart: 14, cleanEnd: 30 },
+          type: "case",
+          patternId: "federal-reporter",
+        },
+      ]
+
+      const result = detectParallelCitations(tokens, cleaned)
+
+      // Shared paren + tight `;` separator → parallel group.
+      expect(result.size).toBe(1)
+      expect(result.get(0)).toEqual([1])
+    })
+
+    it("does NOT link semicolon-separated cites with their own parens (string cite)", () => {
+      // `A (year1); B (year2)` — distinct cases, each with its own paren.
+      // The `textBetween.includes(")")` gate inside detectParallelCitations
+      // still rejects this shape; only shared-paren chains are linked.
+      const cleaned = "500 F.2d 123 (1973); 200 F. Supp. 456 (1974)"
+      const tokens: Token[] = [
+        {
+          text: "500 F.2d 123",
+          span: { cleanStart: 0, cleanEnd: 12 },
+          type: "case",
+          patternId: "federal-reporter",
+        },
+        {
+          text: "200 F. Supp. 456",
+          span: { cleanStart: 21, cleanEnd: 37 },
           type: "case",
           patternId: "federal-reporter",
         },

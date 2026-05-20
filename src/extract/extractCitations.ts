@@ -12,7 +12,6 @@
  */
 
 import { cleanText } from "@/clean"
-import { UnionFind } from "@/extract/unionFind"
 import { detectFootnotes } from "@/footnotes/detectFootnotes"
 import { mapFootnoteZones } from "@/footnotes/mapZones"
 import { tagCitationsWithFootnotes } from "@/footnotes/tagging"
@@ -265,6 +264,17 @@ export function extractCitations(
   //       otherwise we'd swallow legitimate shorter matches (e.g., a
   //       `state-constitution` token that sits inside a broader `named-code`
   //       match for "Cal. Const. art. I, § 7.").
+  //   (c) Proper overlaps — two tokens whose spans intersect but neither
+  //       contains the other. Canonical failure: HTML block fusion
+  //       `<p>500 F.2d 123</p><p>Then citing 600 F.2d 234</p>` cleans to
+  //       `500 F.2d 123 Then citing 600 F.2d 234`, where the broad journal
+  //       regex matches `123 Then citing 600` — a phantom that overlaps
+  //       the trailing page of the first cite AND the leading volume of
+  //       the second (#558). The container-only dedup left these phantoms
+  //       in place because no containment relation exists. The second
+  //       pass below catches them: drop any kept token that is properly
+  //       overlapped by a higher-priority token elsewhere in the kept
+  //       list.
   //
   // Priority = first occurrence index in `allPatterns`. Duplicate patternIds
   // (e.g., "supra") share the earliest index, which is fine — they form a
@@ -286,10 +296,10 @@ export function extractCitations(
       b.span.cleanEnd - a.span.cleanEnd ||
       priorityOf(a) - priorityOf(b),
   )
-  const deduplicatedTokens: typeof tokens = []
+  const containmentDeduped: typeof tokens = []
   for (const token of sortedTokens) {
     let subsumed = false
-    for (const kept of deduplicatedTokens) {
+    for (const kept of containmentDeduped) {
       const contains =
         kept.span.cleanStart <= token.span.cleanStart && kept.span.cleanEnd >= token.span.cleanEnd
       if (!contains) continue
@@ -305,8 +315,44 @@ export function extractCitations(
         break
       }
     }
-    if (!subsumed) deduplicatedTokens.push(token)
+    if (!subsumed) containmentDeduped.push(token)
   }
+
+  // Second pass — proper-overlap dedup (case (c) above).
+  //
+  // Walk the containment-deduped tokens in priority order (highest
+  // priority first). For each token, drop it if any kept (already
+  // accepted) token has a STRICTLY HIGHER priority and a span that
+  // intersects the current token's span. Strict containments were already
+  // handled above, so any remaining intersect-but-not-contain is a proper
+  // overlap and the lower-priority side loses.
+  //
+  // Equal-priority overlaps are kept (preserve all matches from a single
+  // pattern bucket — they'll be sorted out by downstream extraction /
+  // string-cite grouping / annotation passes, none of which assume
+  // disjoint spans within a bucket).
+  const tokensByPriority = [...containmentDeduped].sort(
+    (a, b) =>
+      priorityOf(a) - priorityOf(b) ||
+      a.span.cleanStart - b.span.cleanStart ||
+      b.span.cleanEnd - a.span.cleanEnd,
+  )
+  const overlapKept: typeof tokens = []
+  for (const token of tokensByPriority) {
+    const overlapped = overlapKept.some(
+      (kept) =>
+        priorityOf(kept) < priorityOf(token) &&
+        kept.span.cleanStart < token.span.cleanEnd &&
+        kept.span.cleanEnd > token.span.cleanStart,
+    )
+    if (!overlapped) overlapKept.push(token)
+  }
+  // Restore document order for downstream passes that assume left-to-right
+  // sequence (string-cite grouping, parallel detection, etc.).
+  const deduplicatedTokens = overlapKept.sort(
+    (a, b) =>
+      a.span.cleanStart - b.span.cleanStart || b.span.cleanEnd - a.span.cleanEnd,
+  )
 
   // Step 3.5: Detect parallel citation groups
   // Map of primary token index -> array of secondary token indices
@@ -567,8 +613,11 @@ export async function extractCitationsAsync(
  * Replaces the old mutation-during-iteration pattern with cleanly separated phases.
  */
 function linkSubsequentHistory(citations: Citation[]): void {
-  // Phase 1: Signal matching — collect (parent, child) pairs without mutating citations.
-  // Also record each child's signal text for back-pointer assignment in Phase 3.
+  // Phase 1: Signal matching — collect (parent, child) pairs without mutating
+  // citations. Each parent walks its own scanner-captured
+  // `subsequentHistoryEntries`; each entry is paired with the nearest case
+  // citation that starts after the entry's signal text. Multiple parents may
+  // pair with the same child when parallel cites share a trailing signal.
   const pairs: Array<{ parentIdx: number; childIdx: number; signal: HistorySignal }> = []
 
   for (let i = 0; i < citations.length; i++) {
@@ -592,50 +641,36 @@ function linkSubsequentHistory(citations: Citation[]): void {
 
   if (pairs.length === 0) return
 
-  // Phase 2: Union — build connected components from parent-child pairs.
-  const uf = new UnionFind(citations.length)
+  // Phase 2: Resolve each child to its canonical parent. When several pairs
+  // target the same child (e.g., a parent + its parallel-cite siblings all
+  // carry the same trailing signal on their own `subsequentHistoryEntries`),
+  // the parent with the LOWEST index wins — that's the primary cite of the
+  // immediately-preceding chain link. The scanner only attaches signals it
+  // sees BEFORE encountering the next citation token, so a non-primary
+  // upstream cite cannot pair with this child unless it sits in the same
+  // parallel group as the primary — picking the lowest index naturally points
+  // at the primary. The previous Union-Find approach collapsed every chain
+  // link onto a single root, which (a) wrongly attributed second-tier history
+  // entries to the original cite (`cert. denied` of an `aff'd` child became
+  // the original's cert. denial) and (b) destroyed the second-tier child's
+  // own `subsequentHistoryEntries`. Closes #527.
+  const bestParent = new Map<number, { parentIdx: number; signal: HistorySignal }>()
   for (const pair of pairs) {
-    uf.union(pair.parentIdx, pair.childIdx)
-  }
-
-  // Build lookup: childIdx → signal (for back-pointer assignment)
-  const childSignals = new Map<number, HistorySignal>()
-  for (const pair of pairs) {
-    childSignals.set(pair.childIdx, pair.signal)
-  }
-
-  // Phase 3: Aggregation — set back-pointers and collect entries onto chain roots.
-  for (const [root, members] of uf.components()) {
-    if (members.length === 1) continue
-
-    const rootCitation = citations[root]
-    if (rootCitation.type !== "case") continue
-
-    const allEntries = [...(rootCitation.subsequentHistoryEntries ?? [])]
-
-    for (const memberIdx of members) {
-      if (memberIdx === root) continue
-
-      const member = citations[memberIdx]
-      if (member.type !== "case") continue
-
-      // Set back-pointer to chain root.
-      // Signal is guaranteed to exist: every non-root member was recorded as a
-      // child in Phase 1, which always stores the signal in childSignals.
-      const signal = childSignals.get(memberIdx)
-      if (!signal) continue
-      member.subsequentHistoryOf = { index: root, signal }
-
-      // Aggregate entries from non-root members onto the root
-      if (member.subsequentHistoryEntries) {
-        for (const entry of member.subsequentHistoryEntries) {
-          allEntries.push({ ...entry, order: allEntries.length })
-        }
-        member.subsequentHistoryEntries = undefined
-      }
+    const current = bestParent.get(pair.childIdx)
+    if (!current || pair.parentIdx < current.parentIdx) {
+      bestParent.set(pair.childIdx, { parentIdx: pair.parentIdx, signal: pair.signal })
     }
+  }
 
-    rootCitation.subsequentHistoryEntries = allEntries
+  // Phase 3: Set back-pointers on children. Entries stay where the scanner
+  // attached them — the root's own scanner-captured entries are correct
+  // (just `affirmed`, not the downstream `cert. denied`), and each downstream
+  // cite keeps its own scanner-captured entries (e.g., the affirming cite
+  // keeps `[cert. denied]`).
+  for (const [childIdx, { parentIdx, signal }] of bestParent) {
+    const child = citations[childIdx]
+    if (child.type !== "case") continue
+    child.subsequentHistoryOf = { index: parentIdx, signal }
   }
 }
 

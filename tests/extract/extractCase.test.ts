@@ -1856,17 +1856,26 @@ describe("subsequent history signals (#73)", () => {
     }
   })
 
-  it("captures chained history signals with correct order", () => {
+  it("captures chained history signals — each on its immediate parent (#527)", () => {
+    // Chain: <root>, aff'd, <A>, cert. denied, <B>.
+    //   Root keeps only its own child signal (`affirmed`).
+    //   The affirming cite (A) keeps the downstream `cert. denied` signal —
+    //   that's HIS cert. denial, not the root's.
+    // Before #527 fix, Union-Find aggregated both signals onto the root and
+    // wired B back to the root.
     const citations = extractCitations(
       "Smith v. Jones, 500 F.2d 123 (2d Cir. 1990), aff'd, 501 U.S. 1 (1991), cert. denied, 502 U.S. 2 (1992)",
     )
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
-      expect(citations[0].subsequentHistoryEntries).toHaveLength(2)
+      expect(citations[0].subsequentHistoryEntries).toHaveLength(1)
       expect(citations[0].subsequentHistoryEntries?.[0].signal).toBe("affirmed")
       expect(citations[0].subsequentHistoryEntries?.[0].order).toBe(0)
-      expect(citations[0].subsequentHistoryEntries?.[1].signal).toBe("cert_denied")
-      expect(citations[0].subsequentHistoryEntries?.[1].order).toBe(1)
+    }
+    expect(citations[1].type).toBe("case")
+    if (citations[1].type === "case") {
+      expect(citations[1].subsequentHistoryEntries).toHaveLength(1)
+      expect(citations[1].subsequentHistoryEntries?.[0].signal).toBe("cert_denied")
     }
   })
 
@@ -5211,8 +5220,14 @@ describe("California year-first citation format (#19)", () => {
  * `rehearing denied` signal entries.
  */
 describe("multi-stage subsequent history chains (#246)", () => {
-  describe("two-link chains lock in correct parent entries + back-pointers", () => {
-    it("`aff'd, X, overruled by Y` produces two entries on the parent", () => {
+  describe("two-link chains: each entry on its immediate parent (#527)", () => {
+    // After #527, each chain link's signal stays on the cite it semantically
+    // belongs to: `<root>, aff'd, <A>, overruled by Y` → root has [affirmed]
+    // (root's own affirmance), and A (the affirming cite) has [overruled]
+    // (A's overruling — the cert/over decision targets the most-recent
+    // appellate disposition, not the original). The back-pointer chain still
+    // captures the same information, just along the correct edges.
+    it("`aff'd, X, overruled by Y` — affirmed on root, overruled on the affirming cite", () => {
       const text =
         "Smith v. Jones, 100 F.2d 100 (2d Cir. 1990), aff'd, 200 U.S. 1 (1992), overruled by Doe v. Roe, 300 U.S. 50 (2010)."
       const cits = extractCitations(text)
@@ -5227,41 +5242,51 @@ describe("multi-stage subsequent history chains (#246)", () => {
         link3.type === "case"
       ) {
         expect(parent.text).toBe("100 F.2d 100")
-        expect(parent.subsequentHistoryEntries?.length).toBe(2)
+        expect(parent.subsequentHistoryEntries?.length).toBe(1)
         expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe("affirmed")
-        expect(parent.subsequentHistoryEntries?.[1]?.signal).toBe("overruled")
+        // The overruled signal sits on the affirming cite (link2), not root.
+        expect(link2.subsequentHistoryEntries?.length).toBe(1)
+        expect(link2.subsequentHistoryEntries?.[0]?.signal).toBe("overruled")
+        // Back-pointers thread through the chain.
         expect(link2.subsequentHistoryOf?.signal).toBe("affirmed")
+        expect(link2.subsequentHistoryOf?.index).toBe(cases.indexOf(parent))
         expect(link3.subsequentHistoryOf?.signal).toBe("overruled")
+        // link3's parent is the affirming cite (link2), NOT root.
+        expect(link3.subsequentHistoryOf?.index).toBe(cases.indexOf(link2))
       }
     })
 
-    it("`modified, X, cert. denied, Y` produces two entries on the parent", () => {
+    it("`modified, X, cert. denied, Y` — modified on root, cert. denied on the modified cite", () => {
       const text =
         "Brown v. State, 100 S.W.3d 1 (Tex. 2003), modified, 200 S.W.3d 100 (Tex. 2004), cert. denied, 600 U.S. 1 (2005)."
       const cits = extractCitations(text)
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(3)
       const parent = cases[0]
-      if (parent.type === "case") {
-        expect(parent.subsequentHistoryEntries?.length).toBe(2)
+      const link2 = cases[1]
+      if (parent.type === "case" && link2.type === "case") {
+        expect(parent.subsequentHistoryEntries?.length).toBe(1)
         expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe("modified")
-        expect(parent.subsequentHistoryEntries?.[1]?.signal).toBe("cert_denied")
+        expect(link2.subsequentHistoryEntries?.length).toBe(1)
+        expect(link2.subsequentHistoryEntries?.[0]?.signal).toBe("cert_denied")
       }
     })
 
-    it("`reh'g denied, X, cert. granted, Y` produces two entries on the parent", () => {
+    it("`reh'g denied, X, cert. granted, Y` — rehearing on root, cert. granted on the rehearing cite", () => {
       const text =
         "Acme Corp. v. Beta, 50 F.4th 1 (9th Cir. 2022), reh'g denied, 60 F.4th 50 (9th Cir. 2023), cert. granted, 700 U.S. 1 (2024)."
       const cits = extractCitations(text)
       const cases = cits.filter((c) => c.type === "case")
       expect(cases).toHaveLength(3)
       const parent = cases[0]
-      if (parent.type === "case") {
-        expect(parent.subsequentHistoryEntries?.length).toBe(2)
+      const link2 = cases[1]
+      if (parent.type === "case" && link2.type === "case") {
+        expect(parent.subsequentHistoryEntries?.length).toBe(1)
         expect(parent.subsequentHistoryEntries?.[0]?.signal).toBe(
           "rehearing_denied",
         )
-        expect(parent.subsequentHistoryEntries?.[1]?.signal).toBe(
+        expect(link2.subsequentHistoryEntries?.length).toBe(1)
+        expect(link2.subsequentHistoryEntries?.[0]?.signal).toBe(
           "cert_granted",
         )
       }
