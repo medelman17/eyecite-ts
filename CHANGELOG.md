@@ -1,5 +1,193 @@
 # eyecite-ts
 
+## 0.22.1
+
+### Patch Changes
+
+- [#621](https://github.com/medelman17/eyecite-ts/pull/621) [`3323c2c`](https://github.com/medelman17/eyecite-ts/commit/3323c2cbc36e9a318172e2965940b0b9acd34da8) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): plausibility-filter extracted years to drop OCR artifacts and
+  page-number leaks (#523)
+
+  Without a sanity range check, any 4-digit number harvested into the year
+  slot was accepted. OCR-mangled values like `1372` (intended `1972`) and
+  `1076` (intended `1976`) slipped through silently; #522's page-number leak
+  (`3021` mistaken for a year) was a related symptom that a trivial range
+  check would have caught upfront.
+
+  Adds `isPlausibleYear(year)` exported from `src/extract/dates.ts`, with the
+  range `[1700, currentYear + 1]` (inclusive). The lower bound matches the
+  practical floor of U.S. citation corpora; the `currentYear + 1` cap
+  tolerates opinions filed right around the new year.
+
+  Applied at every site that publishes a `year` field from a raw `\d{4}`
+  match — defense-in-depth across the parser:
+
+  - `parseDate` (one check per pattern branch, plus the year-only fallback).
+    Implausible years cause the matcher to return `undefined` rather than
+    reporting a bad year with month/day.
+  - `extractCase` case-name backsearch: both the `v.` (`V_CASE_NAME_REGEX`)
+    and the procedural-prefix (`PROCEDURAL_PREFIX_REGEX`) CSM `(court year)`
+    paths.
+  - `extractJournal` lookahead `(YYYY)` paren.
+  - `extractFederalRegister` paren year.
+  - `extractStatutesAtLarge` paren year.
+
+  Neutral citations (`2020 IL 12345`) are intentionally not filtered: the
+  year is a structural component of the citation pattern itself, not an
+  optional metadata field, so an implausible year there indicates the entire
+  match is suspect — handled upstream by the tokenizer's strict year-prefix
+  patterns.
+
+  One pre-existing two-digit-year test (`1/1/50` → 2050) is updated to use
+  `1/1/27` → 2027 so the pivot-boundary assertion does not collide with the
+  new plausibility cap; the two-digit pivot itself (`<=50` → 21st century,
+  `>50` → 20th) is unchanged.
+
+- [#621](https://github.com/medelman17/eyecite-ts/pull/621) [`3323c2c`](https://github.com/medelman17/eyecite-ts/commit/3323c2cbc36e9a318172e2965940b0b9acd34da8) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): Georgia-style parenthesized parallel cite propagates the
+  trailing year to the inner member (#524)
+
+  In Georgia opinions (and a handful of other state systems), a parallel
+  citation is wrapped in parens:
+
+      275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+
+  The inner cite `569 SE2d 502` is the parenthesized parallel; the
+  trailing `(2002)` is the shared year for both members. Before this fix,
+  the inner cite got `year=undefined` because the lookahead-paren scan saw
+  `) (2002)` immediately after the page and bailed — the leading `)`
+  blocked `LOOKAHEAD_PAREN_REGEX` (which requires a `(` after at most
+  whitespace + an optional pincite).
+
+  The fix consumes a single leading close-paren or close-bracket (with
+  optional whitespace) before running LOOKAHEAD_PAREN_REGEX, so the inner
+  cite can reach the trailing year paren. The outer Ga cite already gets
+  2002 via the `postChainStart` chain-skip logic; this patch fills in the
+  inner member.
+
+  Only one close-bracket is stripped — deeper nesting (e.g., `))`) is too
+  ambiguous to attribute safely. Bracketed parallel `[569 SE2d 502]
+(2002)` is also handled. Volume hit-rate: ~15-50 per 300 GA-reporter
+  opinions.
+
+- [#621](https://github.com/medelman17/eyecite-ts/pull/621) [`3323c2c`](https://github.com/medelman17/eyecite-ts/commit/3323c2cbc36e9a318172e2965940b0b9acd34da8) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): semicolon-separated parallel cites propagate year and link
+  into a group (#551)
+
+  Michigan (and a handful of other states) write parallel citations with
+  `;` instead of `,`:
+
+      People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+
+  Before this fix, the Mich cite got `year=undefined` and the two members
+  were not grouped. This was the single highest-volume year defect in the
+  corpus — 40/48 of the observed missed-year cases were Michigan-style
+  semicolon parallels.
+
+  Two changes, both narrowly scoped:
+
+  1. `src/extract/detectParallel.ts`: extend the gap-shape gate to accept
+     `;` at the outer boundary (between the last pincite and the next
+     reporter token).
+
+     - Tight: `^[,;]\s*$` (was `^,\s*$`)
+     - Pincite-between: `^,\s*PINCITE_LIST\s*[,;]\s*$` (was just `,`)
+       Pincite lists themselves still require comma-separation; `parsePincite`
+       rejects `;` segments. The shared-paren gate already in this function
+       (rejecting `A (year); B (year)` shapes) continues to keep string-cite
+       semantics intact.
+
+  2. `src/extract/extractCase.ts` CHAIN_BRIDGE_REGEX: add `;` to the
+     bridge class (`/^[\s,;\d\-–—]*$/`). Without this, even with the group
+     detected, the post-chain scan in the FIRST member would stop at the
+     semicolon and the trailing year paren would not be reachable.
+
+  One pre-existing test (`does not link citations separated by semicolon`)
+  asserted that ANY semicolon-separated pair must be rejected — that is
+  now an explicit MICHIGAN-style positive case, with the rationale
+  documented inline. A new negative test (`does NOT link semicolon-
+separated cites with their own parens (string cite)`) pins down the
+  opposite shape so the regression coverage is unchanged in spirit.
+
+  Listed as a precondition for #507 (Ohio neutral parallel pincite
+  inheritance), which depends on parallel-group membership.
+
+- [#621](https://github.com/medelman17/eyecite-ts/pull/621) [`3323c2c`](https://github.com/medelman17/eyecite-ts/commit/3323c2cbc36e9a318172e2965940b0b9acd34da8) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): preserve trailing `(year)` paren after a bare `at`-pincite
+  (#552)
+
+  `Smith v. Jones, 491 S.W.2d 636 at 638 (1973)` returned `pincite=638`,
+  `year=undefined`, `court=undefined`. The LOOKAHEAD_PINCITE_REGEX captured
+  the at-pincite correctly, but LOOKAHEAD_PAREN_REGEX only accepted the
+  comma form (`,\s*[at\s+]?\d+`) as a pincite-skip prefix. With ` at 638`
+  (no leading comma), the regex failed to advance past the pincite and
+  never reached the trailing `(1973)` paren. The comma-bearing forms
+  (`, 638 (1973)`, `, at 638 (1973)`) already worked.
+
+  Extends LOOKAHEAD_PAREN_REGEX to accept ` at [pp.|pages] *N[-N]` as an
+  alternative pincite-skip prefix, mirroring the leading branch of
+  LOOKAHEAD_PINCITE_REGEX:
+
+      /^(?:(?:,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?
+            |\s+at\s+(?:(?:pp?\.|pages?)\s*)?)
+          \*?\d+(?:-\d+)?)*
+       (?:\s+(?:n|note)\s*\.?\s*\d+)?\s*\(([^)]+)\)/
+
+  Covers star-pagination (`at *3`), spelled-out page prefix (`at p. 638`,
+  `at pp. 638-640`, `at page 638`), and ranges (`at 638-640`). Existing
+  comma-bearing forms continue to work; the at-form is repeatable for
+  parity with the comma form.
+
+- [#621](https://github.com/medelman17/eyecite-ts/pull/621) [`3323c2c`](https://github.com/medelman17/eyecite-ts/commit/3323c2cbc36e9a318172e2965940b0b9acd34da8) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): accept hyphenated-year parens like `(1965-1966)` on journal
+  citations (#553)
+
+  Case citations already handle the hyphenated-year paren correctly because
+  they route the parenthetical through `parseDate`, which falls through to
+  the year-only matcher and returns the first 4-digit year. The journal
+  extractor used a tighter custom regex (`/\((?:.*?\s)?(\d{4})\)/`) that
+  required the year to abut the closing paren, so `(1965-1966)` and the
+  shorthand `(1965-66)` returned `year=undefined`.
+
+  The fix extends the regex to absorb an optional trailing `[-–—]\d{2,4}`
+  range:
+
+      /\((?:.*?\s)?(\d{4})(?:[-–—]\d{2,4})?\)/d
+
+  Only the leading 4-digit year is exported (matching the case-cite
+  semantics). Hyphen, en-dash, and em-dash separators are all accepted —
+  typographic dashes show up in journal volume runs.
+
+  Component spans still point at the captured group 1 (the first year), so
+  position information remains consistent with the case-cite path.
+
+- [#621](https://github.com/medelman17/eyecite-ts/pull/621) [`3323c2c`](https://github.com/medelman17/eyecite-ts/commit/3323c2cbc36e9a318172e2965940b0b9acd34da8) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): parse ISO, European, and missing-space-after-period date
+  formats in `parseDate` (#554)
+
+  Before this fix, `parseDate` silently dropped the month and day for any
+  date format outside the two US-style forms (`Jan. 15, 2020`, `January 15,
+2020`) and `MM/DD/YYYY`. ISO 8601 (`2020-06-15`), ISO with slashes
+  (`2020/06/15`), European order (`15 June 2020`, `15 Jun 2020`), and the
+  common OCR artifact `Jan.15, 1990` (no space after the period) all fell
+  through to the year-only matcher and produced `year: 2020` (or 1990) with
+  no month/day.
+
+  Four new branches are added between the existing patterns:
+
+  1. **ISO 8601** — `\b(\d{4})([-/])(\d{1,2})\2(\d{1,2})\b`, placed BEFORE
+     the US numeric matcher so the leading 4-digit group is unambiguously a
+     year. The back-reference on the separator (`\2`) requires both
+     separators to match, preventing `2020-06/15` from being half-parsed.
+  2. **Missing-space-after-period** — folded into the abbreviated-month
+     regex by changing the gap between month abbreviation and day from
+     `\.?\s+` to `(?:\.?\s+|\.\s*)`. This accepts `Jan. 15`, `Jan 15`, and
+     `Jan.15` but still rejects bare `Jan15` (the period or space is
+     required as an anchor).
+  3. **European day-month-year** — `\b(\d{1,2})\s+(month|abbr)\.?\s+
+(\d{4})\b`, placed AFTER the US matchers so `Jan. 15, 2020` is read
+     left-to-right as month-day-year and is not re-interpreted as a
+     day-month-year string.
+  4. (No code change needed for ISO-slash beyond branch #1 — the
+     back-reference handles both `-` and `/`.)
+
+  Year-only fallback is preserved so unrecognized formats still surface a
+  year when one is present in the string.
+
 ## 0.22.0
 
 ### Minor Changes
