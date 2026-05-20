@@ -2570,6 +2570,33 @@ describe("extractStatute", () => {
     })
   })
 
+  // #593 — N.J.S.A. inter-letter spacing variants (`N. J. S. A.`) are
+  // common in older NJ Super and NJ reporters. The previous regex
+  // fragment did not allow whitespace between the inter-letter periods.
+  describe("New Jersey N.J.S.A. inter-letter spacing (#593)", () => {
+    it("extracts `N. J. S. A. 2:100-26` (spaces between every letter)", () => {
+      const cites = extractCitations("under N. J. S. A. 2:100-26.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NJ")
+        expect(cites[0].section).toBe("2:100-26")
+      }
+    })
+
+    it("does not regress canonical `N.J.S.A. 2C:35-5`", () => {
+      const cites = extractCitations("under N.J.S.A. 2C:35-5.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NJ")
+        expect(cites[0].section).toBe("2C:35-5")
+      }
+    })
+  })
+
   describe("Tennessee T.C.A. variants + postfix (#398)", () => {
     it("extracts `T.C.A. sec. 40-2407` (sec. connector)", () => {
       const cites = extractCitations("See T.C.A. sec. 40-2407.").filter(

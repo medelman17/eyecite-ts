@@ -246,10 +246,13 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
       "Burns(?:'s|')?\\s+Ind(?:iana)?\\.?\\s+Stat(?:utes)?\\.?(?:\\s+Ann(?:otated)?\\.?)?|Ind(?:iana)?\\.?\\s+Stat\\.?\\s+Ann\\.?|Ind(?:iana)?\\.?\\s+Ann\\.?\\s+Stat\\.?",
   },
   // ── New Jersey ─────────────────────────────────────────────────────────────
+  // Inter-letter spacing tolerance — `N. J. S. A.` (with whitespace between
+  // every letter) is common in older NJ Super and NJ reporters. Canonical
+  // is `N.J.S.A.` (Bluebook). #593
   {
     jurisdiction: "NJ",
     abbreviations: ["N.J.S.A.", "NJSA", "N.J.S.", "NJS"],
-    regexFragment: "N\\.?J\\.?\\s*S(?:tat)?\\.?\\s*A?\\.?",
+    regexFragment: "N\\.?\\s*J\\.?\\s*S(?:tat)?\\.?\\s*A?\\.?",
   },
   // ── Delaware ───────────────────────────────────────────────────────────────
   {
