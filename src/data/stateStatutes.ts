@@ -86,7 +86,20 @@ export function buildAbbreviatedCodeRegex(): RegExp {
     // common in Idaho practice (#360) and harmless elsewhere.
     // Trailing subscript groups accept either parens or brackets — MSA uses
     // `[N]` for subdivisions (`MSA 23.710[252]`) #370.
-    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?|[Ss]ec\\.?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9])|,(?=\\d))*(?:\\([^)]*\\)|\\[[^\\]]*\\])*(?:\\s*et\\s+seq\\.?)?)`,
+    //
+    // Whitespace-tolerant subsection chain (#590): `OCGA § 15-11-2 (8) (A)`
+    // / `I.C. § 19-4907 (b)` — courts insert space between section digits
+    // and the subsection paren. Allow `\s*\(` everywhere a paren can
+    // appear; negative lookahead `(?![^)]*\d{4})` prevents any
+    // year-of-edition paren (`(1985)`, `(West 2018)`, `(Repl. 1996)`)
+    // from being absorbed as subsection so the post-process
+    // `attachStatuteYearParen` still binds them as `year`/`publisher`.
+    //
+    // Optional subsection-range trailer (`77 P.S. § 513(9) — (16)`)
+    // captured so parseBody can surface the structured `subsectionRange`
+    // field. Dash class accepts multi-hyphen `---` (post `normalizeDashes`
+    // rewrite of em-dash). #591
+    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?|[Ss]ec\\.?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9])|,(?=\\d))*(?:\\s*\\((?![^)]*\\d{4})[^)]*\\)|\\s*\\[[^\\]]*\\])*(?:\\s*[-–—]+\\s*\\([A-Za-z0-9]+\\))?(?:\\s*et\\s+seq\\.?)?)`,
     "g",
   )
 }
@@ -246,10 +259,16 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
       "Burns(?:'s|')?\\s+Ind(?:iana)?\\.?\\s+Stat(?:utes)?\\.?(?:\\s+Ann(?:otated)?\\.?)?|Ind(?:iana)?\\.?\\s+Stat\\.?\\s+Ann\\.?|Ind(?:iana)?\\.?\\s+Ann\\.?\\s+Stat\\.?",
   },
   // ── New Jersey ─────────────────────────────────────────────────────────────
+  // Inter-letter spacing tolerance — `N. J. S. A.` (with whitespace between
+  // every letter) is common in older NJ Super and NJ reporters. Canonical
+  // is `N.J.S.A.` (Bluebook) — placed LAST so the stripped-form fallback
+  // in `findAbbreviatedCode` resolves whitespace/no-period variants
+  // (`N. J. S. A.`, `NJSA`, `NJS`) to the canonical `N.J.S.A.` form rather
+  // than the bare `NJS` shorthand that was previously emitted. #593
   {
     jurisdiction: "NJ",
-    abbreviations: ["N.J.S.A.", "NJSA", "N.J.S.", "NJS"],
-    regexFragment: "N\\.?J\\.?\\s*S(?:tat)?\\.?\\s*A?\\.?",
+    abbreviations: ["N.J.S.", "NJSA", "NJS", "N.J.S.A."],
+    regexFragment: "N\\.?\\s*J\\.?\\s*S(?:tat)?\\.?\\s*A?\\.?",
   },
   // ── Delaware ───────────────────────────────────────────────────────────────
   {

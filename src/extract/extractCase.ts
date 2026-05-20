@@ -243,6 +243,92 @@ export const COMMON_REPORTERS: ReadonlySet<string> = new Set([
   "Cal.App.5th",
 ])
 
+/** SCOTUS `Black` reporter active years — the only two volumes were
+ *  published 1861-1862 (Vols. 1 and 2). Used by
+ *  {@link resolveNormalizedReporter} to disambiguate the shared `Black.`
+ *  abbreviation from Indiana's `Blackf.` (Blackford) reporter. See #572. */
+const SCOTUS_BLACK_REPORTER_START_YEAR = 1861
+const SCOTUS_BLACK_REPORTER_END_YEAR = 1862
+
+/**
+ * Resolve a raw reporter literal to its canonical Bluebook form using the
+ * reporters-db lookup (#571).
+ *
+ * The reporters-db structure has two relevant lookup keys per
+ * {@link ReporterEntry}: the `editions` map (whose keys ARE the canonical
+ * Bluebook forms — `F.2d`, `Ill. App. 2d`, `N.J. Eq.`) and the `variations`
+ * map (whose keys are alternate spellings, mapping to a single canonical
+ * value). Order of resolution:
+ *
+ *   1. Exact (case-insensitive) match against an edition key → return that
+ *      key verbatim. Covers the canonical-input case (`F.2d` → `F.2d`).
+ *   2. Exact (case-insensitive) match against a variation key → return the
+ *      variation's value. Covers all periodless / no-space variants
+ *      (`F2d` → `F.2d`, `Ill App2d` → `Ill. App. 2d`, `OhioSt.` → `Ohio St.`).
+ *   3. Otherwise `undefined` — downstream consumers fall back to the raw
+ *      `reporter` string. Maintains the pre-#571 behaviour for unknown
+ *      reporters.
+ *
+ * Returns `undefined` when reporters-db is not loaded (degraded mode);
+ * `normalizedReporter` remains absent in that case, mirroring the
+ * pre-#571 behaviour where the field was never populated at all.
+ *
+ * Year-based disambiguation (#572): when the literal reporter is `Black.`
+ * (the variation that points to Indiana's `Blackf.`) AND the citation's
+ * year falls inside the SCOTUS `Black` reporter's window
+ * [1861, 1862] inclusive, the result switches to `Black` instead. Outside
+ * that window — or when no year was extracted — the default `Blackf.`
+ * resolution stands. The literal `reporter` field on the citation is
+ * preserved verbatim; only `normalizedReporter` shifts.
+ */
+export function resolveNormalizedReporter(
+  reporter: string,
+  year?: number,
+): string | undefined {
+  const reportersDb = getReportersSync()
+  if (!reportersDb) return undefined
+
+  const matches = reportersDb.byAbbreviation.get(reporter.toLowerCase())
+  if (!matches || matches.length === 0) return undefined
+
+  const lower = reporter.toLowerCase()
+
+  // Year-based era disambiguation for `Black.` (#572): the literal
+  // `Black.` only maps to Blackford (Indiana) in reporters-db, but when
+  // the citation year is 1861-1862 the intended reporter is SCOTUS
+  // `Black` (which has no period in canonical form). Apply BEFORE the
+  // generic resolution so the variation lookup doesn't lock us into
+  // `Blackf.` first.
+  if (
+    lower === "black." &&
+    year !== undefined &&
+    year >= SCOTUS_BLACK_REPORTER_START_YEAR &&
+    year <= SCOTUS_BLACK_REPORTER_END_YEAR
+  ) {
+    return "Black"
+  }
+
+  for (const entry of matches) {
+    // (1) Canonical edition key match — return the literal key (preserves
+    // upstream casing/spacing).
+    for (const editionAbbr of Object.keys(entry.editions)) {
+      if (editionAbbr.toLowerCase() === lower) {
+        return editionAbbr
+      }
+    }
+    // (2) Variation key match — the value is the canonical key.
+    if (entry.variations) {
+      for (const [variant, canonical] of Object.entries(entry.variations)) {
+        if (variant.toLowerCase() === lower && canonical) {
+          return canonical
+        }
+      }
+    }
+  }
+
+  return undefined
+}
+
 /**
  * Compute the multi-factor confidence score for a case citation.
  *
@@ -302,9 +388,37 @@ export function computeCaseConfidence(opts: {
 
 /** Matches volume-reporter-page format in citation core, with optional nominative reporter parenthetical.
  *  Reporter character class includes `&` so the BIA `I&N Dec.` / `I. & N. Dec.`
- *  variants parse correctly (#244). */
+ *  variants parse correctly (#244).
+ *
+ *  Trailing lookahead `(?=$|[\s.;,)\]])` ensures the page capture is
+ *  bounded by a real terminator. Without it, greedy reporter backtracking
+ *  can produce wrong splits on inputs like `33 Ill. App. 2d, 100` (the
+ *  reporter character class includes digits, so the greedy match would
+ *  back off to reporter=`Ill. App.`, page=`2`, leaving `d, 100`
+ *  unparsed). With the lookahead the canonical match fails on the
+ *  comma-form input and the caller falls through to
+ *  `VOLUME_REPORTER_PAGE_REGEX_COMMA` instead — see #570. */
 const VOLUME_REPORTER_PAGE_REGEX =
-  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})/d
+  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})(?=$|[\s.;,)\]])/d
+
+/** Comma-form variant of VOLUME_REPORTER_PAGE_REGEX (#570) for the old
+ *  typesetting shape `<vol> <Reporter>, <page>` (`3 Den., 594`,
+ *  `252 S. W., 20`, `26 N. Y., 279`, `217 Ill. App., 427`). Used as a
+ *  fallback ONLY when the canonical-spacing pattern above fails to match
+ *  — running this regex first would let the greedy reporter capture
+ *  swallow a trailing pincite (`500 F.2d 123, 125` would mis-parse as
+ *  `reporter="F.2d 123"`, `page=125`).
+ *
+ *  Reporter capture is lazy (`+?`) so the backtracking prefers
+ *  multi-word reporters with embedded ordinals (`Ill. App. 2d`) over
+ *  collapsing to the prefix. The trailing `(?=$|[.;)\]])` lookahead is
+ *  critical: it rejects phantom matches like
+ *  `10 Corp., 2025 NY Slip Op 00784` where the supposed "page" 2025 is
+ *  the start of the next (neutral) citation. The corresponding
+ *  tokenizer pattern in `src/patterns/casePatterns.ts` uses the same
+ *  terminator constraint. */
+const VOLUME_REPORTER_PAGE_REGEX_COMMA =
+  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+?)\s*,\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})(?=$|[.;)\]])/d
 
 /** Detects blank page placeholders (3+ underscores or dashes) */
 const BLANK_PAGE_REGEX = /^[_-]{3,}$/
@@ -2642,10 +2756,19 @@ export function extractCase(
 ): FullCaseCitation {
   const { text, span } = token
 
-  // Parse volume-reporter-page using regex
+  // Parse volume-reporter-page using regex.
   // Pattern: volume (digits) + reporter (letters/periods/spaces/numbers) + page (digits or blank placeholder)
-  // Use greedy matching for reporter to capture full abbreviation including spaces
-  const match = VOLUME_REPORTER_PAGE_REGEX.exec(text)
+  // Use greedy matching for reporter to capture full abbreviation including spaces.
+  //
+  // Tries the canonical `<vol> <Reporter> <page>` shape first, then falls
+  // back to the comma-form `<vol> <Reporter>, <page>` shape (#570). The
+  // ordering is load-bearing: running the comma-form regex first would
+  // let the greedy reporter capture swallow a trailing pincite when a
+  // caller hands `extractCase` a token whose text already contains
+  // `<core>, <pincite>` (legacy synthetic-token tests do this).
+  const match =
+    VOLUME_REPORTER_PAGE_REGEX.exec(text) ??
+    VOLUME_REPORTER_PAGE_REGEX_COMMA.exec(text)
 
   if (!match) {
     // Fallback if pattern doesn't match (shouldn't happen if tokenizer is correct)
@@ -3406,6 +3529,17 @@ export function extractCase(
     hasBlankPage: hasBlankPage ?? false,
   })
 
+  // Resolve the canonical Bluebook reporter via reporters-db so downstream
+  // consumers (`reporterKey`, `bluebook`, parallel-group matching) can link
+  // periodless / no-space variants (`F2d`, `Ill2d`, `OhioSt.`) to their
+  // canonical editions. Returns `undefined` when reporters-db is not loaded
+  // (degraded mode) or no variant/edition matches — see #571.
+  //
+  // `year` is passed so the resolver can disambiguate shared abbreviations
+  // by era — currently `Black.` (SCOTUS 1861-1862) vs `Blackf.` (Indiana,
+  // 1817-1847). See #572.
+  const normalizedReporter = resolveNormalizedReporter(reporter, year)
+
   return {
     type: "case",
     text,
@@ -3421,6 +3555,7 @@ export function extractCase(
     patternsChecked: 1, // Single token processed
     volume,
     reporter,
+    ...(normalizedReporter !== undefined ? { normalizedReporter } : {}),
     page,
     nominativeVolume,
     nominativeReporter,

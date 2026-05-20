@@ -8328,6 +8328,8 @@
                 "F.3d.": "F.3d",
                 "F.4 th": "F.4th",
                 "F.4th.": "F.4th",
+                "F2d": "F.2d",
+                "F2d.": "F.2d",
                 "F3d": "F.3d",
                 "F3d.": "F.3d",
                 "F4th": "F.4th",
@@ -8393,7 +8395,9 @@
                 "Fed. Appx.": "F. App'x",
                 "Fed.App'x": "F. App'x",
                 "Fed.App.": "F. App'x",
-                "Fed.Appx.": "F. App'x"
+                "Fed.Appx.": "F. App'x",
+                "FedAppx": "F. App'x",
+                "FedAppx.": "F. App'x"
             }
         }
     ],
@@ -12342,7 +12346,8 @@
             "name": "Illinois Reports",
             "variations": {
                 "Ill. Rep.": "Ill.",
-                "Ill.2d": "Ill. 2d"
+                "Ill.2d": "Ill. 2d",
+                "Ill2d": "Ill. 2d"
             }
         }
     ],
@@ -12368,6 +12373,8 @@
             ],
             "name": "Illinois Appellate Court Reports",
             "variations": {
+                "Ill App2d": "Ill. App. 2d",
+                "Ill App3d": "Ill. App. 3d",
                 "Ill. App. Rep.": "Ill. App.",
                 "Ill. App.2d": "Ill. App. 2d",
                 "Ill. App.3d": "Ill. App. 3d",
@@ -12376,7 +12383,9 @@
                 "Ill.A.3d": "Ill. App. 3d",
                 "Ill.App.": "Ill. App.",
                 "Ill.App.2d": "Ill. App. 2d",
-                "Ill.App.3d": "Ill. App. 3d"
+                "Ill.App.3d": "Ill. App. 3d",
+                "IllApp2d": "Ill. App. 2d",
+                "IllApp3d": "Ill. App. 3d"
             }
         }
     ],
@@ -17576,7 +17585,11 @@
                 "us:ny;court.chancery"
             ],
             "name": "New Jersey Equity Reports",
-            "variations": {}
+            "variations": {
+                "N.J.Eq.": "N.J. Eq.",
+                "NJ Eq.": "N.J. Eq.",
+                "NJEq.": "N.J. Eq."
+            }
         }
     ],
     "N.J. LEXIS": [
@@ -20435,12 +20448,20 @@
                 "O.S.2d": "Ohio St. 2d",
                 "O.S.3d": "Ohio St. 3d",
                 "OS.": "Ohio St.",
+                "Oh St": "Ohio St.",
+                "Oh St 2d": "Ohio St. 2d",
+                "Oh St 3d": "Ohio St. 3d",
+                "Oh St.": "Ohio St.",
+                "OhSt.": "Ohio St.",
                 "Oh.St.": "Ohio St.",
                 "Ohio St. Rep.": "Ohio St.",
                 "Ohio St.2d": "Ohio St. 2d",
                 "Ohio St.3d": "Ohio St. 3d",
                 "Ohio St.3d.": "Ohio St. 3d",
-                "Ohio State": "Ohio St."
+                "Ohio State": "Ohio St.",
+                "OhioSt.": "Ohio St.",
+                "OhioSt.2d": "Ohio St. 2d",
+                "OhioSt.3d": "Ohio St. 3d"
             }
         }
     ],

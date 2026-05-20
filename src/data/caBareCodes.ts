@@ -71,10 +71,19 @@ export const caBareCodeEntries: CaBareCodeEntry[] = [
  *
  * Capture groups:
  *   (1) bare code name (matched alternative)
- *   (2) section body (digits + optional alphanumeric / subsections / et seq.)
+ *   (2) section body (digits + optional alphanumeric / subsections / et seq. /
+ *       optional trailing `, subd.`/`paragraph`/`par.` subdivision chain — #589)
  *
  * Alternation is sorted by regex length descending so longer-prefix codes
  * (`Code Civ. Proc.`, `Welf. & Inst. Code`) match before shorter ones.
+ *
+ * Subdivision keyword tail (#589): California opinions write `Pen. Code,
+ * § 1238, subd. (a)(8)` (and equivalently `paragraph`/`par.`) — the section
+ * number is followed by a comma, an explicit keyword, and one or more
+ * paren/bracket subscript groups. The tail is captured INSIDE the body group
+ * so downstream `parseBody` sees a single string that includes the
+ * subdivision chain; the extractor then normalizes `, subd. (a)(8)` into
+ * `(a)(8)` before splitting section from subsection.
  */
 export function buildCaBareCodeRegex(): RegExp {
   const fragments = [...caBareCodeEntries]
@@ -82,7 +91,7 @@ export function buildCaBareCodeRegex(): RegExp {
     .map((e) => e.regexFragment)
   const alternation = fragments.join("|")
   return new RegExp(
-    `\\b(${alternation})\\s*,?\\s*§§?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9]))*(?:\\([^)]*\\))*(?:\\s*et\\s+seq\\.?)?)`,
+    `\\b(${alternation})\\s*,?\\s*§§?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9]))*(?:\\([^)]*\\))*(?:,?\\s+(?:subd\\.|subdivision|paragraph|par\\.)\\s+(?:\\([^)]*\\)|\\[[^\\]]*\\])(?:\\s*(?:\\([^)]*\\)|\\[[^\\]]*\\]))*)?(?:\\s*et\\s+seq\\.?)?)`,
     "g",
   )
 }
