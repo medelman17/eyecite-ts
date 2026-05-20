@@ -53,9 +53,7 @@ describe("Issue #504: supra resolution with `Party v. Party` caption", () => {
   it("`Smith v. Jones, supra` still resolves when only plaintiff matches indexed name", () => {
     // Ensure the split-and-query fallback works even if only one half matches.
     const text =
-      "Smith v. Doe, 100 F.3d 1 (1990). " +
-      "Other prose here. " +
-      "Smith v. Jones, supra."
+      "Smith v. Doe, 100 F.3d 1 (1990). " + "Other prose here. " + "Smith v. Jones, supra."
     const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
     const full = citations.find((c) => c.type === "case")!
     const supra = citations.find((c) => c.type === "supra")!
