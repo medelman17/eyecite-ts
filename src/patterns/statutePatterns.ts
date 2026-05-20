@@ -546,10 +546,13 @@ export const statutePatterns: Pattern[] = [
     // optional uppercase-letter suffixes and optional parenthetical
     // subsection (`(A)`, `(B)`, `(1)`).
     id: "nm-bare-section",
+    // Subsection chain accepts decimals (`(1.5)`) and bracket subscripts
+    // (`[3]`) so `§ N-N-N(A)(1.5)` is captured in full. The dot inside
+    // parens was missing previously, dropping decimal subsections. (#565)
     regex:
-      /(?<![A-Za-z])(?:§\s*|[Ss]ection\s+)(\d+[A-Z]?-\d+[A-Z]?-\d+[A-Z]?(?:\([A-Za-z0-9]+\))*)/g,
+      /(?<![A-Za-z])(?:§\s*|[Ss]ection\s+)(\d+[A-Z]?-\d+[A-Z]?-\d+[A-Z]?(?:\([A-Za-z0-9.]+\)|\[[A-Za-z0-9.]+\])*)/g,
     description:
-      'New Mexico bare-section form: "Section 32A-2-7(A)" / "§ 41-2-2" — #382',
+      'New Mexico bare-section form: "Section 32A-2-7(A)" / "§ 41-2-2" — #382 (#565 decimal subsection)',
     type: "statute",
   },
   {

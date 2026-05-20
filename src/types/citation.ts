@@ -457,7 +457,13 @@ export interface FullCaseCitation extends CitationBase {
 export interface StatuteCitation extends CitationBase {
   type: "statute"
   title?: number
-  code: string
+  /**
+   * Code identifier (`U.S.C.`, `NMSA 1978`, `Penal`, etc.).
+   * Optional because bare-section citations with no nearby jurisdictional
+   * signal drop both `code` and `jurisdiction` rather than guessing.
+   * (#565, originally #531)
+   */
+  code?: string
   section: string
   /**
    * Structured representation of a `§§ N-M` range. Populated only for

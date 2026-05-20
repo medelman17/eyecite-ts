@@ -59,7 +59,10 @@ export function toBluebook(citation: Citation): string {
       const section = `\u00A7 ${citation.section}`
       const subsection = citation.subsection ?? ""
       const etSeq = citation.hasEtSeq ? " et seq." : ""
-      return `${title}${citation.code} ${section}${subsection}${etSeq}`
+      // code may be undefined when the bare-section jurisdiction guard
+      // drops both code and jurisdiction (#565). Render as just `\u00A7 <section>`.
+      const code = citation.code ? `${citation.code} ` : ""
+      return `${title}${code}${section}${subsection}${etSeq}`
     }
 
     case "constitutional": {

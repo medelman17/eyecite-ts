@@ -2132,9 +2132,10 @@ describe("extractStatute", () => {
 
   describe("New Mexico bare-section form (#382)", () => {
     it("extracts `Section 32A-2-7(A)` (bare, letter-prefix first part)", () => {
-      const cites = extractCitations("Section 32A-2-7(A) requires.").filter(
-        (c) => c.type === "statute",
-      )
+      // With NMSA signal in scope, the bare-section claims NM.
+      const cites = extractCitations(
+        "Under NMSA 1978, Section 32A-2-7(A) requires.",
+      ).filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].code).toBe("NMSA 1978")
@@ -2156,7 +2157,8 @@ describe("extractStatute", () => {
     })
 
     it("extracts `§ 41-2-2` (symbol form, no subsection)", () => {
-      const cites = extractCitations("See § 41-2-2.").filter(
+      // Requires NM context to claim NMSA — per #565 jurisdiction guard.
+      const cites = extractCitations("New Mexico law: see § 41-2-2.").filter(
         (c) => c.type === "statute",
       )
       expect(cites).toHaveLength(1)
@@ -2469,10 +2471,11 @@ describe("extractStatute", () => {
       }
     })
 
-    it("regression: NM bare-section `Section 32A-2-7(A)` still routes to NM", () => {
-      const cites = extractCitations("Section 32A-2-7(A) requires.").filter(
-        (c) => c.type === "statute",
-      )
+    it("regression: NM bare-section `Section 32A-2-7(A)` routes to NM with NM context", () => {
+      // Requires NM context per the #565 jurisdiction guard.
+      const cites = extractCitations(
+        "Under NMSA 1978, Section 32A-2-7(A) requires.",
+      ).filter((c) => c.type === "statute")
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("NM")
@@ -3303,14 +3306,16 @@ describe("extractStatute", () => {
       }
     })
 
-    it("bare-section with NO preceding context stays NM (default)", () => {
+    it("bare-section with NO preceding context drops jurisdiction (#565 guard)", () => {
+      // Previously defaulted to NM; the jurisdiction guard now drops the
+      // jurisdiction without an explicit NM signal nearby.
       const cites = extractCitations("Section 32A-2-7(A).").filter(
         (c) => c.type === "statute",
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].jurisdiction).toBe("NM")
-        expect(cites[0].code).toBe("NMSA 1978")
+        expect(cites[0].jurisdiction).toBeUndefined()
+        expect(cites[0].code).toBeUndefined()
       }
     })
 
