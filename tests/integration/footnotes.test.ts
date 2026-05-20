@@ -66,6 +66,45 @@ describe("Footnote Integration Tests", () => {
       expect(footnoteCites.length).toBeGreaterThanOrEqual(1)
       expect(footnoteCites[0].footnoteNumber).toBe(1)
     })
+
+    // #541 — signature block + short separator + numbered list must not be
+    // misclassified as a footnote section.
+    it("does not misclassify signature block + numbered analysis as footnotes", () => {
+      const text = [
+        "Signed,",
+        "/s/ Judge Smith",
+        "",
+        "-----",
+        "",
+        "1. The first issue is whether 200 F.3d 100 controls.",
+        "2. The second issue is 300 F.3d 200.",
+      ].join("\n")
+      const citations = extractCitations(text, { detectFootnotes: true })
+      expect(citations.length).toBeGreaterThan(0)
+      for (const c of citations) {
+        expect(c.inFootnote).not.toBe(true)
+      }
+    })
+
+    // #539 — post-footnote ALL-CAPS section content must not be tagged as
+    // belonging to the trailing footnote.
+    it("does not annotate post-footnote ALL-CAPS section content as footnote", () => {
+      const text = [
+        "Body 100 U.S. 200.",
+        "",
+        "----------",
+        "",
+        "1. See 200 F.3d 100.",
+        "",
+        "GOVERNMENT BRIEF",
+        "",
+        "The court further holds that 400 F.3d 500 controls.",
+      ].join("\n")
+      const citations = extractCitations(text, { detectFootnotes: true })
+      const post = citations.find((c) => c.matchedText.includes("400 F.3d 500"))
+      expect(post).toBeDefined()
+      expect(post?.inFootnote).not.toBe(true)
+    })
   })
 
   describe("opt-in behavior", () => {

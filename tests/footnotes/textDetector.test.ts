@@ -158,6 +158,33 @@ describe("detectTextFootnotes", () => {
     expect(text.slice(zones[0].start, zones[0].end)).toContain("Another sub-list item.")
   })
 
+  // #541 — short separators (`-----`) early in the document followed by a
+  // numbered list are NOT footnote sections (e.g., signature blocks).
+  it("does not treat a separator + numbered list near top of doc as footnotes", () => {
+    const text = [
+      "Signed,",
+      "/s/ Judge Smith",
+      "",
+      "-----",
+      "",
+      "1. The first issue is whether 200 F.3d 100 controls.",
+      "2. The second issue is 300 F.3d 200.",
+    ].join("\n")
+    const zones = detectTextFootnotes(text)
+    expect(zones).toEqual([])
+  })
+
+  // #541 corollary — guard does not strip legitimate footnote sections where
+  // the separator appears later in the document.
+  it("still detects real footnote sections (separator after substantial body)", () => {
+    // Body that pushes the separator past the 25% threshold
+    const body = "The court holds that 100 F.2d 50 (1st Cir. 2020) controls. ".repeat(20)
+    const text = [body, "", "----------", "", "1. See 200 F.3d 100."].join("\n")
+    const zones = detectTextFootnotes(text)
+    expect(zones).toHaveLength(1)
+    expect(zones[0].footnoteNumber).toBe(1)
+  })
+
   it("caps last footnote zone at a subsequent separator line", () => {
     const text = [
       "Body 100 U.S. 200.",

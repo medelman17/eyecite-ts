@@ -4,6 +4,24 @@ import type { FootnoteMap } from "./types"
 const SEPARATOR_RE = /^\s*[-_]{5,}\s*$/m
 
 /**
+ * A "strong" separator (long enough to clearly be a footnote section
+ * divider rather than a decorative rule or signature delimiter).
+ * 8+ dashes/underscores typically marks an intentional footnote boundary.
+ */
+const STRONG_SEPARATOR_LEN = 8
+
+/**
+ * For short separators (5..7 chars), require them to appear at least this
+ * fraction of the way into the document.  Signature blocks (`-----`,
+ * decorative rules) almost always sit near the top or middle of a document
+ * trailing a short closing — they will not pass this gate, eliminating the
+ * false positives in #541.  Long separators (`STRONG_SEPARATOR_LEN+` chars)
+ * bypass this check, so existing short-fixture tests with `----------`
+ * continue to work.
+ */
+const MIN_SHORT_SEPARATOR_OFFSET_RATIO = 0.25
+
+/**
  * Source pattern for footnote markers at line start.
  *
  * Captures the footnote number from whichever group matches. Anchored at
@@ -11,10 +29,14 @@ const SEPARATOR_RE = /^\s*[-_]{5,}\s*$/m
  * sub-list items inside a footnote body would otherwise be misread as new
  * markers, splitting a single footnote into multiple zones (#540).
  *
+ * The `(\d+)\.\s+\S` alternative requires the digit-period marker to be
+ * followed by whitespace and non-whitespace on the same logical chunk.
+ * This rejects heading-style `1.\n\n` lines (#541).
+ *
  * Created as a fresh RegExp per call to avoid shared mutable lastIndex state.
  */
 const MARKER_SRC =
-  /^(?:FN\s*(\d+)[.\s:)]|\[(\d+)\]\s|n\.\s*(\d+)\s|(\d+)\.\s)/gm.source
+  /^(?:FN\s*(\d+)[.\s:)]|\[(\d+)\]\s|n\.\s*(\d+)\s|(\d+)\.\s+\S)/gm.source
 
 /**
  * Pattern for an ALL-CAPS section heading on its own line, optionally
@@ -43,6 +65,16 @@ const POST_FOOTNOTE_HEADING_RE = /^[A-Z][A-Z0-9 &:'.-]{3,}$/m
 export function detectTextFootnotes(text: string): FootnoteMap {
   const sepMatch = SEPARATOR_RE.exec(text)
   if (!sepMatch) return []
+
+  // #541: short separators (5..7 chars) are often signature-block or
+  // decorative rules.  Require them to appear at least 25% into the
+  // document to plausibly demarcate a footnote section.  Strong (8+ char)
+  // separators bypass this gate.
+  const separatorBody = sepMatch[0].replace(/\s/g, "")
+  if (separatorBody.length < STRONG_SEPARATOR_LEN) {
+    const minOffset = Math.floor(text.length * MIN_SHORT_SEPARATOR_OFFSET_RATIO)
+    if (sepMatch.index < minOffset) return []
+  }
 
   const sectionOffset = sepMatch.index + sepMatch[0].length
 
