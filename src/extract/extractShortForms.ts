@@ -53,6 +53,28 @@ function stripSupraPartyPrefix(raw: string): string {
 const TRAILING_PAREN_REGEX = /^[\s,]*\(([^()]*)\)/
 
 /**
+ * Bluebook citation signal phrases at the end of preceding text (#557).
+ *
+ * Mirrors `SIGNAL_PATTERNS` in `src/extract/detectStringCites.ts` — these are
+ * the canonical introducers that precede a citation core. Used by `extractId`
+ * to recognize `See id.`, `See also id.`, `Cf. id.`, etc. as citation
+ * contexts (not mid-sentence prose).
+ *
+ * Anchor at end-of-string (`\s*$` — caller already trims) and require a
+ * non-letter boundary before the signal so `He see` does not match `see`.
+ * Longer alternatives come first so `but cf., e.g.` beats `cf.` and
+ * `see also` beats `see`. Combined `, e.g.` forms accept the optional
+ * trailing comma typical before the citation (`See, e.g., id.`).
+ *
+ * The `e\.\s*g\.` form accepts both `e.g.` and the older `e. g.` typesetting
+ * variant. Likewise `see\s*,?\s+also` accepts the `See, also,` variant.
+ *
+ * Case-insensitive so `See`, `SEE`, and `see` all match.
+ */
+const SIGNAL_AT_END_REGEX =
+  /(?<![A-Za-z])(?:but\s+cf\.,\s+e\.\s*g\.,?|see\s*,?\s+also,\s+e\.\s*g\.,?|but\s+see,\s+e\.\s*g\.,?|cf\.,\s+e\.\s*g\.,?|see,\s+e\.\s*g\.,?|see\s+generally|see\s*,?\s+also|but\s+see|but\s+cf\.?|compare|accord|contra|see|cf\.?|e\.\s*g\.,?)\s*$/i
+
+/**
  * Scan the cleaned text after a short-form citation's span end for an
  * immediately-trailing `(...)` parenthetical. Returns the inner text
  * (excluding the parens) or `undefined` if none found. #303
@@ -182,16 +204,30 @@ export function extractId(
 
   // Context validation: check whether Id. appears in a citation context.
   // Real Id. citations follow sentence-ending punctuation, semicolons,
-  // or paragraph breaks — not mid-sentence prose like "The Id. card".
+  // or paragraph breaks — OR a Bluebook citation signal (`See`, `See also`,
+  // `Cf.`, `Compare`, `Accord`, `Contra`, `But see`, `But cf.`, `See generally`,
+  // `E.g.`, and combined `, e.g.` forms) — not mid-sentence prose like
+  // "The Id. card".
+  //
+  // Window is 60 chars so the longest signal phrase (`See also, e.g.`,
+  // `But cf., e.g.`) fits even when preceded by other content. The signal
+  // regex below mirrors `SIGNAL_PATTERNS` in `src/extract/detectStringCites.ts`
+  // (#557). The signal must end at the end of the trimmed preceding text
+  // (whitespace before Id. is already stripped).
   if (cleanedText && span.cleanStart > 0) {
-    const preceding = cleanedText.slice(Math.max(0, span.cleanStart - 20), span.cleanStart)
+    const preceding = cleanedText.slice(Math.max(0, span.cleanStart - 60), span.cleanStart)
     // Look for the last non-whitespace character before Id.
     const trimmed = preceding.trimEnd()
     if (trimmed.length > 0) {
-      const lastChar = trimmed[trimmed.length - 1]
-      // Citation contexts end with: . ; ) ] — or follow certain patterns
-      const isCitationContext = /[.;)\]—:]$/.test(trimmed)
-      if (!isCitationContext) {
+      // Citation contexts end with: . ; ) ] — : (sentence-ending punctuation)
+      const endsWithPunctuation = /[.;)\]—:]$/.test(trimmed)
+      // …or end with a Bluebook citation signal (#557). Word-boundary anchor
+      // before the signal so we don't match `He see` etc. — `(?<![A-Za-z])`
+      // accepts start-of-string OR a non-letter immediately before the
+      // signal. The trailing alternation captures `,` for the combined
+      // `, e.g.` forms (`See, e.g.,` ends on `,`).
+      const endsWithSignal = SIGNAL_AT_END_REGEX.test(trimmed)
+      if (!endsWithPunctuation && !endsWithSignal) {
         // Mid-sentence Id. (e.g., "The Id. card") — likely not a citation
         confidence = Math.min(confidence, 0.4)
       }
@@ -314,16 +350,12 @@ export function extractSupra(
   if (bracketedMatch) {
     // Bracketed form (#306): group 1 = optional party, group 2 = optional pincite.
     partyName = bracketedMatch[1] ? stripSupraPartyPrefix(bracketedMatch[1]) : undefined
-    pinciteInfo = bracketedMatch[2]
-      ? (parsePincite(bracketedMatch[2]) ?? undefined)
-      : undefined
+    pinciteInfo = bracketedMatch[2] ? (parsePincite(bracketedMatch[2]) ?? undefined) : undefined
     confidence = partyName ? 0.9 : 0.8
     if (bracketedMatch[2]) pinciteGroupIdx = 2
   } else if (partyMatch) {
     partyName = stripSupraPartyPrefix(partyMatch[1])
-    pinciteInfo = partyMatch[3]
-      ? (parsePincite(partyMatch[3]) ?? undefined)
-      : undefined
+    pinciteInfo = partyMatch[3] ? (parsePincite(partyMatch[3]) ?? undefined) : undefined
     confidence = 0.9
     if (partyMatch[3]) pinciteGroupIdx = 3
   } else {
