@@ -115,4 +115,41 @@ describe("detectTextFootnotes", () => {
     const zones = detectTextFootnotes(text)
     expect(zones).toHaveLength(2)
   })
+
+  // #539 — last footnote zone runs greedy to end-of-text
+  it("caps last footnote zone at subsequent ALL-CAPS section heading", () => {
+    const text = [
+      "Body 100 U.S. 200.",
+      "",
+      "----------",
+      "",
+      "1. See 200 F.3d 100.",
+      "",
+      "GOVERNMENT BRIEF",
+      "",
+      "The court further holds that 400 F.3d 500 controls.",
+    ].join("\n")
+    const zones = detectTextFootnotes(text)
+    expect(zones).toHaveLength(1)
+    // The footnote zone should NOT extend into the post-footnote section
+    expect(text.slice(zones[0].start, zones[0].end)).not.toContain("GOVERNMENT BRIEF")
+    expect(text.slice(zones[0].start, zones[0].end)).not.toContain("400 F.3d 500")
+  })
+
+  it("caps last footnote zone at a subsequent separator line", () => {
+    const text = [
+      "Body 100 U.S. 200.",
+      "",
+      "----------",
+      "",
+      "1. See 200 F.3d 100.",
+      "",
+      "----------",
+      "",
+      "Closing remarks reference 400 F.3d 500.",
+    ].join("\n")
+    const zones = detectTextFootnotes(text)
+    expect(zones).toHaveLength(1)
+    expect(text.slice(zones[0].start, zones[0].end)).not.toContain("400 F.3d 500")
+  })
 })
