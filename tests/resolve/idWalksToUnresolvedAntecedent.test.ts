@@ -17,16 +17,19 @@ describe("antecedentIndex — Id. clusters with unresolved short-form (Bluebook 
     expect(id?.resolution?.antecedentIndex).toBe(1)
   })
 
-  it("antecedentIndex set even when resolvedTo is also set (one step back)", () => {
+  it("antecedentIndex agrees with resolvedTo on the success path (#508)", () => {
     // Smith full at idx 0, Id. at idx 1, second Id. at idx 2.
-    // The second Id. resolves to Smith (resolvedTo=0) AND has
-    // antecedentIndex=1 (one step back, the first Id.).
+    // Per #508, when the primary chase picks an antecedent, both pointers
+    // reference it (single source of truth). The pre-#508 behavior used
+    // `findImmediatePredecessor` for `antecedentIndex`, which produced
+    // disagreement with `resolvedTo` whenever an intervening citation of a
+    // different family sat between them.
     const text = "Smith v. Jones, 100 F.2d 50, 55 (1990). Id. Id."
     const cites = extractCitations(text, { resolve: true })
     const ids = cites.filter((c): c is IdCitation => c.type === "id")
     expect(ids).toHaveLength(2)
     expect(ids[1].resolution?.resolvedTo).toBe(0)
-    expect(ids[1].resolution?.antecedentIndex).toBe(1)
+    expect(ids[1].resolution?.antecedentIndex).toBe(0)
   })
 
   it("Id. immediately after a full cite: antecedentIndex equals resolvedTo", () => {

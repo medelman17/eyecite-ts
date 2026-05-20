@@ -440,37 +440,35 @@ export class DocumentResolver {
       )
     }
 
-    // Score each candidate. Family-match dominates (Id.'s pincite shape
-    // tells us which family of authority the writer intended). Recency
-    // breaks ties — candidates are pushed in reverse document order, so
-    // the first match at a given score is the most recent effective
+    // Pick the antecedent: family preference is a soft signal — when at
+    // least one candidate matches the preferred family (inferred from
+    // `Id.`'s pincite shape), pick the most recent of them; otherwise
+    // fall back to the most recent candidate regardless of family (#514).
+    // Recency wins automatically because candidates are pushed in reverse
+    // document order, so `candidates[0]` is the most recent effective
     // mention. Per Bluebook Rule 4.1, signal phrase does NOT affect
     // antecedent selection: `Id.` anchors to the immediately preceding
-    // cited authority regardless of whether that authority is introduced
-    // by `See`, `Cf.`, or any other signal (#498).
-    const score = (c: Candidate) => {
-      let s = 0
-      if (c.family === preferredFamily) s += 1000
-      return s
-    }
-    let best = candidates[0]
-    let bestScore = score(best)
-    for (let i = 1; i < candidates.length; i++) {
-      const s = score(candidates[i])
-      if (s > bestScore) {
-        best = candidates[i]
-        bestScore = s
-      }
-    }
+    // cited authority regardless of `See`, `Cf.`, etc. (#498).
+    const preferred = candidates.find((c) => c.family === preferredFamily)
+    const best = preferred ?? candidates[0]
 
     // Case-name window check: if the prose immediately before Id. names a
     // case that doesn't match the picked antecedent, downgrade confidence and
     // flag ambiguity (without refusing to commit).
     const { confidence, warnings } = this.applyCaseNameWindowCheck(best.index, citation)
 
+    // #508: `antecedentIndex` mirrors `resolvedTo` on the success path so
+    // consumers see one source of truth. The pre-fix code called
+    // `findImmediatePredecessor` here, which walks the array by position and
+    // ignores the family / scope filters the primary chase applied — that
+    // produced disagreement when an intervening citation of a different
+    // family sat between the picked antecedent and the `Id.` (e.g.,
+    // case → statute → Id. at 5: resolvedTo=case, antecedentIndex=statute).
+    // `findImmediatePredecessor` remains the fallback for the unresolved-
+    // short-form chain (above) where no `resolvedTo` is available.
     return {
       resolvedTo: best.index,
-      antecedentIndex: this.findImmediatePredecessor(citation),
+      antecedentIndex: best.index,
       confidence,
       warnings,
     }
@@ -631,42 +629,42 @@ export class DocumentResolver {
 
   /**
    * Resolves supra citation by matching party name.
+   *
+   * When the supra `partyName` is a full caption (`"Fitzgerald v. Cleveland"`),
+   * splitting on ` v. ` / ` vs. ` and querying each half independently rescues
+   * resolution (#504). The BK-tree is indexed under the individual normalized
+   * plaintiff and defendant names from `trackFullCitation`, so the combined
+   * caption sits too far from either single name for the Levenshtein
+   * threshold-derived `maxDistance` to recover it.
    */
   private resolveSupra(citation: SupraCitation): ResolutionResult | undefined {
     if (!citation.partyName) return undefined // Standalone supra — cannot resolve by party name
     const currentIndex = this.context.citationIndex
-    const targetPartyName = this.normalizePartyName(citation.partyName)
+    const fullPartyName = this.normalizePartyName(citation.partyName)
 
-    // Query BK-Tree for candidates within distance threshold, then filter by scope
-    const queryLen = targetPartyName.length
-    const threshold = this.options.partyMatchThreshold
-    // Safe upper bound: guarantees no match with similarity >= threshold is missed
-    const maxDistance = queryLen === 0 ? 0 : Math.ceil((queryLen * (1 - threshold)) / threshold)
-    const candidates = this.partyNameTree.query(targetPartyName, maxDistance)
-
-    // Sort by insertion order to match Map iteration behavior (first-inserted wins on ties)
-    candidates.sort((a, b) => a.insertionOrder - b.insertionOrder)
-
-    let bestMatch: { index: number; similarity: number } | undefined
-
-    for (const candidate of candidates) {
-      const citationIndex = this.context.fullCitationHistory.get(candidate.key)
-      if (citationIndex === undefined) continue
-
-      // Check scope boundary (supra allows cross-zone: footnote -> body)
-      if (!this.isWithinScope(citationIndex, currentIndex, true)) continue
-
-      // Convert distance to normalized similarity
-      const maxLen = Math.max(queryLen, candidate.key.length)
-      const similarity = maxLen === 0 ? 1.0 : 1 - candidate.distance / maxLen
-
-      // Update best match if this is better (strict > preserves first-wins tie-breaking)
-      if (!bestMatch || similarity > bestMatch.similarity) {
-        bestMatch = { index: citationIndex, similarity }
+    // #504: split `Plaintiff v. Defendant` into individual party-name queries
+    // so each half can match the BK-tree's per-name index. Querying the
+    // combined caption alone fails because the index holds individual names.
+    // The combined query is kept first as a tiebreaker for non-caption forms
+    // (e.g., `Walker & Horwich, supra` should still query the joined string).
+    const queries: string[] = [fullPartyName]
+    const vSplit = fullPartyName.split(/\s+vs?\.\s+/)
+    if (vSplit.length === 2) {
+      for (const half of vSplit) {
+        const trimmed = half.trim()
+        if (trimmed.length > 0) queries.push(trimmed)
       }
     }
 
-    // Check if we found a match above threshold
+    let bestMatch: { index: number; similarity: number } | undefined
+    for (const query of queries) {
+      const match = this.queryPartyNameTree(query, currentIndex)
+      if (!match) continue
+      if (!bestMatch || match.similarity > bestMatch.similarity) {
+        bestMatch = match
+      }
+    }
+
     if (!bestMatch) {
       return this.createFailureResult("No full citation found in scope")
     }
@@ -689,6 +687,45 @@ export class DocumentResolver {
       confidence: bestMatch.similarity,
       warnings: warnings.length > 0 ? warnings : undefined,
     }
+  }
+
+  /**
+   * BK-tree query for a single normalized party name, returning the best
+   * in-scope citation index and similarity score (or undefined if no
+   * candidate clears the configured threshold-derived `maxDistance`).
+   * Shared between full-caption and split-half supra queries (#504).
+   */
+  private queryPartyNameTree(
+    query: string,
+    currentIndex: number,
+  ): { index: number; similarity: number } | undefined {
+    const queryLen = query.length
+    const threshold = this.options.partyMatchThreshold
+    // Safe upper bound: guarantees no match with similarity >= threshold is missed
+    const maxDistance = queryLen === 0 ? 0 : Math.ceil((queryLen * (1 - threshold)) / threshold)
+    const candidates = this.partyNameTree.query(query, maxDistance)
+
+    // Sort by insertion order to match Map iteration behavior (first-inserted wins on ties)
+    candidates.sort((a, b) => a.insertionOrder - b.insertionOrder)
+
+    let best: { index: number; similarity: number } | undefined
+    for (const candidate of candidates) {
+      const citationIndex = this.context.fullCitationHistory.get(candidate.key)
+      if (citationIndex === undefined) continue
+
+      // Check scope boundary (supra allows cross-zone: footnote -> body)
+      if (!this.isWithinScope(citationIndex, currentIndex, true)) continue
+
+      // Convert distance to normalized similarity
+      const maxLen = Math.max(queryLen, candidate.key.length)
+      const similarity = maxLen === 0 ? 1.0 : 1 - candidate.distance / maxLen
+
+      // Update best match if this is better (strict > preserves first-wins tie-breaking)
+      if (!best || similarity > best.similarity) {
+        best = { index: citationIndex, similarity }
+      }
+    }
+    return best
   }
 
   /**
