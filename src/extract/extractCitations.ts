@@ -265,6 +265,17 @@ export function extractCitations(
   //       otherwise we'd swallow legitimate shorter matches (e.g., a
   //       `state-constitution` token that sits inside a broader `named-code`
   //       match for "Cal. Const. art. I, § 7.").
+  //   (c) Proper overlaps — two tokens whose spans intersect but neither
+  //       contains the other. Canonical failure: HTML block fusion
+  //       `<p>500 F.2d 123</p><p>Then citing 600 F.2d 234</p>` cleans to
+  //       `500 F.2d 123 Then citing 600 F.2d 234`, where the broad journal
+  //       regex matches `123 Then citing 600` — a phantom that overlaps
+  //       the trailing page of the first cite AND the leading volume of
+  //       the second (#558). The container-only dedup left these phantoms
+  //       in place because no containment relation exists. The second
+  //       pass below catches them: drop any kept token that is properly
+  //       overlapped by a higher-priority token elsewhere in the kept
+  //       list.
   //
   // Priority = first occurrence index in `allPatterns`. Duplicate patternIds
   // (e.g., "supra") share the earliest index, which is fine — they form a
@@ -286,10 +297,10 @@ export function extractCitations(
       b.span.cleanEnd - a.span.cleanEnd ||
       priorityOf(a) - priorityOf(b),
   )
-  const deduplicatedTokens: typeof tokens = []
+  const containmentDeduped: typeof tokens = []
   for (const token of sortedTokens) {
     let subsumed = false
-    for (const kept of deduplicatedTokens) {
+    for (const kept of containmentDeduped) {
       const contains =
         kept.span.cleanStart <= token.span.cleanStart && kept.span.cleanEnd >= token.span.cleanEnd
       if (!contains) continue
@@ -305,8 +316,44 @@ export function extractCitations(
         break
       }
     }
-    if (!subsumed) deduplicatedTokens.push(token)
+    if (!subsumed) containmentDeduped.push(token)
   }
+
+  // Second pass — proper-overlap dedup (case (c) above).
+  //
+  // Walk the containment-deduped tokens in priority order (highest
+  // priority first). For each token, drop it if any kept (already
+  // accepted) token has a STRICTLY HIGHER priority and a span that
+  // intersects the current token's span. Strict containments were already
+  // handled above, so any remaining intersect-but-not-contain is a proper
+  // overlap and the lower-priority side loses.
+  //
+  // Equal-priority overlaps are kept (preserve all matches from a single
+  // pattern bucket — they'll be sorted out by downstream extraction /
+  // string-cite grouping / annotation passes, none of which assume
+  // disjoint spans within a bucket).
+  const tokensByPriority = [...containmentDeduped].sort(
+    (a, b) =>
+      priorityOf(a) - priorityOf(b) ||
+      a.span.cleanStart - b.span.cleanStart ||
+      b.span.cleanEnd - a.span.cleanEnd,
+  )
+  const overlapKept: typeof tokens = []
+  for (const token of tokensByPriority) {
+    const overlapped = overlapKept.some(
+      (kept) =>
+        priorityOf(kept) < priorityOf(token) &&
+        kept.span.cleanStart < token.span.cleanEnd &&
+        kept.span.cleanEnd > token.span.cleanStart,
+    )
+    if (!overlapped) overlapKept.push(token)
+  }
+  // Restore document order for downstream passes that assume left-to-right
+  // sequence (string-cite grouping, parallel detection, etc.).
+  const deduplicatedTokens = overlapKept.sort(
+    (a, b) =>
+      a.span.cleanStart - b.span.cleanStart || b.span.cleanEnd - a.span.cleanEnd,
+  )
 
   // Step 3.5: Detect parallel citation groups
   // Map of primary token index -> array of secondary token indices
