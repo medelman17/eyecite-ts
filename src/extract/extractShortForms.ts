@@ -138,7 +138,13 @@ export function extractId(
   // `Id, at pages 2-4` (where the tokenizer matches `Id,` but the
   // unrecognized `pages` prefix prevents the pincite branch from
   // extending the match) crashes the whole pipeline.
-  const idRegex = /([Ii])(?:d|bid)\s*([.,])(?:(,\s+|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
+  // Comma-pincite guard (#549) mirrors ID_PATTERN in src/patterns/shortForm.ts:
+  // `,\s+(?!\d+\s+[A-Z])` so the comma-pincite branch does not consume a
+  // following full citation's volume. Defensive (the tokenizer already
+  // truncates the token before reaching this point), but keeps the
+  // regexes in lock-step to prevent future drift.
+  const idRegex =
+    /([Ii])(?:d|bid)\s*([.,])(?:(,\s+(?!\d+\s+[A-Z])|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
   const match = idRegex.exec(text)
 
   if (!match) {
@@ -280,8 +286,13 @@ export function extractSupra(
   // Connector before pincite accepts the Connecticut comma-pincite form
   // (`Smith, supra, 522`) alongside the Bluebook `, at` and paragraph
   // forms (#353).
+  // Comma-pincite guard (#549) mirrors SUPRA_PATTERN in src/patterns/shortForm.ts:
+  // `,\s+(?!\d+\s+[A-Z])` so the comma-pincite branch does not consume a
+  // following full citation's volume. Defensive (the tokenizer already
+  // truncates the token before reaching this point), but keeps the
+  // regexes in lock-step to prevent future drift.
   const partySupraRegex =
-    /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:(?:,\s+|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
+    /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:(?:,\s+(?!\d+\s+[A-Z])|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
   const partyMatch = bracketedMatch ? null : partySupraRegex.exec(text)
 
   // Fallback: standalone supra — "supra note N", "supra at N", "supra § N".
