@@ -89,13 +89,16 @@ describe("Issue #556: parallel-secondary confidence after caseName inheritance",
     expect(secondary.confidence).toBe(0.85)
   })
 
-  it("California bracketed parallel: secondary's caseName signal fires", () => {
-    // Cal.4th primary, Cal.Rptr.2d secondary. Cal.Rptr.2d isn't in
-    // COMMON_REPORTERS and the bracketed parallel doesn't carry year onto
-    // the secondary either, so the ONLY signal it can have after inheritance
-    // is caseName.
-    //   0.2 base + 0.15 caseName = 0.35.
-    // Without the fix it's 0.2 (base only). Asserting > 0.2 is the proof.
+  it("California bracketed parallel: secondary's caseName + reporter signals fire", () => {
+    // Cal.4th primary, Cal.Rptr.2d secondary. The bracketed parallel
+    // doesn't carry year onto the secondary, so the post-inheritance
+    // signals are reporter (Cal.Rptr.2d is in COMMON_REPORTERS post-#555)
+    // and caseName:
+    //   0.2 base + 0.3 reporter + 0.15 caseName = 0.65.
+    //
+    // Pre-#556 (no inheritance recompute): 0.2 + 0.3 = 0.5.
+    // Pre-#555 (no reporter in fallback set): 0.2 + 0.15 = 0.35.
+    // Asserting 0.65 proves BOTH fixes are layered correctly.
     const text = "People v. Smith (2001) 24 Cal.4th 849 [102 Cal.Rptr.2d 731]."
     const cites = extractCitations(text).filter((c) => c.type === "case")
     expect(cites).toHaveLength(2)
@@ -105,8 +108,9 @@ describe("Issue #556: parallel-secondary confidence after caseName inheritance",
     if (secondary?.type !== "case") return
 
     expect(secondary.caseName).toBe("People v. Smith")
-    // Bug pre-fix: 0.2. After fix: 0.35.
-    expect(secondary.confidence).toBe(0.35)
+    // Confirms #555 (reporter +0.3) AND #556 (caseName +0.15 after inheritance)
+    // both fire on the same secondary.
+    expect(secondary.confidence).toBe(0.65)
   })
 
   it("single non-parallel citation is unchanged by the fix", () => {
