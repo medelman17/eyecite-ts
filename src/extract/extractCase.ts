@@ -2689,6 +2689,11 @@ export function extractCase(
       // - Trailing `(YYYY)` or `(Court YYYY)` → strip whole paren.
       // - Trailing `, NNNN <reporter token>` → strip the parallel-cite
       //   start, e.g., `State v. Lane, 1998 MT 76` → `State v. Lane`.
+      // - Trailing `, COURT, MONTH DAY, YYYY` or bare `, YYYY` — the
+      //   old-style "name, date, citation" form (Picard v. United Aircraft,
+      //   2 Cir., May 28, 1942, 128 F.2d 632; Seymour v. Osborne, 1870, 11
+      //   Wall. 516) — strip and harvest the year (#511).
+      let oldStyleYear: number | undefined
       if (caseName) {
         // Trailing parenthetical (year or court+year)
         caseName = caseName.replace(/\s*\((?:[^()]*\s)?\d{4}\)\s*$/, "").trim()
@@ -2698,6 +2703,32 @@ export function extractCase(
           .trim()
         // Trailing comma + neutral-cite shape (YYYY <state> NN)
         caseName = caseName.replace(/,\s+\d{4}\s+[A-Z]+\s+\d+\s*$/, "").trim()
+        // Old-style `, COURT, MONTH DAY, YYYY` prefix (#511). Court is
+        // `[0-9]+\s+Cir.|App.|Ct.` or just `[A-Z][a-z]+.` shapes; we keep
+        // the match narrow so it doesn't strip legitimate trailing tokens.
+        const oldStyleCourtDate =
+          /,\s+\d{1,2}(?:st|nd|rd|th)?\s+(?:Cir|App|Ct|Dist|Cir\.\s+App)\.,\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},\s+(\d{4})\s*$/
+        const courtDateMatch = oldStyleCourtDate.exec(caseName)
+        if (courtDateMatch) {
+          oldStyleYear = Number.parseInt(courtDateMatch[1], 10)
+          caseName = caseName.replace(oldStyleCourtDate, "").trim()
+        } else {
+          // Bare `, YYYY` prefix (Seymour v. Osborne, 1870; MacPherson v.
+          // Buick Motor Co., 1916). Only when the year stands alone right
+          // before the citation core — restrict to 1700-2099 to keep the
+          // strip conservative.
+          const bareYear = /,\s+((?:17|18|19|20)\d{2})\s*$/
+          const bareMatch = bareYear.exec(caseName)
+          if (bareMatch) {
+            oldStyleYear = Number.parseInt(bareMatch[1], 10)
+            caseName = caseName.replace(bareYear, "").trim()
+          }
+        }
+      }
+      // Surface the harvested year on the citation when one wasn't already
+      // captured from a trailing parenthetical (#511).
+      if (oldStyleYear !== undefined && !year) {
+        year = oldStyleYear
       }
 
       // CSM year-first form puts the year *before* volume-reporter-page
