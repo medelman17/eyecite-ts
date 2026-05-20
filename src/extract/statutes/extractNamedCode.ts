@@ -20,7 +20,12 @@ import type { StatuteComponentSpans } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 import { parseBody } from "./parseBody"
 
-/** Match named-code token: jurisdiction prefix + code name + § + body */
+/** Match named-code token: jurisdiction prefix + code name + § + body.
+ *
+ * Body grammar mirrors the tokenizer's `named-code` pattern, including the
+ * optional `, subd.` / `, paragraph` / `, par.` keyword tail (#589). The
+ * `parseBody` helper normalizes the keyword form to the canonical paren
+ * chain so the discriminated subsection field is populated correctly. */
 const NAMED_CODE_RE =
   /^(N\.?\s*Y\.?|Cal(?:ifornia)?\.?|Tex(?:as)?\.?|Md\.?|Va\.?|Ala(?:bama)?\.?)\s+(.*?)\s*§§?\s*(.+)$/sd
 

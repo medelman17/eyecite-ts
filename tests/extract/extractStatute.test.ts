@@ -412,6 +412,81 @@ describe("extractStatute", () => {
         expect(cits[0].jurisdiction).toBe("US")
       }
     })
+
+    // #589 — California `subd. (a)` / `paragraph (a)` / `par. (a)` keyword
+    // forms are dominant in California opinions. Bare-code citations that
+    // use `subd.` after the section number must attach the subdivision to
+    // the `subsection` field rather than dropping it.
+    describe("CA `subd.` / `paragraph` / `par.` keyword forms (#589)", () => {
+      it("extracts `Pen. Code, § 1238, subd. (a)(8)` → subsection (a)(8)", () => {
+        const cits = extractCitations("see Pen. Code, § 1238, subd. (a)(8).")
+        expect(cits).toHaveLength(1)
+        if (cits[0].type === "statute") {
+          expect(cits[0].code).toBe("Pen. Code")
+          expect(cits[0].section).toBe("1238")
+          expect(cits[0].subsection).toBe("(a)(8)")
+          expect(cits[0].jurisdiction).toBe("CA")
+        }
+      })
+
+      it("extracts `Welf. & Inst. Code, § 111, subd. (c)` → subsection (c)", () => {
+        const cits = extractCitations("Welf. & Inst. Code, § 111, subd. (c) controls.")
+        expect(cits).toHaveLength(1)
+        if (cits[0].type === "statute") {
+          expect(cits[0].code).toBe("Welf. & Inst. Code")
+          expect(cits[0].section).toBe("111")
+          expect(cits[0].subsection).toBe("(c)")
+        }
+      })
+
+      it("extracts `Code Civ. Proc., § 430.10, subd. (e)` → subsection (e)", () => {
+        const cits = extractCitations("Code Civ. Proc., § 430.10, subd. (e) is on point.")
+        expect(cits).toHaveLength(1)
+        if (cits[0].type === "statute") {
+          expect(cits[0].code).toBe("Code Civ. Proc.")
+          expect(cits[0].section).toBe("430.10")
+          expect(cits[0].subsection).toBe("(e)")
+        }
+      })
+
+      it("extracts `Pen. Code § 1238, paragraph (a)` → subsection (a)", () => {
+        const cits = extractCitations("violates Pen. Code § 1238, paragraph (a).")
+        expect(cits).toHaveLength(1)
+        if (cits[0].type === "statute") {
+          expect(cits[0].section).toBe("1238")
+          expect(cits[0].subsection).toBe("(a)")
+        }
+      })
+
+      it("extracts `Pen. Code § 1238, par. (a)` → subsection (a)", () => {
+        const cits = extractCitations("violates Pen. Code § 1238, par. (a).")
+        expect(cits).toHaveLength(1)
+        if (cits[0].type === "statute") {
+          expect(cits[0].section).toBe("1238")
+          expect(cits[0].subsection).toBe("(a)")
+        }
+      })
+
+      it("extracts subd. with multiple paren groups: `subd. (a) (8)`", () => {
+        const cits = extractCitations("see Pen. Code, § 1238, subd. (a) (8).")
+        expect(cits).toHaveLength(1)
+        if (cits[0].type === "statute") {
+          expect(cits[0].section).toBe("1238")
+          expect(cits[0].subsection).toBe("(a)(8)")
+        }
+      })
+
+      it("attaches subd. to fully-qualified `Cal. Penal Code § 1238, subd. (a)`", () => {
+        const cits = extractCitations("see Cal. Penal Code § 1238, subd. (a).")
+        expect(cits).toHaveLength(1)
+        if (cits[0].type === "statute") {
+          expect(cits[0].code).toBe("Cal. Penal Code")
+          expect(cits[0].section).toBe("1238")
+          expect(cits[0].subsection).toBe("(a)")
+          expect(cits[0].jurisdiction).toBe("CA")
+        }
+      })
+    })
   })
 
   describe("year-of-edition parenthetical (#285)", () => {

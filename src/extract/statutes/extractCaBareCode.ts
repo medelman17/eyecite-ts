@@ -20,9 +20,15 @@ import type { StatuteComponentSpans } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 import { parseBody } from "./parseBody"
 
-/** Match shape: <bare code name> [,] § <body>. Indices flag enables span computation. */
+/** Match shape: <bare code name> [,] § <body>. Indices flag enables span computation.
+ *
+ * Body grammar mirrors the tokenizer's `buildCaBareCodeRegex` so the
+ * extractor accepts the same shapes (including the optional `, subd.`
+ * keyword tail introduced in #589). The actual normalization of
+ * `1238, subd. (a)(8)` → `(a)(8)` happens inside `parseBody`.
+ */
 const CA_BARE_CODE_RE =
-  /^(.+?)\s*,?\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/d
+  /^(.+?)\s*,?\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:,?\s+(?:subd\.|subdivision|paragraphs?|pars?\.)\s+(?:\([^)]*\)|\[[^\]]*\])(?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)?(?:\s*et\s+seq\.?)?)$/d
 
 export function extractCaBareCode(
   token: Token,
