@@ -126,17 +126,18 @@ export function extractNamedCode(
     namedMatch = NAMED_CODE_RE.exec(text)
     if (namedMatch) {
       jurisdiction = resolveJurisdiction(namedMatch[1])
+      const rawPrefix = namedMatch[1].trim()
       const rawCodeName = namedMatch[2]
+      // #568 — `code` is the FULL identifier (jurisdiction prefix +
+      // body + trailing `Code`/`Law`), not just the cleaned body. The
+      // previous behavior stored `Civ.` for `Cal. Civ. Code § 51`,
+      // losing both jurisdiction and the `Code` suffix.
+      // Lookup still uses the cleaned key for registry hits.
       const cleaned = cleanCodeName(rawCodeName)
-
       if (jurisdiction) {
-        // Look up in registry — use cleaned name as the lookup key
-        const entry = findNamedCode(jurisdiction, cleaned)
-        // Store the cleaned name (e.g., "Penal" not "Penal Code"); fall back to raw if no registry hit
-        code = entry ? cleaned : rawCodeName.trim()
-      } else {
-        code = rawCodeName.trim()
+        findNamedCode(jurisdiction, cleaned) // side-effect-free validity check
       }
+      code = `${rawPrefix} ${rawCodeName.trim()}`
 
       rawBody = namedMatch[3]
     } else {

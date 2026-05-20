@@ -96,8 +96,8 @@
   },
   {
     "text": "Cal. Penal Code § 187",
-    "expected": [{ "type": "statute", "code": "Penal", "section": "187", "jurisdiction": "CA" }],
-    "note": "State citation — routed to named-code extractor; code stores cleaned name"
+    "expected": [{ "type": "statute", "code": "Cal. Penal Code", "section": "187", "jurisdiction": "CA" }],
+    "note": "State citation — routed to named-code extractor; code holds the full identifier (#568)"
   },
   {
     "text": "Fla. Stat. § 768.81(1)(a)",
@@ -182,7 +182,7 @@
     "expected": [
       {
         "type": "statute",
-        "code": "Penal Law",
+        "code": "N.Y. Penal Law",
         "section": "125.25",
         "subsection": "(1)(a)",
         "jurisdiction": "NY"

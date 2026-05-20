@@ -393,12 +393,12 @@ describe("extractStatute", () => {
 
     it("does not regress fully-qualified `Cal. Penal Code § 148`", () => {
       // The fully-qualified form continues to go through extractNamedCode and
-      // produces its own `code` shape ("Penal"), so the bare-code extractor
-      // should not also fire.
+      // produces its own `code` shape ("Cal. Penal Code" — full identifier
+      // per #568), so the bare-code extractor should not also fire.
       const cits = extractCitations("violates Cal. Penal Code § 148.")
       expect(cits).toHaveLength(1)
       if (cits[0].type === "statute") {
-        expect(cits[0].code).toBe("Penal")
+        expect(cits[0].code).toBe("Cal. Penal Code")
         expect(cits[0].jurisdiction).toBe("CA")
       }
     })
@@ -750,8 +750,9 @@ describe("extractStatute", () => {
       const citations = extractCitations("Cal. Penal Code § 187")
       expect(citations).toHaveLength(1)
       if (citations[0].type === "statute") {
-        // named-code pattern now fires before state-code; code stores cleaned name
-        expect(citations[0].code).toBe("Penal")
+        // named-code pattern fires before state-code; code stores the full
+        // identifier (jurisdiction + body + Code/Law) per #568.
+        expect(citations[0].code).toBe("Cal. Penal Code")
         expect(citations[0].section).toBe("187")
         expect(citations[0].jurisdiction).toBe("CA")
       }
@@ -771,7 +772,7 @@ describe("extractStatute", () => {
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].matchedText).toBe("California Penal Code § 549")
-        expect(cites[0].code).toBe("Penal")
+        expect(cites[0].code).toBe("California Penal Code")
         expect(cites[0].section).toBe("549")
         // matchedText must equal the slice from span coordinates
         const span = cites[0].span

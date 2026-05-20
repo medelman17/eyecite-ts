@@ -41,7 +41,8 @@ describe("issue #567 — bare `§ N` short-form statute after full cite", () => 
     expect(cites).toHaveLength(2)
     const ref = cites[1]
     expect(ref.section).toBe("264")
-    expect(ref.code).toBe("Penal")
+    // code carries the full identifier per #568.
+    expect(ref.code).toBe("Cal. Penal Code")
     expect(ref.jurisdiction).toBe("CA")
   })
 
