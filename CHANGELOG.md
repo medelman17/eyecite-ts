@@ -1,5 +1,36 @@
 # eyecite-ts
 
+## 0.21.5
+
+### Patch Changes
+
+- [#599](https://github.com/medelman17/eyecite-ts/pull/599) [`8ca9e5d`](https://github.com/medelman17/eyecite-ts/commit/8ca9e5d77eca7e7ec9efbd1fbe532eff04eb19e5) Thanks [@medelman17](https://github.com/medelman17)! - Collapse the horizontal ellipsis (`…`, U+2026) to the ASCII 3-dot form during text cleaning instead of relying on the implicit NFKC compatibility decomposition (#548).
+
+  Earlier the only thing turning `…` into ASCII dots was `normalizeUnicode`'s call to `String.prototype.normalize("NFKC")`. That made the substitution opaque — readers could not tell from the cleaner pipeline that ellipses were being rewritten, and in the worst-cited audit case the expansion left cleaned text longer than the original span. `normalizeTypography` now performs the substitution explicitly with `…` → `...`, so the rewrite is visible, intentional, and capped at the standard Bluebook 3-dot form. The cleaner still expands 1 input character into 3 output characters, but the expansion is now bounded and documented rather than emerging as a side-effect of compatibility decomposition.
+
+- [#602](https://github.com/medelman17/eyecite-ts/pull/602) [`d4d0ebc`](https://github.com/medelman17/eyecite-ts/commit/d4d0ebc90d43b8342a562ddb5a2de2524fd47607) Thanks [@medelman17](https://github.com/medelman17)! - Fix `fullSpan` overshoot into preceding prose on regex false-positive citations (#547).
+
+  The broad state-reporter regex (`\d+ Capitalized+ \d+`) sometimes matched volume-reporter-page shapes that straddled a hard line break in the source — section headings concatenated with body sentences (`2. Denials of 1-602 Applications\nOn October 19`), form-field addresses (`5713 Monona Drive\nMonona WI 53716`), and smart-quote-artifact rule references (`56\nFed. R. Civ.' P. 56`). The cleaner collapsed `\n` to space, so the tokenizer never saw the break. The case-name backward scan then absorbed the preceding heading or form-label line into `caseName` and extended `fullSpan` across it, producing user-visible spans that mixed unrelated prose into the citation.
+
+  `applyFalsePositiveFilters` now inspects the original (pre-cleaning) source text. A `case` (or `shortFormCase`) citation whose original-text span contains a `\n` is treated as a structural false positive — real reporter abbreviations never wrap a line break, and OCR-wrapped citations like `F. Sup-\np. 3d` are already stitched by `rejoinHyphenatedWords` before whitespace normalization. Flagged citations get confidence `0.1` plus a `#547` warning; their `fullSpan` is stripped so downstream consumers (`annotate`, `citationBounds`, `document/proseOffsets`) fall back to the cite-core span instead of surfacing surrounding prose. With `filterFalsePositives: true`, the phantom is dropped entirely. Across 758 case citations in a 100-opinion CAP sample, every cite crossing a newline was a confirmed false positive — no observed false negatives.
+
+  `applyFalsePositiveFilters` gained an optional third parameter `originalText`; existing call sites that pass only two arguments continue to work, with the line-crossing check skipped.
+
+- [#600](https://github.com/medelman17/eyecite-ts/pull/600) [`f403565`](https://github.com/medelman17/eyecite-ts/commit/f403565c2892178ff73d7428318e8cff1c7b49ce) Thanks [@medelman17](https://github.com/medelman17)! - Fix `extractCitations` producing overlapping core spans on `Case, supra, vol Reporter page` and `vol Id. page` patterns (#549).
+
+  Two tokenizer collisions slipped through the existing containment-only dedup pass and produced overlapping `span.cleanStart`/`cleanEnd` pairs on roughly 4-5% of CAP-corpus opinions:
+
+  - **Mode A** — `Barrett, supra, 229 Conn. 274-76`. `SUPRA_PATTERN`'s Connecticut comma-pincite alternative (`, NNN`, #353) greedily consumed the `229` as supra's pincite, even though the digits are actually the volume of a following full citation. The result: a `supra` span ending at `229` overlapping a `case`/`journal` span starting at `229`. `ID_PATTERN` and `IBID_PATTERN` exhibited the identical bug on the same shape.
+  - **Mode B** — `Hawkins v. Giles, 45 Id. 318`. The broad `state-reporter` and `law-review` patterns treated `Id.` as a reporter abbreviation, matching `45 Id. 318` as a full case citation. The correct `id` pattern matched `Id.` at the same time, producing a contained-overlap pair that the priority dedup kept around (because the `id` token has higher priority and the existing rule only drops the contained side).
+
+  The overlapping spans were the root cause of #545 (annotate sentinel corruption, already defended downstream) and broke `fullSpan` splice logic in #543.
+
+  Fix is at the regex layer so the overlap is never produced — keeping both legitimate citations cleanly:
+
+  - `SUPRA_PATTERN` / `ID_PATTERN` / `IBID_PATTERN` comma-pincite branches gain `(?!\d+\s+[A-Z])` so the comma-pincite does not fire when the digits are followed by a reporter shape. The legitimate Connecticut comma-pincite (`Smith, supra, 522.`) keeps working because its digits are not followed by a capital-letter reporter.
+  - `state-reporter` (in `casePatterns`) and `law-review` (in `journalPatterns`) gain `(?!(?:Ibid|Id)\.?\s+\d)` after the volume so `Id.` / `Ibid.` cannot masquerade as reporter abbreviations. `Idaho` and other reporters starting with `Id` are unaffected — the lookahead only fires on the short-form shape (`Id.` / `Ibid.` immediately followed by a page digit).
+  - The mirrored regexes inside `extractShortForms.ts` (`idRegex`, `partySupraRegex`) gain the same lookahead so the tokenizer and the re-extractor stay in lock-step.
+
 ## 0.21.4
 
 ### Patch Changes
