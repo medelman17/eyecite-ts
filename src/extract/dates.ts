@@ -1,11 +1,14 @@
 /**
  * Date Parsing Utilities for Legal Citations
  *
- * Parses dates from parentheticals in legal citations. Supports three formats:
- * 1. Abbreviated month: "Jan. 15, 2020"
- * 2. Full month: "January 15, 2020"
- * 3. Numeric US: "1/15/2020"
- * 4. Year-only: "2020"
+ * Parses dates from parentheticals in legal citations. Supports several formats:
+ * 1. Abbreviated month, US order: "Jan. 15, 2020", "Jan.15, 1990" (no space after period; #554)
+ * 2. Full month, US order: "January 15, 2020"
+ * 3. ISO 8601: "2020-06-15" (#554)
+ * 4. ISO with slashes: "2020/06/15" (#554)
+ * 5. Numeric US: "1/15/2020"
+ * 6. European order: "15 June 2020", "15 Jun 2020" (#554)
+ * 7. Year-only: "2020"
  *
  * @module extract/dates
  */
@@ -142,9 +145,14 @@ export function toIsoDate(parsed: ParsedDate): string {
  * ```
  */
 export function parseDate(dateStr: string): StructuredDate | undefined {
-  // Try abbreviated month format: Jan. 15, 2020 or Feb 9, 2015
+  // Try abbreviated month, US order: "Jan. 15, 2020", "Feb 9, 2015", or
+  // "Jan.15, 1990" (missing space after period — common OCR artifact, #554).
+  // The `(?:\.?\s+|\.\s*)` alternation accepts either an explicit space or a
+  // period-with-no-trailing-space ("Jan.15"). We do NOT accept bare
+  // "Jan15" (no period, no space) because that would match arbitrary text
+  // like `Jan15Foo`.
   const abbrMatch = dateStr.match(
-    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+(\d{1,2}),?\s+(\d{4})\b/i,
+    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)(?:\.?\s+|\.\s*)(\d{1,2}),?\s+(\d{4})\b/i,
   )
   if (abbrMatch) {
     const month = parseMonth(abbrMatch[1])
@@ -154,7 +162,7 @@ export function parseDate(dateStr: string): StructuredDate | undefined {
     return { iso: toIsoDate(parsed), parsed }
   }
 
-  // Try full month format: January 15, 2020
+  // Try full month, US order: "January 15, 2020"
   const fullMatch = dateStr.match(
     /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(\d{4})\b/i,
   )
@@ -162,6 +170,18 @@ export function parseDate(dateStr: string): StructuredDate | undefined {
     const month = parseMonth(fullMatch[1])
     const day = Number.parseInt(fullMatch[2], 10)
     const year = Number.parseInt(fullMatch[3], 10)
+    const parsed = { year, month, day }
+    return { iso: toIsoDate(parsed), parsed }
+  }
+
+  // Try ISO 8601 format: "2020-06-15" or "2020/06/15" (#554). Matched BEFORE
+  // the US numeric form so a 4-digit leading group is unambiguously a year.
+  // Both separators are accepted but must be consistent (no "2020-06/15").
+  const isoMatch = dateStr.match(/\b(\d{4})([-/])(\d{1,2})\2(\d{1,2})\b/)
+  if (isoMatch) {
+    const year = Number.parseInt(isoMatch[1], 10)
+    const month = Number.parseInt(isoMatch[3], 10)
+    const day = Number.parseInt(isoMatch[4], 10)
     const parsed = { year, month, day }
     return { iso: toIsoDate(parsed), parsed }
   }
@@ -178,6 +198,22 @@ export function parseDate(dateStr: string): StructuredDate | undefined {
     if (rawYear.length === 2) {
       year = year <= 50 ? 2000 + year : 1900 + year
     }
+    const parsed = { year, month, day }
+    return { iso: toIsoDate(parsed), parsed }
+  }
+
+  // Try European day-month-year: "15 June 2020", "15 Jun 2020", "15 Jan. 1990"
+  // (#554). Ordered AFTER the US forms so "Jan 5, 2020" wins as US-style
+  // (month-day-year) and is not misread as day-month-year. The European form
+  // requires a leading day digit and a *non-trailing* comma to prevent it
+  // from matching the second half of a US-form string like "Jan. 15, 2020".
+  const euroMatch = dateStr.match(
+    /\b(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.?\s+(\d{4})\b/i,
+  )
+  if (euroMatch) {
+    const day = Number.parseInt(euroMatch[1], 10)
+    const month = parseMonth(euroMatch[2])
+    const year = Number.parseInt(euroMatch[3], 10)
     const parsed = { year, month, day }
     return { iso: toIsoDate(parsed), parsed }
   }

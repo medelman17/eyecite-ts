@@ -273,4 +273,117 @@ describe("parseDate", () => {
       })
     })
   })
+
+  /**
+   * Non-canonical date formats (#554). Before this fix, parseDate silently
+   * dropped month/day for ISO, European, and missing-space-after-period
+   * formats — they all fell through to the year-only matcher.
+   */
+  describe("non-canonical formats (#554)", () => {
+    describe("ISO 8601 format", () => {
+      it("parses `2020-06-15` as 2020-06-15", () => {
+        expect(parseDate("2020-06-15")).toEqual({
+          iso: "2020-06-15",
+          parsed: { year: 2020, month: 6, day: 15 },
+        })
+      })
+
+      it("parses `2020-01-05` with leading zeros", () => {
+        expect(parseDate("2020-01-05")).toEqual({
+          iso: "2020-01-05",
+          parsed: { year: 2020, month: 1, day: 5 },
+        })
+      })
+
+      it("parses ISO date within longer text", () => {
+        expect(parseDate("Filed on 2020-06-15 by the court")).toEqual({
+          iso: "2020-06-15",
+          parsed: { year: 2020, month: 6, day: 15 },
+        })
+      })
+    })
+
+    describe("ISO slash format", () => {
+      it("parses `2020/06/15` as 2020-06-15 (year-first detection)", () => {
+        expect(parseDate("2020/06/15")).toEqual({
+          iso: "2020-06-15",
+          parsed: { year: 2020, month: 6, day: 15 },
+        })
+      })
+
+      it("does not confuse ISO-slash with US numeric (4-digit leading)", () => {
+        // `2020/06/15`: leading 4-digit group → year (ISO).
+        // `1/15/2020`: leading 1-digit group → month (US).
+        expect(parseDate("1/15/2020")?.parsed).toMatchObject({ year: 2020 })
+        expect(parseDate("2020/06/15")?.parsed).toMatchObject({ year: 2020, month: 6, day: 15 })
+      })
+
+      it("requires consistent separators (rejects `2020-06/15`)", () => {
+        // Mixed separators should fall through to the year-only matcher.
+        expect(parseDate("2020-06/15")).toEqual({
+          iso: "2020",
+          parsed: { year: 2020 },
+        })
+      })
+    })
+
+    describe("European day-month-year format", () => {
+      it("parses `15 June 2020` as 2020-06-15", () => {
+        expect(parseDate("15 June 2020")).toEqual({
+          iso: "2020-06-15",
+          parsed: { year: 2020, month: 6, day: 15 },
+        })
+      })
+
+      it("parses abbreviated `15 Jun 2020`", () => {
+        expect(parseDate("15 Jun 2020")).toEqual({
+          iso: "2020-06-15",
+          parsed: { year: 2020, month: 6, day: 15 },
+        })
+      })
+
+      it("parses `15 Jan. 1990` with period", () => {
+        expect(parseDate("15 Jan. 1990")).toEqual({
+          iso: "1990-01-15",
+          parsed: { year: 1990, month: 1, day: 15 },
+        })
+      })
+
+      it("US `Jan. 15, 2020` still wins over a European interpretation", () => {
+        // Regression: US-form should NOT be re-read as European (15, 2020 → 15
+        // of something in 2020). The US matcher runs first and consumes the
+        // full string before the European matcher gets a chance.
+        expect(parseDate("Jan. 15, 2020")).toEqual({
+          iso: "2020-01-15",
+          parsed: { year: 2020, month: 1, day: 15 },
+        })
+      })
+    })
+
+    describe("missing space after period", () => {
+      it("parses `Jan.15, 1990` as 1990-01-15", () => {
+        expect(parseDate("Jan.15, 1990")).toEqual({
+          iso: "1990-01-15",
+          parsed: { year: 1990, month: 1, day: 15 },
+        })
+      })
+
+      it("parses `Sept.30, 2019`", () => {
+        expect(parseDate("Sept.30, 2019")).toEqual({
+          iso: "2019-09-30",
+          parsed: { year: 2019, month: 9, day: 30 },
+        })
+      })
+
+      it("does not match bare `Jan15, 1990` (no period anchor)", () => {
+        // `Jan15` without a period is too ambiguous — could be a docket
+        // identifier, a station ID, etc. Require either a space or a period
+        // between month abbreviation and day.
+        expect(parseDate("Jan15, 1990")).toEqual({
+          iso: "1990",
+          parsed: { year: 1990 },
+        })
+      })
+    })
+  })
 })
