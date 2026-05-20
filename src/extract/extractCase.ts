@@ -244,6 +244,63 @@ export const COMMON_REPORTERS: ReadonlySet<string> = new Set([
 ])
 
 /**
+ * Resolve a raw reporter literal to its canonical Bluebook form using the
+ * reporters-db lookup (#571).
+ *
+ * The reporters-db structure has two relevant lookup keys per
+ * {@link ReporterEntry}: the `editions` map (whose keys ARE the canonical
+ * Bluebook forms — `F.2d`, `Ill. App. 2d`, `N.J. Eq.`) and the `variations`
+ * map (whose keys are alternate spellings, mapping to a single canonical
+ * value). Order of resolution:
+ *
+ *   1. Exact (case-insensitive) match against an edition key → return that
+ *      key verbatim. Covers the canonical-input case (`F.2d` → `F.2d`).
+ *   2. Exact (case-insensitive) match against a variation key → return the
+ *      variation's value. Covers all periodless / no-space variants
+ *      (`F2d` → `F.2d`, `Ill App2d` → `Ill. App. 2d`, `OhioSt.` → `Ohio St.`).
+ *   3. Otherwise `undefined` — downstream consumers fall back to the raw
+ *      `reporter` string. Maintains the pre-#571 behaviour for unknown
+ *      reporters.
+ *
+ * Returns `undefined` when reporters-db is not loaded (degraded mode);
+ * `normalizedReporter` remains absent in that case, mirroring the
+ * pre-#571 behaviour where the field was never populated at all.
+ *
+ * Caller is responsible for any year-based disambiguation needed when
+ * the reporter abbreviation maps to multiple reporters (see #572 for
+ * the `Black.` / `Blackf.` case). This helper picks the first matching
+ * entry and is unopinionated about era.
+ */
+export function resolveNormalizedReporter(reporter: string): string | undefined {
+  const reportersDb = getReportersSync()
+  if (!reportersDb) return undefined
+
+  const matches = reportersDb.byAbbreviation.get(reporter.toLowerCase())
+  if (!matches || matches.length === 0) return undefined
+
+  const lower = reporter.toLowerCase()
+  for (const entry of matches) {
+    // (1) Canonical edition key match — return the literal key (preserves
+    // upstream casing/spacing).
+    for (const editionAbbr of Object.keys(entry.editions)) {
+      if (editionAbbr.toLowerCase() === lower) {
+        return editionAbbr
+      }
+    }
+    // (2) Variation key match — the value is the canonical key.
+    if (entry.variations) {
+      for (const [variant, canonical] of Object.entries(entry.variations)) {
+        if (variant.toLowerCase() === lower && canonical) {
+          return canonical
+        }
+      }
+    }
+  }
+
+  return undefined
+}
+
+/**
  * Compute the multi-factor confidence score for a case citation.
  *
  * Pure helper over the five signals the case-citation scorer cares about.
@@ -3443,6 +3500,13 @@ export function extractCase(
     hasBlankPage: hasBlankPage ?? false,
   })
 
+  // Resolve the canonical Bluebook reporter via reporters-db so downstream
+  // consumers (`reporterKey`, `bluebook`, parallel-group matching) can link
+  // periodless / no-space variants (`F2d`, `Ill2d`, `OhioSt.`) to their
+  // canonical editions. Returns `undefined` when reporters-db is not loaded
+  // (degraded mode) or no variant/edition matches — see #571.
+  const normalizedReporter = resolveNormalizedReporter(reporter)
+
   return {
     type: "case",
     text,
@@ -3458,6 +3522,7 @@ export function extractCase(
     patternsChecked: 1, // Single token processed
     volume,
     reporter,
+    ...(normalizedReporter !== undefined ? { normalizedReporter } : {}),
     page,
     nominativeVolume,
     nominativeReporter,
