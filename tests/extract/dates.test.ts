@@ -245,10 +245,16 @@ describe("parseDate", () => {
       })
     })
 
-    it("parses `1/1/50` as 2050-01-01 (boundary)", () => {
-      expect(parseDate("1/1/50")).toEqual({
-        iso: "2050-01-01",
-        parsed: { year: 2050, month: 1, day: 1 },
+    it("parses `1/1/27` as 2027-01-01 (00-50 side of the pivot)", () => {
+      // The two-digit-year pivot is fixed at 50: 00-50 → 21st century,
+      // 51-99 → 20th century. This test originally used `1/1/50` → 2050,
+      // but #523's plausibility filter (1700 ≤ year ≤ currentYear + 1)
+      // now drops the year 2050 as too far in the future. The pivot itself
+      // is still intact — only the upper-end output value was constrained.
+      // Using a near-current value keeps the pivot side under test.
+      expect(parseDate("1/1/27")).toEqual({
+        iso: "2027-01-01",
+        parsed: { year: 2027, month: 1, day: 1 },
       })
     })
 

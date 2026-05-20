@@ -65,6 +65,49 @@ const MONTH_MAP: Record<string, number> = {
 }
 
 /**
+ * Lower bound on plausible publication years (#523). Pre-1700 cites are
+ * essentially never real in U.S. citation corpora; values below this
+ * threshold almost always indicate an OCR artifact (e.g., `1372` for
+ * `1972`) or a page number that escaped into the year slot.
+ */
+const MIN_PLAUSIBLE_YEAR = 1700
+
+/**
+ * Upper bound offset on plausible years (#523). The current year + 1
+ * tolerates citations to opinions filed right around the new year (and
+ * forward-dated cites that occur in practice for unpublished work). Years
+ * any further out are treated as artifacts.
+ */
+const MAX_PLAUSIBLE_YEAR_OFFSET = 1
+
+/**
+ * Range check for a publication year (#523). Accepts integers in
+ * `[1700, currentYear + 1]`. Used both inside `parseDate` to drop
+ * implausible matches from year-only fallback and at the extractor level
+ * (defense-in-depth) so any year sourced from a raw `\d{4}` lookahead is
+ * still validated.
+ *
+ * Boundary values (1700, current year + 1) are accepted (inclusive).
+ *
+ * @param year - candidate year to validate
+ * @returns true when the year is in the plausible range
+ *
+ * @example
+ * ```typescript
+ * isPlausibleYear(2020) // true
+ * isPlausibleYear(1700) // true (boundary)
+ * isPlausibleYear(1699) // false
+ * isPlausibleYear(1372) // false (OCR artifact)
+ * isPlausibleYear(3021) // false (page number)
+ * ```
+ */
+export function isPlausibleYear(year: number): boolean {
+  if (!Number.isInteger(year)) return false
+  const max = new Date().getFullYear() + MAX_PLAUSIBLE_YEAR_OFFSET
+  return year >= MIN_PLAUSIBLE_YEAR && year <= max
+}
+
+/**
  * Parse a month name or abbreviation to numeric value (1-12).
  *
  * @param monthStr - Month name or abbreviation (e.g., "Jan", "January", "Sept.")
@@ -158,8 +201,10 @@ export function parseDate(dateStr: string): StructuredDate | undefined {
     const month = parseMonth(abbrMatch[1])
     const day = Number.parseInt(abbrMatch[2], 10)
     const year = Number.parseInt(abbrMatch[3], 10)
-    const parsed = { year, month, day }
-    return { iso: toIsoDate(parsed), parsed }
+    if (isPlausibleYear(year)) {
+      const parsed = { year, month, day }
+      return { iso: toIsoDate(parsed), parsed }
+    }
   }
 
   // Try full month, US order: "January 15, 2020"
@@ -170,8 +215,10 @@ export function parseDate(dateStr: string): StructuredDate | undefined {
     const month = parseMonth(fullMatch[1])
     const day = Number.parseInt(fullMatch[2], 10)
     const year = Number.parseInt(fullMatch[3], 10)
-    const parsed = { year, month, day }
-    return { iso: toIsoDate(parsed), parsed }
+    if (isPlausibleYear(year)) {
+      const parsed = { year, month, day }
+      return { iso: toIsoDate(parsed), parsed }
+    }
   }
 
   // Try ISO 8601 format: "2020-06-15" or "2020/06/15" (#554). Matched BEFORE
@@ -182,8 +229,10 @@ export function parseDate(dateStr: string): StructuredDate | undefined {
     const year = Number.parseInt(isoMatch[1], 10)
     const month = Number.parseInt(isoMatch[3], 10)
     const day = Number.parseInt(isoMatch[4], 10)
-    const parsed = { year, month, day }
-    return { iso: toIsoDate(parsed), parsed }
+    if (isPlausibleYear(year)) {
+      const parsed = { year, month, day }
+      return { iso: toIsoDate(parsed), parsed }
+    }
   }
 
   // Try numeric US format: 1/15/2020 (full year) or 10/3/07 (two-digit year,
@@ -198,8 +247,10 @@ export function parseDate(dateStr: string): StructuredDate | undefined {
     if (rawYear.length === 2) {
       year = year <= 50 ? 2000 + year : 1900 + year
     }
-    const parsed = { year, month, day }
-    return { iso: toIsoDate(parsed), parsed }
+    if (isPlausibleYear(year)) {
+      const parsed = { year, month, day }
+      return { iso: toIsoDate(parsed), parsed }
+    }
   }
 
   // Try European day-month-year: "15 June 2020", "15 Jun 2020", "15 Jan. 1990"
@@ -214,16 +265,22 @@ export function parseDate(dateStr: string): StructuredDate | undefined {
     const day = Number.parseInt(euroMatch[1], 10)
     const month = parseMonth(euroMatch[2])
     const year = Number.parseInt(euroMatch[3], 10)
-    const parsed = { year, month, day }
-    return { iso: toIsoDate(parsed), parsed }
+    if (isPlausibleYear(year)) {
+      const parsed = { year, month, day }
+      return { iso: toIsoDate(parsed), parsed }
+    }
   }
 
-  // Try year-only: 2020
+  // Try year-only: 2020. The plausibility check (#523) drops matches like
+  // `1372` (OCR for 1972) and `3021` (page number harvested into the year
+  // slot) so they don't leak through the year-only fallback.
   const yearMatch = dateStr.match(/\b(\d{4})\b/)
   if (yearMatch) {
     const year = Number.parseInt(yearMatch[1], 10)
-    const parsed = { year }
-    return { iso: toIsoDate(parsed), parsed }
+    if (isPlausibleYear(year)) {
+      const parsed = { year }
+      return { iso: toIsoDate(parsed), parsed }
+    }
   }
 
   // No match

@@ -30,7 +30,7 @@ import {
   type TransformationMap,
 } from "@/types/span"
 import type { CaseComponentSpans } from "@/types/componentSpans"
-import { parseDate, type StructuredDate } from "./dates"
+import { isPlausibleYear, parseDate, type StructuredDate } from "./dates"
 import { getReportersSync } from "@/data/reportersCache"
 import { inferCourtFromReporter } from "./courtInference"
 import { parsePincite, type PinciteInfo } from "./pincite"
@@ -1747,7 +1747,10 @@ export function extractCaseName(
       // vMatch.indices[4] (enabled by `d` flag) gives the year position;
       // translate to cleanedText coordinates.
       const courtFromCsm = vMatch[3]?.trim()
-      const year = vMatch[4] ? Number.parseInt(vMatch[4], 10) : undefined
+      // Plausibility filter (#523): drop OCR-mangled or page-number years
+      // (e.g., `1372`, `3021`) before they propagate through CSM meta.
+      const rawYear = vMatch[4] ? Number.parseInt(vMatch[4], 10) : undefined
+      const year = rawYear !== undefined && isPlausibleYear(rawYear) ? rawYear : undefined
       let yearStart: number | undefined
       let yearEnd: number | undefined
       if (year !== undefined && vMatch.indices?.[4]) {
@@ -1789,7 +1792,9 @@ export function extractCaseName(
       // (`In re Cellphone (9th Cir. 2014)` — #293); procMatch[4] = the year
       // (`In re K.F. (2009)` — #19). Bluebook form leaves both undefined.
       const courtFromCsm = procMatch[3]?.trim()
-      const year = procMatch[4] ? Number.parseInt(procMatch[4], 10) : undefined
+      // Plausibility filter (#523).
+      const rawYear = procMatch[4] ? Number.parseInt(procMatch[4], 10) : undefined
+      const year = rawYear !== undefined && isPlausibleYear(rawYear) ? rawYear : undefined
       let yearStart: number | undefined
       let yearEnd: number | undefined
       if (year !== undefined && procMatch.indices?.[4]) {

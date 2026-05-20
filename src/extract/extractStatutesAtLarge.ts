@@ -14,6 +14,7 @@ import type { Token } from "@/tokenize/tokenizer"
 import type { StatutesAtLargeCitation } from "@/types/citation"
 import type { StatutesAtLargeComponentSpans } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
+import { isPlausibleYear } from "./dates"
 
 export function extractStatutesAtLarge(
   token: Token,
@@ -41,10 +42,12 @@ export function extractStatutesAtLarge(
     }
   }
 
-  // Extract optional year in parentheses
+  // Extract optional year in parentheses.
+  // Plausibility filter (#523): drop OCR-mangled or page-number years.
   const yearRegex = /\((?:.*?\s)?(\d{4})\)/
   const yearMatch = yearRegex.exec(text)
-  const year = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
+  const rawYear = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
+  const year = rawYear !== undefined && isPlausibleYear(rawYear) ? rawYear : undefined
 
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)

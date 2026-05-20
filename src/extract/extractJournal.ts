@@ -11,6 +11,7 @@ import type { Token } from "@/tokenize"
 import type { JournalCitation } from "@/types/citation"
 import type { JournalComponentSpans } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
+import { isPlausibleYear } from "./dates"
 
 /**
  * Extracts journal citation metadata from a tokenized citation.
@@ -114,10 +115,12 @@ export function extractJournal(
   const pinciteMatch = pinciteRegex.exec(afterTokenText)
   const pincite = pinciteMatch ? Number.parseInt(pinciteMatch[1], 10) : undefined
 
-  // Extract optional year from parenthetical (e.g., "(2020)") anywhere in the context
+  // Extract optional year from parenthetical (e.g., "(2020)") anywhere in the context.
+  // Plausibility filter (#523): drop OCR-mangled or page-number years.
   const yearRegex = /\((?:.*?\s)?(\d{4})\)/d
   const yearMatch = yearRegex.exec(fullContext)
-  const year = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
+  const rawYear = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
+  const year = rawYear !== undefined && isPlausibleYear(rawYear) ? rawYear : undefined
 
   // Build component spans using match indices from `d` flag
   let spans: JournalComponentSpans | undefined
