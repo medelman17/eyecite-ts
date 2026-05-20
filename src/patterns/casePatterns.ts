@@ -70,10 +70,20 @@ export const casePatterns: Pattern[] = [
     // before it consumes ` R.` when a digit follows — leaving the input
     // untokenized rather than misclassified. A typed rule citation is out
     // of scope; the goal here is to suppress the false positive.
+    //
+    // `Id.` / `Ibid.` guard (#549): the lazy reporter capture used to
+    // greedily absorb `Id.` and `Ibid.` as a reporter abbreviation
+    // (matching `45 Id. 318` or `100 Ibid. 250`), which then overlapped
+    // the correct id/ibid token at the same position. The `(?:Ibid|Id)`
+    // alternation puts the longer literal first so `Idaho` (and other
+    // reporters that start with `Id`) is unaffected — the lookahead only
+    // fires when `Id` / `Ibid` is followed by an optional period plus
+    // whitespace and a page digit, which is the short-form shape, never
+    // the start of a reporter abbreviation.
     regex:
-      /\b(\d+(?:-\d+)?)\s+([A-Z](?:(?! L\.[JQR\s])(?! R\.\s+\d)(?!\s+vs?\.\s)(?!\s+at\s)[A-Za-z.\d\s&'])+?)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|\)|,|;|\.|\[|\])/g,
+      /\b(\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)([A-Z](?:(?! L\.[JQR\s])(?! R\.\s+\d)(?!\s+vs?\.\s)(?!\s+at\s)[A-Za-z.\d\s&'])+?)\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|\)|,|;|\.|\[|\])/g,
     description:
-      'State reporters (broad pattern allowing multi-word reporters with & and \', excludes journal patterns with " L.J/Q/Rev", phantom matches across " v. "/" vs. ", CSM " at " short-form boundaries, and Illinois " R. N" rule-marker boundaries, validated against reporters-db in Phase 3)',
+      'State reporters (broad pattern allowing multi-word reporters with & and \', excludes journal patterns with " L.J/Q/Rev", phantom matches across " v. "/" vs. ", CSM " at " short-form boundaries, Illinois " R. N" rule-marker boundaries, and Id./Ibid. short-form markers (#549), validated against reporters-db in Phase 3)',
     type: "case",
   },
 ]
