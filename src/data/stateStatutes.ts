@@ -94,7 +94,12 @@ export function buildAbbreviatedCodeRegex(): RegExp {
     // year-of-edition paren (`(1985)`, `(West 2018)`, `(Repl. 1996)`)
     // from being absorbed as subsection so the post-process
     // `attachStatuteYearParen` still binds them as `year`/`publisher`.
-    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?|[Ss]ec\\.?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9])|,(?=\\d))*(?:\\s*\\((?![^)]*\\d{4})[^)]*\\)|\\s*\\[[^\\]]*\\])*(?:\\s*et\\s+seq\\.?)?)`,
+    //
+    // Optional subsection-range trailer (`77 P.S. § 513(9) — (16)`)
+    // captured so parseBody can surface the structured `subsectionRange`
+    // field. Dash class accepts multi-hyphen `---` (post `normalizeDashes`
+    // rewrite of em-dash). #591
+    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?|[Ss]ec\\.?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9])|,(?=\\d))*(?:\\s*\\((?![^)]*\\d{4})[^)]*\\)|\\s*\\[[^\\]]*\\])*(?:\\s*[-–—]+\\s*\\([A-Za-z0-9]+\\))?(?:\\s*et\\s+seq\\.?)?)`,
     "g",
   )
 }

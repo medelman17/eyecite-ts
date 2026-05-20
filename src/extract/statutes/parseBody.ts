@@ -43,11 +43,27 @@ function normalizeSubdKeyword(body: string): string {
  */
 const PLAIN_NUMERIC_RANGE_RE = /^(\d+)-(\d+)$/
 
+/**
+ * Subsection range trailer — `(a)-(b)`, `(9)—(16)`, `(1) – (3)`. The
+ * subsection chain may end with a hyphen / en-dash / em-dash followed
+ * by another paren group denoting the range endpoint. Captured here so
+ * `parseBody` can split it off the chain and surface as a structured
+ * `subsectionRange` field; the leading paren group remains the
+ * `subsection` for backward compatibility. #591
+ *
+ * Multi-hyphen form `---` arises after `normalizeDashes` rewrites a
+ * standalone em-dash (`(9) — (16)`) to `(9) --- (16)`. Accept any run
+ * of dashes / unicode dash variants so the cleaned form still matches.
+ */
+const SUBSECTION_RANGE_TRAILER_RE = /\s*[-–—]+\s*(\([A-Za-z0-9]+\))$/
+
 export interface ParsedBody {
   section: string
   /** Structured range end when section is a plain numeric range. #564 */
   sectionRangeEnd?: string
   subsection?: string
+  /** Structured range end when subsection chain ends with `-(N)`. #591 */
+  subsectionRangeEnd?: string
   hasEtSeq: boolean
 }
 
@@ -67,6 +83,22 @@ export function parseBody(rawBody: string): ParsedBody {
   // Normalize CA-style keyword subsections (`, subd. (a)(8)`) to canonical
   // paren-chain (`(a)(8)`) before splitting. #589
   let normalized = normalizeSubdKeyword(stripped)
+
+  // Detect a trailing subsection range (`(a)-(b)`, `(9)—(16)`) BEFORE
+  // collapsing inter-paren whitespace and BEFORE the SUBSECTION_RE split.
+  // The collapsing step would otherwise turn `(9) — (16)` into `(9)—(16)`
+  // and leave the dash inside the chain, which SUBSECTION_RE cannot
+  // express. #591
+  let subsectionRangeEnd: string | undefined
+  const rangeTailMatch = SUBSECTION_RANGE_TRAILER_RE.exec(normalized)
+  // Only treat as a range when the leading char of the dash trailer is
+  // preceded by `)` (i.e. the dash sits between two paren groups, not
+  // inside the section body like `19.2-81`). Strip the trailer from
+  // the body and remember the end endpoint for the caller.
+  if (rangeTailMatch && /\)\s*$/.test(normalized.slice(0, rangeTailMatch.index))) {
+    subsectionRangeEnd = rangeTailMatch[1]
+    normalized = normalized.slice(0, rangeTailMatch.index)
+  }
 
   // Collapse whitespace between consecutive paren/bracket subsection groups
   // (`(a) (8)` → `(a)(8)`, `[a] [b]` → `[a][b]`) so SUBSECTION_RE's
@@ -92,9 +124,10 @@ export function parseBody(rawBody: string): ParsedBody {
       section: sectionBody,
       sectionRangeEnd,
       subsection: subGroups,
+      subsectionRangeEnd,
       hasEtSeq,
     }
   }
 
-  return { section: sectionBody, sectionRangeEnd, hasEtSeq }
+  return { section: sectionBody, sectionRangeEnd, subsectionRangeEnd, hasEtSeq }
 }

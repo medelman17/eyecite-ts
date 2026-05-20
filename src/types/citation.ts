@@ -487,6 +487,15 @@ export interface StatuteCitation extends CitationBase {
   chapter?: string
   /** Subsection/pincite chain, e.g. "(a)(1)(A)" */
   subsection?: string
+  /**
+   * Structured representation of a subsection range like `(a)-(b)` /
+   * `(9)—(16)`. Populated only when the cited subsection chain ends with
+   * a hyphen/en-dash/em-dash followed by another paren group. `start` is
+   * mirrored on the `subsection` field for backward compatibility, so
+   * existing consumers reading `subsection` still see the first endpoint.
+   * (#591)
+   */
+  subsectionRange?: { start: string; end: string }
   /** 2-letter state code or "US" when unambiguously identified */
   jurisdiction?: string
   /**

@@ -30,8 +30,11 @@ import { parseBody } from "./parseBody"
 // Whitespace-tolerant subsection chain (#590): subsection parens may be
 // preceded by `\s*`, with year-paren guard `(?![^)]*\d{4})` so
 // year-of-edition parens (`(1985)`, `(West 2018)`) are not absorbed.
+// Optional `-(N)` range trailer (#591) captured so parseBody can surface
+// the structured `subsectionRange` field. Dash class accepts multi-hyphen
+// `---` (post `normalizeDashes` rewrite of em-dash).
 const ABBREVIATED_RE =
-  /^(?:(\d+)\s+)?(.+?)\s*,?\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9])|,(?=\d))*(?:\s*\((?![^)]*\d{4})[^)]*\)|\s*\[[^\]]*\])*(?:\s*et\s+seq\.?)?)$/d
+  /^(?:(\d+)\s+)?(.+?)\s*,?\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9])|,(?=\d))*(?:\s*\((?![^)]*\d{4})[^)]*\)|\s*\[[^\]]*\])*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)$/d
 
 export function extractAbbreviated(
   token: Token,
@@ -65,7 +68,7 @@ export function extractAbbreviated(
       ? codeEntry.abbreviation
       : abbrevText
 
-  const { section, subsection, hasEtSeq } = parseBody(rawBody)
+  const { section, subsection, subsectionRangeEnd, hasEtSeq } = parseBody(rawBody)
 
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
@@ -125,6 +128,10 @@ export function extractAbbreviated(
     code,
     section,
     subsection,
+    subsectionRange:
+      subsection && subsectionRangeEnd
+        ? { start: subsection, end: subsectionRangeEnd }
+        : undefined,
     pincite: subsection,
     jurisdiction,
     hasEtSeq: hasEtSeq || undefined,

@@ -32,8 +32,13 @@ export const statutePatterns: Pattern[] = [
     // any paren whose content contains a 4-digit year-like number, so
     // the post-process `attachStatuteYearParen` still binds them as
     // `year`/`publisher`. #590
+    //
+    // Optional subsection-range trailer (`§§ 311(a)-(b)`) consumed so
+    // parseBody can surface the structured `subsectionRange` field.
+    // Dash class accepts multi-hyphen `---` (post `normalizeDashes`
+    // rewrite of em-dash). #591
     regex:
-      /\b(\d+)\s+(?:U\.?S\.?C\.?A?\.?|USCA?|United\s+States\s+Code)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s+(?:U\.?S\.?C\.?A?\.?|USCA?|United\s+States\s+Code)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
     description:
       'U.S. Code citations (U.S.C., USC, USCA, "United States Code") with optional §/Section connector — #428',
     type: "statute",
@@ -44,9 +49,11 @@ export const statutePatterns: Pattern[] = [
     // connector (`§§?` / `Part` / `Section`) is OPTIONAL. #428
     id: "cfr",
     // Whitespace-tolerant subsection chain (#590) — see `usc` comment for
-    // the year-paren guard rationale.
+    // the year-paren guard rationale. Optional `-(N)` range trailer
+    // captured for parseBody to surface as `subsectionRange`. Dash class
+    // accepts multi-hyphen `---` (post `normalizeDashes` rewrite). #591
     regex:
-      /\b(\d+)\s+C\.?F\.?R\.?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s+C\.?F\.?R\.?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
     description:
       'Code of Federal Regulations with optional Part/§/Section connector — #428',
     type: "statute",

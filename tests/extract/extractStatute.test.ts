@@ -2687,6 +2687,62 @@ describe("extractStatute", () => {
     })
   })
 
+  // #591 — `(a)-(b)` / `(9)—(16)` range subsections previously dropped the
+  // second endpoint. `35 U.S.C. §§ 311(a)-(b)` extracted as section "311"
+  // with subsection "(a)" and the `-(b)` sliced off. Add `subsectionRange`
+  // structured field; keep `subsection` = start for backward compatibility.
+  describe("Range subsections (#591)", () => {
+    it("captures `35 U.S.C. §§ 311(a)-(b)` as subsectionRange (a) → (b)", () => {
+      const cites = extractCitations("see 35 U.S.C. §§ 311(a)-(b).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("311")
+        expect(cites[0].subsection).toBe("(a)")
+        expect(cites[0].subsectionRange).toEqual({ start: "(a)", end: "(b)" })
+        // matchedText must include the range so downstream consumers
+        // see a signal that the second endpoint exists.
+        expect(cites[0].matchedText).toContain("(a)-(b)")
+      }
+    })
+
+    it("captures `37 C.F.R. § 42.107(a)-(b)`", () => {
+      const cites = extractCitations("see 37 C.F.R. § 42.107(a)-(b).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("42.107")
+        expect(cites[0].subsection).toBe("(a)")
+        expect(cites[0].subsectionRange).toEqual({ start: "(a)", end: "(b)" })
+      }
+    })
+
+    it("captures `77 P.S. § 513(9) — (16)` (em-dash with spaces)", () => {
+      const cites = extractCitations("see 77 P.S. § 513(9) — (16).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("513")
+        expect(cites[0].subsection).toBe("(9)")
+        expect(cites[0].subsectionRange).toEqual({ start: "(9)", end: "(16)" })
+      }
+    })
+
+    it("does not set subsectionRange for plain `(a)(1)` chain (no range)", () => {
+      const cites = extractCitations("see 42 U.S.C. § 1983(a)(1).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].subsection).toBe("(a)(1)")
+        expect(cites[0].subsectionRange).toBeUndefined()
+      }
+    })
+  })
+
   describe("Tennessee T.C.A. variants + postfix (#398)", () => {
     it("extracts `T.C.A. sec. 40-2407` (sec. connector)", () => {
       const cites = extractCitations("See T.C.A. sec. 40-2407.").filter(
