@@ -2793,6 +2793,16 @@ export function extractCase(
     if (unpubMatch) {
       parenAfterToken = parenAfterToken.substring(unpubMatch[0].length)
     }
+    // Georgia-style parenthesized parallel cite (#524): when this cite is the
+    // inside of a `( ... )` parallel wrapper, the chars immediately after the
+    // page are `) (year)`. Consume the single leading close-paren/bracket so
+    // the trailing year paren is reachable by LOOKAHEAD_PAREN_REGEX. Only
+    // strip ONE close-bracket — deeper nesting is too ambiguous to attribute
+    // safely. Repro: `275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)`.
+    const wrapperCloseMatch = /^\s*[)\]]/.exec(parenAfterToken)
+    if (wrapperCloseMatch) {
+      parenAfterToken = parenAfterToken.substring(wrapperCloseMatch[0].length)
+    }
     const lookAheadMatch = LOOKAHEAD_PAREN_REGEX.exec(parenAfterToken)
     if (lookAheadMatch && !isNonMetadataParenContent(lookAheadMatch[1])) {
       parentheticalContent = lookAheadMatch[1]
