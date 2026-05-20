@@ -19,8 +19,9 @@ export const statutePatterns: Pattern[] = [
   {
     // U.S. Code — Bluebook canonical `42 U.S.C. § 1983` plus court-published
     // variants: `42 USC 1983` (no periods, no §), `11 USCA § 544(a)(3)` (West
-    // annotated), `49 U.S.C. Section 1513` (spelled-out "Section"), `42
-    // United States Code section 1983` (fully spelled-out code name). #428
+    // annotated), `26 U.S.C.S. § 7433` (LEXIS-annotated), `49 U.S.C. Section
+    // 1513` (spelled-out "Section"), `42 United States Code section 1983`
+    // (fully spelled-out code name). #428 #584
     //
     // The connector (`§§?` / `[Ss]ections?` / `[Ss]ec\.?`) is OPTIONAL —
     // bare `N USC NNNN` form omits any connector. The leading `\b(\d+)`
@@ -31,16 +32,36 @@ export const statutePatterns: Pattern[] = [
     // must NOT be absorbed — negative lookahead `(?![^)]*\d{4})` excludes
     // any paren whose content contains a 4-digit year-like number, so
     // the post-process `attachStatuteYearParen` still binds them as
-    // `year`/`publisher`. #590
+    // `year`/`publisher`. #590 (Sprint F)
     //
     // Optional subsection-range trailer (`§§ 311(a)-(b)`) consumed so
     // parseBody can surface the structured `subsectionRange` field.
     // Dash class accepts multi-hyphen `---` (post `normalizeDashes`
-    // rewrite of em-dash). #591
+    // rewrite of em-dash). #591 (Sprint F)
+    //
+    // Code-name body `U\.?S\.?C\.?[AS]?\.?` admits a trailing `A` (West
+    // U.S.C.A.) or `S` (LEXIS U.S.C.S.); both annotated editions
+    // canonicalize to `U.S.C.` in extractFederal. #584
+    //
+    // Title→code separator admits an optional comma (`Title 18, U.S.C.
+    // § 3742`) — appellate panels write the comma form as often as the
+    // bare `Title NN U.S.C.` prose. The no-comma form previously
+    // worked by accident (the embedded `18 U.S.C. § 3742` substring
+    // matched with the leading `Title` word left outside the match);
+    // the comma form broke that accident because `18, U.S.C.` cannot
+    // satisfy `\d+\s+U\.S\.C\.`. The `\s*,?\s+` separator requires at
+    // least one space after the optional comma so malformed `18,U.S.C.`
+    // (no space) does not tokenize. #586
+    //
+    // Code→connector separator also admits an optional comma (`42
+    // U.S.C., § 1983`) — this style appears in older opinions and
+    // some agency/regulatory publications. The Sprint F year-paren
+    // guard `(?![^)]*\d{4})` lives INSIDE the subsection body (after
+    // the section digits) and is preserved intact by this fix. #587
     regex:
-      /\b(\d+)\s+(?:U\.?S\.?C\.?A?\.?|USCA?|United\s+States\s+Code)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s*,?\s+(?:U\.?S\.?C\.?[AS]?\.?|USC[AS]?|United\s+States\s+Code)\s*,?\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
     description:
-      'U.S. Code citations (U.S.C., USC, USCA, "United States Code") with optional §/Section connector — #428',
+      'U.S. Code citations (U.S.C., USC, USCA, USCS, "United States Code") with optional §/Section connector — #428 #584 #586 #587',
     type: "statute",
   },
   {
@@ -52,9 +73,14 @@ export const statutePatterns: Pattern[] = [
     // the year-paren guard rationale. Optional `-(N)` range trailer
     // captured for parseBody to surface as `subsectionRange`. Dash class
     // accepts multi-hyphen `---` (post `normalizeDashes` rewrite). #591
+    //
+    // Code→connector separator admits an optional comma (`12 C.F.R.,
+    // § 226`) — symmetric to the USC fix for #587. The Sprint F
+    // year-paren guard `(?![^)]*\d{4})` is preserved intact.
     regex:
-      /\b(\d+)\s+C\.?F\.?R\.?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
-    description: "Code of Federal Regulations with optional Part/§/Section connector — #428",
+      /\b(\d+)\s+C\.?F\.?R\.?\s*,?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
+    description:
+      'Code of Federal Regulations with optional Part/§/Section connector — #428 #587',
     type: "statute",
   },
   {
