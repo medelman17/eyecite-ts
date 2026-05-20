@@ -1340,6 +1340,18 @@ export function extractCaseName(
     adjustedSearchStart = searchStart + lastBoundaryIndex
   }
 
+  // Issue #509: When the citation core sits inside a sentence-internal
+  // parenthetical that does NOT also contain the caption — i.e.,
+  // `Name, (vol Reporter page)` — the precedingText ends with `, (` and the
+  // V_CASE_NAME_REGEX never matches because it anchors on a trailing comma
+  // or year-paren. Strip a trailing `(\s*$` so the caption (which lives
+  // outside the paren) is reachable.
+  //
+  // This is safe relative to #512 (`(Name v. Name, vol Reporter page)`)
+  // because the caption is INSIDE the wrapping paren in that case, so
+  // precedingText ends with `, ` not `(`.
+  precedingText = precedingText.replace(/\(\s*$/, "")
+
   // Priority 1: Standard "v." or "vs." format with comma before citation
   // Match party names with letters, numbers (for "Doe No. 2"), periods, apostrophes, ampersands, hyphens, slashes
   const vMatch = V_CASE_NAME_REGEX.exec(precedingText)
