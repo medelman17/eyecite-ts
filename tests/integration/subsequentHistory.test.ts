@@ -18,27 +18,36 @@ describe("subsequent history linking (#73)", () => {
     }
   })
 
-  it("links chained history — all entries on original parent", () => {
+  it("links chained history — each entry stays on its immediate parent (#527)", () => {
+    // Chain semantics: in `<root>, aff'd, <A>, cert. denied, <B>`, A is the
+    // affirmance of the root, and B is the cert. denial OF A (not of root).
+    // Each chain link's signal entry therefore belongs to the immediately-
+    // preceding cite, not to the original chain root. Before the #527 fix,
+    // Union-Find collapsed everything onto the root.
     const citations = extractCitations(
       "Smith v. Jones, 500 F.2d 123 (2d Cir. 1990), aff'd, 501 U.S. 1 (1991), cert. denied, 502 U.S. 2 (1992)",
     )
     expect(citations.length).toBeGreaterThanOrEqual(3)
     expect(citations[0].type).toBe("case")
     if (citations[0].type === "case") {
-      expect(citations[0].subsequentHistoryEntries).toHaveLength(2)
+      // Root has only its own direct child signal (affirmed) — NOT cert_denied.
+      expect(citations[0].subsequentHistoryEntries).toHaveLength(1)
       expect(citations[0].subsequentHistoryEntries?.[0].signal).toBe("affirmed")
       expect(citations[0].subsequentHistoryEntries?.[0].order).toBe(0)
-      expect(citations[0].subsequentHistoryEntries?.[1].signal).toBe("cert_denied")
-      expect(citations[0].subsequentHistoryEntries?.[1].order).toBe(1)
     }
-    // Both children point back to parent
+    // 501 U.S. 1 is the affirming cite; its own scanner-captured entries hold
+    // the downstream `cert. denied`.
     expect(citations[1].type).toBe("case")
     if (citations[1].type === "case") {
       expect(citations[1].subsequentHistoryOf).toEqual({ index: 0, signal: "affirmed" })
+      expect(citations[1].subsequentHistoryEntries).toHaveLength(1)
+      expect(citations[1].subsequentHistoryEntries?.[0].signal).toBe("cert_denied")
     }
+    // 502 U.S. 2 (the cert. denied result) points at the AFFIRMING cite (1),
+    // not the original root (0).
     expect(citations[2].type).toBe("case")
     if (citations[2].type === "case") {
-      expect(citations[2].subsequentHistoryOf).toEqual({ index: 0, signal: "cert_denied" })
+      expect(citations[2].subsequentHistoryOf).toEqual({ index: 1, signal: "cert_denied" })
     }
   })
 

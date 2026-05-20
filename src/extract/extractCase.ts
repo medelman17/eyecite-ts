@@ -547,6 +547,58 @@ function isSignalWord(word: string): word is ParentheticalType {
 /** Matches a leading word (used to extract signal word candidate) */
 const LEADING_WORD_REGEX = /^([a-z]+)\b/i
 
+/**
+ * Detect parenthetical content that *cannot* be a metadata paren —
+ * three shapes, all symptoms of #522 (nested-paren leak):
+ *
+ * 1. Unbalanced parens (more `(` than `)`): the regex truncated past an
+ *    inner open paren and the actual paren extends further. Common shape:
+ *    `quoting X v. Y, ... (1995` (closing `)` consumed as the regex's own).
+ *
+ * 2. Leading signal word (`quoting`, `citing`, `holding`, etc.): explanatory
+ *    prose, never metadata.
+ *
+ * 3. Nested `(YYYY)` inside the content: the inner year belongs to a quoted
+ *    citation (`see Foo v. Bar, 100 U.S. 1 (1995)`) — and broader Bluebook
+ *    metadata parens never contain a nested year paren. Catches `see`/`but
+ *    see`/`accord`/etc. lead-ins that aren't in `SIGNAL_WORDS` but still
+ *    follow the same explanatory shape with a nested year paren.
+ *
+ * Before this guard, all three shapes ran through `parseParenthetical`, which
+ * picked up the first 4-digit token as a year (often a page number from
+ * inside the nested paren) and the entire prose body as a court — corrupting
+ * the outer cite. The lookahead, in-token paren, and classification paths
+ * gate metadata extraction on this check before calling `parseParenthetical`.
+ *
+ * NOTE: `collectParentheticals` uses depth-tracking and returns balanced
+ * content, but the balanced content can still fall into shape #3 (e.g., the
+ * full `see ... (1995)`). The check applies uniformly across all paren paths.
+ */
+function isNonMetadataParenContent(content: string): boolean {
+  // Unbalanced parens: more `(` than `)` means the lookahead regex stopped at
+  // an inner `)` and the actual paren extends further.
+  let depth = 0
+  for (const ch of content) {
+    if (ch === "(") depth++
+    else if (ch === ")") depth--
+  }
+  if (depth > 0) return true
+
+  // Leading signal word — explanatory paren, not metadata.
+  const leadingMatch = LEADING_WORD_REGEX.exec(content)
+  if (leadingMatch) {
+    const candidate = leadingMatch[1].toLowerCase()
+    if (isSignalWord(candidate)) return true
+  }
+
+  // Nested `(YYYY)` inside the content — the inner year paren marks an
+  // embedded citation (`see Foo, 100 U.S. 1 (1995)`). A real metadata paren
+  // never contains another year paren.
+  if (/\(\d{4}\)/.test(content)) return true
+
+  return false
+}
+
 /** Standard "v." or "vs." case name format.
  *
  *  The trailing alternation accepts either a comma (Bluebook form:
@@ -1848,24 +1900,48 @@ interface CollectedParentheticals {
 }
 
 /**
+ * Hard safety ceiling on how far the paren depth-tracker scans past
+ * `maxLookahead` when chasing a matching close paren that lives beyond the
+ * window. 10,000 chars is well past anything legal text produces (the
+ * longest explanatory parentheticals in modern caselaw run ~1500 chars).
+ * The scanner exits the moment depth returns to 0, so the ceiling is only
+ * touched on pathological inputs (unclosed parens). See #528.
+ */
+const PAREN_CLOSE_HARD_CEILING = 10000
+
+/**
  * Collect all top-level parenthetical blocks starting from a position.
  * Uses depth tracking to handle nested parens. Continues scanning through
  * chained parentheticals and subsequent history signals.
  *
  * @param text - Full text to scan
  * @param startPos - Position to start scanning (typically after citation core)
- * @param maxLookahead - Maximum characters to scan forward (default 500)
+ * @param maxLookahead - Soft cap on how far the scanner looks for a NEW
+ *   parenthetical or signal (default 2000 chars — comfortably larger than
+ *   the worst-case modern explanatory paren and any trailing history
+ *   clause). The pre-#528 default was 500, which silently dropped any
+ *   explanatory paren whose closing `)` fell past the limit AND any history
+ *   clause that followed it.
+ *
+ *   Once an opening `(` is found inside the window, the depth-tracking loop
+ *   chases the matching `)` up to `PAREN_CLOSE_HARD_CEILING` chars from the
+ *   citation, so a paren whose body overflows `maxLookahead` is still
+ *   captured intact. Linear walk + early termination keeps the perf cost
+ *   bounded.
  * @returns Collected parentheticals with associated signals
  */
 function collectParentheticals(
   text: string,
   startPos: number,
-  maxLookahead = 500,
+  maxLookahead = 2000,
 ): CollectedParentheticals {
   const parens: RawParenthetical[] = []
   const signals: CollectedParentheticals["signals"] = []
   let pos = startPos
   const endLimit = Math.min(text.length, startPos + maxLookahead)
+  // Hard ceiling for the inner depth-tracking loop. Allows a paren whose
+  // closing `)` lives outside `endLimit` to still be captured intact (#528).
+  const hardEndLimit = Math.min(text.length, startPos + PAREN_CLOSE_HARD_CEILING)
   let pendingSignal: RawSignal | undefined
 
   // Skip past any pincite text between core citation and parentheticals.
@@ -1909,12 +1985,14 @@ function collectParentheticals(
       break
     }
 
-    // Found opening paren — track depth to find matching close
+    // Found opening paren — track depth to find matching close.
+    // Allow the inner loop to run up to `hardEndLimit` so a paren whose
+    // body overflows the soft `maxLookahead` is still captured intact.
     const parenStart = pos
     let depth = 0
     const contentStart = pos + 1
 
-    while (pos < endLimit) {
+    while (pos < hardEndLimit) {
       const char = text[pos]
       if (char === "(") {
         depth++
@@ -2112,14 +2190,17 @@ export function parseParenthetical(content: string): {
   // unpublished table decision. Checked before en banc/per curiam.
   if (/^plurality\s+opinion\b/i.test(content.trim())) {
     result.disposition = "plurality opinion"
+    clearCourtIfDisposition(result, "plurality opinion")
     return result
   }
   if (/^mem\.\s*$/i.test(content.trim())) {
     result.disposition = "mem."
+    clearCourtIfDisposition(result, "mem.")
     return result
   }
   if (/^unpublished\s+table\s+decision\b/i.test(content.trim())) {
     result.disposition = "unpublished table decision"
+    clearCourtIfDisposition(result, "unpublished table decision")
     return result
   }
 
@@ -2131,13 +2212,41 @@ export function parseParenthetical(content: string): {
   // — added as a separate disposition value to preserve the CA distinction.
   if (/\ben banc\b\s*$/i.test(content.trim())) {
     result.disposition = "en banc"
+    clearCourtIfDisposition(result, "en banc")
   } else if (/\bin bank\b\s*$/i.test(content.trim())) {
     result.disposition = "in bank"
+    clearCourtIfDisposition(result, "in bank")
   } else if (/\bper curiam\b\s*$/i.test(content.trim())) {
     result.disposition = "per curiam"
+    clearCourtIfDisposition(result, "per curiam")
   }
 
   return result
+}
+
+/**
+ * Strip a disposition phrase from `result.court` when the court field is *only*
+ * the disposition text (e.g., `(per curiam)` content yields
+ * `court="per curiam"` from `stripDateFromCourt`, since it returns any
+ * letter-bearing string after stripping date components). Disposition is
+ * orthogonal to court — keeping both with the same value lets the disposition
+ * leak into the court field downstream, overriding reporter-based inference
+ * (e.g., SCOTUS for `455 U.S. 478 (1982) (per curiam)`). See #529.
+ *
+ * If court contains additional non-disposition text (e.g., `9th Cir. (en banc)`
+ * — pathological but theoretically possible), preserve it.
+ */
+function clearCourtIfDisposition(
+  result: { court?: string; courtStart?: number; courtEnd?: number },
+  disposition: string,
+): void {
+  if (!result.court) return
+  const normalized = result.court.trim().toLowerCase()
+  if (normalized === disposition.toLowerCase()) {
+    result.court = undefined
+    result.courtStart = undefined
+    result.courtEnd = undefined
+  }
 }
 
 /**
@@ -2168,6 +2277,12 @@ function classifyParenthetical(raw: string):
     if (isSignalWord(candidate)) {
       return { kind: "explanatory", text: raw, type: candidate }
     }
+  }
+
+  // Non-metadata shape (nested year paren, unbalanced, etc.) — classify as
+  // explanatory `other` so it never feeds `parseParenthetical`. See #522.
+  if (isNonMetadataParenContent(raw)) {
+    return { kind: "explanatory", text: raw, type: "other" }
   }
 
   // Try metadata parse: court, year, date, disposition
@@ -2595,7 +2710,7 @@ export function extractCase(
   // When a nominative reporter is present, the first paren in token text is the
   // nominative (e.g., "(2 Black)") — skip it so the year/court look-ahead runs.
   const parenMatch = PAREN_REGEX.exec(text)
-  if (parenMatch && !nominativeVolume) {
+  if (parenMatch && !nominativeVolume && !isNonMetadataParenContent(parenMatch[1])) {
     parentheticalContent = parenMatch[1]
     // Parse parenthetical using unified parser
     metaParenResult = parseParenthetical(parentheticalContent)
@@ -2663,7 +2778,7 @@ export function extractCase(
       parenAfterToken = parenAfterToken.substring(unpubMatch[0].length)
     }
     const lookAheadMatch = LOOKAHEAD_PAREN_REGEX.exec(parenAfterToken)
-    if (lookAheadMatch) {
+    if (lookAheadMatch && !isNonMetadataParenContent(lookAheadMatch[1])) {
       parentheticalContent = lookAheadMatch[1]
       // Parse parenthetical using unified parser
       metaParenResult = parseParenthetical(parentheticalContent)

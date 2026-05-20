@@ -12,7 +12,6 @@
  */
 
 import { cleanText } from "@/clean"
-import { UnionFind } from "@/extract/unionFind"
 import { detectFootnotes } from "@/footnotes/detectFootnotes"
 import { mapFootnoteZones } from "@/footnotes/mapZones"
 import { tagCitationsWithFootnotes } from "@/footnotes/tagging"
@@ -614,8 +613,11 @@ export async function extractCitationsAsync(
  * Replaces the old mutation-during-iteration pattern with cleanly separated phases.
  */
 function linkSubsequentHistory(citations: Citation[]): void {
-  // Phase 1: Signal matching — collect (parent, child) pairs without mutating citations.
-  // Also record each child's signal text for back-pointer assignment in Phase 3.
+  // Phase 1: Signal matching — collect (parent, child) pairs without mutating
+  // citations. Each parent walks its own scanner-captured
+  // `subsequentHistoryEntries`; each entry is paired with the nearest case
+  // citation that starts after the entry's signal text. Multiple parents may
+  // pair with the same child when parallel cites share a trailing signal.
   const pairs: Array<{ parentIdx: number; childIdx: number; signal: HistorySignal }> = []
 
   for (let i = 0; i < citations.length; i++) {
@@ -639,50 +641,36 @@ function linkSubsequentHistory(citations: Citation[]): void {
 
   if (pairs.length === 0) return
 
-  // Phase 2: Union — build connected components from parent-child pairs.
-  const uf = new UnionFind(citations.length)
+  // Phase 2: Resolve each child to its canonical parent. When several pairs
+  // target the same child (e.g., a parent + its parallel-cite siblings all
+  // carry the same trailing signal on their own `subsequentHistoryEntries`),
+  // the parent with the LOWEST index wins — that's the primary cite of the
+  // immediately-preceding chain link. The scanner only attaches signals it
+  // sees BEFORE encountering the next citation token, so a non-primary
+  // upstream cite cannot pair with this child unless it sits in the same
+  // parallel group as the primary — picking the lowest index naturally points
+  // at the primary. The previous Union-Find approach collapsed every chain
+  // link onto a single root, which (a) wrongly attributed second-tier history
+  // entries to the original cite (`cert. denied` of an `aff'd` child became
+  // the original's cert. denial) and (b) destroyed the second-tier child's
+  // own `subsequentHistoryEntries`. Closes #527.
+  const bestParent = new Map<number, { parentIdx: number; signal: HistorySignal }>()
   for (const pair of pairs) {
-    uf.union(pair.parentIdx, pair.childIdx)
-  }
-
-  // Build lookup: childIdx → signal (for back-pointer assignment)
-  const childSignals = new Map<number, HistorySignal>()
-  for (const pair of pairs) {
-    childSignals.set(pair.childIdx, pair.signal)
-  }
-
-  // Phase 3: Aggregation — set back-pointers and collect entries onto chain roots.
-  for (const [root, members] of uf.components()) {
-    if (members.length === 1) continue
-
-    const rootCitation = citations[root]
-    if (rootCitation.type !== "case") continue
-
-    const allEntries = [...(rootCitation.subsequentHistoryEntries ?? [])]
-
-    for (const memberIdx of members) {
-      if (memberIdx === root) continue
-
-      const member = citations[memberIdx]
-      if (member.type !== "case") continue
-
-      // Set back-pointer to chain root.
-      // Signal is guaranteed to exist: every non-root member was recorded as a
-      // child in Phase 1, which always stores the signal in childSignals.
-      const signal = childSignals.get(memberIdx)
-      if (!signal) continue
-      member.subsequentHistoryOf = { index: root, signal }
-
-      // Aggregate entries from non-root members onto the root
-      if (member.subsequentHistoryEntries) {
-        for (const entry of member.subsequentHistoryEntries) {
-          allEntries.push({ ...entry, order: allEntries.length })
-        }
-        member.subsequentHistoryEntries = undefined
-      }
+    const current = bestParent.get(pair.childIdx)
+    if (!current || pair.parentIdx < current.parentIdx) {
+      bestParent.set(pair.childIdx, { parentIdx: pair.parentIdx, signal: pair.signal })
     }
+  }
 
-    rootCitation.subsequentHistoryEntries = allEntries
+  // Phase 3: Set back-pointers on children. Entries stay where the scanner
+  // attached them — the root's own scanner-captured entries are correct
+  // (just `affirmed`, not the downstream `cert. denied`), and each downstream
+  // cite keeps its own scanner-captured entries (e.g., the affirming cite
+  // keeps `[cert. denied]`).
+  for (const [childIdx, { parentIdx, signal }] of bestParent) {
+    const child = citations[childIdx]
+    if (child.type !== "case") continue
+    child.subsequentHistoryOf = { index: parentIdx, signal }
   }
 }
 
