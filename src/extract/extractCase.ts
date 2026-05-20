@@ -203,8 +203,14 @@ const LOOKAHEAD_PAREN_REGEX =
 // Range separators (#516): tilde (`~`) is accepted as a range separator
 // alongside hyphen / en-dash / em-dash. Tilde shows up as an OCR artifact
 // in some scanned reporters and PDF dehyphenators.
+//
+// Footnote-only pincite (#515): a footnote reference without a preceding
+// page (`, n. 7` / `, note 7` / `, nn. 3-5` / `, fn. 4`) is accepted as
+// the trailing alternation. `parsePincite` surfaces this as
+// `pinciteInfo.footnote` with `page=undefined`. The leading `at` prefix is
+// allowed for symmetry with the page-bearing forms.
 const LOOKAHEAD_PINCITE_REGEX =
-  /^(?:\s+at\s+(?:(?:pp?\.|pages?)\s*)?|,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?)(\*?\d+(?:[-–—~]\*?\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)?|¶¶?\s*\d+(?:[-–—~]\d+)?|paras?\.?\s*\d+(?:[-–—~]\d+)?)(?=$|[.,:;)(\[\]»"'“”‘’]|\s(?![A-Z]))/d
+  /^(?:\s+at\s+(?:(?:pp?\.|pages?)\s*)?|,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?)(\*?\d+(?:[-–—~]\*?\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)?|¶¶?\s*\d+(?:[-–—~]\d+)?|paras?\.?\s*\d+(?:[-–—~]\d+)?|(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)(?=$|[.,:;)(\[\]»"'“”‘’]|\s(?![A-Z]))/d
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
