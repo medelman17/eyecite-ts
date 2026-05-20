@@ -65,9 +65,10 @@ describe("extractFederal", () => {
       expect(c.hasEtSeq).toBe(true)
     })
 
-    it("should handle section ranges with §§", () => {
+    it("should handle section ranges with §§ (structured range, #564)", () => {
       const c = extractFederal(makeToken("42 U.S.C. §§ 1983-1988", "usc"), map)
-      expect(c.section).toBe("1983-1988")
+      expect(c.section).toBe("1983")
+      expect(c.sectionRange).toEqual({ start: "1983", end: "1988" })
     })
 
     it("should handle alphanumeric sections", () => {

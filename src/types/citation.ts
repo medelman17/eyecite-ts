@@ -459,6 +459,15 @@ export interface StatuteCitation extends CitationBase {
   title?: number
   code: string
   section: string
+  /**
+   * Structured representation of a `§§ N-M` range. Populated only for
+   * citations where the section field is unambiguously a numeric range
+   * (typically federal `28 U.S.C. §§ 591-99`). Hyphenated state-style
+   * sections (`19.2-81`, `32A-2-7`) are NOT ranges and leave this
+   * undefined. `start` is mirrored on the `section` field for backward
+   * compatibility. (#564)
+   */
+  sectionRange?: { start: string; end: string }
   /** Subsection/pincite chain, e.g. "(a)(1)(A)" */
   subsection?: string
   /** 2-letter state code or "US" when unambiguously identified */
