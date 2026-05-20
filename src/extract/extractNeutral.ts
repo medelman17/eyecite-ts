@@ -33,7 +33,7 @@ import { parsePincite, type PinciteInfo } from "./pincite"
  *  Star-pagination, paragraph, and explicit `at`-keyword forms are exempted
  *  from this guard because they cannot be confused with a parallel cite. */
 const NEUTRAL_PINCITE_LOOKAHEAD =
-  /^(?:\s+at\s+|,\s*(?:at\s+(?:pp?\.\s*)?)?)(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)(?=$|[.,:;)(\[\]»"'“”‘’]|\s(?![A-Z]))/d
+  /^(?:\s+at\s+|,\s*(?:at\s+(?:pp?\.\s*)?)?)(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)(?=$|[.,:;)([\]»"'“”‘’]|\s(?![A-Z]))/d
 
 /** Trailing `(court date)` parenthetical lookahead for database cites.
  *  Allows optional intervening pincite (`, at *3`) per #191. The body

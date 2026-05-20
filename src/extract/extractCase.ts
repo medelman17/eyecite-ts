@@ -210,7 +210,7 @@ const LOOKAHEAD_PAREN_REGEX =
 // `pinciteInfo.footnote` with `page=undefined`. The leading `at` prefix is
 // allowed for symmetry with the page-bearing forms.
 const LOOKAHEAD_PINCITE_REGEX =
-  /^(?:\s+at\s+(?:(?:pp?\.|pages?)\s*)?|,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?)(\*?\d+(?:[-–—~]\*?\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)?|¶¶?\s*\d+(?:[-–—~]\d+)?|paras?\.?\s*\d+(?:[-–—~]\d+)?|(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)(?=$|[.,:;)(\[\]»"'“”‘’]|\s(?![A-Z]))/d
+  /^(?:\s+at\s+(?:(?:pp?\.|pages?)\s*)?|,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?)(\*?\d+(?:[-–—~]\*?\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)?|¶¶?\s*\d+(?:[-–—~]\d+)?|paras?\.?\s*\d+(?:[-–—~]\d+)?|(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)(?=$|[.,:;)([\]»"'“”‘’]|\s(?![A-Z]))/d
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
@@ -234,7 +234,7 @@ const PAREN_SKIP_REGEX = /[\s,]/
 //
 // Range separators include tilde (#516).
 const ADDITIONAL_PINCITE_REGEX =
-  /^,\s*(\*?\d+(?:[-–—~]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)?)(?=$|[.,:;)(\[\]»"'“”‘’]|\s(?![A-Z]))/
+  /^,\s*(\*?\d+(?:[-–—~]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)?)(?=$|[.,:;)([\]»"'“”‘’]|\s(?![A-Z]))/
 
 /** Pincite text that appears between core citation and parentheticals.
  *  Matches: comma-separated page numbers/ranges and optional note refs.
