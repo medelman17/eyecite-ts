@@ -243,6 +243,13 @@ export const COMMON_REPORTERS: ReadonlySet<string> = new Set([
   "Cal.App.5th",
 ])
 
+/** SCOTUS `Black` reporter active years — the only two volumes were
+ *  published 1861-1862 (Vols. 1 and 2). Used by
+ *  {@link resolveNormalizedReporter} to disambiguate the shared `Black.`
+ *  abbreviation from Indiana's `Blackf.` (Blackford) reporter. See #572. */
+const SCOTUS_BLACK_REPORTER_START_YEAR = 1861
+const SCOTUS_BLACK_REPORTER_END_YEAR = 1862
+
 /**
  * Resolve a raw reporter literal to its canonical Bluebook form using the
  * reporters-db lookup (#571).
@@ -266,12 +273,18 @@ export const COMMON_REPORTERS: ReadonlySet<string> = new Set([
  * `normalizedReporter` remains absent in that case, mirroring the
  * pre-#571 behaviour where the field was never populated at all.
  *
- * Caller is responsible for any year-based disambiguation needed when
- * the reporter abbreviation maps to multiple reporters (see #572 for
- * the `Black.` / `Blackf.` case). This helper picks the first matching
- * entry and is unopinionated about era.
+ * Year-based disambiguation (#572): when the literal reporter is `Black.`
+ * (the variation that points to Indiana's `Blackf.`) AND the citation's
+ * year falls inside the SCOTUS `Black` reporter's window
+ * [1861, 1862] inclusive, the result switches to `Black` instead. Outside
+ * that window — or when no year was extracted — the default `Blackf.`
+ * resolution stands. The literal `reporter` field on the citation is
+ * preserved verbatim; only `normalizedReporter` shifts.
  */
-export function resolveNormalizedReporter(reporter: string): string | undefined {
+export function resolveNormalizedReporter(
+  reporter: string,
+  year?: number,
+): string | undefined {
   const reportersDb = getReportersSync()
   if (!reportersDb) return undefined
 
@@ -279,6 +292,22 @@ export function resolveNormalizedReporter(reporter: string): string | undefined 
   if (!matches || matches.length === 0) return undefined
 
   const lower = reporter.toLowerCase()
+
+  // Year-based era disambiguation for `Black.` (#572): the literal
+  // `Black.` only maps to Blackford (Indiana) in reporters-db, but when
+  // the citation year is 1861-1862 the intended reporter is SCOTUS
+  // `Black` (which has no period in canonical form). Apply BEFORE the
+  // generic resolution so the variation lookup doesn't lock us into
+  // `Blackf.` first.
+  if (
+    lower === "black." &&
+    year !== undefined &&
+    year >= SCOTUS_BLACK_REPORTER_START_YEAR &&
+    year <= SCOTUS_BLACK_REPORTER_END_YEAR
+  ) {
+    return "Black"
+  }
+
   for (const entry of matches) {
     // (1) Canonical edition key match — return the literal key (preserves
     // upstream casing/spacing).
@@ -3505,7 +3534,11 @@ export function extractCase(
   // periodless / no-space variants (`F2d`, `Ill2d`, `OhioSt.`) to their
   // canonical editions. Returns `undefined` when reporters-db is not loaded
   // (degraded mode) or no variant/edition matches — see #571.
-  const normalizedReporter = resolveNormalizedReporter(reporter)
+  //
+  // `year` is passed so the resolver can disambiguate shared abbreviations
+  // by era — currently `Black.` (SCOTUS 1861-1862) vs `Blackf.` (Indiana,
+  // 1817-1847). See #572.
+  const normalizedReporter = resolveNormalizedReporter(reporter, year)
 
   return {
     type: "case",
