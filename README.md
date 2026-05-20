@@ -317,19 +317,31 @@ if (cite.type === "case") {
 The `eyecite-ts/utils` entry point provides composable post-processing:
 
 ```typescript
+import { extractCitations, isCaseCitation } from "eyecite-ts"
 import { groupByCase, toBluebook, toReporterKey, getSurroundingContext } from "eyecite-ts/utils"
 
+const citations = extractCitations(text, { resolve: true })
+
 // Group citations by case (parallel + short-form → full)
+// Requires resolved citations — pass `{ resolve: true }` to extractCitations.
 const groups = groupByCase(citations)
 
-// Format as Bluebook citation string
-const formatted = toBluebook(citation)
+// Format as Bluebook citation string (any Citation)
+const formatted = toBluebook(citations[0])
 
-// Get canonical reporter key for deduplication
-const key = toReporterKey(citation) // "500-F.2d-123"
+// Get canonical reporter key for deduplication (full case citations only)
+const first = citations[0]
+if (isCaseCitation(first)) {
+  const key = toReporterKey(first) // "500 F.2d 123"
+}
 
-// Extract surrounding sentence context
-const ctx = getSurroundingContext(text, citation, { chars: 100 })
+// Extract surrounding sentence context (pass a {start, end} span, not the citation)
+const cite = citations[0]
+const ctx = getSurroundingContext(
+  text,
+  { start: cite.span.originalStart, end: cite.span.originalEnd },
+  { maxLength: 100 },
+)
 ```
 
 ## Type System
