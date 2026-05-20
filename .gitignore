@@ -35,3 +35,12 @@ mise.local.toml
 .planning/
 .serena/
 playground.html
+
+# One-off audit / repro scripts (use scripts/bughunt/ for committed harnesses)
+scripts/audit-*.ts
+scripts/repro-*.ts
+scripts/repro_*.ts
+!scripts/repro_546.ts
+!scripts/repro_sprint_g.ts
+scripts/sample-and-judge.ts
+scripts/judge/
