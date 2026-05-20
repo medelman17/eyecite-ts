@@ -50,7 +50,7 @@ The `Span` type carries dual positions: `cleanStart/cleanEnd` (for internal pars
 
 ### Type System
 
-Citations use a discriminated union on the `type` field: `case | statute | journal | neutral | publicLaw | federalRegister | statutesAtLarge | id | supra | shortFormCase`. All share `CitationBase` (text, span, confidence, matchedText, processTimeMs). Switch on `citation.type` for type-safe field access.
+Citations use a discriminated union on the `type` field: `case | docket | statute | journal | neutral | publicLaw | federalRegister | statutesAtLarge | constitutional | id | supra | shortFormCase`. All share `CitationBase` (text, span, confidence, matchedText, processTimeMs). Switch on `citation.type` for type-safe field access.
 - Volume is `number | string` — numeric for standard volumes, string for hyphenated (e.g., "1984-1")
 
 ### Entry Points
