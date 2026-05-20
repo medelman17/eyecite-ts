@@ -32,6 +32,29 @@ describe("Footnote Integration Tests", () => {
       expect(citations[1].footnoteNumber).toBe(1)
     })
 
+    // #542 — cleaner fuses adjacent digits across HTML footnote tags
+    it("does not fuse adjacent digit citations across footnote tag boundary", () => {
+      const text = '100 F.3d 200<footnote label="3">200 F.3d 300</footnote>'
+      const citations = extractCitations(text, { detectFootnotes: true })
+
+      // Must produce TWO citations, not a fused "100 F.3d 200200"
+      expect(citations).toHaveLength(2)
+
+      // Body citation
+      const body = citations.find(
+        (c) => c.matchedText.includes("100 F.3d") && !c.inFootnote,
+      )
+      expect(body).toBeDefined()
+      expect(body?.matchedText).toContain("100 F.3d 200")
+      expect(body?.matchedText).not.toContain("200200")
+
+      // Footnote citation
+      const fn = citations.find((c) => c.inFootnote)
+      expect(fn).toBeDefined()
+      expect(fn?.matchedText).toContain("200 F.3d 300")
+      expect(fn?.footnoteNumber).toBe(3)
+    })
+
     it("multiple footnotes with separate citations", () => {
       // Uses <fn> tags (shorter) to stay within the position mapping system's
       // maxLookAhead=20 window when consecutive tags are stripped.

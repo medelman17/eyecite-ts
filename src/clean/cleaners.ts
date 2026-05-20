@@ -8,12 +8,33 @@
 /**
  * Remove all HTML tags from text.
  *
+ * When a tag (or run of adjacent tags) sits between two word characters,
+ * insert a single space in its place to preserve the token boundary.
+ * Without this guard, adjacent reporter citations separated only by a
+ * footnote tag — e.g. `100 F.3d 200<footnote>200 F.3d 300</footnote>` —
+ * fuse into a single `200200` digit run that the tokenizer reads as one
+ * malformed citation (#542).
+ *
+ * Non-word neighbors (spaces, punctuation, the start or end of the
+ * string) keep the original behavior: tags are removed with no insertion.
+ *
  * @example
  * stripHtmlTags("Smith v. <b>Doe</b>, 500 F.2d 123")
  * // => "Smith v. Doe, 500 F.2d 123"
+ *
+ * @example
+ * stripHtmlTags('100 F.3d 200<footnote>200 F.3d 300</footnote>')
+ * // => "100 F.3d 200 200 F.3d 300 "
  */
 export function stripHtmlTags(text: string): string {
-  return text.replace(/<[^>]+>/g, "")
+  // Collapse adjacent tag runs together so the boundary check sees the
+  // characters surrounding the whole run, not each tag individually.
+  return text.replace(/(?:<[^>]+>)+/g, (match, offset: number) => {
+    const before = offset > 0 ? text[offset - 1] : ""
+    const afterIdx = offset + match.length
+    const after = afterIdx < text.length ? text[afterIdx] : ""
+    return /\w/.test(before) && /\w/.test(after) ? " " : ""
+  })
 }
 
 /**
