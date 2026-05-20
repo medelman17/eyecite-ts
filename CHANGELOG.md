@@ -1,5 +1,219 @@
 # eyecite-ts
 
+## 0.21.2
+
+### Patch Changes
+
+- [#518](https://github.com/medelman17/eyecite-ts/pull/518) [`908e2b5`](https://github.com/medelman17/eyecite-ts/commit/908e2b57a5457a1c5b5a53f630c7dcb8604cda46) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): supra resolution handles `Plaintiff v. Defendant` captions (#504)
+
+  `extractSupra` captures the full caption (`"Fitzgerald v. Cleveland"` for
+  `Fitzgerald v. Cleveland, supra`), but the BK-tree is indexed under the
+  _individual_ normalized plaintiff/defendant names. Querying the combined
+  caption against per-name keys produced Levenshtein distances above the
+  threshold-derived `maxDistance`, so resolution silently failed for every
+  `"X v. Y, supra"` form — ~59% of supra citations in the CAP corpus.
+
+  `resolveSupra` now splits on `v.` / `vs.` and queries each half
+  independently in addition to the combined caption, picking the highest-
+  similarity in-scope match. Single-name supras (`Smith, supra`) and
+  non-caption forms (`Walker & Horwich, supra`) are unaffected.
+
+- [#519](https://github.com/medelman17/eyecite-ts/pull/519) [`466e272`](https://github.com/medelman17/eyecite-ts/commit/466e272bdfb03492cef01435cfbf366ad0ac8a1b) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): pincite terminator class now accepts `:`, `[`, `»`, and curly/straight quotes (#505)
+
+  `LOOKAHEAD_PINCITE_REGEX` and `ADDITIONAL_PINCITE_REGEX` previously required
+  the page-number capture to end at sentence punctuation, closing bracket, or
+  whitespace+non-capital. Real-world citations also delimit the pincite with
+  `:` (block-quote intro), `[` (bracketed parallel cite), `»` (OCR artifact),
+  and the four common curly/straight quote characters. Adding these
+  characters to the terminator class recovers pincites that were silently
+  dropped at ~6–10 per 1,000 citations.
+
+  Now extracts pincite from:
+
+  - `376 N.E.2d 578, 579: "Judgments..."` → 579
+  - `135 Md.App. 563, 570[, 763 A.2d 252] (2000)` → 570
+  - `9 Humph. 187, 193: Love v. Smith` → 193
+  - `38 F. C. C. 683, 713» Id., 713-730` → 713
+  - `376 N.E.2d 578, 579"…"` and curly-quote variants → 579
+
+- [#519](https://github.com/medelman17/eyecite-ts/pull/519) [`466e272`](https://github.com/medelman17/eyecite-ts/commit/466e272bdfb03492cef01435cfbf366ad0ac8a1b) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): neutral cites no longer consume next parallel's volume as pincite (#507)
+
+  In Ohio Bluebook chains like `100 Ohio St.3d 152, 2003-Ohio-5372, 797 N.E.2d
+71, at ¶ 33`, the neutral cite (`2003-Ohio-5372`) was greedily extracting
+  `pincite=797` — the volume of the next parallel — because
+  `NEUTRAL_PINCITE_LOOKAHEAD` had no terminator boundary. It now applies the
+  same parallel-cite disambiguation guard used by `LOOKAHEAD_PINCITE_REGEX`:
+  the pincite digit sequence must end at end-of-string, sentence punctuation,
+  closing bracket, or whitespace NOT followed by a capital letter (a parallel
+  reporter token).
+
+  Remaining work (tracked separately, out of scope here): paragraph-pincite
+  inheritance from the trailing parallel onto earlier parallel members. The
+  third parallel correctly captures `¶ 33`; propagating that pincite to the
+  first `100 Ohio St.3d 152` parallel requires extending `detectParallel` to
+  include neutral cites in the group, plus a post-pass that fills in a
+  shared pincite onto earlier members.
+
+- [#518](https://github.com/medelman17/eyecite-ts/pull/518) [`908e2b5`](https://github.com/medelman17/eyecite-ts/commit/908e2b57a5457a1c5b5a53f630c7dcb8604cda46) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): Id. `antecedentIndex` agrees with `resolvedTo` on success path (#508)
+
+  After #498 made `resolveId` a single-source-of-truth resolver, the two
+  pointers were still computed separately: `resolvedTo` from the family/
+  scope-aware primary chase, `antecedentIndex` from a position-only
+  `findImmediatePredecessor` walk. The two diverged in ~8% of `Id.`
+  citations — typically when an intervening statute sat between a
+  case-style `Id.` and its full case antecedent.
+
+  `resolveId` now sets `antecedentIndex` to the primary-chase result on
+  the success path so consumers see one source of truth.
+  `findImmediatePredecessor` still drives the pass-2 fallback for chained
+  unresolved short-forms. Supra and short-form-case resolution paths are
+  unchanged.
+
+  Note: chained `Id. Id.` sequences (`Smith. Id. Id.`) now report
+  `antecedentIndex = 0` (Smith) on the second `Id.` rather than `1`
+  (first `Id.`), reflecting the post-#498 invariant that `Id.` anchors
+  to a specific resolved authority.
+
+- [#519](https://github.com/medelman17/eyecite-ts/pull/519) [`466e272`](https://github.com/medelman17/eyecite-ts/commit/466e272bdfb03492cef01435cfbf366ad0ac8a1b) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): full-case extractor accepts `at page N` / `at pages N-M` (#510)
+
+  `LOOKAHEAD_PINCITE_REGEX` only allowed the abbreviated `p.` / `pp.` prefix
+  for spelled-out page references, while the short-form extractor already
+  accepts `page` / `pages` (#344). The full-case path now matches, so
+  citations like `90 A.2d 653, at page 655` and `90 A.2d 660, at page 664
+(Del. Sup. Ct. 1952)` extract the pincite correctly. `PINCITE_SKIP_REGEX`
+  is updated in lockstep so later metadata parens still parse after a
+  spelled-out pincite.
+
+- [#519](https://github.com/medelman17/eyecite-ts/pull/519) [`466e272`](https://github.com/medelman17/eyecite-ts/commit/466e272bdfb03492cef01435cfbf366ad0ac8a1b) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): full-case `at *10-*11` star-pincite range now extracted (#513)
+
+  `LOOKAHEAD_PINCITE_REGEX` page body `\*?\d+(?:-\d+)?` only allowed the
+  star-pagination marker on the START of a range. The short-form extractor
+  already allows `\*?\d+[-–—]\*?\d+` (#201), so star ranges with stars on
+  both ends now extract from full-case citations as well. Test case:
+  `2012 PA Super 169 at *10-*11 (Pa.Super.Ct. 2012)`.
+
+- [#518](https://github.com/medelman17/eyecite-ts/pull/518) [`908e2b5`](https://github.com/medelman17/eyecite-ts/commit/908e2b57a5457a1c5b5a53f630c7dcb8604cda46) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): Id. family preference falls back to any in-scope authority (#514)
+
+  `getIdPreferredFamily` defaults to `"case"` for any `Id.` not followed by
+  `§` — including `Id.`, `Id. at N`, and `Id. ¶ N`. In documents whose only
+  prior authority is a statute (~8% of `Id.` citations per the audit), the
+  scorer's `+1000` family-match boost left the candidate set's first entry
+  as the winner only by accident (no preferred-family member to override
+  it). A future scorer refactor could easily regress this.
+
+  `resolveId` now selects the antecedent via an explicit two-step rule:
+  prefer the most recent candidate of the preferred family, otherwise the
+  most recent candidate of any family. The behavior matches the previous
+  implementation but the intent is now obvious in the code, and regression
+  tests pin the statute-only context for both `Id.`, `Id. at N`, and the
+  `Id. ¶ N` "complaint paragraph N" idiom the audit flagged.
+
+- [#519](https://github.com/medelman17/eyecite-ts/pull/519) [`466e272`](https://github.com/medelman17/eyecite-ts/commit/466e272bdfb03492cef01435cfbf366ad0ac8a1b) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): footnote-only pincite (`, n. 7`) no longer silently dropped (#515)
+
+  `PINCITE_REGEX` / `LOOKAHEAD_PINCITE_REGEX` previously made page digits
+  mandatory, so a footnote-only reference (`16 Mass. 299, n. 7.`) — used when
+  the cited material is on the citation's start page and the author only
+  references the footnote — dropped the pincite entirely. `parsePincite` now
+  recognizes a footnote-only branch (`nn?\.\s*\d+(?:[-–—~]\d+)?` plus `note`,
+  `fn`, `fns` variants), and `LOOKAHEAD_PINCITE_REGEX` adds a matching
+  alternation that captures the bare footnote suffix. The structured result
+  surfaces with `footnote=N` / `footnoteEnd=M` and `page=undefined`.
+
+  Now extracts:
+
+  - `16 Mass. 299, n. 7.` → `footnote: 7`
+  - `2 Hoffman's Ch. Pr. 95, n. 3` → `footnote: 3`
+  - `16 Mass. 299, note 7.` → `footnote: 7`
+
+- [#519](https://github.com/medelman17/eyecite-ts/pull/519) [`466e272`](https://github.com/medelman17/eyecite-ts/commit/466e272bdfb03492cef01435cfbf366ad0ac8a1b) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): tilde (`~`) accepted as pincite range separator (#516)
+
+  `LOOKAHEAD_PINCITE_REGEX`, `ADDITIONAL_PINCITE_REGEX`, `PINCITE_SKIP_REGEX`,
+  and the `parsePincite` regexes (page body, footnote suffix, paragraph
+  range) now accept `~` alongside hyphen / en-dash / em-dash as a range
+  separator. Tilde shows up as an OCR artifact in scanned reporters and in
+  some PDF dehyphenators, and dropping it silently lost the range end page.
+
+  Example: `2012 PA Super 169 at *10~*11` now extracts a star-page range
+  with `pincite=10`, `endPage=11`.
+
+- [#520](https://github.com/medelman17/eyecite-ts/pull/520) [`8df11fa`](https://github.com/medelman17/eyecite-ts/commit/8df11fa94fab578d3ba9f64210d67df2743d25b0) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): strip old-style date prefix from caseName + harvest year (#511)
+
+  The pre-Bluebook citation form `Name, YEAR, vol Reporter page` and the
+  more elaborate `Name, COURT, MONTH DAY, YEAR, vol Reporter page` left the
+  date/court tokens inside the captured `caseName` (e.g., `MacPherson v.
+Buick Motor Co., 1916`).
+
+  Add two post-extract caseName trims (alongside the existing trailing
+  parenthetical / parallel-cite / neutral-cite trims):
+
+  - `,\s+(?:Cir|App|Ct|Dist).,\s+<Month> DD, YYYY` for the federal "circuit
+    - filing date" prefix.
+  - `,\s+(?:17|18|19|20)\d{2}` for the bare-year prefix.
+
+  When a year is trimmed, surface it on the citation's `year` field so the
+  historical date isn't lost.
+
+- [#520](https://github.com/medelman17/eyecite-ts/pull/520) [`8df11fa`](https://github.com/medelman17/eyecite-ts/commit/8df11fa94fab578d3ba9f64210d67df2743d25b0) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): recover caseName when citation core sits inside `(...)` (#509)
+
+  Two issues blocked caseName extraction for sentence-internal parenthetical
+  citations like `(Smith v. Jones, 100 F.2d 1)`:
+
+  1. The case-pattern tokenizers (`federal-reporter`, `supreme-court`,
+     `state-reporter`) omitted `)` from their trailing terminator alternation,
+     so `100 F.2d 1)` failed to tokenize as a case at all. Adds `\)` alongside
+     the existing `\s|$|\(|,|;|\.|\[|\]` terminators.
+  2. When the caption sits OUTSIDE the parenthetical (`Name, (vol Reporter
+page)`), `extractCaseName`'s precedingText ends with `, (`, which
+     `V_CASE_NAME_REGEX` can't match because the regex anchors on a trailing
+     comma or year-paren. Strip a trailing `(\s*$` so the comma is reachable.
+
+  The fix is the complement of #512 (which requires the opposite — STOP at
+  the open paren when the caption is INSIDE the wrapper).
+
+- [#520](https://github.com/medelman17/eyecite-ts/pull/520) [`8df11fa`](https://github.com/medelman17/eyecite-ts/commit/8df11fa94fab578d3ba9f64210d67df2743d25b0) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): stop case-name scan at wrapping `(` (#512)
+
+  When a citation appears as a sentence-internal parenthetical
+  `(Name v. Name, vol Reporter page)`, the backward case-name scan
+  absorbed any preceding capitalized prose into the captured caseName
+  (yielding caseNames 100–366 chars long). The V_CASE_NAME_REGEX
+  character class allows `(` inside party names, so adjacent all-cap
+  prose was treated as plaintiff context.
+
+  Add a right-to-left scan for the wrapping paren that has a `v.`-style
+  caption (or procedural prefix) immediately inside. Truncate
+  precedingText to start just after that `(` so the regex sees only the
+  caption. The complement of #509 (paren-before-core, which strips a
+  TRAILING `(\s*$`).
+
+  Guarded against #241 admin-parens (`Spence v. Hintze (In re Hintze)`):
+  when a complete `Name v. Name` caption exists BEFORE the candidate
+  `(`, the `(` is an inline explanatory clause, not a wrapping boundary.
+
+- [#520](https://github.com/medelman17/eyecite-ts/pull/520) [`8df11fa`](https://github.com/medelman17/eyecite-ts/commit/8df11fa94fab578d3ba9f64210d67df2743d25b0) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): reject literal `Id.` / `Ibid.` as caseName (#517)
+
+  The older parallel-reporter form `Id., NN <reporter> NN` (e.g.,
+  `physical injury. Id., 584 N.Y.S.2d 744`) isn't matched by ID_PATTERN
+  (which requires `Id. at <pincite>`), so the tokenizer falls through to
+  the case extractor and the backward case-name scan picks up the bare
+  `Id.` (or `Id`) as a single-party caption — yielding case citations
+  with `caseName="Id."`.
+
+  Refuse short-form citation markers (`Id`, `Id.`, `Ibid`, `Ibid.`,
+  `supra`) as captured captions in the single-party fallback. The case
+  citation still surfaces (so the resolver can attach it to the Id.
+  antecedent's parallel reporter); it just doesn't carry a phantom
+  `caseName`.
+
+- [#520](https://github.com/medelman17/eyecite-ts/pull/520) [`8df11fa`](https://github.com/medelman17/eyecite-ts/commit/8df11fa94fab578d3ba9f64210d67df2743d25b0) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): strip comma-separated signal variants from caseName (#506)
+
+  `SIGNAL_STRIP_REGEX` now accepts older typesetting variants — `See, also,`
+  (extra inter-word comma), `See, generally,`, `See e.g.,` (spaced/comma-less
+  `e.g.`), and the canonical Bluebook forms with relaxed punctuation. A small
+  set of post-signal prose connectors (`the case of`, `the opinion in`) is
+  also stripped so captions like `See also the case of King v. Carter` no
+  longer carry the connector into `caseName`. Mirrors the signal-detection
+  relaxation from PR #503.
+
 ## 0.21.1
 
 ### Patch Changes
