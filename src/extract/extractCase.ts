@@ -199,8 +199,12 @@ const LOOKAHEAD_PAREN_REGEX =
 //
 // Star-pagination range (#513): page body now allows `*` on BOTH ends of
 // the range (`*10-*11`), matching the short-form extractor (#201).
+//
+// Range separators (#516): tilde (`~`) is accepted as a range separator
+// alongside hyphen / en-dash / em-dash. Tilde shows up as an OCR artifact
+// in some scanned reporters and PDF dehyphenators.
 const LOOKAHEAD_PINCITE_REGEX =
-  /^(?:\s+at\s+(?:(?:pp?\.|pages?)\s*)?|,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?)(\*?\d+(?:[-–—]\*?\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)(?=$|[.,:;)(\[\]»"'“”‘’]|\s(?![A-Z]))/d
+  /^(?:\s+at\s+(?:(?:pp?\.|pages?)\s*)?|,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?)(\*?\d+(?:[-–—~]\*?\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)?|¶¶?\s*\d+(?:[-–—~]\d+)?|paras?\.?\s*\d+(?:[-–—~]\d+)?)(?=$|[.,:;)(\[\]»"'“”‘’]|\s(?![A-Z]))/d
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
@@ -221,18 +225,21 @@ const PAREN_SKIP_REGEX = /[\s,]/
 //
 // Terminator class mirrors LOOKAHEAD_PINCITE_REGEX (#505): accept `:`, `[`,
 // `»`, and curly/straight quotes as additional terminators.
+//
+// Range separators include tilde (#516).
 const ADDITIONAL_PINCITE_REGEX =
-  /^,\s*(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)(?=$|[.,:;)(\[\]»"'“”‘’]|\s(?![A-Z]))/
+  /^,\s*(\*?\d+(?:[-–—~]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)?)(?=$|[.,:;)(\[\]»"'“”‘’]|\s(?![A-Z]))/
 
 /** Pincite text that appears between core citation and parentheticals.
  *  Matches: comma-separated page numbers/ranges and optional note refs.
  *  E.g., ", 199 n.2", ", 999-1000", ", 130 n.5", ", at p. 115" (CSM, #236),
  *  ", ¶ 12" / ", paras. 12-14" (paragraph form, #204),
  *  ", at page 115" / ", at pages 100-105" (spelled-out form, #510).
+ *  Range separators include `~` (OCR artifact, #516).
  *  The outer `+` is intentionally greedy to handle multi-pincite citations
  *  (e.g., ", 199, 205, 210"). Safe because the scan window is bounded by maxLookahead. */
 const PINCITE_SKIP_REGEX =
-  /^(?:,\s*(?:(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:n|note)\s*\.?\s*\d+)?|(?:at\s+)?(?:¶¶?|paras?\.?)\s*\d+(?:[-–—]\d+)?))+/
+  /^(?:,\s*(?:(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?\*?\d+(?:[-–—~]\*?\d+)?(?:\s+(?:n|note)\s*\.?\s*\d+)?|(?:at\s+)?(?:¶¶?|paras?\.?)\s*\d+(?:[-–—~]\d+)?))+/
 
 /**
  * Signal normalization table. Longer patterns first so "aff'd on other grounds"
