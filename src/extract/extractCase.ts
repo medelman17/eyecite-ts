@@ -302,9 +302,37 @@ export function computeCaseConfidence(opts: {
 
 /** Matches volume-reporter-page format in citation core, with optional nominative reporter parenthetical.
  *  Reporter character class includes `&` so the BIA `I&N Dec.` / `I. & N. Dec.`
- *  variants parse correctly (#244). */
+ *  variants parse correctly (#244).
+ *
+ *  Trailing lookahead `(?=$|[\s.;,)\]])` ensures the page capture is
+ *  bounded by a real terminator. Without it, greedy reporter backtracking
+ *  can produce wrong splits on inputs like `33 Ill. App. 2d, 100` (the
+ *  reporter character class includes digits, so the greedy match would
+ *  back off to reporter=`Ill. App.`, page=`2`, leaving `d, 100`
+ *  unparsed). With the lookahead the canonical match fails on the
+ *  comma-form input and the caller falls through to
+ *  `VOLUME_REPORTER_PAGE_REGEX_COMMA` instead — see #570. */
 const VOLUME_REPORTER_PAGE_REGEX =
-  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})/d
+  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})(?=$|[\s.;,)\]])/d
+
+/** Comma-form variant of VOLUME_REPORTER_PAGE_REGEX (#570) for the old
+ *  typesetting shape `<vol> <Reporter>, <page>` (`3 Den., 594`,
+ *  `252 S. W., 20`, `26 N. Y., 279`, `217 Ill. App., 427`). Used as a
+ *  fallback ONLY when the canonical-spacing pattern above fails to match
+ *  — running this regex first would let the greedy reporter capture
+ *  swallow a trailing pincite (`500 F.2d 123, 125` would mis-parse as
+ *  `reporter="F.2d 123"`, `page=125`).
+ *
+ *  Reporter capture is lazy (`+?`) so the backtracking prefers
+ *  multi-word reporters with embedded ordinals (`Ill. App. 2d`) over
+ *  collapsing to the prefix. The trailing `(?=$|[.;)\]])` lookahead is
+ *  critical: it rejects phantom matches like
+ *  `10 Corp., 2025 NY Slip Op 00784` where the supposed "page" 2025 is
+ *  the start of the next (neutral) citation. The corresponding
+ *  tokenizer pattern in `src/patterns/casePatterns.ts` uses the same
+ *  terminator constraint. */
+const VOLUME_REPORTER_PAGE_REGEX_COMMA =
+  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+?)\s*,\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})(?=$|[.;)\]])/d
 
 /** Detects blank page placeholders (3+ underscores or dashes) */
 const BLANK_PAGE_REGEX = /^[_-]{3,}$/
@@ -2642,10 +2670,19 @@ export function extractCase(
 ): FullCaseCitation {
   const { text, span } = token
 
-  // Parse volume-reporter-page using regex
+  // Parse volume-reporter-page using regex.
   // Pattern: volume (digits) + reporter (letters/periods/spaces/numbers) + page (digits or blank placeholder)
-  // Use greedy matching for reporter to capture full abbreviation including spaces
-  const match = VOLUME_REPORTER_PAGE_REGEX.exec(text)
+  // Use greedy matching for reporter to capture full abbreviation including spaces.
+  //
+  // Tries the canonical `<vol> <Reporter> <page>` shape first, then falls
+  // back to the comma-form `<vol> <Reporter>, <page>` shape (#570). The
+  // ordering is load-bearing: running the comma-form regex first would
+  // let the greedy reporter capture swallow a trailing pincite when a
+  // caller hands `extractCase` a token whose text already contains
+  // `<core>, <pincite>` (legacy synthetic-token tests do this).
+  const match =
+    VOLUME_REPORTER_PAGE_REGEX.exec(text) ??
+    VOLUME_REPORTER_PAGE_REGEX_COMMA.exec(text)
 
   if (!match) {
     // Fallback if pattern doesn't match (shouldn't happen if tokenizer is correct)
