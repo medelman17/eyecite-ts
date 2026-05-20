@@ -19,8 +19,9 @@ export const statutePatterns: Pattern[] = [
   {
     // U.S. Code — Bluebook canonical `42 U.S.C. § 1983` plus court-published
     // variants: `42 USC 1983` (no periods, no §), `11 USCA § 544(a)(3)` (West
-    // annotated), `49 U.S.C. Section 1513` (spelled-out "Section"), `42
-    // United States Code section 1983` (fully spelled-out code name). #428
+    // annotated), `26 U.S.C.S. § 7433` (LEXIS-annotated), `49 U.S.C. Section
+    // 1513` (spelled-out "Section"), `42 United States Code section 1983`
+    // (fully spelled-out code name). #428 #584
     //
     // The connector (`§§?` / `[Ss]ections?` / `[Ss]ec\.?`) is OPTIONAL —
     // bare `N USC NNNN` form omits any connector. The leading `\b(\d+)`
@@ -31,16 +32,20 @@ export const statutePatterns: Pattern[] = [
     // must NOT be absorbed — negative lookahead `(?![^)]*\d{4})` excludes
     // any paren whose content contains a 4-digit year-like number, so
     // the post-process `attachStatuteYearParen` still binds them as
-    // `year`/`publisher`. #590
+    // `year`/`publisher`. #590 (Sprint F)
     //
     // Optional subsection-range trailer (`§§ 311(a)-(b)`) consumed so
     // parseBody can surface the structured `subsectionRange` field.
     // Dash class accepts multi-hyphen `---` (post `normalizeDashes`
-    // rewrite of em-dash). #591
+    // rewrite of em-dash). #591 (Sprint F)
+    //
+    // Code-name body `U\.?S\.?C\.?[AS]?\.?` admits a trailing `A` (West
+    // U.S.C.A.) or `S` (LEXIS U.S.C.S.); both annotated editions
+    // canonicalize to `U.S.C.` in extractFederal. #584
     regex:
-      /\b(\d+)\s+(?:U\.?S\.?C\.?A?\.?|USCA?|United\s+States\s+Code)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s+(?:U\.?S\.?C\.?[AS]?\.?|USC[AS]?|United\s+States\s+Code)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
     description:
-      'U.S. Code citations (U.S.C., USC, USCA, "United States Code") with optional §/Section connector — #428',
+      'U.S. Code citations (U.S.C., USC, USCA, USCS, "United States Code") with optional §/Section connector — #428 #584',
     type: "statute",
   },
   {

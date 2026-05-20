@@ -15,14 +15,17 @@ import { parseBody } from "./parseBody"
 
 /** Regex to parse federal token: title + code + (optional §/Section) + body.
  *  Code matches the canonical Bluebook forms (`U.S.C.`, `C.F.R.`), West
- *  annotated (`USCA`), no-period (`USC`, `CFR`), and the spelled-out
- *  `United States Code` / `Code of Federal Regulations`. Connector is
- *  optional — bare `N USC NNNN` and `N CFR NNNN` forms omit it. #428 */
+ *  annotated (`USCA`), LEXIS annotated (`USCS`), no-period (`USC`, `CFR`),
+ *  and the spelled-out `United States Code` / `Code of Federal Regulations`.
+ *  Connector is optional — bare `N USC NNNN` and `N CFR NNNN` forms omit it.
+ *  Trailing `[AS]?` on the U.S.C. variant covers both `U.S.C.A.` (West) and
+ *  `U.S.C.S.` (LEXIS); both annotated editions canonicalize to `U.S.C.`
+ *  below. #428 #584 */
 const FEDERAL_SECTION_RE =
-  /^(\d+)\s+(U\.?S\.?C\.?A?\.?|USCA?|United\s+States\s+Code|C\.?F\.?R\.?|Code\s+of\s+Federal\s+Regulations)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?|Part|pt\.)?\s*(.+)$/d
+  /^(\d+)\s+(U\.?S\.?C\.?[AS]?\.?|USC[AS]?|United\s+States\s+Code|C\.?F\.?R\.?|Code\s+of\s+Federal\s+Regulations)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?|Part|pt\.)?\s*(.+)$/d
 /** Regex to parse federal token: title + code + Part + body */
 const FEDERAL_PART_RE =
-  /^(\d+)\s+(U\.?S\.?C\.?A?\.?|USCA?|United\s+States\s+Code|C\.?F\.?R\.?|Code\s+of\s+Federal\s+Regulations)\s+(?:Part|pt\.)\s+(.+)$/d
+  /^(\d+)\s+(U\.?S\.?C\.?[AS]?\.?|USC[AS]?|United\s+States\s+Code|C\.?F\.?R\.?|Code\s+of\s+Federal\s+Regulations)\s+(?:Part|pt\.)\s+(.+)$/d
 
 /**
  * Extract a federal statute citation (USC or CFR) from a tokenized match.
