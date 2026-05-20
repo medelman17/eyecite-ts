@@ -1157,6 +1157,63 @@ const LA_DOCKET_BOUNDARY_REGEX =
   /,?\s*(\d{2,4}-[A-Z\d-]+)(?:,\s*p\.\s*\d+)?\s*\((La\.[^)]*?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\),\s*/g
 
 /**
+ * Find the rightmost `(` in `text` that wraps a caption + (eventually) the
+ * citation core — i.e., the open-paren of a `(Name v. Name, vol Reporter
+ * page)` envelope (#512). Returns the position immediately AFTER the `(`
+ * (so callers can `substring` from it), or `-1` when no such paren exists.
+ *
+ * Detection heuristic: scan right-to-left for `(`. The first one whose
+ * unbalanced suffix contains a `v.`-style anchor or a procedural prefix
+ * is the wrapping paren. We don't require the matching `)` to be present
+ * (the trailing `)` lives past the citation core).
+ *
+ * The matching is intentionally narrow:
+ * - Only `(` immediately followed (after optional whitespace) by a
+ *   capitalized word that participates in a v.-style or procedural
+ *   caption qualifies. Plain parens like `(sequestration)` or
+ *   `(entry of a money judgment)` are skipped.
+ * - The `v.` / procedural prefix must appear within the paren-suffix to
+ *   coreStart, ensuring we don't truncate when the paren wraps something
+ *   else (a date-paren, court-paren, explanatory paren, ...).
+ * - If a complete v.-style caption already exists BEFORE the candidate
+ *   `(`, that `(` is an inline admin parenthetical (`Spence v. Hintze
+ *   (In re Hintze), ...` — #241) and must NOT be used as a boundary;
+ *   stripping past it would destroy the real caption.
+ */
+function findCaptionWrapperParen(text: string): number {
+  // Quick reject: no `(` in text.
+  if (text.indexOf("(") === -1) return -1
+  // Scan right-to-left for `(`.
+  for (let i = text.length - 1; i >= 0; i--) {
+    if (text[i] !== "(") continue
+    const after = text.substring(i + 1)
+    // The content must START with optional whitespace + a capital letter
+    // — a paren around lowercase prose ("(sequestration)") is not a
+    // caption wrapper.
+    if (!/^\s*[A-Z]/.test(after)) continue
+    // Look for a v.-style anchor OR a procedural prefix within the paren
+    // body up to where the precedingText ends (which is the citation
+    // core position).
+    const looksLikeCaption =
+      /\s+vs?\.?\s+[A-Z]/.test(after) ||
+      /^\s*(?:In\s+re|Ex\s+parte|Matter\s+of|Estate\s+of|State\s+ex\s+rel\.|United\s+States\s+ex\s+rel\.|People\s+ex\s+rel\.)\b/.test(
+        after,
+      )
+    if (!looksLikeCaption) continue
+    // Admin-paren guard (#241): if a complete `Name v. Name` caption
+    // already lives BEFORE this `(`, the `(` introduces an inline
+    // explanatory clause (`Spence v. Hintze (In re Hintze)`) — it is not
+    // a wrapping caption boundary. Skip it.
+    const before = text.substring(0, i)
+    if (/[A-Z][A-Za-z0-9.'&\-/]+(?:\s+[A-Z][A-Za-z0-9.'&\-/]+)*\s+vs?\.?\s+[A-Z]/.test(before)) {
+      continue
+    }
+    return i + 1
+  }
+  return -1
+}
+
+/**
  * Extract case name via backward search from citation core.
  * Looks for "v." pattern or procedural prefixes (In re, Ex parte, Matter of).
  *
@@ -1351,6 +1408,23 @@ export function extractCaseName(
   // because the caption is INSIDE the wrapping paren in that case, so
   // precedingText ends with `, ` not `(`.
   precedingText = precedingText.replace(/\(\s*$/, "")
+
+  // Issue #512: When the caption sits INSIDE the wrapping parenthetical
+  // (`(Name v. Name, vol Reporter page)`), the backward scan must stop
+  // at the wrapping paren's open `(`. Otherwise the V_CASE_NAME_REGEX
+  // greedily absorbs the host sentence ahead of the `(` (which is allowed
+  // by the regex's `[A-Za-z0-9\s.,'&()/-]` character class for all-caps
+  // prose). This is the COMPLEMENT of the trailing-paren strip above.
+  //
+  // Detect the rightmost `(` whose contents contain a `v.`-style caption
+  // shape (or procedural prefix) — that's the wrapping paren. Truncate
+  // precedingText to start just after it so the regex sees only the
+  // caption.
+  const openParenStop = findCaptionWrapperParen(precedingText)
+  if (openParenStop !== -1) {
+    precedingText = precedingText.substring(openParenStop)
+    adjustedSearchStart += openParenStop
+  }
 
   // Priority 1: Standard "v." or "vs." format with comma before citation
   // Match party names with letters, numbers (for "Doe No. 2"), periods, apostrophes, ampersands, hyphens, slashes
