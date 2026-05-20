@@ -2666,7 +2666,8 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("Code")
+        // #530: bare `Code §` in a VA context produces `Va. Code`, not literal "Code"
+        expect(cites[0].code).toBe("Va. Code")
         expect(cites[0].jurisdiction).toBe("VA")
         expect(cites[0].section).toBe("18.2-308.2")
       }
@@ -2701,7 +2702,9 @@ describe("extractStatute", () => {
       )
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
-        expect(cites[0].code).toBe("Virginia Code")
+        // #530: `Virginia Code §` normalizes to canonical `Va. Code` so the
+        // `code` field is consistent across prefix variants.
+        expect(cites[0].code).toBe("Va. Code")
         expect(cites[0].jurisdiction).toBe("VA")
         expect(cites[0].section).toBe("8.01-581.17")
       }

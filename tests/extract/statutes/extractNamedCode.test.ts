@@ -81,6 +81,17 @@ describe("extractNamedCode", () => {
       expect(c.jurisdiction).toBe("VA")
       expect(c.section).toBe("54.1-2400")
     })
+    // #530 — `code` should be the full prefix-qualified code name, not the
+    // bare suffix `"Code"`. Pre-fix, the cleanCodeName() stripping reduced
+    // both `Va. Code` and `Va. Code Ann.` to `"Code"`.
+    it("preserves the `Va. Code` prefix in the `code` field (#530)", () => {
+      const c = extractNamedCode(makeToken("Va. Code § 8.01-243"), map)
+      expect(c.code).toBe("Va. Code")
+    })
+    it("preserves the `Va. Code Ann.` prefix in the `code` field (#530)", () => {
+      const c = extractNamedCode(makeToken("Va. Code Ann. § 8.2-725(2)"), map)
+      expect(c.code).toBe("Va. Code Ann.")
+    })
   })
 
   describe("Alabama", () => {
@@ -88,6 +99,16 @@ describe("extractNamedCode", () => {
       const c = extractNamedCode(makeToken("Ala. Code § 13A-6-61"), map)
       expect(c.jurisdiction).toBe("AL")
       expect(c.section).toBe("13A-6-61")
+    })
+    // #530 — `code` should be the full prefix-qualified code name, not the
+    // bare suffix `"Code"`.
+    it("preserves the `Ala. Code` prefix in the `code` field (#530)", () => {
+      const c = extractNamedCode(makeToken("Ala. Code § 13A-6-61"), map)
+      expect(c.code).toBe("Ala. Code")
+    })
+    it("preserves the `Ala. Code Ann.` prefix in the `code` field (#530)", () => {
+      const c = extractNamedCode(makeToken("Ala. Code Ann. § 13A-6-61"), map)
+      expect(c.code).toBe("Ala. Code Ann.")
     })
   })
 
