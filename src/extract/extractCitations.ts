@@ -1028,6 +1028,8 @@ function expandPluralSectionList(
   const continuationRe = new RegExp(
     `^(?:${connectorPart})(${sectionPart})`,
   )
+  // `et seq.` immediately after a sibling — owner detection. (#566)
+  const TRAILING_ET_SEQ_RE = /^\s*et\s+seq\.?/i
 
   const newCitations: Citation[] = []
 
@@ -1051,11 +1053,19 @@ function expandPluralSectionList(
         transformationMap,
       )
 
+      // Owner detection for `et seq.` (#566): only set `hasEtSeq` on the
+      // sibling that the token immediately follows. The blanket spread of
+      // `...cite` would otherwise propagate the head's flag (if any) to
+      // every sibling.
+      const trailing = cleaned.slice(sectionEnd, sectionEnd + 20)
+      const siblingHasEtSeq = TRAILING_ET_SEQ_RE.test(trailing)
+
       const continuation: import("@/types/citation").StatuteCitation = {
         ...cite,
         text: sectionText,
         matchedText: sectionText,
         section: sectionText,
+        sectionRange: undefined,
         span: {
           cleanStart: sectionStart,
           cleanEnd: sectionEnd,
@@ -1066,6 +1076,7 @@ function expandPluralSectionList(
         // to the head section.
         subsection: undefined,
         pincite: undefined,
+        hasEtSeq: siblingHasEtSeq || undefined,
         spans: undefined,
       }
       newCitations.push(continuation)
