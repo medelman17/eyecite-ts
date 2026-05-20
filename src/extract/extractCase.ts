@@ -30,7 +30,7 @@ import {
   type TransformationMap,
 } from "@/types/span"
 import type { CaseComponentSpans } from "@/types/componentSpans"
-import { parseDate, type StructuredDate } from "./dates"
+import { isPlausibleYear, parseDate, type StructuredDate } from "./dates"
 import { getReportersSync } from "@/data/reportersCache"
 import { inferCourtFromReporter } from "./courtInference"
 import { parsePincite, type PinciteInfo } from "./pincite"
@@ -320,9 +320,20 @@ const PINCITE_REGEX =
 const PAREN_REGEX = /\(([^)]+)\)/
 
 /** Look-ahead pattern for parenthetical after token. Skips pincite text
- *  (including star-pagination) before the court/year parenthetical. */
+ *  (including star-pagination) before the court/year parenthetical.
+ *
+ *  Pincite-skip prefix grammar mirrors the leading branch of
+ *  LOOKAHEAD_PINCITE_REGEX so the same shapes are accepted:
+ *    - `, [at] [pp.|pages] *N[-N]`  (comma form)
+ *    - ` at [pp.|pages] *N[-N]`     (at form without comma; #552)
+ *
+ *  Before #552 only the comma form was accepted, so
+ *  `491 S.W.2d 636 at 638 (1973)` lost the trailing `(1973)` paren —
+ *  the leading ` at 638` could not be consumed and the regex failed.
+ *  The at-form is repeatable too (rare in practice, but the comma form
+ *  already was), so the entire prefix is wrapped in `(?:...)*`. */
 const LOOKAHEAD_PAREN_REGEX =
-  /^(?:,\s*(?:at\s+)?\*?\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d+)?\s*\(([^)]+)\)/
+  /^(?:(?:,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?|\s+at\s+(?:(?:pp?\.|pages?)\s*)?)\*?\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d+)?\s*\(([^)]+)\)/
 
 /** Extracts pincite from look-ahead text.
  *  Accepts five prefix forms:
@@ -1747,7 +1758,10 @@ export function extractCaseName(
       // vMatch.indices[4] (enabled by `d` flag) gives the year position;
       // translate to cleanedText coordinates.
       const courtFromCsm = vMatch[3]?.trim()
-      const year = vMatch[4] ? Number.parseInt(vMatch[4], 10) : undefined
+      // Plausibility filter (#523): drop OCR-mangled or page-number years
+      // (e.g., `1372`, `3021`) before they propagate through CSM meta.
+      const rawYear = vMatch[4] ? Number.parseInt(vMatch[4], 10) : undefined
+      const year = rawYear !== undefined && isPlausibleYear(rawYear) ? rawYear : undefined
       let yearStart: number | undefined
       let yearEnd: number | undefined
       if (year !== undefined && vMatch.indices?.[4]) {
@@ -1789,7 +1803,9 @@ export function extractCaseName(
       // (`In re Cellphone (9th Cir. 2014)` — #293); procMatch[4] = the year
       // (`In re K.F. (2009)` — #19). Bluebook form leaves both undefined.
       const courtFromCsm = procMatch[3]?.trim()
-      const year = procMatch[4] ? Number.parseInt(procMatch[4], 10) : undefined
+      // Plausibility filter (#523).
+      const rawYear = procMatch[4] ? Number.parseInt(procMatch[4], 10) : undefined
+      const year = rawYear !== undefined && isPlausibleYear(rawYear) ? rawYear : undefined
       let yearStart: number | undefined
       let yearEnd: number | undefined
       if (year !== undefined && procMatch.indices?.[4]) {
@@ -2746,7 +2762,12 @@ export function extractCase(
   // so the trailing year paren is found AND fullSpan extends through it.
   let postChainStart = span.cleanEnd
   if (cleanedText && siblings && siblings.length > 0) {
-    const CHAIN_BRIDGE_REGEX = /^[\s,\d\-–—]*$/
+    // Semicolons (#551) are accepted as parallel-chain separators alongside
+    // commas — Michigan-style citations write `390 Mich 355, 359; 212 NW2d
+    // 190 (1973)` where the `; ` separates the two parallel members. Without
+    // semicolons in the bridge class, the first cite's post-chain scan would
+    // stop at the semicolon and the trailing `(1973)` would not propagate.
+    const CHAIN_BRIDGE_REGEX = /^[\s,;\d\-–—]*$/
     while (true) {
       const next = siblings.find(
         (s) =>
@@ -2776,6 +2797,16 @@ export function extractCase(
     const unpubMatch = /^\s*(?:\(U\)|\[U\])/.exec(parenAfterToken)
     if (unpubMatch) {
       parenAfterToken = parenAfterToken.substring(unpubMatch[0].length)
+    }
+    // Georgia-style parenthesized parallel cite (#524): when this cite is the
+    // inside of a `( ... )` parallel wrapper, the chars immediately after the
+    // page are `) (year)`. Consume the single leading close-paren/bracket so
+    // the trailing year paren is reachable by LOOKAHEAD_PAREN_REGEX. Only
+    // strip ONE close-bracket — deeper nesting is too ambiguous to attribute
+    // safely. Repro: `275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)`.
+    const wrapperCloseMatch = /^\s*[)\]]/.exec(parenAfterToken)
+    if (wrapperCloseMatch) {
+      parenAfterToken = parenAfterToken.substring(wrapperCloseMatch[0].length)
     }
     const lookAheadMatch = LOOKAHEAD_PAREN_REGEX.exec(parenAfterToken)
     if (lookAheadMatch && !isNonMetadataParenContent(lookAheadMatch[1])) {

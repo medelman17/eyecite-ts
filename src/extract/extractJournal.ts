@@ -11,6 +11,7 @@ import type { Token } from "@/tokenize"
 import type { JournalCitation } from "@/types/citation"
 import type { JournalComponentSpans } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
+import { isPlausibleYear } from "./dates"
 
 /**
  * Extracts journal citation metadata from a tokenized citation.
@@ -114,10 +115,16 @@ export function extractJournal(
   const pinciteMatch = pinciteRegex.exec(afterTokenText)
   const pincite = pinciteMatch ? Number.parseInt(pinciteMatch[1], 10) : undefined
 
-  // Extract optional year from parenthetical (e.g., "(2020)") anywhere in the context
-  const yearRegex = /\((?:.*?\s)?(\d{4})\)/d
+  // Extract optional year from parenthetical (e.g., "(2020)") anywhere in the context.
+  // Hyphenated-year ranges (#553): `(1965-1966)` and `(1965-66)` are common in
+  // journal volume citations spanning two years. Accept an optional trailing
+  // `[-–—]\d{2,4}` range in the year capture; only the leading 4-digit year
+  // is exported. Hyphen, en-dash, and em-dash are all accepted (journals
+  // vary). Plausibility filter (#523): drop OCR-mangled or page-number years.
+  const yearRegex = /\((?:.*?\s)?(\d{4})(?:[-–—]\d{2,4})?\)/d
   const yearMatch = yearRegex.exec(fullContext)
-  const year = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
+  const rawYear = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
+  const year = rawYear !== undefined && isPlausibleYear(rawYear) ? rawYear : undefined
 
   // Build component spans using match indices from `d` flag
   let spans: JournalComponentSpans | undefined
