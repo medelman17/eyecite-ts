@@ -14,12 +14,45 @@
 import type { Pattern } from "./casePatterns"
 
 // Shared tail: art./amend. + numeral + optional § section + optional cl. clause
-// Roman numerals: I, II, III, IV, V, VI, VII, VIII, IX, X, XI, XII, XIII, XIV, XV, XVI, XVII, XVIII, XIX, XX, XXI, XXII, XXIII, XXIV, XXV, XXVI, XXVII
-// Also accepts Arabic numerals as fallback
-const ARTICLE_OR_AMENDMENT = String.raw`(?:art(?:icle)?\.?|amend(?:ment)?\.?|amdt\.?)\s+([IVX]+|\d+)`
+//
+// Numeral forms accepted (#534):
+//   - Roman numerals: I, II, III, IV, V, VI, VII, ..., XXVII
+//   - Arabic numerals: 1, 2, 3, ..., 27
+//   - Ordinal abbreviations: 1st, 2nd, 3rd, 4th, ..., 27th
+//   - Word forms: First, Second, Third, ..., Twenty-Seventh
+//
+// Article-or-amendment token forms:
+//   - art. / article / Art. / Article
+//   - amend. / amendment / Amend. / Amendment
+//   - amdt. / Amdt.
+//
+// The ordinal-prefix forms (`5th Amend.`) put the numeral BEFORE the
+// article/amendment token, so an alternative shape is needed.
+
+// Word-form amendment ordinals (`First`..`Twenty-Seventh`). The first
+// twenty unit-ordinals are followed by ten compound forms (Twentieth..
+// Twenty-Seventh).
+const AMEND_WORD_ORDINALS = String.raw`Twenty[-\s]Seventh|Twenty[-\s]Sixth|Twenty[-\s]Fifth|Twenty[-\s]Fourth|Twenty[-\s]Third|Twenty[-\s]Second|Twenty[-\s]First|Twentieth|Nineteenth|Eighteenth|Seventeenth|Sixteenth|Fifteenth|Fourteenth|Thirteenth|Twelfth|Eleventh|Tenth|Ninth|Eighth|Seventh|Sixth|Fifth|Fourth|Third|Second|First`
+
+// Ordinal abbreviation forms (`1st`..`27th`).
+const AMEND_ORDINAL_ABBREV = String.raw`(?:1st|2nd|3rd|4th|5th|6th|7th|8th|9th|10th|11th|12th|13th|14th|15th|16th|17th|18th|19th|20th|21st|22nd|23rd|24th|25th|26th|27th)`
+
+// Numeral form accepted in the canonical `art./amend. <numeral>` shape.
+// Includes Roman, Arabic, ordinal abbreviations, and word forms.
+const NUMERAL_FORM = `(?:[IVX]+|\\d+|${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})`
+
+// Article-or-amendment word, including the unabbreviated `Amendment`
+// alternative (#534).
+const ARTICLE_OR_AMENDMENT = String.raw`(?:art(?:icle)?\.?|amend(?:ment)?\.?|amdt\.?|Amendment)\s+(${NUMERAL_FORM})`
+
+// Inverse shape: numeral BEFORE the amendment word (e.g., `5th Amend.`,
+// `Fifth Amendment`). Only matches the amendment family — articles are
+// never written with an ordinal-prefix form (`5th Art.` is not legal).
+const ORDINAL_PREFIX_AMENDMENT = `(${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})\\s+(?:amend(?:ment)?\\.?|amdt\\.?|Amendment)`
+
 const OPTIONAL_SECTION = String.raw`(?:[,;]\s*§\s*([\w-]+))?`
 const OPTIONAL_CLAUSE = String.raw`(?:[,;]\s*cl\.?\s*(\d+))?`
-const BODY_TAIL = `${ARTICLE_OR_AMENDMENT}${OPTIONAL_SECTION}${OPTIONAL_CLAUSE}`
+const BODY_TAIL = `(?:${ARTICLE_OR_AMENDMENT}|${ORDINAL_PREFIX_AMENDMENT})${OPTIONAL_SECTION}${OPTIONAL_CLAUSE}`
 
 /** Compiled body regex shared with the extractor to avoid duplicate definitions. */
 export const CONSTITUTIONAL_BODY_RE: RegExp = new RegExp(BODY_TAIL, "id")
@@ -74,6 +107,27 @@ export const constitutionalPatterns: Pattern[] = [
     ),
     description:
       'Bare article references without "Const." prefix (e.g., "Art. I, §8, cl. 3")',
+    type: "constitutional",
+  },
+  {
+    // #534 — Bare word-form amendment references without `Const.` prefix:
+    // `the Fifth Amendment`, `the Fourteenth Amendment`. Use a leading
+    // word-boundary plus negative-lookbehind for `Const.?,?\s` so this
+    // pattern doesn't double-match what the higher-priority `bare-article`
+    // / `bare-constitution` patterns already cover (their `BODY_TAIL`
+    // includes the ordinal-prefix branch).
+    //
+    // Confidence set to 0.5 in the extractor for the same reason as
+    // `bare-article` — without the `Const.` anchor the FP risk is
+    // higher (e.g., movie titles, generic prose), so consumers can
+    // filter low-confidence matches if they need stricter precision.
+    id: "bare-amendment-word",
+    regex: new RegExp(
+      `(?<!Const\\.?,?\\s)\\b(${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})\\s+(?:[Aa]mend(?:ment)?\\.?|[Aa]mdt\\.?)`,
+      "g",
+    ),
+    description:
+      'Bare word-form amendment references without "Const." prefix (e.g., "the Fifth Amendment", "the Fourteenth Amendment") — #534',
     type: "constitutional",
   },
 ]
