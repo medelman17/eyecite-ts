@@ -2743,6 +2743,36 @@ describe("extractStatute", () => {
     })
   })
 
+  // #595 — Illinois `Ill. Rev. Stat.` historical pattern requires `ch.`
+  // exactly. `chap.` (full spelling) is also common and was missed.
+  describe("Illinois Revised Statutes `chap.` spelling (#595)", () => {
+    it("extracts `Ill. Rev. Stat. 1955, chap. 38, par. 602`", () => {
+      const cites = extractCitations(
+        "see Ill. Rev. Stat. 1955, chap. 38, par. 602.",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("IL")
+        expect(cites[0].code).toBe("Ill. Rev. Stat.")
+        expect(cites[0].title).toBe(38)
+        expect(cites[0].section).toBe("602")
+        expect(cites[0].year).toBe(1955)
+      }
+    })
+
+    it("does not regress canonical `ch.` form", () => {
+      const cites = extractCitations(
+        "see Ill. Rev. Stat. 1985, ch. 40, par. 504(a).",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(40)
+        expect(cites[0].section).toBe("504")
+        expect(cites[0].subsection).toBe("(a)")
+      }
+    })
+  })
+
   describe("Tennessee T.C.A. variants + postfix (#398)", () => {
     it("extracts `T.C.A. sec. 40-2407` (sec. connector)", () => {
       const cites = extractCitations("See T.C.A. sec. 40-2407.").filter(

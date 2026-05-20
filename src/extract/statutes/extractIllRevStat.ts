@@ -21,8 +21,9 @@ import type { StatuteComponentSpans } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 import { parseBody } from "./parseBody"
 
+// Accepts both `ch.` and `chap.` (full spelling) — see #595.
 const ILL_REV_STAT_RE =
-  /^Ill\.?\s*Rev\.?\s*Stat\.?,?\s+(\d{4}),?\s+[Cc]h\.\s+(\d+[A-Z]?),?\s+pars?\.\s+(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/d
+  /^Ill\.?\s*Rev\.?\s*Stat\.?,?\s+(\d{4}),?\s+[Cc]h(?:ap)?\.\s+(\d+[A-Z]?),?\s+pars?\.\s+(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)$/d
 
 export function extractIllRevStat(
   token: Token,

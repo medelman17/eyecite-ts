@@ -240,13 +240,14 @@ export const statutePatterns: Pattern[] = [
     // referencing the historical version of a statute.
     //
     // Tolerance: spaced/no-space (`Ill. Rev. Stat.` / `Ill.Rev.Stat.`),
-    // capitalized/lowercase `[Cc]h.`, singular/plural `pars?.`, optional
-    // commas after `Stat.` and after the chapter number.
+    // capitalized/lowercase `[Cc]h.` or full-spelled `[Cc]hap.` (#595),
+    // singular/plural `pars?.`, optional commas after `Stat.` and after
+    // the chapter number.
     //
     // Captures: (1) year-of-edition, (2) chapter (incl. letter suffix `110A`),
     //   (3) paragraph body (subparagraphs + et seq.).
     regex:
-      /\bIll\.?\s*Rev\.?\s*Stat\.?,?\s+(\d{4}),?\s+[Cc]h\.\s+(\d+[A-Z]?),?\s+pars?\.\s+(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\bIll\.?\s*Rev\.?\s*Stat\.?,?\s+(\d{4}),?\s+[Cc]h(?:ap)?\.\s+(\d+[A-Z]?),?\s+pars?\.\s+(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
     description:
       "Illinois Revised Statutes (pre-1993): Ill. Rev. Stat. YYYY, ch. N, par. N",
     type: "statute",
