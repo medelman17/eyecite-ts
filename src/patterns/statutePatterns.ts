@@ -26,8 +26,19 @@ export const statutePatterns: Pattern[] = [
     // bare `N USC NNNN` form omits any connector. The leading `\b(\d+)`
     // title is the disambiguator from prose.
     id: "usc",
+    // Subsection parens may be preceded by whitespace (`§ 1101 (a)(43)`)
+    // but a year-of-edition paren (`§ 1983 (1976)`, `§ 1331 (West 2018)`)
+    // must NOT be absorbed — negative lookahead `(?![^)]*\d{4})` excludes
+    // any paren whose content contains a 4-digit year-like number, so
+    // the post-process `attachStatuteYearParen` still binds them as
+    // `year`/`publisher`. #590
+    //
+    // Optional subsection-range trailer (`§§ 311(a)-(b)`) consumed so
+    // parseBody can surface the structured `subsectionRange` field.
+    // Dash class accepts multi-hyphen `---` (post `normalizeDashes`
+    // rewrite of em-dash). #591
     regex:
-      /\b(\d+)\s+(?:U\.?S\.?C\.?A?\.?|USCA?|United\s+States\s+Code)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s+(?:U\.?S\.?C\.?A?\.?|USCA?|United\s+States\s+Code)\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
     description:
       'U.S. Code citations (U.S.C., USC, USCA, "United States Code") with optional §/Section connector — #428',
     type: "statute",
@@ -37,8 +48,12 @@ export const statutePatterns: Pattern[] = [
     // plus no-§ variants `42 CFR 447`, `45 CFR 303`, `29 CFR 1926`. The
     // connector (`§§?` / `Part` / `Section`) is OPTIONAL. #428
     id: "cfr",
+    // Whitespace-tolerant subsection chain (#590) — see `usc` comment for
+    // the year-paren guard rationale. Optional `-(N)` range trailer
+    // captured for parseBody to surface as `subsectionRange`. Dash class
+    // accepts multi-hyphen `---` (post `normalizeDashes` rewrite). #591
     regex:
-      /\b(\d+)\s+C\.?F\.?R\.?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s+C\.?F\.?R\.?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
     description:
       'Code of Federal Regulations with optional Part/§/Section connector — #428',
     type: "statute",
@@ -110,6 +125,33 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // New York Civil Practice Law and Rules (CPLR) — dominant NY court
+    // style cites the CPLR as bare `CPLR NNNN` with no `N.Y.` prefix
+    // and no `§` connector: `CPLR 3025 (b)`, `CPLR 3211 (a) (4)`,
+    // `CPLR 3108`, `CPLR 4518 [a]`. Dotted (`C.P.L.R.`) and §-prefixed
+    // (`CPLR § 3211`) variants are also accepted. The optional `N.Y.`
+    // prefix lets the pattern subsume the named-code match for fully-
+    // qualified `N.Y. C.P.L.R. § 211` so the canonical `N.Y. C.P.L.R.`
+    // code shape is emitted regardless of input form. #592
+    //
+    // The closed `C.?\s*P.?\s*L.?\s*R.?` shape with mandatory trailing
+    // digits guarantees no false-positives on the bare token `CPLR` in
+    // running prose ("The CPLR governs procedure.") — the `\d` after
+    // the optional § / whitespace is the disambiguator.
+    //
+    // Listed BEFORE `named-code` so the longer optional-prefix match
+    // wins span dedup when `N.Y.` is present.
+    //
+    // Captures: (1) section body, (2) optional subsection chain
+    // (paren and/or bracket groups, possibly space-separated).
+    id: "ny-cplr-bare",
+    regex:
+      /\b(?:N\.\s*Y\.\s*)?C\.?\s*P\.?\s*L\.?\s*R\.?\s*(?:§§?\s*)?(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*)((?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)/g,
+    description:
+      'New York CPLR bare/dotted/§ forms: "CPLR 3025 (b)", "C.P.L.R. § 3211", "N.Y. C.P.L.R. § 211" — #592',
+    type: "statute",
+  },
+  {
     id: "named-code",
     // Matches: [State abbrev]. [Code/Law Name] § [section]
     // Captures: (1) jurisdiction prefix, (2) code name text, (3) section+subsections+et seq
@@ -123,8 +165,13 @@ export const statutePatterns: Pattern[] = [
     //
     // Section body: period only allowed when followed by alphanumeric, so a
     // trailing sentence period is not absorbed (#283).
+    //
+    // Subdivision keyword tail (#589): California-style `, subd. (a)(8)` /
+    // `paragraph (a)` / `par. (a)` follows the section number. Captured
+    // inside the section group so parseBody can normalize to a canonical
+    // paren chain.
     regex:
-      /\b(N\.?\s*Y\.?|Cal(?:ifornia)?\.?|Tex(?:as)?\.?|Md\.?|(?<!W\.?\s?)Va\.?|Ala(?:bama)?\.?)\s+([A-Z][A-Za-z.&']*(?:(?:\s+|,\s+)(?:&|[A-Z][A-Za-z.&']*))*)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(N\.?\s*Y\.?|Cal(?:ifornia)?\.?|Tex(?:as)?\.?|Md\.?|(?<!W\.?\s?)Va\.?|Ala(?:bama)?\.?)\s+([A-Z][A-Za-z.&']*(?:(?:\s+|,\s+)(?:&|[A-Z][A-Za-z.&']*))*)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:,?\s+(?:subd\.|subdivision|paragraphs?|pars?\.)\s+(?:\([^)]*\)|\[[^\]]*\])(?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)?(?:\s*et\s+seq\.?)?)/g,
     description:
       "Named-code state citations (NY, CA, TX, MD, VA, AL) with jurisdiction prefix + code name + §",
     type: "statute",
@@ -162,8 +209,12 @@ export const statutePatterns: Pattern[] = [
     //
     // Section body: period only allowed when followed by alphanumeric, so a
     // trailing sentence period is not absorbed (#283).
+    //
+    // Whitespace-tolerant subsection chain (#590): allow `\s*\(` between
+    // section digits and subsection paren, with negative lookahead to
+    // exclude year-of-edition parens (`(1976)`, `(West 2018)`).
     regex:
-      /\b(Mass\.?\s*Gen\.?\s*Laws|General\s+Laws|M\.?G\.?L\.?A?\.?|A\.?L\.?M\.?|G\.?\s*L\.?)\s*(?:ch\.?|c\.?)\s*(\w+)(?:,?\s*(?:§§?|[Ss]ec\.?|[Ss]ection)\s*(\w+(?:[\w/-]|\.(?=\w))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?))?/g,
+      /\b(Mass\.?\s*Gen\.?\s*Laws|General\s+Laws|M\.?G\.?L\.?A?\.?|A\.?L\.?M\.?|G\.?\s*L\.?)\s*(?:ch\.?|c\.?)\s*(\w+)(?:,?\s*(?:§§?|[Ss]ec\.?|[Ss]ection)\s*(\w+(?:[\w/-]|\.(?=\w))*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*et\s+seq\.?)?))?/g,
     description: 'Massachusetts chapter-based citations (e.g., "Mass. Gen. Laws ch. 93A, § 2")',
     type: "statute",
   },
@@ -189,13 +240,14 @@ export const statutePatterns: Pattern[] = [
     // referencing the historical version of a statute.
     //
     // Tolerance: spaced/no-space (`Ill. Rev. Stat.` / `Ill.Rev.Stat.`),
-    // capitalized/lowercase `[Cc]h.`, singular/plural `pars?.`, optional
-    // commas after `Stat.` and after the chapter number.
+    // capitalized/lowercase `[Cc]h.` or full-spelled `[Cc]hap.` (#595),
+    // singular/plural `pars?.`, optional commas after `Stat.` and after
+    // the chapter number.
     //
     // Captures: (1) year-of-edition, (2) chapter (incl. letter suffix `110A`),
     //   (3) paragraph body (subparagraphs + et seq.).
     regex:
-      /\bIll\.?\s*Rev\.?\s*Stat\.?,?\s+(\d{4}),?\s+[Cc]h\.\s+(\d+[A-Z]?),?\s+pars?\.\s+(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\bIll\.?\s*Rev\.?\s*Stat\.?,?\s+(\d{4}),?\s+[Cc]h(?:ap)?\.\s+(\d+[A-Z]?),?\s+pars?\.\s+(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
     description:
       "Illinois Revised Statutes (pre-1993): Ill. Rev. Stat. YYYY, ch. N, par. N",
     type: "statute",
@@ -502,6 +554,24 @@ export const statutePatterns: Pattern[] = [
       /\bCode,?(?:\s+(1931))?,\s+(\d+-\d+[A-Z]?-\d+(?:[A-Za-z0-9])?(?:\([A-Za-z0-9]+\))*)/g,
     description:
       'West Virginia historical Code 1931: "Code 1931, 49-6-3, as amended" / "Code, 14-2-13" — #406',
+    type: "statute",
+  },
+  {
+    // New York City Administrative Code — `N.Y.C. Admin. Code § 8-107(1)(a)`
+    // and the spelled-out `New York City Administrative Code § 8-107(1)(a)`.
+    // Without this pattern, the bare `Code §` portion matched the Georgia
+    // pre-1983 fallback below (`ga-pre-1983`) and the NYC prefix was
+    // silently dropped — every NYC Admin Code citation routed to GA.
+    // Listed BEFORE `ga-pre-1983` so the prefix-qualified shape wins
+    // span dedup. #594
+    //
+    // Captures: (1) section body (two-part hyphen), (2) optional
+    //   paren subsection chain.
+    id: "nyc-admin-code",
+    regex:
+      /\b(?:N\.\s*Y\.\s*C\.\s*Admin\.?\s+Code|New\s+York\s+City\s+Administrative\s+Code)\s+§§?\s*(\d+-\d+(?![\d-])(?!\.\d)(?:[A-Za-z0-9])?)((?:\([^)]*\))*)/g,
+    description:
+      'New York City Administrative Code: "N.Y.C. Admin. Code § 8-107(1)(a)" / "New York City Administrative Code § 8-107(1)(a)" — #594',
     type: "statute",
   },
   {

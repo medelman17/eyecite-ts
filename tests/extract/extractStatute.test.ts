@@ -412,6 +412,81 @@ describe("extractStatute", () => {
         expect(cits[0].jurisdiction).toBe("US")
       }
     })
+
+    // #589 — California `subd. (a)` / `paragraph (a)` / `par. (a)` keyword
+    // forms are dominant in California opinions. Bare-code citations that
+    // use `subd.` after the section number must attach the subdivision to
+    // the `subsection` field rather than dropping it.
+    describe("CA `subd.` / `paragraph` / `par.` keyword forms (#589)", () => {
+      it("extracts `Pen. Code, § 1238, subd. (a)(8)` → subsection (a)(8)", () => {
+        const cits = extractCitations("see Pen. Code, § 1238, subd. (a)(8).")
+        expect(cits).toHaveLength(1)
+        if (cits[0].type === "statute") {
+          expect(cits[0].code).toBe("Pen. Code")
+          expect(cits[0].section).toBe("1238")
+          expect(cits[0].subsection).toBe("(a)(8)")
+          expect(cits[0].jurisdiction).toBe("CA")
+        }
+      })
+
+      it("extracts `Welf. & Inst. Code, § 111, subd. (c)` → subsection (c)", () => {
+        const cits = extractCitations("Welf. & Inst. Code, § 111, subd. (c) controls.")
+        expect(cits).toHaveLength(1)
+        if (cits[0].type === "statute") {
+          expect(cits[0].code).toBe("Welf. & Inst. Code")
+          expect(cits[0].section).toBe("111")
+          expect(cits[0].subsection).toBe("(c)")
+        }
+      })
+
+      it("extracts `Code Civ. Proc., § 430.10, subd. (e)` → subsection (e)", () => {
+        const cits = extractCitations("Code Civ. Proc., § 430.10, subd. (e) is on point.")
+        expect(cits).toHaveLength(1)
+        if (cits[0].type === "statute") {
+          expect(cits[0].code).toBe("Code Civ. Proc.")
+          expect(cits[0].section).toBe("430.10")
+          expect(cits[0].subsection).toBe("(e)")
+        }
+      })
+
+      it("extracts `Pen. Code § 1238, paragraph (a)` → subsection (a)", () => {
+        const cits = extractCitations("violates Pen. Code § 1238, paragraph (a).")
+        expect(cits).toHaveLength(1)
+        if (cits[0].type === "statute") {
+          expect(cits[0].section).toBe("1238")
+          expect(cits[0].subsection).toBe("(a)")
+        }
+      })
+
+      it("extracts `Pen. Code § 1238, par. (a)` → subsection (a)", () => {
+        const cits = extractCitations("violates Pen. Code § 1238, par. (a).")
+        expect(cits).toHaveLength(1)
+        if (cits[0].type === "statute") {
+          expect(cits[0].section).toBe("1238")
+          expect(cits[0].subsection).toBe("(a)")
+        }
+      })
+
+      it("extracts subd. with multiple paren groups: `subd. (a) (8)`", () => {
+        const cits = extractCitations("see Pen. Code, § 1238, subd. (a) (8).")
+        expect(cits).toHaveLength(1)
+        if (cits[0].type === "statute") {
+          expect(cits[0].section).toBe("1238")
+          expect(cits[0].subsection).toBe("(a)(8)")
+        }
+      })
+
+      it("attaches subd. to fully-qualified `Cal. Penal Code § 1238, subd. (a)`", () => {
+        const cits = extractCitations("see Cal. Penal Code § 1238, subd. (a).")
+        expect(cits).toHaveLength(1)
+        if (cits[0].type === "statute") {
+          expect(cits[0].code).toBe("Cal. Penal Code")
+          expect(cits[0].section).toBe("1238")
+          expect(cits[0].subsection).toBe("(a)")
+          expect(cits[0].jurisdiction).toBe("CA")
+        }
+      })
+    })
   })
 
   describe("year-of-edition parenthetical (#285)", () => {
@@ -2356,6 +2431,348 @@ describe("extractStatute", () => {
       expect(cites).toHaveLength(1)
       if (cites[0]?.type === "statute") {
         expect(cites[0].jurisdiction).toBe("NY")
+      }
+    })
+  })
+
+  // #592 — NY courts dominantly cite the CPLR as bare `CPLR NNNN` (no
+  // `N.Y.` prefix, no `§`). Bracket subdivisions (`[a]`) are common
+  // alongside the paren form. Spaces between the section number and the
+  // subdivision are typical NY court style.
+  describe("New York CPLR bare form (#592)", () => {
+    it("extracts `CPLR 3025 (b)` (bare, space-paren subsection)", () => {
+      const cites = extractCitations("Motion under CPLR 3025 (b) is denied.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NY")
+        expect(cites[0].code).toBe("N.Y. C.P.L.R.")
+        expect(cites[0].section).toBe("3025")
+        expect(cites[0].subsection).toBe("(b)")
+      }
+    })
+
+    it("extracts `CPLR 3211 (a) (4)` (multiple paren groups)", () => {
+      const cites = extractCitations("dismissed pursuant to CPLR 3211 (a) (4).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("3211")
+        expect(cites[0].subsection).toBe("(a)(4)")
+      }
+    })
+
+    it("extracts `CPLR 3108` (bare section, no subsection)", () => {
+      const cites = extractCitations("see CPLR 3108 for the procedure.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("3108")
+        expect(cites[0].jurisdiction).toBe("NY")
+      }
+    })
+
+    it("extracts `CPLR 4518 [a]` (bracket subdivision)", () => {
+      const cites = extractCitations("under CPLR 4518 [a].").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("4518")
+        expect(cites[0].subsection).toBe("[a]")
+      }
+    })
+
+    it("extracts `CPLR § 3211` (with §)", () => {
+      const cites = extractCitations("Motion under CPLR § 3211.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("N.Y. C.P.L.R.")
+        expect(cites[0].section).toBe("3211")
+      }
+    })
+
+    it("extracts `C.P.L.R. § 3211` (dotted, with §)", () => {
+      const cites = extractCitations("Motion under C.P.L.R. § 3211.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("N.Y. C.P.L.R.")
+        expect(cites[0].jurisdiction).toBe("NY")
+        expect(cites[0].section).toBe("3211")
+      }
+    })
+
+    it("does not regress fully-qualified `N.Y. C.P.L.R. § 211`", () => {
+      const cites = extractCitations("See N.Y. C.P.L.R. § 211.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NY")
+        expect(cites[0].section).toBe("211")
+      }
+    })
+
+    it("does not match bare `CPLR` when no section follows", () => {
+      const cites = extractCitations("The CPLR governs procedure.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(0)
+    })
+  })
+
+  // #594 — `N.Y.C. Admin. Code § 8-107(1)(a)` previously matched the
+  // Georgia `ga-pre-1983` pattern (bare `Code §` with two-part hyphen
+  // section), silently routing every NYC Admin Code citation to GA
+  // jurisdiction and dropping the `N.Y.C.` prefix. Dedicated NYC pattern
+  // runs BEFORE the GA fallback so the full identifier survives.
+  describe("New York City Administrative Code (#594)", () => {
+    it("extracts `N.Y.C. Admin. Code § 8-107(1)(a)` as NY (not GA)", () => {
+      const cites = extractCitations("under N.Y.C. Admin. Code § 8-107(1)(a).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NY")
+        expect(cites[0].code).toBe("N.Y.C. Admin. Code")
+        expect(cites[0].section).toBe("8-107")
+        expect(cites[0].subsection).toBe("(1)(a)")
+      }
+    })
+
+    it("extracts spelled-out `New York City Administrative Code § 8-107(1)(a)`", () => {
+      const cites = extractCitations(
+        "see New York City Administrative Code § 8-107(1)(a).",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NY")
+        expect(cites[0].code).toBe("N.Y.C. Admin. Code")
+        expect(cites[0].section).toBe("8-107")
+      }
+    })
+
+    it("does not regress pre-1983 GA `Code § 27-2501`", () => {
+      const cites = extractCitations("see Code § 27-2501 (Ga. 1972).").filter(
+        (c) => c.type === "statute",
+      )
+      // GA fallback still owns plain `Code § N-N` (no NYC prefix)
+      expect(cites.length).toBeGreaterThanOrEqual(1)
+      const ga = cites.find((c) => c.type === "statute" && c.jurisdiction === "GA")
+      expect(ga).toBeDefined()
+    })
+  })
+
+  // #593 — N.J.S.A. inter-letter spacing variants (`N. J. S. A.`) are
+  // common in older NJ Super and NJ reporters. The previous regex
+  // fragment did not allow whitespace between the inter-letter periods.
+  describe("New Jersey N.J.S.A. inter-letter spacing (#593)", () => {
+    it("extracts `N. J. S. A. 2:100-26` (spaces between every letter)", () => {
+      const cites = extractCitations("under N. J. S. A. 2:100-26.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NJ")
+        expect(cites[0].section).toBe("2:100-26")
+        // Spaced/no-period variants normalize to canonical `N.J.S.A.`
+        // (not the dotless `NJS` shorthand).
+        expect(cites[0].code).toBe("N.J.S.A.")
+      }
+    })
+
+    it("does not regress canonical `N.J.S.A. 2C:35-5`", () => {
+      const cites = extractCitations("under N.J.S.A. 2C:35-5.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NJ")
+        expect(cites[0].section).toBe("2C:35-5")
+        expect(cites[0].code).toBe("N.J.S.A.")
+      }
+    })
+  })
+
+  // #590 — Whitespace between the section number and the leading paren of
+  // the subsection chain previously dropped the entire subsection.
+  // `8 U.S.C. § 1101 (a)(43)` → subsection lost. Allow `\s*\(` everywhere
+  // a paren subsection group appears, with a negative lookahead so 4-digit
+  // year-of-edition parens (`(1976)`) are NOT absorbed.
+  describe("Space between section and subsection (#590)", () => {
+    it("extracts `8 U.S.C. § 1101 (a)(43)` → subsection (a)(43)", () => {
+      const cites = extractCitations("see 8 U.S.C. § 1101 (a)(43).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("1101")
+        expect(cites[0].subsection).toBe("(a)(43)")
+      }
+    })
+
+    it("extracts `OCGA § 15-11-2 (8) (A)` → subsection (8)(A)", () => {
+      const cites = extractCitations("see OCGA § 15-11-2 (8) (A).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("15-11-2")
+        expect(cites[0].subsection).toBe("(8)(A)")
+      }
+    })
+
+    it("extracts `I.C. § 19-4907 (b)` → subsection (b)", () => {
+      const cites = extractCitations("see I.C. § 19-4907 (b).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("19-4907")
+        expect(cites[0].subsection).toBe("(b)")
+      }
+    })
+
+    it("extracts `M.G.L. c. 106 § 1-205 (4)` → subsection (4)", () => {
+      const cites = extractCitations("see M.G.L. c. 106 § 1-205 (4).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("1-205")
+        expect(cites[0].subsection).toBe("(4)")
+      }
+    })
+
+    // Regression guards: year-of-edition parentheticals must NOT be
+    // absorbed as subsection.
+    it("does not absorb `(1976)` as subsection in `42 U.S.C. § 1983 (1976)`", () => {
+      const cites = extractCitations("42 U.S.C. § 1983 (1976)").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("1983")
+        expect(cites[0].subsection).toBeUndefined()
+        expect(cites[0].year).toBe(1976)
+      }
+    })
+
+    it("does not absorb `(West 2018)` as subsection in `28 U.S.C. § 1331 (West 2018)`", () => {
+      const cites = extractCitations("28 U.S.C. § 1331 (West 2018)").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("1331")
+        expect(cites[0].subsection).toBeUndefined()
+        expect(cites[0].year).toBe(2018)
+        expect(cites[0].publisher).toBe("West")
+      }
+    })
+
+    it("does not absorb `(1985)` as subsection in `HRS § 91-14(a) (1985)`", () => {
+      const cites = extractCitations("HRS § 91-14(a) (1985).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("91-14")
+        expect(cites[0].subsection).toBe("(a)")
+        expect(cites[0].year).toBe(1985)
+      }
+    })
+  })
+
+  // #591 — `(a)-(b)` / `(9)—(16)` range subsections previously dropped the
+  // second endpoint. `35 U.S.C. §§ 311(a)-(b)` extracted as section "311"
+  // with subsection "(a)" and the `-(b)` sliced off. Add `subsectionRange`
+  // structured field; keep `subsection` = start for backward compatibility.
+  describe("Range subsections (#591)", () => {
+    it("captures `35 U.S.C. §§ 311(a)-(b)` as subsectionRange (a) → (b)", () => {
+      const cites = extractCitations("see 35 U.S.C. §§ 311(a)-(b).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("311")
+        expect(cites[0].subsection).toBe("(a)")
+        expect(cites[0].subsectionRange).toEqual({ start: "(a)", end: "(b)" })
+        // matchedText must include the range so downstream consumers
+        // see a signal that the second endpoint exists.
+        expect(cites[0].matchedText).toContain("(a)-(b)")
+      }
+    })
+
+    it("captures `37 C.F.R. § 42.107(a)-(b)`", () => {
+      const cites = extractCitations("see 37 C.F.R. § 42.107(a)-(b).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("42.107")
+        expect(cites[0].subsection).toBe("(a)")
+        expect(cites[0].subsectionRange).toEqual({ start: "(a)", end: "(b)" })
+      }
+    })
+
+    it("captures `77 P.S. § 513(9) — (16)` (em-dash with spaces)", () => {
+      const cites = extractCitations("see 77 P.S. § 513(9) — (16).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("513")
+        expect(cites[0].subsection).toBe("(9)")
+        expect(cites[0].subsectionRange).toEqual({ start: "(9)", end: "(16)" })
+      }
+    })
+
+    it("does not set subsectionRange for plain `(a)(1)` chain (no range)", () => {
+      const cites = extractCitations("see 42 U.S.C. § 1983(a)(1).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].subsection).toBe("(a)(1)")
+        expect(cites[0].subsectionRange).toBeUndefined()
+      }
+    })
+  })
+
+  // #595 — Illinois `Ill. Rev. Stat.` historical pattern requires `ch.`
+  // exactly. `chap.` (full spelling) is also common and was missed.
+  describe("Illinois Revised Statutes `chap.` spelling (#595)", () => {
+    it("extracts `Ill. Rev. Stat. 1955, chap. 38, par. 602`", () => {
+      const cites = extractCitations(
+        "see Ill. Rev. Stat. 1955, chap. 38, par. 602.",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("IL")
+        expect(cites[0].code).toBe("Ill. Rev. Stat.")
+        expect(cites[0].title).toBe(38)
+        expect(cites[0].section).toBe("602")
+        expect(cites[0].year).toBe(1955)
+      }
+    })
+
+    it("does not regress canonical `ch.` form", () => {
+      const cites = extractCitations(
+        "see Ill. Rev. Stat. 1985, ch. 40, par. 504(a).",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].title).toBe(40)
+        expect(cites[0].section).toBe("504")
+        expect(cites[0].subsection).toBe("(a)")
       }
     })
   })

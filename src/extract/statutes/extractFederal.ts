@@ -61,7 +61,13 @@ export function extractFederal(
     title = undefined
   }
 
-  const { section: parsedSection, sectionRangeEnd, subsection, hasEtSeq } = parseBody(rawBody)
+  const {
+    section: parsedSection,
+    sectionRangeEnd,
+    subsection,
+    subsectionRangeEnd,
+    hasEtSeq,
+  } = parseBody(rawBody)
 
   // Federal `§§ N-M` range form (#564): split into structured range with
   // `section` = start so existing consumers keep working. The matchedText
@@ -127,6 +133,10 @@ export function extractFederal(
     section,
     sectionRange,
     subsection,
+    subsectionRange:
+      subsection && subsectionRangeEnd
+        ? { start: subsection, end: subsectionRangeEnd }
+        : undefined,
     pincite: subsection,
     jurisdiction: "US",
     hasEtSeq: hasEtSeq || undefined,
