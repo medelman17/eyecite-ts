@@ -2435,6 +2435,99 @@ describe("extractStatute", () => {
     })
   })
 
+  // #592 — NY courts dominantly cite the CPLR as bare `CPLR NNNN` (no
+  // `N.Y.` prefix, no `§`). Bracket subdivisions (`[a]`) are common
+  // alongside the paren form. Spaces between the section number and the
+  // subdivision are typical NY court style.
+  describe("New York CPLR bare form (#592)", () => {
+    it("extracts `CPLR 3025 (b)` (bare, space-paren subsection)", () => {
+      const cites = extractCitations("Motion under CPLR 3025 (b) is denied.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NY")
+        expect(cites[0].code).toBe("N.Y. C.P.L.R.")
+        expect(cites[0].section).toBe("3025")
+        expect(cites[0].subsection).toBe("(b)")
+      }
+    })
+
+    it("extracts `CPLR 3211 (a) (4)` (multiple paren groups)", () => {
+      const cites = extractCitations("dismissed pursuant to CPLR 3211 (a) (4).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("3211")
+        expect(cites[0].subsection).toBe("(a)(4)")
+      }
+    })
+
+    it("extracts `CPLR 3108` (bare section, no subsection)", () => {
+      const cites = extractCitations("see CPLR 3108 for the procedure.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("3108")
+        expect(cites[0].jurisdiction).toBe("NY")
+      }
+    })
+
+    it("extracts `CPLR 4518 [a]` (bracket subdivision)", () => {
+      const cites = extractCitations("under CPLR 4518 [a].").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].section).toBe("4518")
+        expect(cites[0].subsection).toBe("[a]")
+      }
+    })
+
+    it("extracts `CPLR § 3211` (with §)", () => {
+      const cites = extractCitations("Motion under CPLR § 3211.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("N.Y. C.P.L.R.")
+        expect(cites[0].section).toBe("3211")
+      }
+    })
+
+    it("extracts `C.P.L.R. § 3211` (dotted, with §)", () => {
+      const cites = extractCitations("Motion under C.P.L.R. § 3211.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].code).toBe("N.Y. C.P.L.R.")
+        expect(cites[0].jurisdiction).toBe("NY")
+        expect(cites[0].section).toBe("3211")
+      }
+    })
+
+    it("does not regress fully-qualified `N.Y. C.P.L.R. § 211`", () => {
+      const cites = extractCitations("See N.Y. C.P.L.R. § 211.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NY")
+        expect(cites[0].section).toBe("211")
+      }
+    })
+
+    it("does not match bare `CPLR` when no section follows", () => {
+      const cites = extractCitations("The CPLR governs procedure.").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(0)
+    })
+  })
+
   describe("Tennessee T.C.A. variants + postfix (#398)", () => {
     it("extracts `T.C.A. sec. 40-2407` (sec. connector)", () => {
       const cites = extractCitations("See T.C.A. sec. 40-2407.").filter(

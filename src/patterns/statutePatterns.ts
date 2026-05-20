@@ -110,6 +110,33 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // New York Civil Practice Law and Rules (CPLR) — dominant NY court
+    // style cites the CPLR as bare `CPLR NNNN` with no `N.Y.` prefix
+    // and no `§` connector: `CPLR 3025 (b)`, `CPLR 3211 (a) (4)`,
+    // `CPLR 3108`, `CPLR 4518 [a]`. Dotted (`C.P.L.R.`) and §-prefixed
+    // (`CPLR § 3211`) variants are also accepted. The optional `N.Y.`
+    // prefix lets the pattern subsume the named-code match for fully-
+    // qualified `N.Y. C.P.L.R. § 211` so the canonical `N.Y. C.P.L.R.`
+    // code shape is emitted regardless of input form. #592
+    //
+    // The closed `C.?\s*P.?\s*L.?\s*R.?` shape with mandatory trailing
+    // digits guarantees no false-positives on the bare token `CPLR` in
+    // running prose ("The CPLR governs procedure.") — the `\d` after
+    // the optional § / whitespace is the disambiguator.
+    //
+    // Listed BEFORE `named-code` so the longer optional-prefix match
+    // wins span dedup when `N.Y.` is present.
+    //
+    // Captures: (1) section body, (2) optional subsection chain
+    // (paren and/or bracket groups, possibly space-separated).
+    id: "ny-cplr-bare",
+    regex:
+      /\b(?:N\.\s*Y\.\s*)?C\.?\s*P\.?\s*L\.?\s*R\.?\s*(?:§§?\s*)?(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*)((?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)/g,
+    description:
+      'New York CPLR bare/dotted/§ forms: "CPLR 3025 (b)", "C.P.L.R. § 3211", "N.Y. C.P.L.R. § 211" — #592',
+    type: "statute",
+  },
+  {
     id: "named-code",
     // Matches: [State abbrev]. [Code/Law Name] § [section]
     // Captures: (1) jurisdiction prefix, (2) code name text, (3) section+subsections+et seq
