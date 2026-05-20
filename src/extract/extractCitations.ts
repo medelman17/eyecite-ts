@@ -18,6 +18,7 @@ import { mapFootnoteZones } from "@/footnotes/mapZones"
 import { tagCitationsWithFootnotes } from "@/footnotes/tagging"
 import type { FootnoteMap } from "@/footnotes/types"
 import {
+  computeCaseConfidence,
   extractCase,
   extractConstitutional,
   extractDocket,
@@ -1416,5 +1417,19 @@ function inheritParallelCaseName(citations: Citation[]): void {
     secondary.plaintiffNormalized = primary.plaintiffNormalized
     secondary.defendantNormalized = primary.defendantNormalized
     secondary.proceduralPrefix = primary.proceduralPrefix
+
+    // The confidence score on `secondary` was computed by buildCaseCitation()
+    // when caseName was still undefined, so it missed the +0.15 caseName signal
+    // it now qualifies for. Re-derive with the same formula so the inherited
+    // caption registers in the score (#556). Reporter / year / court are
+    // unchanged by this pass, so this only swings score for secondaries that
+    // had their caseName mutated above.
+    secondary.confidence = computeCaseConfidence({
+      reporter: secondary.reporter,
+      year: secondary.year,
+      caseName: secondary.caseName,
+      court: secondary.court,
+      hasBlankPage: secondary.hasBlankPage ?? false,
+    })
   }
 }
