@@ -1,5 +1,90 @@
 # eyecite-ts
 
+## 0.22.0
+
+### Minor Changes
+
+- [#617](https://github.com/medelman17/eyecite-ts/pull/617) [`8109366`](https://github.com/medelman17/eyecite-ts/commit/8109366b324b9e9f0cec3ebeee190883a7d269a3) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): chained subsequent history attaches each link's entry to its
+  immediate parent, not the chain root (#527)
+
+  In a chain like `<root>, aff'd, <A>, cert. denied, <B>`, A is the
+  affirmance of the root and B is the cert. denial OF A (not of the
+  original root). The scanner already correctly attached `affirmed` to the
+  root and `cert. denied` to A. The Union-Find linker then collapsed
+  everything into a single component and aggregated all entries onto the
+  root, with two visible defects:
+
+  - A lost its own `subsequentHistoryEntries` (the linker cleared them
+    during aggregation), so the trailing chain link was effectively
+    dropped from A.
+  - B's `subsequentHistoryOf` pointed back at the root rather than at A,
+    breaking downstream `citationGraph` "history-of" edges.
+
+  The linker now skips Union-Find aggregation entirely. Each child resolves
+  to the lowest-indexed parent that paired with it (the primary cite of the
+  immediately-preceding chain link, naturally found via the scanner's own
+  position-based pairing). Entries stay where the scanner attached them.
+
+  This is a behavior change for the shape of `subsequentHistoryEntries`
+  across multi-link chains — the original cite now holds ONLY its direct
+  child's signal, with downstream signals living on the intermediate cites.
+  Existing tests that asserted "all entries on root" were updated to the
+  correct semantics.
+
+### Patch Changes
+
+- [#617](https://github.com/medelman17/eyecite-ts/pull/617) [`8109366`](https://github.com/medelman17/eyecite-ts/commit/8109366b324b9e9f0cec3ebeee190883a7d269a3) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): stop nested-paren content from leaking page numbers as `year`
+  and prose body as `court` (#522)
+
+  The metadata-paren regexes (`PAREN_REGEX`, `LOOKAHEAD_PAREN_REGEX`) match
+  non-greedy `[^)]+`, so a paren that contains a nested paren —
+  `(quoting United States v. Janis, 428 U.S. 433, 458, 96 S.Ct. 3021, 49
+L.Ed.2d 1046 (1976))` — was truncated at the first `)`. `parseParenthetical`
+  then picked up the first 4-digit token as the year (the page number `3021`)
+  and the entire truncated prose body as the court. SCOTUS opinions hit this
+  constantly because explanatory `(quoting/citing/see ... (YYYY))` patterns
+  are everywhere.
+
+  The fix adds `isNonMetadataParenContent(content)`, used everywhere a
+  parenthetical is about to be fed to `parseParenthetical`. The helper
+  recognises three explanatory-paren shapes that must never produce metadata:
+  unbalanced parens (regex truncated past an inner `(`), a leading signal
+  word, or a nested `(YYYY)` paren in the body. Hit any of these → skip
+  metadata extraction. Year/court fields stay unset on the outer cite, and
+  the SCOTUS / circuit / state reporter inference downstream applies as if
+  the paren were absent. The full balanced paren is then captured by
+  `collectParentheticals` (depth-tracking) and surfaced through
+  `parentheticals` with the correct signal type (`quoting`, `citing`, etc.).
+
+- [#617](https://github.com/medelman17/eyecite-ts/pull/617) [`8109366`](https://github.com/medelman17/eyecite-ts/commit/8109366b324b9e9f0cec3ebeee190883a7d269a3) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): raise `collectParentheticals` lookahead so long explanatory
+  parens and any trailing history clause survive (#528)
+
+  The scanner's `maxLookahead=500` silently dropped any explanatory
+  parenthetical whose closing `)` fell past the 500-char window — and the
+  trailing history clause (`cert. denied, ...`, `aff'd, ...`) after it.
+  Modern caselaw explanatory parens routinely run hundreds of characters,
+  so this fired often enough to be a real defect.
+
+  The default soft cap is now 2000 chars (4× the old limit), and once an
+  opening `(` is seen inside the window the depth-tracking inner loop is
+  allowed to chase the matching `)` up to a 10,000-char hard ceiling. That
+  way a paren whose body overflows the soft window is still captured intact,
+  and the scanner can keep walking after it to pick up trailing history
+  signals. Perf is unchanged on representative opinions (linear walk, early
+  termination on the first non-paren / non-signal character).
+
+- [#617](https://github.com/medelman17/eyecite-ts/pull/617) [`8109366`](https://github.com/medelman17/eyecite-ts/commit/8109366b324b9e9f0cec3ebeee190883a7d269a3) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): stop disposition keywords from leaking into the `court` field (#529)
+
+  `(per curiam)`, `(en banc)`, `(in bank)`, `(plurality opinion)`, `(mem.)`,
+  and `(unpublished table decision)` parens were being written to both
+  `court` and `disposition`. The disposition string overwrote the
+  reporter-based court inference, so `455 U.S. 478 (1982) (per curiam)`
+  returned `court="per curiam"` instead of `court="scotus"`. Disposition is
+  orthogonal to court — it describes how an opinion was issued, not which
+  court issued it. The parser now clears `court` (and the matching span
+  offsets) whenever it equals the disposition text it just recognised, so
+  SCOTUS / circuit / state inference survives a trailing disposition paren.
+
 ## 0.21.7
 
 ### Patch Changes
