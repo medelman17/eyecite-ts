@@ -187,8 +187,13 @@ const LOOKAHEAD_PAREN_REGEX =
 // either `\s+` (the original `768 n.3` form) or `,\s+` (the California
 // `768, fn. 3` form). `fn` / `fns` are added to the alternation alongside
 // `n` / `nn` / `note`.
+//
+// Terminator class (#505): in addition to sentence punctuation and closing
+// brackets, accept `:` (block-quote intro), `[` (bracketed parallel cite),
+// `»` (OCR artifact), and the four common curly/straight quote characters
+// (`"`, `"`, `'`, `'`, `"`). Frequency ~6–10 per 1,000 cites in the wild.
 const LOOKAHEAD_PINCITE_REGEX =
-  /^(?:\s+at\s+(?:pp?\.\s*)?|,\s*(?:at\s+(?:pp?\.\s*)?)?)(\*?\d+(?:-\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)(?=$|[.,;)(\]]|\s(?![A-Z]))/d
+  /^(?:\s+at\s+(?:pp?\.\s*)?|,\s*(?:at\s+(?:pp?\.\s*)?)?)(\*?\d+(?:-\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)(?=$|[.,:;)(\[\]»"'“”‘’]|\s(?![A-Z]))/d
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
@@ -206,8 +211,11 @@ const PAREN_SKIP_REGEX = /[\s,]/
 // Parallel-cite disambiguation: tighten the trailing whitespace branch to
 // reject `\s+[A-Z]` (a parallel-cite reporter token). Allow bracket close
 // `]` as a terminator so bracketed parallel pincites still capture.
+//
+// Terminator class mirrors LOOKAHEAD_PINCITE_REGEX (#505): accept `:`, `[`,
+// `»`, and curly/straight quotes as additional terminators.
 const ADDITIONAL_PINCITE_REGEX =
-  /^,\s*(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)(?=$|[.,;)(\]]|\s(?![A-Z]))/
+  /^,\s*(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)(?=$|[.,:;)(\[\]»"'“”‘’]|\s(?![A-Z]))/
 
 /** Pincite text that appears between core citation and parentheticals.
  *  Matches: comma-separated page numbers/ranges and optional note refs.
