@@ -2528,6 +2528,48 @@ describe("extractStatute", () => {
     })
   })
 
+  // #594 — `N.Y.C. Admin. Code § 8-107(1)(a)` previously matched the
+  // Georgia `ga-pre-1983` pattern (bare `Code §` with two-part hyphen
+  // section), silently routing every NYC Admin Code citation to GA
+  // jurisdiction and dropping the `N.Y.C.` prefix. Dedicated NYC pattern
+  // runs BEFORE the GA fallback so the full identifier survives.
+  describe("New York City Administrative Code (#594)", () => {
+    it("extracts `N.Y.C. Admin. Code § 8-107(1)(a)` as NY (not GA)", () => {
+      const cites = extractCitations("under N.Y.C. Admin. Code § 8-107(1)(a).").filter(
+        (c) => c.type === "statute",
+      )
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NY")
+        expect(cites[0].code).toBe("N.Y.C. Admin. Code")
+        expect(cites[0].section).toBe("8-107")
+        expect(cites[0].subsection).toBe("(1)(a)")
+      }
+    })
+
+    it("extracts spelled-out `New York City Administrative Code § 8-107(1)(a)`", () => {
+      const cites = extractCitations(
+        "see New York City Administrative Code § 8-107(1)(a).",
+      ).filter((c) => c.type === "statute")
+      expect(cites).toHaveLength(1)
+      if (cites[0]?.type === "statute") {
+        expect(cites[0].jurisdiction).toBe("NY")
+        expect(cites[0].code).toBe("N.Y.C. Admin. Code")
+        expect(cites[0].section).toBe("8-107")
+      }
+    })
+
+    it("does not regress pre-1983 GA `Code § 27-2501`", () => {
+      const cites = extractCitations("see Code § 27-2501 (Ga. 1972).").filter(
+        (c) => c.type === "statute",
+      )
+      // GA fallback still owns plain `Code § N-N` (no NYC prefix)
+      expect(cites.length).toBeGreaterThanOrEqual(1)
+      const ga = cites.find((c) => c.type === "statute" && c.jurisdiction === "GA")
+      expect(ga).toBeDefined()
+    })
+  })
+
   describe("Tennessee T.C.A. variants + postfix (#398)", () => {
     it("extracts `T.C.A. sec. 40-2407` (sec. connector)", () => {
       const cites = extractCitations("See T.C.A. sec. 40-2407.").filter(

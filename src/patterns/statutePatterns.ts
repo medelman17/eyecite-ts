@@ -537,6 +537,24 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // New York City Administrative Code — `N.Y.C. Admin. Code § 8-107(1)(a)`
+    // and the spelled-out `New York City Administrative Code § 8-107(1)(a)`.
+    // Without this pattern, the bare `Code §` portion matched the Georgia
+    // pre-1983 fallback below (`ga-pre-1983`) and the NYC prefix was
+    // silently dropped — every NYC Admin Code citation routed to GA.
+    // Listed BEFORE `ga-pre-1983` so the prefix-qualified shape wins
+    // span dedup. #594
+    //
+    // Captures: (1) section body (two-part hyphen), (2) optional
+    //   paren subsection chain.
+    id: "nyc-admin-code",
+    regex:
+      /\b(?:N\.\s*Y\.\s*C\.\s*Admin\.?\s+Code|New\s+York\s+City\s+Administrative\s+Code)\s+§§?\s*(\d+-\d+(?![\d-])(?!\.\d)(?:[A-Za-z0-9])?)((?:\([^)]*\))*)/g,
+    description:
+      'New York City Administrative Code: "N.Y.C. Admin. Code § 8-107(1)(a)" / "New York City Administrative Code § 8-107(1)(a)" — #594',
+    type: "statute",
+  },
+  {
     id: "ga-pre-1983",
     regex:
       /\b(Code(?:\s+Ann\.?)?)\s+§\s*(\d+-\d+(?![\d-])(?!\.\d)(?:[A-Za-z0-9])?(?:\([A-Za-z0-9]+\))*)/g,
