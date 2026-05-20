@@ -1,5 +1,218 @@
 # eyecite-ts
 
+## 0.21.4
+
+### Patch Changes
+
+- [#573](https://github.com/medelman17/eyecite-ts/pull/573) [`4a439b7`](https://github.com/medelman17/eyecite-ts/commit/4a439b7e5d3c3641be45591fcd78334fb2dcf065) Thanks [@medelman17](https://github.com/medelman17)! - Fix `annotate` engulfing prose around bare `<` characters (#544).
+
+  `snapOutOfHtmlTags` treated ANY unpaired `<` as the open of an HTML tag, so when the source contained bare `<` characters from OCR or math notation (`A < B`, `rate is < 30%`, `<®=»`), citation start positions snapped backwards to the bare `<` and the `<cite>` wrap engulfed everything between the bare `<` and the citation. Catastrophic with the canonical `<cite>` template.
+
+  `findContainingTag` now only treats a `<` as a tag open when it is IMMEDIATELY followed by `[a-zA-Z!/]` — the only characters that begin a well-formed HTML tag, comment, doctype, or close-tag. Bare `<` followed by whitespace, digits, punctuation, or end-of-text is left alone, so prose with mathematical / inequality syntax annotates cleanly.
+
+- [#573](https://github.com/medelman17/eyecite-ts/pull/573) [`4a439b7`](https://github.com/medelman17/eyecite-ts/commit/4a439b7e5d3c3641be45591fcd78334fb2dcf065) Thanks [@medelman17](https://github.com/medelman17)! - Fix `annotate` corrupting wraps for parallel-reporter sequences when `useFullSpan: true` (#543).
+
+  When `useFullSpan: true`, `annotate` sorted citations by `span.originalStart` (the core citation) but wrapped using `fullSpan.originalStart`/`fullSpan.originalEnd`. For parallel-reporter sequences whose `fullSpan`s all extend back to the same case name (e.g., `Roe v. Wade, 410 U.S. 113, 93 S.Ct. 705, 35 L.Ed.2d 147 (1973)`), the sort order disagreed with the wrap ranges. The reverse-iterate splice then dropped `<cite>` tags inside text that subsequent (outer) wraps were about to encompass, producing nested `<cite>` tags, mid-token truncations like `L. Ed. 2</cite>d`, and HTML-escaped sentinels like `&lt;cite&gt;`. The pathology hit roughly 21% of opinions in a CAP-corpus audit.
+
+  `annotate` now resolves each citation's wrap range up-front (core span or `fullSpan`, depending on `useFullSpan`) and sorts/iterates against that range. It also performs explicit overlap detection: when two wraps intersect, the earlier-starting (outer/wider) wrap wins and the inner citation is surfaced via the `skipped` array — matching the promise in `AnnotationResult.skipped`'s docstring. Parallel-reporter clusters now produce a single outer `<cite>…</cite>` around the case name + reporters + parenthetical, with the inner two citations reported as skipped.
+
+- [#573](https://github.com/medelman17/eyecite-ts/pull/573) [`4a439b7`](https://github.com/medelman17/eyecite-ts/commit/4a439b7e5d3c3641be45591fcd78334fb2dcf065) Thanks [@medelman17](https://github.com/medelman17)! - Fix `annotate` producing malformed sentinels for overlapping core spans (#545).
+
+  When two citations' core `span.originalStart`/`originalEnd` ranges overlapped (e.g., a statute false-positive nested inside a case name's core span), `annotate` spliced both wraps and chopped one sentinel into the middle of the other's text, producing malformed output. Roughly 7% of opinions were affected.
+
+  The overlap detection added in #543 now applies to core-span wraps too, and is confidence-aware: when two wraps intersect, the citation with the higher `confidence` score wins and the other is surfaced via the `skipped` array. Nested wraps (one fully inside another) always keep the outer wrap. The `AnnotationResult.skipped` docstring is updated to reflect the new behaviour.
+
+- [#597](https://github.com/medelman17/eyecite-ts/pull/597) [`bc8c456`](https://github.com/medelman17/eyecite-ts/commit/bc8c456748dc97bbf39e4a97aa0feb702c8b255c) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): emit citations for bare-prefix `§§ N, N` lists (#563)
+
+  `§§ X, Y, Z` lists without an explicit code identifier in front of the
+  `§§` marker produced ZERO citations. The existing `expandPluralSectionList`
+  post-pass only fires _after_ a head citation already exists in the result
+  set, so naked sequences like `See §§ 12940, 12945` or `Code §§ 19.2-81 and
+18.2-266` never seeded a head and the whole list dropped silently.
+
+  Adds `detectBareSectionLists` running just before the expander. The pass
+  scans the cleaned text for `[Code ]§§ N(, N)+` shapes that don't overlap
+  an existing citation and seeds a head with `code` set to the prefix (or
+  `"§"` when none is present) so the expander picks up the siblings. The
+  section grammar in both the new detector and the expander now allows
+  dotted section numbers (`19.2-81`, `12940.5`).
+
+  Confidence on the seeded head is intentionally low (0.5) because no code
+  identifier means no jurisdiction grounding — downstream inheritance passes
+  remain authoritative for jurisdictional context.
+
+- [#597](https://github.com/medelman17/eyecite-ts/pull/597) [`bc8c456`](https://github.com/medelman17/eyecite-ts/commit/bc8c456748dc97bbf39e4a97aa0feb702c8b255c) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): bare `§ N` after a full statute is a short-form reference (#567)
+
+  Cross-reference forms like `42 U.S.C. § 1983; see also § 1985` previously
+  produced only one citation — the bare `§ 1985` was dropped because no
+  tokenizer pattern fires without a code identifier. Adds
+  `detectBareSectionShortForms` that walks each full statute citation and
+  scans up to 300 chars forward (capped at the next statute) for bare
+  `§ N` shapes. Each match emits an inherited StatuteCitation carrying the
+  antecedent's `title`, `code`, and `jurisdiction`.
+
+  Guards:
+
+  - Antecedent must have a code identifier; bare-section antecedents owned
+    by the NM dispatcher (NMSA 1978) are skipped.
+  - Three-hyphen state-section shapes (`32A-2-7`) remain owned by the NM
+    pipeline.
+  - The pass respects existing citation spans (no overlap re-emission).
+
+- [#583](https://github.com/medelman17/eyecite-ts/pull/583) [`84b388f`](https://github.com/medelman17/eyecite-ts/commit/84b388fd04879f7ed45a56690607dfbe11f1c846) Thanks [@medelman17](https://github.com/medelman17)! - Insert a token-boundary space when stripping HTML tags between adjacent word characters (#542).
+
+  `stripHtmlTags` previously deleted tags with no replacement, so HTML like `100 F.3d 200<footnote label="3">200 F.3d 300</footnote>` collapsed to `100 F.3d 200200 F.3d 300`. The tokenizer then read the fused digit run as a single malformed citation (`100 F.3d 200200`), and the second reporter cite was lost entirely.
+
+  When a tag (or run of adjacent tags) sits between two word characters, the cleaner now inserts a single space in its place. Tags between non-word neighbors (spaces, punctuation, start/end of string) are still removed with no insertion, preserving existing behavior for the common case (`Smith v. <b>Doe</b>, 500 F.2d 123`).
+
+  The position-mapping algorithm handles inserted spaces correctly via its existing insertion branch — no additional adjustments needed.
+
+- [#596](https://github.com/medelman17/eyecite-ts/pull/596) [`e146e6b`](https://github.com/medelman17/eyecite-ts/commit/e146e6b2dc284e83d86fedb1753f93816c323e48) Thanks [@medelman17](https://github.com/medelman17)! - fix(constitutional): accept ordinal abbreviation and word-form amendments (#534)
+
+  The constitutional patterns only matched Roman numerals or Arabic numbers after `art./amend.` (e.g., `U.S. Const. amend. XIV`). Real-world citations frequently use ordinal abbreviations (`U.S. Const., 5th Amend.`) and spelled-out word forms (`U.S. Const., Fifth Amendment`), neither of which tokenized.
+
+  Three additions:
+
+  - The numeral group now accepts `1st`..`27th` and `First`..`Twenty-Seventh` (in either hyphenated or space-separated form).
+  - The amendment word accepts unabbreviated `Amendment` alongside `amend.` / `amdt.`.
+  - A new `bare-amendment-word` pattern catches prefix forms without `Const.` (e.g., "the Fifth Amendment", "the Fourteenth Amendment") with confidence 0.5.
+
+  The extractor parses all four numeral forms (Roman, Arabic, ordinal abbreviation, word ordinal) into the existing `amendment` / `article` integer fields.
+
+- [#597](https://github.com/medelman17/eyecite-ts/pull/597) [`bc8c456`](https://github.com/medelman17/eyecite-ts/commit/bc8c456748dc97bbf39e4a97aa0feb702c8b255c) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): only the owning sibling carries `hasEtSeq` in `§§` lists (#566)
+
+  `expandPluralSectionList` previously spread `{ ...cite }` from the head
+  onto every sibling, so if `et seq.` modified ONE specific section in a
+  plural list (`§§ 12940 et seq., 12945`), the flag rode along to every
+  sibling in the fanout. Symmetrically, `§§ 1331, 1332 et seq.` left `1332`
+  without the flag because the head was `1331` (no trailing `et seq.`).
+
+  Fix: after positioning each sibling, peek ~20 chars past the section end
+  and set `hasEtSeq` only when `et seq.` immediately follows. Siblings
+  without a trailing `et seq.` token now drop the flag regardless of the
+  head's value. Also clears `sectionRange` on siblings — the structured
+  range applied only to the head.
+
+- [#583](https://github.com/medelman17/eyecite-ts/pull/583) [`84b388f`](https://github.com/medelman17/eyecite-ts/commit/84b388fd04879f7ed45a56690607dfbe11f1c846) Thanks [@medelman17](https://github.com/medelman17)! - Cap final plain-text footnote zone at next post-footnote boundary (#539).
+
+  `detectTextFootnotes` previously bounded the last footnote zone at `text.length`, so post-footnote body content (e.g., a "GOVERNMENT BRIEF" section that follows the numbered notes) was swallowed into the trailing footnote. Any citation appearing after the footnote section was misannotated `inFootnote: true`, and footnote-scoped resolution refused to link it to body antecedents.
+
+  The detector now scans past the final marker for the earliest of: another separator line (5+ dashes/underscores), or a blank line followed by an ALL-CAPS heading line. The zone stops at that boundary. End-of-text remains the fallback when no such boundary exists.
+
+- [#583](https://github.com/medelman17/eyecite-ts/pull/583) [`84b388f`](https://github.com/medelman17/eyecite-ts/commit/84b388fd04879f7ed45a56690607dfbe11f1c846) Thanks [@medelman17](https://github.com/medelman17)! - Anchor plain-text footnote markers at column 0 (#540).
+
+  `MARKER_SRC` previously began with `^\s*`, so indented numbered sub-list items inside a footnote body (` 1.`, ` 2.`) were read as new footnote markers, splitting a single footnote into multiple spurious zones. Citations inside the same footnote were then misannotated as belonging to fabricated sibling footnotes, and the resolver's `"footnote"` scope refused to link them.
+
+  The marker pattern now requires the digit/`FN`/`[N]`/`n.` prefix to start at column 0 (no leading whitespace). Indented sub-lists inside footnote bodies are correctly treated as continuation text.
+
+- [#583](https://github.com/medelman17/eyecite-ts/pull/583) [`84b388f`](https://github.com/medelman17/eyecite-ts/commit/84b388fd04879f7ed45a56690607dfbe11f1c846) Thanks [@medelman17](https://github.com/medelman17)! - Reject short separator + numbered-list false positives in plain-text footnote detection (#541).
+
+  A signature block like `/s/ Judge Smith\n\n-----\n\n1. The first issue...` was mis-classified as a footnote section because the existing 5+ dashes/underscores separator pattern matched the decorative rule and the numbered list looked like markers. Citations in the numbered analysis were then annotated `inFootnote: true` incorrectly.
+
+  Tighten in two ways:
+
+  - Short separators (5..7 chars) now require the separator to appear at least 25% into the document. Long separators (8+ chars) bypass this gate.
+  - The digit-period marker pattern now requires the marker line to contain non-whitespace content after the period (`(\d+)\.\s+\S`), rejecting heading-style `1.\n\n`.
+
+- [#597](https://github.com/medelman17/eyecite-ts/pull/597) [`bc8c456`](https://github.com/medelman17/eyecite-ts/commit/bc8c456748dc97bbf39e4a97aa0feb702c8b255c) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): Mass `c. NNN` chapter no longer leaks into `code` (#569)
+
+  Massachusetts citations like `G.L. c. 93A` previously placed the chapter
+  number (`93A`) into the `code` field and set `section=""`, conflating
+  two distinct identifiers. Adds a dedicated `chapter` field to
+  `StatuteCitation` and updates the mass-chapter extractor:
+
+  - `code` carries the corpus identifier as it appeared in the source
+    (`G.L.`, `Mass. Gen. Laws`, `M.G.L.A.`, `A.L.M.`, `General Laws`).
+  - `chapter` carries the chapter (`93A`, `93`, `268A`, `90`).
+  - `section` is the trailing section number when present, otherwise
+    `undefined` (no more empty-string sentinels).
+
+  `StatuteCitation.section` is now `string | undefined` to model
+  chapter-only citations. The bluebook formatter now emits `<code> c.
+<chapter>` for chapter-only forms and `<code> c. <chapter>, § <section>`
+  for the full chapter+section shape. Pre-existing tests / fixture updated.
+
+- [#597](https://github.com/medelman17/eyecite-ts/pull/597) [`bc8c456`](https://github.com/medelman17/eyecite-ts/commit/bc8c456748dc97bbf39e4a97aa0feb702c8b255c) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): named-code `code` carries the full identifier (#568)
+
+  Named-code citations like `Cal. Civ. Code § 51` previously dropped both
+  the jurisdiction prefix and the trailing `Code` / `Law` suffix, storing
+  only the cleaned body — `Civ.` instead of `Cal. Civ. Code`, `Penal`
+  instead of `N.Y. Penal Law`. Consumers couldn't reconstruct the original
+  identifier from the parsed citation.
+
+  `extractNamedCode` now stores the full identifier in `code`: the
+  jurisdiction prefix as it appeared in the source, plus the body (Code
+  name + suffix), e.g. `Cal. Civ. Code`, `Cal. Penal Code`, `California
+Civil Code`, `N.Y. Penal Law`, `Tex. Penal Code`. Internal registry
+  lookups continue to use the cleaned body as the lookup key.
+
+  Three pre-existing tests (and one golden-corpus fixture) that asserted
+  the truncated body shape have been updated to the full identifier.
+
+- [#596](https://github.com/medelman17/eyecite-ts/pull/596) [`e146e6b`](https://github.com/medelman17/eyecite-ts/commit/e146e6b2dc284e83d86fedb1753f93816c323e48) Thanks [@medelman17](https://github.com/medelman17)! - fix(neutral): reject docket-shaped strings and implausible years (#532)
+
+  Strings like `03A01-9103-CH-96` (a TN/IN docket number) were matching the hyphenated neutral pattern, producing a `type: "neutral"` citation with `year: 9103`. Two guards now prevent this:
+
+  - The year segment must fall in 1700-2199 (was: any 4 digits).
+  - A negative lookbehind rejects matches whose preceding text contains a `Case No.` / `Cause No.` / `Docket No.` prefix.
+
+  Both apply to the 3-segment (NM/Ohio/NC) and 4-segment (MS) hyphenated patterns.
+
+- [#596](https://github.com/medelman17/eyecite-ts/pull/596) [`e146e6b`](https://github.com/medelman17/eyecite-ts/commit/e146e6b2dc284e83d86fedb1753f93816c323e48) Thanks [@medelman17](https://github.com/medelman17)! - fix(statute): require NM signal in context for bare `§ N-N-N` cites (#531)
+
+  The bare three-hyphen section shape (`§ 12-17-189`, `Section 32A-2-7(A)`) was defaulting to New Mexico (`code: "NMSA 1978", jurisdiction: "NM"`) because the pattern is common there — but the shape is too generic and the same form appears in Virginia, Alabama, and other states. We now require an explicit NM signal (`NMSA`, `N.M.`, `New Mexico`) within ~200 chars before the cite. Without it, the bare section is still emitted but with `jurisdiction` and `code` left undefined.
+
+  Minor type change: `StatuteCitation.code` is now `string | undefined` to support these untagged bare cites.
+
+- [#597](https://github.com/medelman17/eyecite-ts/pull/597) [`bc8c456`](https://github.com/medelman17/eyecite-ts/commit/bc8c456748dc97bbf39e4a97aa0feb702c8b255c) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): NM bare-section decimal subsection + jurisdiction guard (#565)
+
+  Two paired bugs on the NM bare-section path:
+
+  1. The `nm-bare-section` regex didn't accept `.` inside parens, so
+     `§ 32A-2-7(A)(1.5)` silently dropped the `(1.5)` portion of the
+     subsection chain. Pattern + extractor regex now allow decimals and
+     bracket subscripts inside subsection parens.
+  2. The default `NM` / `NMSA 1978` tag fired on every bare `§ N-N-N`
+     shape, even with no nearby NM signal — the same misattribution
+     pattern that drove #531 for the named-code path. Adds a jurisdiction
+     guard: if the cleaned text within 200 chars before the citation
+     doesn't contain `NMSA`, `N.M.`, or `New Mexico`, both `jurisdiction`
+     and `code` are dropped so consumers don't trust a guess.
+
+  `StatuteCitation.code` is now `string | undefined` to model the
+  guard-dropped case. The bluebook formatter renders `§ <section>` without
+  a code prefix when code is missing. Three pre-existing tests that asserted
+  the implicit NM default have been rewritten to either supply NM context
+  or assert the new dropped-jurisdiction contract.
+
+- [#596](https://github.com/medelman17/eyecite-ts/pull/596) [`e146e6b`](https://github.com/medelman17/eyecite-ts/commit/e146e6b2dc284e83d86fedb1753f93816c323e48) Thanks [@medelman17](https://github.com/medelman17)! - fix(publicLaw): accept spelled-out `Public Law` and `Public Law No.` (#533)
+
+  The public-law pattern only matched the abbreviated `Pub. L.` / `Pub. L. No.` forms, so spelled-out variants like `Public Law 116-127` and `Public Law No. 116-127` (common in House/Senate reports and in opinions that introduce the citation without prior abbreviation) were never tokenized. Both forms now extract correctly with `congress` and `lawNumber` populated.
+
+- [#597](https://github.com/medelman17/eyecite-ts/pull/597) [`bc8c456`](https://github.com/medelman17/eyecite-ts/commit/bc8c456748dc97bbf39e4a97aa0feb702c8b255c) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): `§§ N-M` federal ranges populate `sectionRange` (#564)
+
+  `28 U.S.C. §§ 591-99 (2000)` previously produced one citation with
+  `section="591-99"`, ambiguous with hyphenated state-style sections
+  (`19.2-81`, `32A-2-7`). Adds a structured `sectionRange: { start, end }`
+  field on `StatuteCitation` and populates it for federal `§§` ranges. The
+  `section` field now holds the range start (e.g. `"591"`) so consumers that
+  only read `section` keep working on the common case.
+
+  Detection guard: hyphenated state-style sections (anything with a dot, a
+  letter, or more than one hyphen) are NOT treated as ranges and continue
+  to surface in `section` unchanged.
+
+- [#597](https://github.com/medelman17/eyecite-ts/pull/597) [`bc8c456`](https://github.com/medelman17/eyecite-ts/commit/bc8c456748dc97bbf39e4a97aa0feb702c8b255c) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): prefer same-case full-caption supra matches
+
+  `Plaintiff v. Defendant, supra` resolution now first looks for a single
+  antecedent whose plaintiff and defendant both match the caption. This prevents
+  an unrelated case with a stronger one-sided fuzzy match from beating the
+  intended antecedent.
+
+- [#596](https://github.com/medelman17/eyecite-ts/pull/596) [`e146e6b`](https://github.com/medelman17/eyecite-ts/commit/e146e6b2dc284e83d86fedb1753f93816c323e48) Thanks [@medelman17](https://github.com/medelman17)! - fix(statute): surface `Va. Code` / `Ala. Code` instead of bare `"Code"` in the `code` field (#530)
+
+  Named-code extraction for Virginia and Alabama produced `code: "Code"` because the registry only stores the bare suffix (`"Code"`, `"Code Ann."`) and `cleanCodeName()` strips the trailing word. The extractor now re-attaches the jurisdictional prefix so consumers see `"Va. Code"`, `"Va. Code Ann."`, `"Ala. Code"`, or `"Ala. Code Ann."`. The Virginia bare-Code extractor (`Code §`, `Virginia Code §`) is normalized to `"Va. Code"` for the same reason.
+
 ## 0.21.3
 
 ### Patch Changes
