@@ -15,7 +15,7 @@
  */
 
 import type { Token } from "@/tokenize"
-import type { StatuteCitation } from "@/types/citation"
+import type { RegulationCitation, StatuteCitation } from "@/types/citation"
 import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 import { extractAbbreviated } from "./statutes/extractAbbreviated"
 import { extractAlaCode1940 } from "./statutes/extractAlaCode1940"
@@ -130,7 +130,7 @@ function extractLegacy(token: Token, transformationMap: TransformationMap): Stat
 export function extractStatute(
   token: Token,
   transformationMap: TransformationMap,
-): StatuteCitation {
+): StatuteCitation | RegulationCitation {
   switch (token.patternId) {
     case "usc":
     case "cfr":

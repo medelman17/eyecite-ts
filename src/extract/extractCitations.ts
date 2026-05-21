@@ -806,7 +806,9 @@ const EDITION_LABEL_REGEX = /^(?:Repl|Supp|Cum\.?\s*Supp|Reissue)\.?$/i
  */
 function attachStatuteYearParen(citations: Citation[], cleaned: string): void {
   for (const cite of citations) {
-    if (cite.type !== "statute") continue
+    // Both statute and regulation citations carry year/publisher metadata
+    // and bind trailing `(YYYY)` / `(West YYYY)` parentheticals. #637
+    if (cite.type !== "statute" && cite.type !== "regulation") continue
     if (cite.year !== undefined) continue
     const after = cleaned.slice(cite.span.cleanEnd)
     const match = STATUTE_YEAR_PAREN_REGEX.exec(after)
