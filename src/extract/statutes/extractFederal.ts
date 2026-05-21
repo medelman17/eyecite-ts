@@ -8,7 +8,7 @@
  */
 
 import type { Token } from "@/tokenize"
-import type { StatuteCitation } from "@/types/citation"
+import type { RegulationCitation, StatuteCitation } from "@/types/citation"
 import type { StatuteComponentSpans } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 import { parseBody } from "./parseBody"
@@ -37,7 +37,7 @@ const FEDERAL_PART_RE =
 export function extractFederal(
   token: Token,
   transformationMap: TransformationMap,
-): StatuteCitation {
+): StatuteCitation | RegulationCitation {
   const { text, span } = token
 
   // Try § form first, then Part form
@@ -122,8 +122,14 @@ export function extractFederal(
   if (subsection) confidence += 0.05
   confidence = Math.min(confidence, 1.0)
 
+  // C.F.R. is a regulation, not a statute — emit the type discriminator
+  // that reflects that. Same field shape; downstream consumers filtering
+  // by `citation.type === "regulation"` need this without resorting to
+  // `code === "C.F.R."` string matching. #637
+  const type = code === "C.F.R." ? "regulation" : "statute"
+
   return {
-    type: "statute",
+    type,
     text,
     span: {
       cleanStart: span.cleanStart,

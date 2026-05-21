@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { extractCitations } from "@/extract"
-import type { Citation, StatuteCitation } from "@/types/citation"
+import type { Citation, RegulationCitation, StatuteCitation } from "@/types/citation"
 
 const statutes = (cites: Citation[]): StatuteCitation[] =>
   cites.filter((c): c is StatuteCitation => c.type === "statute")
+
+const regulations = (cites: Citation[]): RegulationCitation[] =>
+  cites.filter((c): c is RegulationCitation => c.type === "regulation")
 
 /**
  * #587 — Federal code citations sometimes appear with a comma between
@@ -43,7 +46,8 @@ describe("issue #587 — comma between code and section", () => {
   })
 
   it("extracts `12 C.F.R., § 226`", () => {
-    const cites = statutes(extractCitations("12 C.F.R., § 226"))
+    // CFR is type=regulation since #637.
+    const cites = regulations(extractCitations("12 C.F.R., § 226"))
     expect(cites).toHaveLength(1)
     const c = cites[0]
     expect(c.title).toBe(12)
@@ -95,7 +99,8 @@ describe("issue #587 — comma between code and section", () => {
   })
 
   it("still extracts canonical `12 C.F.R. § 226.1` — regression for #428", () => {
-    const cites = statutes(extractCitations("12 C.F.R. § 226.1"))
+    // CFR is type=regulation since #637.
+    const cites = regulations(extractCitations("12 C.F.R. § 226.1"))
     expect(cites).toHaveLength(1)
     expect(cites[0].code).toBe("C.F.R.")
     expect(cites[0].section).toBe("226.1")
