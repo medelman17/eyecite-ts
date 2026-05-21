@@ -28,7 +28,11 @@ import { isPlausibleYear } from "./dates"
  * end-of-string, sentence punctuation, brackets/parens, or whitespace not
  * followed by a capital letter.
  */
-const SAL_PINCITE_REGEX = /^,\s*(\d+)(?:[-–—](\d+))?(?=$|[.,:;)([\]»"'“”‘’]|\s(?![A-Z]))/
+// Pincite accepts comma-grouped digits (`1,234` and `1,234,567`) on
+// both endpoints. Stat. pages routinely exceed 10,000 so commas in the
+// pincite are common.
+const SAL_PINCITE_REGEX =
+  /^,\s*(\d{1,3}(?:,\d{3})+|\d+)(?:[-–—](\d{1,3}(?:,\d{3})+|\d+))?(?=$|[.,:;)([\]»"'“”‘’]|\s(?![A-Z]))/
 
 export function extractStatutesAtLarge(
   token: Token,
@@ -67,16 +71,21 @@ export function extractStatutesAtLarge(
     const after = cleanedText.substring(span.cleanEnd)
     const pinciteMatch = SAL_PINCITE_REGEX.exec(after)
     if (pinciteMatch) {
-      pincite = Number.parseInt(pinciteMatch[1], 10)
+      // Strip thousands-grouping commas before integer parse.
+      const rawStart = pinciteMatch[1]
+      const rawStartDigits = rawStart.replace(/,/g, "")
+      pincite = Number.parseInt(rawStartDigits, 10)
       pinciteConsumed = pinciteMatch[0].length
       if (pinciteMatch[2]) {
         const rawEnd = pinciteMatch[2]
-        // Abbreviated end pages: "3755-58" means 3758.
-        if (rawEnd.length < pinciteMatch[1].length) {
-          const prefix = pinciteMatch[1].slice(0, pinciteMatch[1].length - rawEnd.length)
-          pinciteEndPage = Number.parseInt(prefix + rawEnd, 10)
+        const rawEndDigits = rawEnd.replace(/,/g, "")
+        // Abbreviated end pages: "3755-58" means 3758. Use digit-string
+        // lengths (post-comma-strip) to detect abbreviation.
+        if (rawEndDigits.length < rawStartDigits.length) {
+          const prefix = rawStartDigits.slice(0, rawStartDigits.length - rawEndDigits.length)
+          pinciteEndPage = Number.parseInt(prefix + rawEndDigits, 10)
         } else {
-          pinciteEndPage = Number.parseInt(rawEnd, 10)
+          pinciteEndPage = Number.parseInt(rawEndDigits, 10)
         }
         pinciteIsRange = true
       }
