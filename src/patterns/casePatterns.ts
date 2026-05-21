@@ -107,14 +107,31 @@ export const casePatterns: Pattern[] = [
     // fires when `Id` / `Ibid` is followed by an optional period plus
     // whitespace and a page digit, which is the short-form shape, never
     // the start of a reporter abbreviation.
-    // `AND` / `OR` guard: a fully-capitalized conjunction word in
-    // prose (`Plaintiff cited 100 AND 200`) would otherwise be captured
-    // as a reporter abbreviation by the broad lazy match. The negative
-    // lookahead rejects this shape before the reporter capture starts.
-    // Genuine reporters like `Or.` (Oregon) and `Ore.` are unaffected
-    // because they contain a period or extend beyond the bare conjunction.
+    // Phantom-citation guard: the reporter capture is token-aware so
+    // subsequent space-separated tokens must START with uppercase letter,
+    // digit, or `&`. This rejects all multi-word prose phantoms (paragraph
+    // markers + prose, section headings + prose, year-prefixed prose
+    // sentences) without an explicit word blocklist. Real reporters are
+    // always Title Case + periods + digit suffixes, so lowercase-starting
+    // tokens are a near-perfect prose signal.
+    //
+    // Examples of phantoms killed by this rule:
+    //   - `2 Beginning in 2011`        → "in" lowercase, no second token
+    //   - `15 ODC maintains that...`   → "maintains" lowercase
+    //   - `2009 General Primary Election due to the fact that...` → "due" lowercase
+    //   - `47 AND 100`                 → no second token after "AND"
+    //
+    // The `AND` / `OR` / `Ibid` / `Id.` guards remain as a fast-fail
+    // for the most common bare-conjunction shapes before the token loop
+    // even starts.
+    //
+    // First token: `[A-Z][A-Za-z.\d&']*`
+    // Continuation: optional `\s+[A-Z\d&][A-Za-z.\d&']*` repeated lazily.
+    // The `(?! L\.[JQR\s])` and `(?! R\.\s+\d)` lookaheads remain pre-
+    // space to handle Illinois `R. <ruleNum>` and the `L.J./L.Q./L.R.`
+    // journal-abbreviation guards (#332, #549).
     regex: new RegExp(
-      String.raw`\b(\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)(?!(?:AND|OR)\s+\d)([A-Z](?:(?! L\.[JQR\s])(?! R\.\s+\d)(?!\s+vs?\.\s)(?!\s+at\s)[A-Za-z.\d\s&'])+?)(?:\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|\)|,|;|\.|\[|\])|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
+      String.raw`\b(\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)(?!(?:AND|OR)\s+\d)([A-Z][A-Za-z.\d&']*(?:(?! L\.[JQR\s])(?! R\.\s+\d)\s+[A-Z\d&][A-Za-z.\d&']*)*?)(?:\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|\)|,|;|\.|\[|\])|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
       "g",
     ),
     description:
