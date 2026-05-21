@@ -929,12 +929,32 @@ function stripDateFromCourt(content: string): string | undefined {
   if (/,\s+J\.?J?\.?\s*$|,\s+JJ\.?\s*$/.test(court)) {
     return undefined
   }
+  // Judge-attribution parenthetical with mid-string `, J.,` / `, JJ.,`
+  // (e.g. `Smith, J., dissenting`, `Smith, J., concurring in part`).
+  // The trailing-only check above misses these because `dissenting` /
+  // `concurring` follows the `J.` marker.
+  if (/,\s+J\.?J?\.?,\s+(?:dissenting|concurring|joining)/i.test(court)) {
+    return undefined
+  }
   // Disposition tokens (Bluebook Rule 10.7) sometimes appear inside the
   // court parenthetical: `(rev'd 1990)`, `(per curiam 1990)`, `(en banc)`,
   // `(cert. denied 1990)`. After year-stripping, the bare disposition is
   // not a court — reject it so we don't surface `court="rev'd"`.
   if (
     /^(?:rev'd|aff'd|aff'g|rev'g|mod'd|cert\.?\s+(?:denied|granted|dismissed)|appeal\s+(?:denied|dismissed|docketed)|dismissed|reversed|vacated|vacating|overruled(?:\s+by)?|overruling|en\s+banc|per\s+curiam)(?:\s+(?:in\s+part|on\s+other\s+grounds?|sub\s+nom\.?))?\s*$/i.test(
+      court,
+    )
+  ) {
+    return undefined
+  }
+  // Editorial/status tokens that appear in date parenthetical position but
+  // are not courts: `n.d.` (no date), `unpub.`, `unpublished`,
+  // `slip op.`, `slip opinion`, `table`, `mem.`, `no date`,
+  // `year omitted`. These either contain periods (escaping the no-period
+  // gate) or are single short lowercase words that wouldn't trigger the
+  // multi-word-prose rule.
+  if (
+    /^(?:n\.?\s*d\.?|no\s+date|year\s+omitted|unpub\.?|unpublished|slip\s+op(?:\.|inion)?|table|mem\.?)\s*$/i.test(
       court,
     )
   ) {
