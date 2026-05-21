@@ -889,6 +889,17 @@ const SENTENCE_INITIAL_WORDS = new Set([
 function stripDateFromCourt(content: string): string | undefined {
   // Strip trailing numeric date format first (1/15/2020)
   let court = content.replace(/\s*\d{1,2}\/\d{1,2}\/\d{4}\s*$/, "").trim()
+  // Strip trailing year-plus-disposition-modifier (`1990 mem.`,
+  // `1990 unpublished`, `1990 per curiam`, `1990 en banc`). The year
+  // sits in the middle of `(<court> <year> <modifier>)` so the bare
+  // `\d{4}$` strip below can't reach it; lift the year+modifier suffix
+  // first.
+  court = court
+    .replace(
+      /\s*\d{4}\s+(?:mem\.?|unpub\.?|unpublished|per\s+curiam|en\s+banc|slip\s+op\.?|table|supp\.?)\s*$/i,
+      "",
+    )
+    .trim()
   // Strip trailing year
   court = court.replace(/\s*\d{4}\s*$/, "").trim()
   // Strip trailing date components: optional day+comma, month abbreviation or full name
