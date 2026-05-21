@@ -870,7 +870,7 @@
       "text": "40 C.F.R. § 122",
       "expected": [
         {
-          "type": "statute",
+          "type": "regulation",
           "title": 40,
           "section": "122"
         }
@@ -2006,7 +2006,7 @@
           "section": "1251"
         },
         {
-          "type": "statute",
+          "type": "regulation",
           "title": 40,
           "section": "122"
         },
