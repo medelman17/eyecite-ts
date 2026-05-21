@@ -21,6 +21,7 @@ export type CitationType =
   | "case"
   | "docket"
   | "statute"
+  | "regulation"
   | "stateRule"
   | "journal"
   | "neutral"
@@ -547,6 +548,55 @@ export interface StatuteCitation extends CitationBase {
 }
 
 /**
+ * Regulation citation (Code of Federal Regulations and state regulatory
+ * codes that share the same shape: title + code + section + subsection).
+ *
+ * Distinct from `StatuteCitation` because regulations are issued by
+ * executive agencies under delegated authority, not enacted by a
+ * legislature. Downstream consumers filtering by citation kind (e.g.
+ * "show me only statutes" vs "show me only regs") need this type
+ * discriminator to avoid post-hoc string matching on `code`. #637
+ *
+ * Shape is otherwise identical to `StatuteCitation`.
+ *
+ * @example "42 C.F.R. § 100.3"
+ * @example "19 C.F.R. § 351.412(e)"
+ */
+export interface RegulationCitation extends CitationBase {
+  type: "regulation"
+  /** Title number (e.g. 42 for `42 C.F.R.`). */
+  title?: number
+  /** Code identifier (`C.F.R.`, etc.). */
+  code?: string
+  /** Section identifier. */
+  section?: string
+  /** Structured `§§ N-M` section range (mirrors StatuteCitation). */
+  sectionRange?: { start: string; end: string }
+  /** Chapter for chapter+section regulatory codes (rare). */
+  chapter?: string
+  /** Subsection/pincite chain, e.g. "(c)(2)" */
+  subsection?: string
+  /** Structured subsection range (`(a)-(b)`, `(9)—(16)`). */
+  subsectionRange?: { start: string; end: string }
+  /** 2-letter state code or "US" when unambiguously identified */
+  jurisdiction?: string
+  /** Alias for subsection. */
+  pincite?: string
+  /** True when "et seq." follows the citation */
+  hasEtSeq?: boolean
+  /** Year of the regulatory edition cited from trailing parenthetical. */
+  year?: number
+  /** Publisher of an annotated edition. */
+  publisher?: string
+  /** Recompilation year for codes that were re-issued. */
+  recompiledYear?: number
+  /** Edition-volume label (`Repl.`, `Supp.`, `Cum. Supp.`). */
+  editionLabel?: string
+  /** Precise text positions for each parsed component. */
+  spans?: StatuteComponentSpans
+}
+
+/**
  * Journal citation (law review, legal periodical).
  *
  * Format: [Author,] [Title,] Volume Journal Page [, Pincite] [(Year)]
@@ -677,6 +727,18 @@ export interface StatutesAtLargeCitation extends CitationBase {
   volume: number | string
   /** Page number */
   page: number
+  /**
+   * Specific pincite page, captured from a trailing `, NNN` suffix
+   * (e.g. `100 Stat. 3743, 3755` → page=3743, pincite=3755). The first
+   * page is the section's starting page; the pincite is the cited point
+   * within the section. Range pincites (`3755-58`) populate `pinciteEndPage`
+   * and `pinciteIsRange`. (#639)
+   */
+  pincite?: number
+  /** End page for range pincites (`3755-58` → 3758). (#639) */
+  pinciteEndPage?: number
+  /** True when the pincite is a range (`3755-58`). (#639) */
+  pinciteIsRange?: boolean
   /** Publication year (if extracted) */
   year?: number
 
@@ -1075,6 +1137,7 @@ export type Citation =
   | FullCaseCitation
   | DocketCitation
   | StatuteCitation
+  | RegulationCitation
   | JournalCitation
   | NeutralCitation
   | PublicLawCitation

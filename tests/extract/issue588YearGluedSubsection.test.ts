@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { extractCitations } from "@/extract"
-import type { Citation, StatuteCitation } from "@/types/citation"
+import type { Citation, RegulationCitation, StatuteCitation } from "@/types/citation"
 
 const statutes = (cites: Citation[]): StatuteCitation[] =>
   cites.filter((c): c is StatuteCitation => c.type === "statute")
+
+const regulations = (cites: Citation[]): RegulationCitation[] =>
+  cites.filter((c): c is RegulationCitation => c.type === "regulation")
 
 /**
  * #588 — A year-of-edition parenthetical glued directly to a subsection
@@ -80,7 +83,8 @@ describe("issue #588 — year glued to subsection chain", () => {
   })
 
   it("CFR equivalent: `12 C.F.R. § 226.5(a)(2018)`", () => {
-    const cites = statutes(extractCitations("12 C.F.R. § 226.5(a)(2018)"))
+    // CFR is type=regulation since #637.
+    const cites = regulations(extractCitations("12 C.F.R. § 226.5(a)(2018)"))
     expect(cites).toHaveLength(1)
     const c = cites[0]
     expect(c.code).toBe("C.F.R.")
