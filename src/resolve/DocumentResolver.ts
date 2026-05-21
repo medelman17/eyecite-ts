@@ -890,7 +890,17 @@ export class DocumentResolver {
         const hit = (name: string | undefined) =>
           name !== undefined &&
           (name === targetParty || name.includes(targetParty) || targetParty.includes(name))
-        return hit(plaintiff) || hit(defendant)
+        if (hit(plaintiff) || hit(defendant)) return true
+        // Antecedent without a `v.` separator carries the single party as
+        // `caseName` only — `plaintiff`/`defendant` are undefined. Fall
+        // back to matching `caseName` normalized so single-party
+        // shortform anchors (`Smith, 100 F.2d 1. Doe, 100 F.2d 5.
+        // Smith, 100 F.2d at 3.`) still pick the right antecedent.
+        if (c.caseName) {
+          const caseNameNorm = this.normalizePartyName(c.caseName)
+          if (hit(caseNameNorm)) return true
+        }
+        return false
       })
       if (namedMatch !== undefined) {
         return {
