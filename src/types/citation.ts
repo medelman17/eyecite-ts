@@ -676,6 +676,18 @@ export interface StatutesAtLargeCitation extends CitationBase {
   volume: number | string
   /** Page number */
   page: number
+  /**
+   * Specific pincite page, captured from a trailing `, NNN` suffix
+   * (e.g. `100 Stat. 3743, 3755` → page=3743, pincite=3755). The first
+   * page is the section's starting page; the pincite is the cited point
+   * within the section. Range pincites (`3755-58`) populate `pinciteEndPage`
+   * and `pinciteIsRange`. (#639)
+   */
+  pincite?: number
+  /** End page for range pincites (`3755-58` → 3758). (#639) */
+  pinciteEndPage?: number
+  /** True when the pincite is a range (`3755-58`). (#639) */
+  pinciteIsRange?: boolean
   /** Publication year (if extracted) */
   year?: number
 
