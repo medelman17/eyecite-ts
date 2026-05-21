@@ -104,14 +104,18 @@ export const neutralPatterns: Pattern[] = [
   },
   {
     id: "federal-register",
-    regex: /\b(\d+(?:-\d+)?)\s+Fed\.\s?Reg\.\s+(\d+)\b/g,
-    description: 'Federal Register citations (e.g., "86 Fed. Reg. 12345")',
+    // Page accepts comma-grouped digits (`12,345` and `1,234,567`). The
+    // Federal Register routinely surfaces pages above 10,000 so the
+    // comma-grouped form is common. Bare-digit form remains supported.
+    regex: /\b(\d+(?:-\d+)?)\s+Fed\.\s?Reg\.\s+(\d{1,3}(?:,\d{3})+|\d+)\b/g,
+    description: 'Federal Register citations (e.g., "86 Fed. Reg. 12,345" or "86 Fed. Reg. 12345")',
     type: "federalRegister",
   },
   {
     id: "statutes-at-large",
-    regex: /\b(\d+(?:-\d+)?)\s+Stat\.\s+(\d+)\b/g,
-    description: 'Statutes at Large citations (e.g., "124 Stat. 119")',
+    // Page accepts comma-grouped digits to match the federal-register fix.
+    regex: /\b(\d+(?:-\d+)?)\s+Stat\.\s+(\d{1,3}(?:,\d{3})+|\d+)\b/g,
+    description: 'Statutes at Large citations (e.g., "124 Stat. 1,119" or "124 Stat. 119")',
     type: "statutesAtLarge",
   },
   {
