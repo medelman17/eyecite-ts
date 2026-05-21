@@ -541,6 +541,13 @@ export function extractCitations(
   // jurisdiction. (#432)
   inheritBareSectionJurisdiction(citations, cleaned)
 
+  // Step 4.71: Reassign jurisdiction for bare `Code §` cites that the
+  // VA bare-code extractor claimed but actually belong to D.C. Both
+  // jurisdictions write bare `Code § N.N-N` and the period-laden
+  // section format is identical, so the only disambiguator is upstream
+  // context. (#659)
+  reassignDcCodeJurisdiction(citations, cleaned)
+
   // Step 4.72: Detect bare-party shortform back-references (`Smith, at 12`)
   // anchored to earlier full case citations. (#439)
   detectBarePartyBackReferences(citations, cleaned, transformationMap)
@@ -862,6 +869,66 @@ const BARE_SECTION_CONTEXT_OVERRIDES: Record<string, BareSectionContext> = {
   WV: { jurisdiction: "WV", code: "W. Va. Code" },
   CO: { jurisdiction: "CO", code: "C.R.S." },
   MT: { jurisdiction: "MT", code: "MCA" },
+}
+
+/**
+ * Reassign jurisdiction for bare `Code § N` cites that the VA bare-code
+ * extractor (or the GA pre-1983 extractor) claimed but actually belong to
+ * D.C. (#659)
+ *
+ * Both DC and VA write bare `Code §` and the section-number shape is
+ * ambiguous (both jurisdictions use period-laden forms like `22-404.01`
+ * AND no-period forms like `22-404`). The only disambiguator is upstream
+ * context. Walk citations in document order and track the most recent
+ * jurisdiction signal:
+ *
+ *   - DC signals: `D.C. Code` cite, `D.C. Cir.` in prose, `D.C.`
+ *     abbreviation, `District of Columbia` literal.
+ *   - VA signals: explicit `Va. Code §` / `Virginia Code §` cite, or
+ *     `Va.` in prose.
+ *
+ * A bare `Code §` cite tagged as `Va. Code` (or GA pre-1983) is rerouted
+ * to DC iff the most recent signal upstream is DC.
+ */
+const DC_CODE_CONTEXT_WINDOW = 400
+const DC_CONTEXT_RE = /\bD\.\s*C\.|\bDistrict\s+of\s+Columbia\b/
+const VA_CONTEXT_RE = /\bVa\.|\bVirginia\b/
+
+/** Find the most recent jurisdiction signal in upstream window. */
+function nearestUpstreamSignal(cleaned: string, cleanStart: number): "DC" | "VA" | null {
+  const start = Math.max(0, cleanStart - DC_CODE_CONTEXT_WINDOW)
+  const window = cleaned.slice(start, cleanStart)
+  // Find rightmost (most recent) signal of each type.
+  let dcIdx = -1
+  let vaIdx = -1
+  for (const m of window.matchAll(new RegExp(DC_CONTEXT_RE, "g"))) {
+    if (m.index !== undefined && m.index > dcIdx) dcIdx = m.index
+  }
+  for (const m of window.matchAll(new RegExp(VA_CONTEXT_RE, "g"))) {
+    if (m.index !== undefined && m.index > vaIdx) vaIdx = m.index
+  }
+  if (dcIdx < 0 && vaIdx < 0) return null
+  return dcIdx > vaIdx ? "DC" : "VA"
+}
+
+function reassignDcCodeJurisdiction(citations: Citation[], cleaned: string): void {
+  for (const cite of citations) {
+    if (cite.type !== "statute") continue
+
+    // Only re-route bare `Code §` cites (not explicit `Va. Code §` or `Virginia Code §`).
+    if (!/^Code\s+§/.test(cite.matchedText)) continue
+
+    // Only consider cites currently tagged as VA or GA — those are the
+    // two pattern matchers that claim bare `Code §`. DC-tagged cites
+    // (from explicit `D.C. Code §`) already have correct jurisdiction.
+    if (cite.jurisdiction !== "VA" && cite.jurisdiction !== "GA") continue
+
+    const signal = nearestUpstreamSignal(cleaned, cite.span.cleanStart)
+    if (signal === "DC") {
+      cite.code = "D.C. Code"
+      cite.jurisdiction = "DC"
+    }
+  }
 }
 
 /**
