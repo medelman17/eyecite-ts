@@ -121,6 +121,43 @@ export const constitutionalPatterns: Pattern[] = [
     // `bare-article` — without the `Const.` anchor the FP risk is
     // higher (e.g., movie titles, generic prose), so consumers can
     // filter low-confidence matches if they need stricter precision.
+    // #656 — Prose state-constitutional citations:
+    //   - `art. 14 of the Massachusetts Declaration of Rights`
+    //   - `Section 5(B), Article IV of the Ohio Constitution`
+    //   - `Section 2, Article I of the Pennsylvania Constitution`
+    //
+    // These do NOT use the canonical Bluebook `<State>. Const.` prefix —
+    // they spell the state name in full as part of natural prose. The
+    // closed alternation of full state names (US states + DC) gates the
+    // pattern so generic phrases like `art. 14 of the document` do not
+    // match.
+    //
+    // Two variants share one patternId because they collapse to the same
+    // shape after extraction (article + optional section + jurisdiction).
+    // The extractor distinguishes via regex group layout.
+    //
+    // Shape 1 captures: (1) article number, (2) state name (full word)
+    // Shape 2 captures: (3) section text, (4) article numeral (roman or arabic), (5) state name
+    id: "state-const-prose-declaration",
+    regex: new RegExp(
+      String.raw`\b(?:art(?:icle)?\.?)\s+(\d+)\s+of\s+the\s+(Massachusetts|Pennsylvania|Vermont|New\s+Hampshire|Maryland|North\s+Carolina|Delaware|New\s+Jersey)\s+(?:Declaration\s+of\s+Rights|Constitution)\b`,
+      "gi",
+    ),
+    description:
+      'Prose-form state constitutional citations: "art. 14 of the Massachusetts Declaration of Rights" — #656',
+    type: "constitutional",
+  },
+  {
+    id: "state-const-prose-section-article",
+    regex: new RegExp(
+      String.raw`\bSection\s+([\w()-]+)\s*,\s*Article\s+([IVX]+|\d+)\s+of\s+the\s+(Massachusetts|Pennsylvania|Vermont|New\s+Hampshire|Maryland|North\s+Carolina|Delaware|New\s+Jersey|Ohio|California|Texas|Florida|Illinois|Michigan|New\s+York|Georgia|Virginia|Washington|Arizona|Colorado|Wisconsin|Minnesota|Indiana|Louisiana|Oregon|Tennessee|South\s+Carolina|Alabama|Missouri|Kentucky|Connecticut|Iowa|Mississippi|Arkansas|Kansas|Nevada|Utah|Hawaii|Alaska|Idaho|Maine|Montana|Nebraska|New\s+Mexico|North\s+Dakota|Oklahoma|Rhode\s+Island|South\s+Dakota|West\s+Virginia|Wyoming|Florida)\s+Constitution\b`,
+      "g",
+    ),
+    description:
+      'Prose-form state constitutional citations: "Section 5(B), Article IV of the Ohio Constitution" — #656',
+    type: "constitutional",
+  },
+  {
     id: "bare-amendment-word",
     regex: new RegExp(
       `(?<!Const\\.?,?\\s)\\b(${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})\\s+(?:[Aa]mend(?:ment)?\\.?|[Aa]mdt\\.?)`,
