@@ -960,6 +960,20 @@ function stripDateFromCourt(content: string): string | undefined {
   ) {
     return undefined
   }
+  // Date-modifier verbs (Bluebook Rule 10.5) that prefix the date inside
+  // the court parenthetical: `(filed Jan. 15, 1990)`, `(decided
+  // Mar. 15, 1990)`, `(argued Apr. 1, 1990)`, `(effective Jan. 1, 1990)`,
+  // `(entered Jan. 1, 1990)`, `(submitted Jan. 1, 1990)`, `(heard ...)`.
+  // After year + date stripping the residue is the bare verb (or messy
+  // mid-string commas for `argued ..., decided ...`). Detect by leading
+  // verb word and reject — these are not courts.
+  if (
+    /^(?:filed|decided|argued|submitted|heard|effective|entered)\b/i.test(
+      court,
+    )
+  ) {
+    return undefined
+  }
   if (!court.includes(".")) {
     const firstWord = court.match(/^[a-z]+/i)?.[0].toLowerCase()
     if (firstWord && (SIGNAL_WORDS.has(firstWord) ||
