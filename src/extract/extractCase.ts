@@ -743,8 +743,13 @@ function isNonMetadataParenContent(content: string): boolean {
 // accepts both ASCII A-Z and uppercase Latin-1 (À-Þ), so
 // plaintiffs whose name begins with `Ç`, `Ö`, `É` etc. still anchor the
 // backscan.
+//
+// Numeric prefix accepts both bare numbers (`12 Lincoln Square`) and
+// ordinal forms (`21st Century Fox`, `1st National Bank`, `100th
+// Anniversary`). Without the `(?:st|nd|rd|th)?` suffix the regex
+// stripped the ordinal prefix entirely.
 const V_CASE_NAME_REGEX =
-  /((?:\d[\d-]*\s+)?[A-ZÀ-Þ][A-Za-z0-9À-ſ\s.,'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9À-ſ\s.,'&()/-]+?)\s*(?:,|\((?:([^)]*?\.[^)]*?)\s+)?(\d{4})\))\s*$/d
+  /((?:\d[\d-]*(?:st|nd|rd|th)?\s+)?[A-ZÀ-Þ][A-Za-z0-9À-ſ\s.,'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9À-ſ\s.,'&()/-]+?)\s*(?:,|\((?:([^)]*?\.[^)]*?)\s+)?(\d{4})\))\s*$/d
 
 /** Procedural prefix case name format.
  *  Longer prefixes listed first so the alternation prefers the longer match
