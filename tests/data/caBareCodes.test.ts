@@ -37,10 +37,21 @@ describe("caBareCodes data module", () => {
       expect(m).not.toBeNull()
     })
 
-    it("matches every canonical entry's regexFragment against its canonical form", () => {
+    it("matches every canonical entry's regexFragment against its canonical form (or another entry's)", () => {
+      // Some canonical names have multiple regexFragments mapping to them
+      // (e.g., `Health & Saf. Code` accepts both `Saf.` and `Safety` input
+      // forms but canonicalizes to the abbreviated form — #655). For those,
+      // the test passes when ANY entry sharing the canonical name has a
+      // fragment that matches the canonical.
       for (const entry of caBareCodeEntries) {
         const re = new RegExp(`^${entry.regexFragment}$`, "i")
-        expect(re.test(entry.canonical)).toBe(true)
+        if (re.test(entry.canonical)) continue
+        // Try fragments from other entries with the same canonical.
+        const siblings = caBareCodeEntries.filter((e) => e.canonical === entry.canonical)
+        const anyMatches = siblings.some((sib) =>
+          new RegExp(`^${sib.regexFragment}$`, "i").test(entry.canonical),
+        )
+        expect(anyMatches).toBe(true)
       }
     })
   })
