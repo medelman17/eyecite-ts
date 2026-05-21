@@ -58,7 +58,7 @@
     "text": "40 C.F.R. § 122.26(b)(14)",
     "expected": [
       {
-        "type": "statute",
+        "type": "regulation",
         "title": 40,
         "section": "122.26",
         "subsection": "(b)(14)",
@@ -69,7 +69,7 @@
   {
     "text": "12 C.F.R. § 226.1",
     "expected": [
-      { "type": "statute", "title": 12, "code": "C.F.R.", "section": "226.1", "jurisdiction": "US" }
+      { "type": "regulation", "title": 12, "code": "C.F.R.", "section": "226.1", "jurisdiction": "US" }
     ],
     "note": "CFR § form; 'Part' form is ambiguous with case-reporter pattern and tracked separately"
   },
