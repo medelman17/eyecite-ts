@@ -892,8 +892,19 @@ const SENTENCE_INITIAL_WORDS = new Set([
  *        "D. Mass. 1/15/2020" → "D. Mass."
  */
 function stripDateFromCourt(content: string): string | undefined {
-  // Strip trailing numeric date format first (1/15/2020)
-  let court = content.replace(/\s*\d{1,2}\/\d{1,2}\/\d{4}\s*$/, "").trim()
+  // Strip trailing numeric date formats. Accepts:
+  //   - M/D/YYYY  (`1/15/2020`)
+  //   - MM-DD-YYYY (`02-15-2020`)
+  //   - YYYY/MM/DD (`2020/02/15`)
+  //   - YYYY-MM-DD (`2020-02-15`)
+  // The strip uses `[/-]` for the separator so any of these forms is
+  // caught. Each direction (year-first vs day-first) is handled by a
+  // separate alternative so the regex doesn't accidentally absorb
+  // unrelated text.
+  let court = content
+    .replace(/\s*\d{1,2}[/-]\d{1,2}[/-]\d{4}\s*$/, "")
+    .replace(/\s*\d{4}[/-]\d{1,2}[/-]\d{1,2}\s*$/, "")
+    .trim()
   // Strip trailing year-plus-disposition-modifier (`1990 mem.`,
   // `1990 unpublished`, `1990 per curiam`, `1990 en banc`, also the
   // year-first/comma-then-modifier form `1990, en banc`). The year
