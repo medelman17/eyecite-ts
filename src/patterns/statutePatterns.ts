@@ -237,6 +237,22 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // Puerto Rico Leyes de Puerto Rico Anotadas (LPRA / L.P.R.A.).
+    // The dominant form in PR opinions and federal opinions applying PR
+    // law is `<title> LPRA § <section>(<subsection>)?`. The closed
+    // alternation + mandatory § connector + trailing digits keep false
+    // positives bounded — bare-acronym mentions in prose
+    // (`The LPRA includes...`) do not match. #635
+    //
+    // Captures: (1) title, (2) code, (3) section body with subsection chain.
+    id: "lpra",
+    regex:
+      /\b(\d+)\s+(L\.P\.R\.A\.|LPRA)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
+    description:
+      'Puerto Rico statutes (Leyes de Puerto Rico Anotadas): "23 LPRA § 72", "21 L.P.R.A. § 4615" — #635',
+    type: "statute",
+  },
+  {
     id: "named-code",
     // Matches: [State abbrev]. [Code/Law Name] § [section]
     // Captures: (1) jurisdiction prefix, (2) code name text, (3) section+subsections+et seq
