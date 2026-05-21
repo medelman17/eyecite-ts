@@ -352,7 +352,13 @@ export function normalizeReporterSpacing(text: string): string {
 
   // General ordinal-suffix collapse: "Supp. 2d" → "Supp.2d", "Ed. 2d" → "Ed.2d",
   // "St. 3d" → "St.3d", "So. 2d" → "So.2d", "Wis. 2d" → "Wis.2d"
-  result = result.replace(/([A-Za-z])\.\s+(\d+[a-z]+)/g, "$1.$2")
+  //
+  // The `\b` after `[a-z]+` anchors the ordinal at a word boundary so the
+  // greedy capture doesn't backtrack (otherwise `9th` could shrink to
+  // `9t` to dodge the lookahead). The negative lookahead `(?!\s+Cir\.)`
+  // then prevents collapsing when the ordinal is a circuit number
+  // (`B.A.P. 9th Cir.`) rather than a reporter edition.
+  result = result.replace(/([A-Za-z])\.\s+(\d+[a-z]+)\b(?!\s+Cir\.)/g, "$1.$2")
 
   // Illinois Appellate Reports — restore the space `App.` strips out by the
   // general rule above. Bluebook T1 canonical form is `Ill. App. 2d` /
