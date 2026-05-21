@@ -910,9 +910,29 @@ function stripDateFromCourt(content: string): string | undefined {
   // one period, so we reject any no-period content whose alphabetic
   // words all begin with an uppercase letter and contain no ordinal
   // (`2d`, `9th`, `1st`). See #634.
+  // Quote-leading content is a quotation parenthetical (`("A fundamental
+  // and longstanding principle...")`), never a court abbreviation. Apply
+  // BEFORE the period-check because quoted content frequently contains
+  // periods (sentence-ending) which would otherwise pass the period gate.
+  if (/^["'“”‘’]/.test(court)) {
+    return undefined
+  }
+  // Dissent / concurring opinion attribution (`dis. opn. of Shenk, J.`,
+  // `conc. opn. of Werdegar, J.`) contains periods so it passes the
+  // period gate. Detect the `dis.|conc. opn.` head OR the trailing
+  // `, J.|J.J.|JJ.` judge marker as a positive signal. Real court
+  // abbreviations don't contain `opn.` or trailing single-letter-J
+  // judge markers.
+  if (/^(?:dis|conc|concurring|dissenting)\.\s*opn\./i.test(court)) {
+    return undefined
+  }
+  if (/,\s+J\.?J?\.?\s*$|,\s+JJ\.?\s*$/.test(court)) {
+    return undefined
+  }
   if (!court.includes(".")) {
     const firstWord = court.match(/^[a-z]+/i)?.[0].toLowerCase()
     if (firstWord && (SIGNAL_WORDS.has(firstWord) ||
+      firstWord === "additional" ||
       firstWord === "emphasis" || firstWord === "internal" ||
       firstWord === "citations" || firstWord === "footnote" ||
       firstWord === "alteration" || firstWord === "alterations" ||

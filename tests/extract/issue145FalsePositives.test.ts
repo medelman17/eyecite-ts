@@ -44,14 +44,14 @@ describe("issue #145: false positive case citations", () => {
 
   // ── Root Cause 1: Confidence substring match ──────────────────────────
   describe("confidence scoring — no false boosts from substring reporter matches", () => {
-    it("does not boost confidence for reporter containing 'A.' as substring (e.g., TCPA.)", () => {
-      // "The FCC is the implementing agency of TCPA." contains "A." as substring
-      // which falsely matches the Atlantic Reporter "A." in commonReporters
+    it("does not extract phantom case from prose containing 'A.' substring (TCPA.)", () => {
+      // Token-aware capture (each post-space token must start uppercase/
+      // digit/&) breaks on lowercase "is" / "the" — no phantom case
+      // citation extracted. Strictly better than the previous
+      // penalize-mode behavior since there's nothing to confidence-boost.
       const cits = extractCitations("6 The FCC is the implementing agency of TCPA. 47")
-      const cite = cits[0]
-      expect(cite).toBeDefined()
-      // Should NOT get the +0.3 boost from "common reporter" match
-      expect(cite.confidence).toBeLessThanOrEqual(0.5)
+      const cases = cits.filter((c) => c.type === "case")
+      expect(cases).toHaveLength(0)
     })
 
     it("does not boost confidence for 'R. Civ. P.' matching 'P.' substring", () => {
