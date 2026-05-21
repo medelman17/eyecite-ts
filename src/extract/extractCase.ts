@@ -900,6 +900,16 @@ function stripDateFromCourt(content: string): string | undefined {
   // explanatory-signal word or running multiple words of lowercase prose
   // is an explanatory parenthetical that should NOT be routed to `court`.
   // #431
+  //
+  // Additionally, a no-period parenthetical that looks like a short-form
+  // case nickname (Bluebook Rule 10.9 anchor — Title-Case word(s) like
+  // `(Macaluso)`, `(Privette)`, `(Fox Johns)`, `(SeaBright)`) must be
+  // rejected as a court. These appear after California citations and
+  // every other reporter; they are the case-name handle, not a court
+  // abbreviation. All Bluebook T7 court abbreviations contain at least
+  // one period, so we reject any no-period content whose alphabetic
+  // words all begin with an uppercase letter and contain no ordinal
+  // (`2d`, `9th`, `1st`). See #634.
   if (!court.includes(".")) {
     const firstWord = court.match(/^[a-z]+/i)?.[0].toLowerCase()
     if (firstWord && (SIGNAL_WORDS.has(firstWord) ||
@@ -913,6 +923,15 @@ function stripDateFromCourt(content: string): string | undefined {
     // explanatory text, not a court abbreviation.
     const words = court.split(/\s+/)
     if (words.length >= 3 && words.every((w) => /^[a-z]/.test(w))) {
+      return undefined
+    }
+    // Short-form case nickname (#634): every alphabetic word starts with
+    // an uppercase letter, no word is an ordinal indicator (`2d`, `9th`,
+    // `1st`, `21st`), and no period anywhere. This is a Bluebook Rule 10.9
+    // case-name anchor, not a court abbreviation.
+    const hasOrdinal = words.some((w) => /^\d+(st|nd|rd|th|d)$/i.test(w))
+    const allTitleCase = words.every((w) => /^[A-Z]/.test(w))
+    if (!hasOrdinal && allTitleCase) {
       return undefined
     }
   }
