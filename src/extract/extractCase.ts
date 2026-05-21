@@ -738,7 +738,7 @@ function isNonMetadataParenContent(content: string): boolean {
  *  The `d` flag enables `match.indices` so the caller can compute a year
  *  span. See #19, #293. */
 const V_CASE_NAME_REGEX =
-  /([A-Z][A-Za-z0-9\s.,'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9\s.,'&()/-]+?)\s*(?:,|\((?:([^)]*?\.[^)]*?)\s+)?(\d{4})\))\s*$/d
+  /((?:\d[\d-]*\s+)?[A-Z][A-Za-z0-9\s.,'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9\s.,'&()/-]+?)\s*(?:,|\((?:([^)]*?\.[^)]*?)\s+)?(\d{4})\))\s*$/d
 
 /** Procedural prefix case name format.
  *  Longer prefixes listed first so the alternation prefers the longer match
