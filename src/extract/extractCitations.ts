@@ -24,6 +24,7 @@ import {
   extractDocket,
   extractFederalRegister,
   extractFederalRule,
+  extractStateRule,
   extractJournal,
   extractNeutral,
   extractPublicLaw,
@@ -42,6 +43,7 @@ import {
   neutralPatterns,
   secondaryAuthorityPatterns,
   shortFormPatterns,
+  stateRulePatterns,
   statutePatterns,
 } from "@/patterns"
 import { tokenize } from "@/tokenize"
@@ -248,6 +250,7 @@ export function extractCitations(
     ...docketPatterns, // Docket-number citations (anchored by "No. ")
     ...shortFormPatterns, // Short-form (requires " at " keyword)
     ...federalRulePatterns, // Fed. R. Civ. P. etc. — before casePatterns (#576, #582)
+    ...stateRulePatterns, // I.R.C.P., N.C. R. App. P., SCACR, RCFC — before casePatterns (#636)
     ...secondaryAuthorityPatterns, // Restatement / treatise / A.L.R. — before casePatterns (#578, #579, #581)
     ...federalStatutePatterns, // USC/CFR/IRC — before casePatterns (#428)
     ...casePatterns, // Case citations (reporter-specific)
@@ -431,6 +434,9 @@ export function extractCitations(
         break
       case "federalRule":
         citation = extractFederalRule(token, transformationMap)
+        break
+      case "stateRule":
+        citation = extractStateRule(token, transformationMap)
         break
       case "restatement":
         citation = extractRestatement(token, transformationMap)
