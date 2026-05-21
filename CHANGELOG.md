@@ -1,5 +1,89 @@
 # eyecite-ts
 
+## 0.26.0
+
+### Minor Changes
+
+- [#668](https://github.com/medelman17/eyecite-ts/pull/668) [`54122c1`](https://github.com/medelman17/eyecite-ts/commit/54122c1ffb6ef7ebd38c34696ad05c7d159193ab) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): reject phantom case/journal citations harvested from prose
+
+  The broad `state-reporter` (case) and `law-review` (journal) regex
+  patterns used a lazy `[A-Za-z.\d\s&']+?` capture for the reporter
+  name, which absorbed lowercase prose words after a space. Real
+  reporters are always Title Case + periods + digit suffixes, so any
+  lowercase-starting token is a near-perfect prose signal.
+
+  Token-aware capture: after the first uppercase letter, each
+  subsequent space-separated token must START with uppercase letter,
+  digit, or `&`. Within a token, any of `[A-Za-z.\d&']` are still
+  allowed.
+
+  Phantoms killed (each had been emitted with prose absorbed as
+  "reporter"):
+
+  **Case-citation phantoms:**
+
+  - `¶ 2 Beginning in 2011` (paragraph marker + prose)
+  - `¶ 7 All of the items seized for evidence on March 18`
+  - `15 ODC maintains that Tennant violated Rule 1.5`
+  - `771 The Administrator also argues that respondent's violation`
+  - `2009 General Primary Election due to the fact that...`
+  - `2001 Vickers contends that the review panel erred`
+  - `2003 Senate Staff Analysis and Economic Impact Statement to argue...`
+  - `11 Juror No. 11` (section heading)
+  - `100 AND 200` / `50 OR 100` (already fixed via lookahead in earlier PR)
+
+  **Journal-citation phantoms:**
+
+  - `20006 Counsel for Appellees 20004` (zip code + prose)
+
+  Real reporters and journals unaffected:
+
+  - `100 U.S. 1`, `500 F.2d 123`, `100 Cal. App. 4th 200`
+  - `100 F. Supp. 2d 200`, `100 Ohio St. 3d 200`, `100 Idaho 50`
+  - `27 I. & N. Dec. 100` (BIA Immigration with ampersand)
+  - `100 A.L.R.2d 1234`
+  - `120 Harv. L. Rev. 500`, `100 Yale L.J. 200`
+
+  Three further phantom shapes (`On July`, `On March`, `Violates
+Section`) are still emitted with confidence 0.1 + warnings — both
+  tokens start with uppercase so the regex accepts them. Removing
+  them entirely requires extending the FP filter's hard-reject pass,
+  which would break pre-existing tests asserting penalize-mode
+  behavior. Skipped tests in `issuePhantomCaseRejection.test.ts`
+  document the gap.
+
+  Two pre-existing tests updated to reflect the new (strictly better)
+  behavior: a phantom case is now removed entirely instead of being
+  penalized to confidence 0.1 + warning.
+
+  28 new tests in `tests/extract/issuePhantomCaseRejection.test.ts`
+  covering paragraph markers, section headings, numbered list items
+
+  - prose, year-prefixed prose phantoms, bare conjunction phantoms
+    (regression for the earlier AND/OR fix), date-shape phantoms, and
+    extensive regression guards for legitimate reporters.
+
+### Patch Changes
+
+- [#668](https://github.com/medelman17/eyecite-ts/pull/668) [`54122c1`](https://github.com/medelman17/eyecite-ts/commit/54122c1ffb6ef7ebd38c34696ad05c7d159193ab) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): reject `AND` / `OR` as phantom reporter abbreviations
+
+  The broad `state-reporter` lazy regex was capturing fully-capitalized
+  conjunction words in prose (`Plaintiff cited 100 AND 200`) as case
+  citations with `reporter: "AND"`, `volume: 100`, `page: 200`.
+
+  Added negative-lookahead `(?!(?:AND|OR)\s+\d)` to the state-reporter
+  pattern, matching the existing `Ibid` / `Id.` guard from #549.
+
+  The bare-conjunction shape is rare in real legal writing but appears
+  in user-formatted text and structured documents where conjunctions
+  get capitalized for emphasis. Legitimate reporters like `Or.`
+  (Oregon) and `Ore.` are unaffected because they contain a period.
+
+  10 new tests in `tests/extract/issueAndReporterRejection.test.ts`
+  cover bare `47 AND 100`, prose `Plaintiff cited 100 AND 200`, the
+  parallel `OR` case, and regression guards for `U.S.`, `F.2d`,
+  `A.L.R.2d`, `Or.`, `Ore.` reporters.
+
 ## 0.25.0
 
 ### Minor Changes
@@ -1112,7 +1196,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-            275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+              275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -1138,7 +1222,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-            People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+              People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
