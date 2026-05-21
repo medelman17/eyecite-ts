@@ -424,7 +424,7 @@ export function extractCitations(
         citation = extractPublicLaw(token, transformationMap)
         break
       case "federalRegister":
-        citation = extractFederalRegister(token, transformationMap)
+        citation = extractFederalRegister(token, transformationMap, cleaned)
         break
       case "statutesAtLarge":
         citation = extractStatutesAtLarge(token, transformationMap, cleaned)

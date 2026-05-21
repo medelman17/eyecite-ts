@@ -49,6 +49,7 @@ import { isPlausibleYear } from "./dates"
 export function extractFederalRegister(
   token: Token,
   transformationMap: TransformationMap,
+  cleanedText?: string,
 ): FederalRegisterCitation {
   const { text, span } = token
 
@@ -79,8 +80,15 @@ export function extractFederalRegister(
   // Extract optional year in parentheses
   // Pattern: "(year)" or "(month day, year)"
   // Plausibility filter (#523): drop OCR-mangled or page-number years.
+  // Scan the cleaned text starting from the token to catch trailing
+  // year parens that aren't part of the matched token itself
+  // (`85 Fed. Reg. 12,345 (Mar. 1, 2020)` — the `(Mar. 1, 2020)` sits
+  // outside the cite proper but is the publication date).
   const yearRegex = /\((?:.*?\s)?(\d{4})\)/
-  const yearMatch = yearRegex.exec(text)
+  const yearScanText = cleanedText
+    ? cleanedText.substring(span.cleanStart, span.cleanEnd + 64)
+    : text
+  const yearMatch = yearRegex.exec(yearScanText)
   const rawYear = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
   const year = rawYear !== undefined && isPlausibleYear(rawYear) ? rawYear : undefined
 
