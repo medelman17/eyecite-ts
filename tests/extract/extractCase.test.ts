@@ -5587,10 +5587,10 @@ describe("Louisiana date-in-number citations (#232)", () => {
     if (primary?.type === "case") {
       expect(primary.caseName).toBe("Herff Jones, Inc. v. Girouard")
       expect(primary.year).toBe(2007)
-      // The default cleaner collapses the reporter-style space after "App."
-      // so the canonical court string is `La. App.3d Cir.` (matches the
-      // reporters-db normalization applied elsewhere in the parser).
-      expect(primary.court).toBe("La. App.3d Cir.")
+      // The cleaner preserves the space before `<N>th Cir.` (the ordinal
+      // is a circuit number, not a reporter edition) — Bluebook T7
+      // canonical form is `La. App. 3d Cir.`.
+      expect(primary.court).toBe("La. App. 3d Cir.")
       expect(primary.date?.iso).toBe("2007-10-03")
     }
   })
@@ -5606,7 +5606,7 @@ describe("Louisiana date-in-number citations (#232)", () => {
     if (primary?.type === "case") {
       expect(primary.caseName).toBe("Boudreaux v. Doe")
       expect(primary.year).toBe(2010)
-      expect(primary.court).toBe("La. App.1st Cir.")
+      expect(primary.court).toBe("La. App. 1st Cir.")
       expect(primary.date?.iso).toBe("2010-02-15")
     }
   })
