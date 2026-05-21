@@ -95,11 +95,20 @@ export function buildAbbreviatedCodeRegex(): RegExp {
     // from being absorbed as subsection so the post-process
     // `attachStatuteYearParen` still binds them as `year`/`publisher`.
     //
+    // Strict subsection content (#639): subsection parens hold alphanumeric
+    // identifiers only (`(a)`, `(2)`, `(254)`, `(a-1)`, `(1.5)`). Tightened
+    // the body class from `[^)]*` to `[A-Za-z0-9.-]+` to reject explanatory
+    // parentheticals (`("voluntary act" defined)`, `(holding that ...)`)
+    // that the prior class would absorb whenever they lacked a 4-digit
+    // year. The `.` is required for NM decimal subsections (`(1.5)`; #565).
+    // Brackets get the same tightening for parity with `[252]` / `[3-a]`
+    // MSA subscripts.
+    //
     // Optional subsection-range trailer (`77 P.S. § 513(9) — (16)`)
     // captured so parseBody can surface the structured `subsectionRange`
     // field. Dash class accepts multi-hyphen `---` (post `normalizeDashes`
     // rewrite of em-dash). #591
-    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?|[Ss]ec\\.?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9])|,(?=\\d))*(?:\\s*\\((?![^)]*\\d{4})[^)]*\\)|\\s*\\[[^\\]]*\\])*(?:\\s*[-–—]+\\s*\\([A-Za-z0-9]+\\))?(?:\\s*et\\s+seq\\.?)?)`,
+    `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?|[Ss]ec\\.?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9])|,(?=\\d))*(?:\\s*\\((?![^)]*\\d{4})[A-Za-z0-9.-]+\\)|\\s*\\[[A-Za-z0-9.-]+\\])*(?:\\s*[-–—]+\\s*\\([A-Za-z0-9]+\\))?(?:\\s*et\\s+seq\\.?)?)`,
     "g",
   )
 }
@@ -125,8 +134,7 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
   {
     jurisdiction: "OH",
     abbreviations: ["Ohio Rev. Code Ann.", "Ohio Rev. Code", "O.R.C.", "ORC", "RC", "R.C."],
-    regexFragment:
-      "Ohio\\s+Rev\\.?\\s+Code(?:\\s+Ann\\.?)?|O\\.?\\s*R\\.?\\s*C\\.?|R\\.?\\s*C\\.?",
+    regexFragment: "Ohio\\s+Rev\\.?\\s+Code(?:\\s+Ann\\.?)?|O\\.?\\s*R\\.?\\s*C\\.?|R\\.?\\s*C\\.?",
   },
   // ── Michigan ───────────────────────────────────────────────────────────────
   {
@@ -296,22 +304,15 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
   // abbreviated `Ann.` form and the spelled-out `Annotated` form (#349).
   {
     jurisdiction: "AR",
-    abbreviations: [
-      "Arkansas Code Annotated",
-      "Ark. Code Ann.",
-      "Arkansas Code",
-      "A.C.A.",
-    ],
-    regexFragment:
-      "Ark(?:ansas)?\\.?\\s+Code(?:\\s+Ann(?:otated)?\\.?)?|A\\.?C\\.?A\\.?",
+    abbreviations: ["Arkansas Code Annotated", "Ark. Code Ann.", "Arkansas Code", "A.C.A."],
+    regexFragment: "Ark(?:ansas)?\\.?\\s+Code(?:\\s+Ann(?:otated)?\\.?)?|A\\.?C\\.?A\\.?",
   },
   // Pre-1987 Arkansas Statutes Annotated. Modern Arkansas opinions still cite
   // this when referencing pre-1987 statutory text (#349).
   {
     jurisdiction: "AR",
     abbreviations: ["Arkansas Statutes Annotated", "Ark. Stat. Ann.", "Ark. Stat."],
-    regexFragment:
-      "Ark(?:ansas)?\\.?\\s+Stat(?:utes)?\\.?(?:\\s+Ann(?:otated)?\\.?)?",
+    regexFragment: "Ark(?:ansas)?\\.?\\s+Stat(?:utes)?\\.?(?:\\s+Ann(?:otated)?\\.?)?",
   },
   // ── Connecticut ───────────────────────────────────────────────────────────
   {

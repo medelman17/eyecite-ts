@@ -53,6 +53,22 @@ function stripSupraPartyPrefix(raw: string): string {
 const TRAILING_PAREN_REGEX = /^[\s,]*\(([^()]*)\)/
 
 /**
+ * Additional pincite continuation (`, NNN`) after the primary pincite has been
+ * consumed (#639, parallels extractCase.ts ADDITIONAL_PINCITE_REGEX for #247).
+ * Captures a comma + optional whitespace + pincite body. Used in a loop after
+ * the primary short-form match to collect `, 1027, 1030, 1035` chains in
+ * `vol Rep. at 1025, 1027` style citations.
+ *
+ * The trailing lookahead rejects `\s+[A-Z]` so a following parallel cite's
+ * reporter (`, 198 A. 154`) is not absorbed as a pincite. Terminator set
+ * mirrors the lookahead in extractCase.ts: end-of-string, sentence
+ * punctuation, brackets/parens/quotes, or whitespace not followed by a
+ * capital letter.
+ */
+const SHORTFORM_ADDITIONAL_PINCITE_REGEX =
+  /^,\s*(\*?\d+(?:[-–—~]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)?)(?=$|[.,:;)([\]»"'“”‘’]|\s(?![A-Z]))/
+
+/**
  * Bluebook citation signal phrases at the end of preceding text (#557).
  *
  * Mirrors `SIGNAL_PATTERNS` in `src/extract/detectStringCites.ts` — these are
@@ -483,7 +499,7 @@ export function extractShortFormCase(
   const rawVolume = match[2]
   const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
   const reporter = match[3].trim() // Remove trailing spaces
-  const pinciteInfo: PinciteInfo | undefined = parsePincite(match[4]) ?? undefined
+  let pinciteInfo: PinciteInfo | undefined = parsePincite(match[4]) ?? undefined
   const pincite = pinciteInfo?.page
 
   // Strip leading citation signals from the captured party name (#216 helper).
@@ -516,8 +532,44 @@ export function extractShortFormCase(
     confidence += 0.3
   }
 
+  // Additional comma-separated pincites following the primary one (#639). The
+  // tokenizer regex only captures up to the first pincite, so `at 1025, 1027`
+  // ends the token at `1025`. Scan `cleanedText` past `span.cleanEnd` for
+  // additional `, NNN[-MM]` continuations, mirroring the multi-pincite logic
+  // in extractCase.ts for full-form `, 115, 153, 200` chains (#247).
+  if (cleanedText && pinciteInfo) {
+    const after = cleanedText.substring(span.cleanEnd)
+    const additionalPincites: PinciteInfo[] = []
+    let scanStart = 0
+    while (scanStart < after.length) {
+      const remainder = after.substring(scanStart)
+      const addMatch = SHORTFORM_ADDITIONAL_PINCITE_REGEX.exec(remainder)
+      if (!addMatch) break
+      const addInfo = parsePincite(addMatch[1])
+      if (!addInfo) break
+      additionalPincites.push(addInfo)
+      scanStart += addMatch[0].length
+    }
+    if (additionalPincites.length > 0) {
+      pinciteInfo = { ...pinciteInfo, additionalPincites }
+    }
+  }
+
   // Trailing parenthetical (#303): `Smith, 500 F.2d at 125 (citations omitted)`.
-  const parenthetical = extractTrailingParenthetical(cleanedText, span.cleanEnd)
+  // Scan past any additional pincites we just consumed so a trailing paren
+  // after `at 125, 127 (citations omitted)` still binds.
+  let trailingParenStart = span.cleanEnd
+  if (cleanedText && pinciteInfo?.additionalPincites?.length) {
+    const after = cleanedText.substring(span.cleanEnd)
+    let scan = 0
+    for (const _ of pinciteInfo.additionalPincites) {
+      const m = SHORTFORM_ADDITIONAL_PINCITE_REGEX.exec(after.substring(scan))
+      if (!m) break
+      scan += m[0].length
+    }
+    trailingParenStart = span.cleanEnd + scan
+  }
+  const parenthetical = extractTrailingParenthetical(cleanedText, trailingParenStart)
 
   return {
     type: "shortFormCase",
