@@ -37,6 +37,7 @@ import { extractMinnStYearEdition } from "./statutes/extractMinnStYearEdition"
 import { extractNamedCode } from "./statutes/extractNamedCode"
 import { extractNmBareSection } from "./statutes/extractNmBareSection"
 import { extractNyBareLaw } from "./statutes/extractNyBareLaw"
+import { extractNyAcronymBare } from "./statutes/extractNyAcronymBare"
 import { extractNyCplrBare } from "./statutes/extractNyCplrBare"
 import { extractNycAdminCode } from "./statutes/extractNycAdminCode"
 import { extractOhChapter } from "./statutes/extractOhChapter"
@@ -184,6 +185,8 @@ export function extractStatute(
       return extractNyBareLaw(token, transformationMap)
     case "ny-cplr-bare":
       return extractNyCplrBare(token, transformationMap)
+    case "ny-acronym-bare":
+      return extractNyAcronymBare(token, transformationMap)
     case "nyc-admin-code":
       return extractNycAdminCode(token, transformationMap)
     case "oh-chapter":
