@@ -64,6 +64,63 @@ const KNOWN_TREATISES: ReadonlyArray<string> = [
 const escapeRegex = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 const TREATISE_ALTERNATION = KNOWN_TREATISES.map(escapeRegex).join("|")
 
+/**
+ * Curated list of journal abbreviations that frequently appear in legal
+ * opinions cited in the `<vol> Abbrev <page>` shape WITHOUT periods.
+ * Two flavors:
+ *
+ *  1. Scientific / medical journals cited as authority for empirical
+ *     claims (medical, neuroscience, psychology, public health).
+ *  2. Law-review acronymized forms that some court reporters strip of
+ *     periods (`Brook L Rev` rather than `Brook. L. Rev.`).
+ *
+ * Without this pattern the broad state-reporter regex claims these as
+ * `type: "case"` (the case extractor doesn't validate against
+ * reporters-db at tokenize time, so an unknown reporter name is accepted
+ * verbatim). #638
+ *
+ * Keep this list curated and small — adding a journal is a one-line
+ * change. The mandatory volume + page digits gate the match so
+ * bare-acronym mentions in prose (`Neurology specialists agree.`) do
+ * not match.
+ */
+const KNOWN_BARE_JOURNALS: ReadonlyArray<string> = [
+  // Medical / scientific (frequently cited in tort, products-liability,
+  // criminal-mens-rea cases)
+  "Neurology",
+  "Nature",
+  "Science",
+  "JAMA",
+  "Pediatrics",
+  "Lancet",
+  "New Eng\\. J\\. Med\\.",
+  "Am\\. J\\. Psychiatry",
+  "Am\\. J\\. Pub\\. Health",
+  // Law reviews / journals stripped of periods by some court reporters
+  "Brook L Rev",
+  "Yale L J",
+  "Harv L Rev",
+  "Colum L Rev",
+  "Stan L Rev",
+  "Mich L Rev",
+  "U Chi L Rev",
+  "Geo L J",
+  "Tex L Rev",
+  "Va L Rev",
+  "Cal L Rev",
+  "NYU L Rev",
+  "Cornell L Rev",
+  "Hastings L J",
+  "Hous L Rev",
+  "Fordham L Rev",
+  "Notre Dame L Rev",
+  "U Pa L Rev",
+  "Wash L Rev",
+  "Wis L Rev",
+]
+
+const BARE_JOURNAL_ALTERNATION = KNOWN_BARE_JOURNALS.join("|")
+
 export const secondaryAuthorityPatterns: Pattern[] = [
   {
     // Restatement. Canonical form: `Restatement (Edition) of Subject § Section`.
@@ -86,15 +143,38 @@ export const secondaryAuthorityPatterns: Pattern[] = [
     type: "restatement",
   },
   {
+    // Bare-abbreviation journals (no periods). Closed alternation against
+    // KNOWN_BARE_JOURNALS protects against false-positives on prose. The
+    // pattern enforces `\b` boundaries and trailing volume/page digits;
+    // bare-acronym mentions (`Neurology specialists agree.`) do not match.
+    // Listed BEFORE casePatterns via dispatcher order so the journal
+    // classification wins span dedup against the broad state-reporter
+    // regex that otherwise emits `type: "case"`. #638
+    //
+    // Captures: (1) volume, (2) journal name, (3) page — matches
+    // extractJournal's parsing shape exactly.
+    id: "bare-journal",
+    regex: new RegExp(`\\b(\\d+)\\s+(${BARE_JOURNAL_ALTERNATION})\\s+(\\d+)\\b`, "g"),
+    description:
+      'Bare-abbreviation journals (scientific journals + period-stripped law reviews): "53 Neurology 1107", "70 Brook L Rev 1045" — #638',
+    type: "journal",
+  },
+  {
     // A.L.R. annotation. Captured shape is identical to a state-reporter
     // citation (vol + reporter + page), so this pattern must outrank
     // state-reporter in the dispatcher. The reporter alternation matches
     // the recognized A.L.R. series — A.L.R. (1st), A.L.R.2d/3d/4th/5th/6th/7th,
     // A.L.R. Fed., A.L.R. Fed. 2d/3d.
     id: "alr-annotation",
+    // Periodized + bare forms. The bare form (`ALR`, `ALR2d`, `ALR Fed`,
+    // `ALR Fed 3d`) lacks the dots between letters but still uses the same
+    // series-suffix shape. Without bare support, citations like `48 ALR 749`
+    // fell through to the broad state-reporter regex and emitted as
+    // `type: "case"`. #638
     regex:
-      /\b(\d+)\s+(A\.\s?L\.\s?R\.(?:\s?(?:Fed\.(?:\s?\d(?:d|nd|rd|th))?|\d(?:d|nd|rd|th)))?)\s+(\d+)\b/g,
-    description: 'A.L.R. annotation citations: "100 A.L.R.2d 1234", "23 A.L.R. Fed. 3d 456" — #581',
+      /\b(\d+)\s+(A\.\s?L\.\s?R\.(?:\s?(?:Fed\.(?:\s?\d(?:d|nd|rd|th))?|\d(?:d|nd|rd|th)))?|ALR(?:\s?(?:Fed(?:\s?\d(?:d|nd|rd|th))?|\d(?:d|nd|rd|th)))?)\s+(\d+)\b/g,
+    description:
+      'A.L.R. annotation citations (periodized + bare): "100 A.L.R.2d 1234", "48 ALR 749", "23 A.L.R. Fed. 3d 456" — #581 #638',
     type: "annotation",
   },
   {

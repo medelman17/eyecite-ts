@@ -29,8 +29,11 @@ export function extractAnnotation(
 ): AnnotationCitation {
   const { text, span } = token
 
+  // Accepts both periodized (`A.L.R.2d`) and bare (`ALR2d`) forms — the
+  // tokenizer pattern was extended in #638 to admit the bare style for
+  // citations like `48 ALR 749`.
   const annotationRegex =
-    /\b(\d+)\s+(A\.\s?L\.\s?R\.(?:\s?(?:Fed\.(?:\s?\d(?:d|nd|rd|th))?|\d(?:d|nd|rd|th)))?)\s+(\d+)\b/d
+    /\b(\d+)\s+(A\.\s?L\.\s?R\.(?:\s?(?:Fed\.(?:\s?\d(?:d|nd|rd|th))?|\d(?:d|nd|rd|th)))?|ALR(?:\s?(?:Fed(?:\s?\d(?:d|nd|rd|th))?|\d(?:d|nd|rd|th)))?)\s+(\d+)\b/d
   const match = annotationRegex.exec(text)
   if (!match) {
     throw new Error(`Failed to parse A.L.R. annotation citation: ${text}`)
