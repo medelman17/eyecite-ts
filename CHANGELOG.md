@@ -1,5 +1,285 @@
 # eyecite-ts
 
+## 0.24.0
+
+### Minor Changes
+
+- [#650](https://github.com/medelman17/eyecite-ts/pull/650) [`52279dd`](https://github.com/medelman17/eyecite-ts/commit/52279dd9d68d1bdd7d0089170025822083db077f) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): Puerto Rico LPRA / L.P.R.A. statute citations — #635
+
+  Add `lpra` tokenizer pattern + `extractLpra` extractor for citations to
+  _Leyes de Puerto Rico Anotadas_ — previously the entire Puerto Rico
+  statutory corpus was invisible to the parser.
+
+  Supported forms:
+
+  - `23 LPRA § 72` — bare acronym, § connector
+  - `23 LPRA §72` — glued §
+  - `23 LPRA §72(a)` — with subsection chain
+  - `23 LPRA § 72` — with space
+  - `21 L.P.R.A. § 4615` — periodized
+  - `21 L.P.R.A. § 4615(a)(1)` — periodized with chained subsections
+  - `32 LPRA § 3651-c` — hyphenated section
+
+  Each match emits `code: "L.P.R.A."` (canonical Bluebook form) and
+  `jurisdiction: "PR"`. Closed `(L\.P\.R\.A\.|LPRA)` alternation +
+  mandatory § connector + trailing digits keep false positives bounded
+  — bare-acronym mentions in prose (`The LPRA includes...`) do not
+  match.
+
+  The appendix-rule form (`4 LPRA Ap. XXII-A, R. 40`) is not yet
+  covered and deferred to a follow-up; the dominant bare-section form
+  covers the majority of LPRA citations in the wild.
+
+- [#651](https://github.com/medelman17/eyecite-ts/pull/651) [`e5c764d`](https://github.com/medelman17/eyecite-ts/commit/e5c764d7390a4a2ba9f711b169b0c7288a122321) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): state court rule citations — #636
+
+  Add a new `StateRuleCitation` type alongside `FederalRuleCitation` and a
+  family of `state-rule` patterns / `extractStateRule` extractor. The
+  Sprint I federal-rule extractor (#576) covered only Fed. R. Civ. P. /
+  Crim. P. / Evid. / App. / Bankr.; state rules were silently dropped.
+
+  **New `StateRuleCitation` interface** in the discriminated `Citation`
+  union with `type: "stateRule"`, `jurisdiction` (2-letter state code or
+  `CFC`), `ruleSet` (civil/criminal/evidence/appellate/bankruptcy/other),
+  `rule`, and optional `subsection`.
+
+  **Supported state rule abbreviations:**
+
+  - Idaho — `I.R.C.P. 60(b)(6)`, `Idaho Rule of Civil Procedure 60(b)`
+  - North Carolina — `N.C. R. App. P. 10(b)(1)`, `N.C.R.App. P. 37`,
+    `N.C. R. Civ. P. 12(b)`
+  - South Carolina — `Rule 268(d)(2), SCACR` (postfix style)
+  - Court of Federal Claims — `RCFC 56(c)`
+
+  Each pattern is a closed alternation with mandatory trailing rule
+  digits, so bare-`Rule N` mentions in prose (`The court applied Rule
+60.`) do not match, and standalone abbreviation mentions
+  (`The SCACR governs appellate practice.`) do not match either.
+
+  Pattern ordering: `state-rule` patterns are inserted between
+  `federalRulePatterns` and `secondaryAuthorityPatterns` in the dispatcher,
+  both ahead of `casePatterns` so the broad state-reporter regex does not
+  phantom-match these citations as cases.
+
+  `toBluebook(stateRule)` renders `<jurisdiction> R. <ruleSet>. <rule><sub>`
+  matching the abbreviation conventions.
+
+- [#646](https://github.com/medelman17/eyecite-ts/pull/646) [`a53dcde`](https://github.com/medelman17/eyecite-ts/commit/a53dcdebaeeb228e195830cb194917eaa7d87ffe) Thanks [@medelman17](https://github.com/medelman17)! - feat(types): CFR citations emit `type: "regulation"` instead of `"statute"` — #637
+
+  C.F.R. citations are regulations issued by executive agencies under
+  delegated authority, not statutes enacted by a legislature. Previously
+  every CFR citation came out as `type: "statute"`, indistinguishable
+  from USC. Downstream consumers wanting to filter regulations vs
+  statutes had to resort to `code === "C.F.R."` string matching.
+
+  **New `RegulationCitation` interface** in the discriminated union — same
+  field shape as `StatuteCitation` (title, code, section, subsection,
+  chapter, sectionRange, subsectionRange, jurisdiction, pincite,
+  hasEtSeq, year, publisher, recompiledYear, editionLabel, spans), but
+  discriminated as `type: "regulation"`. `Citation` union, `CitationType`
+  enum, and `attachStatuteYearParen` post-processor all extended.
+
+  Documented examples:
+
+  - `42 C.F.R. § 100.3` → `{ type: "regulation", title: 42, code: "C.F.R.", section: "100.3" }`
+  - `29 C.F.R. § 779.238` → regulation
+  - `19 C.F.R. § 351.412(e)` → regulation with subsection
+  - `42 CFR 447` (no §, no periods) → regulation
+  - `12 C.F.R., § 226` (#587 comma form) → regulation
+  - `12 C.F.R. § 226.5(a)(2018)` (#588 year-glued) → regulation with year
+  - `42 C.F.R. Part 100` → regulation
+
+  USC remains `type: "statute"`. The internal `extractFederal` dispatcher
+  routes both USC and CFR through the same parser; the only difference is
+  the `type` discriminator chosen based on the canonicalized `code` field.
+
+  **Bluebook rendering preserved**: `toBluebook()` handles `statute` and
+  `regulation` identically — same `title code § section(subsection)` shape.
+
+  **Migration**: consumers that previously did
+  `citations.filter(c => c.type === "statute" && c.code === "C.F.R.")` can
+  simplify to `citations.filter(c => c.type === "regulation")`. Code that
+  unconditionally branches on `type === "statute"` for CFR will need to
+  add a `regulation` branch or use `type === "statute" || type === "regulation"`.
+
+- [#649](https://github.com/medelman17/eyecite-ts/pull/649) [`c352bba`](https://github.com/medelman17/eyecite-ts/commit/c352bba58110b0d315528350e26eefaa215563a5) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): bare-abbreviation journals + bare-ALR annotations — #638
+
+  Two coverage gaps the broad state-reporter regex was silently swallowing
+  into `type: "case"`:
+
+  **1. Bare-abbreviation journals (no periods).** Curated list of well-known
+  scientific/medical journals + period-stripped law reviews. New
+  `bare-journal` pattern in `secondaryAuthorityPatterns` (positioned
+  before casePatterns) wins span dedup against the broad state-reporter
+  match.
+
+  Documented examples:
+
+  - `53 Neurology 1107` → journal (was case)
+  - `285 JAMA 2486` → journal
+  - `344 New Eng. J. Med. 678` → journal
+  - `70 Brook L Rev 1045` → journal (period-stripped law review)
+  - `96 Yale L J 1234` → journal
+
+  Curated list (extensible — one-line change to add): Neurology, Nature,
+  Science, JAMA, Pediatrics, Lancet, New Eng. J. Med., Am. J. Psychiatry,
+  Am. J. Pub. Health + a couple dozen common law-review abbreviations in
+  period-stripped form (Brook L Rev, Yale L J, Harv L Rev, Stan L Rev,
+  NYU L Rev, etc.).
+
+  Bare-acronym mentions in prose (`Neurology specialists agree.`) do NOT
+  match — the trailing volume + page digits gate the pattern.
+
+  **2. Bare-ALR annotations (no periods).** Extended `alr-annotation`
+  tokenizer + `extractAnnotation` parsing regex to accept the
+  period-stripped form alongside the canonical `A.L.R.2d`:
+
+  Documented examples:
+
+  - `48 ALR 749` → annotation (was case)
+  - `100 ALR2d 567` → annotation
+  - `23 ALR Fed 3d 456` → annotation
+  - `100 A.L.R.2d 1234` continues to work (regression guard)
+
+- [#644](https://github.com/medelman17/eyecite-ts/pull/644) [`89eddee`](https://github.com/medelman17/eyecite-ts/commit/89eddee0776476433ec3025bf9aea1141fd0763e) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): recognize NY acronymized code citations (RPAPL, RPL, BCL, EPTL, SCPA, DRL, LLCL, VTL) — #640
+
+  Documented examples:
+
+  - `RPAPL 711 [5]` — Real Property Actions and Proceedings Law, bracket subdivision
+  - `RPAPL 741 [4]`, `RPAPL 1304`
+  - `N.Y. RPAPL 711 [5]` (with N.Y. prefix)
+  - `EPTL § 5-1.1` — Estates Powers and Trusts Law
+  - `BCL § 1104-a` — Business Corporation Law
+  - `SCPA 1410` — Surrogate's Court Procedure Act
+  - `DRL § 240` — Domestic Relations Law
+  - `LLCL § 702` — Limited Liability Company Law
+  - `VTL § 1192` — Vehicle and Traffic Law
+  - `RPL § 5-703` — Real Property Law (distinct from RPAPL)
+
+  Previously the entire family of NY acronymized codes was invisible to the
+  tokenizer — only `CPLR` had a dedicated pattern (`ny-cplr-bare`, #592).
+  This added a sibling pattern (`ny-acronym-bare`) using the same shape:
+  closed alternation over a curated acronym list with mandatory trailing
+  digits, so bare-acronym mentions in prose (`The RPAPL governs.`) still do
+  not match.
+
+  Subsection chaining accepts both bracket (`[5]`) and paren (`(5)`) groups
+  and any mix (`RPAPL 711 [5] (a)` → `subsection: "[5](a)"`). The
+  underlying `parseBody` already accepted both delimiters (#370); this PR
+  just adds the missing tokenizer coverage.
+
+  Each match emits `code: "N.Y. <ACRONYM>"` (canonical prefix) and
+  `jurisdiction: "NY"` regardless of input shape.
+
+### Patch Changes
+
+- [#645](https://github.com/medelman17/eyecite-ts/pull/645) [`44c7360`](https://github.com/medelman17/eyecite-ts/commit/44c7360e534d1b882c56dfa7868777f194c80299) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): reject short-form case nicknames as court in California (and all reporter) parentheticals — #634
+
+  A California reporter (or Cal.Xth) citation followed by a parenthetical
+  short-form case anchor (Bluebook Rule 10.9) — `(Macaluso)`, `(Privette)`,
+  `(Fox Johns)`, `(SeaBright)`, `(Regalado)`, etc. — was populating the
+  `court` field with that nickname. Root cause: `stripDateFromCourt`
+  returned any letter-bearing string as a "court" after stripping dates;
+  existing reject filters only caught lowercase signal-word leads or
+  3+ word lowercase prose, so a single Title-Case word slipped through.
+
+  Every Bluebook T7 court abbreviation contains at least one period
+  (`Cal.`, `9th Cir.`, `D. Mass.`, `S.D.N.Y.`, `Ct. App.`). The fix
+  extends the no-period rejection inside `stripDateFromCourt`: when the
+  content has no period anywhere AND every alphabetic word starts with
+  uppercase AND no word is an ordinal indicator (`2d`, `9th`, `1st`), it
+  is a short-form case anchor — not a court — and is rejected.
+
+  Affected reproductions (all 8 from issue #634 now return
+  `court: undefined`):
+
+  - `162 Cal.Rptr.3d 318 (Macaluso)`
+  - `162 Cal.Rptr.3d 571 (Fox Johns)`
+  - `5 Cal.4th 689 (Privette)`
+  - `27 Cal.4th 198 (Hooker)`
+  - `3 Cal.App.5th 582 (Regalado)`
+  - `52 Cal.4th 590 (SeaBright)`
+  - `129 Cal.Rptr.3d 601 (SeaBright)`
+  - `207 Cal.Rptr.3d 712 (Regalado)`
+
+  Reporter-based `inferredCourt` (level/jurisdiction/state) is unaffected
+  — Cal.4th still resolves to `{level: "supreme", jurisdiction: "state",
+state: "CA"}` even when the parenthetical is rejected. Legitimate court
+  parentheticals (`(9th Cir.)`, `(D. Mass. 2019)`, `(Cal. Ct. App.)`,
+  `(Ct. App.)`, `(2d Cir. 2020)`) continue to extract court correctly.
+
+  24 new tests in
+  `tests/extract/issue634CalCourtParentheticalPollution.test.ts` cover
+  all 8 reproductions, reporter coverage (Cal.4th / Cal.App.5th /
+  Cal.Rptr.3d), single-word/two-word/camel-case nicknames, mixed
+  name+year parens (`(Macaluso, 2013)`, `(Privette 2013)`), legitimate
+  court abbreviation regressions, and reporter-inference preservation.
+
+- [#648](https://github.com/medelman17/eyecite-ts/pull/648) [`f2842b2`](https://github.com/medelman17/eyecite-ts/commit/f2842b28b21cf71742125b18696228e19fcf60ad) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): capture multi-page pincites and reject explanatory paren leak — #639
+
+  Three related bugs were dropping pincite data on the floor or attaching the
+  wrong text to the wrong field:
+
+  - **Statutes at Large** (`100 Stat. 3743, 3755`) — the tokenizer captures
+    only `100 Stat. 3743` and the extractor had no scan for a trailing
+    `, NNN` continuation. The cited point on the section was silently
+    discarded.
+  - **Short-form `at`** (`909 F.2d at 1025, 1027`) — the tokenizer captures
+    only the first pincite and the extractor never looked ahead for
+    comma-separated continuations, so a string of pincites in the same
+    short-form cite (`at 125, 127, 130`) reduced to the first.
+  - **Statute explanatory parenthetical** (`ORS 161.085(2) ("voluntary act"
+defined)`) — the abbreviated-code subsection chain accepted `[^)]*`
+    inside parens, so any non-year explanatory paren was absorbed into the
+    subsection field (`(2)("voluntary act" defined)`).
+
+  Fixes:
+
+  - `extractStatutesAtLarge` now accepts an optional `cleanedText` argument
+    and scans past `cleanEnd` for a `, NNN[-MM]` continuation using a
+    pincite regex that mirrors the boundary semantics of the case-cite
+    lookahead (rejects `\s+[A-Z]` so a following parallel cite isn't
+    absorbed). New fields on `StatutesAtLargeCitation`: `pincite`,
+    `pinciteEndPage`, `pinciteIsRange`.
+  - `extractShortFormCase` now scans the post-token tail in `cleanedText`
+    for additional comma-separated pincites and populates
+    `pinciteInfo.additionalPincites`, matching the multi-pincite handling
+    in `extractCase` for full-form `, 115, 153, 200` chains (#247). The
+    trailing-parenthetical scan is shifted past consumed pincites so
+    `at 125, 127 (citations omitted)` still binds.
+  - The abbreviated-code subsection content class is tightened from
+    `[^)]*` to `[A-Za-z0-9.-]+` in both the tokenizer pattern
+    (`buildAbbreviatedCodeRegex` in `src/data/stateStatutes.ts`) and the
+    consumer regex (`ABBREVIATED_RE` in `extractAbbreviated.ts`). The `.`
+    is kept for NM decimal subsections (`(1.5)`; #565). Explanatory parens
+    no longer absorb into `subsection`.
+
+- [#652](https://github.com/medelman17/eyecite-ts/pull/652) [`48947cc`](https://github.com/medelman17/eyecite-ts/commit/48947cc7b8d154b801b9adeeb7abf00ed7551e9b) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): preserve leading numeric prefix in case-name extraction — #641 (partial)
+
+  `V_CASE_NAME_REGEX` required the plaintiff capture to begin with `[A-Z]`,
+  so address-derived party names that lead with a digit prefix lost it:
+
+  - `2312-2316 Realty Corp. v. Font` → was `Realty Corp. v. Font` (numeric prefix dropped)
+  - `235 East 73rd Street, Inc. v. Smith` → was `East 73rd Street, Inc. v. Smith`
+  - `125 Broadway Associates v. NYC` → was `Broadway Associates v. NYC`
+
+  Common in NY real-property and tax cases where the legal name is the
+  street address. Extended the leading character class to admit an optional
+  `\d[\d-]*\s+` prefix before the required `[A-Z]` proper-noun head.
+
+  5 new tests in `tests/extract/issue641LeadingNumericCaseName.test.ts`
+  cover hyphenated address ranges, intermediate digits in addresses, and
+  regression guards for the existing citation-boundary detection and
+  ordinary alphabetic case names.
+
+  Scope note: #641 originally bundled three sub-issues. Only the
+  leading-numeric trim is addressed here. Two siblings remain open as
+  follow-ups:
+
+  - Parallel-cite caseName propagation without a closing `(YYYY)` paren
+    (`Kauffman v. Griesemer, 26 Pa. 407, 67 Am. Dec. 437.`)
+  - Puerto Rico DPR / JTS reporter coverage (the reporters themselves
+    aren't in reporters-db so the case extractor doesn't tokenize them)
+
 ## 0.23.0
 
 ### Minor Changes
@@ -671,7 +951,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-        275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+          275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -697,7 +977,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-        People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+          People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
