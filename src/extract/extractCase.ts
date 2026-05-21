@@ -952,6 +952,12 @@ function stripDateFromCourt(content: string): string | undefined {
   if (/^["'“”‘’]/.test(court)) {
     return undefined
   }
+  // URL or filepath in parens: `(https://...)`, `(file:///...)`,
+  // `(avail. at https://...)`. Reject — URLs are never court
+  // abbreviations. Detect a `://` scheme separator or `file:///`.
+  if (/(?:[a-z][a-z\d+.-]*:\/\/|file:\/\/\/)/i.test(court)) {
+    return undefined
+  }
   // Dissent / concurring opinion attribution (`dis. opn. of Shenk, J.`,
   // `conc. opn. of Werdegar, J.`) contains periods so it passes the
   // period gate. Detect the `dis.|conc. opn.` head OR the trailing
