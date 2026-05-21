@@ -16,9 +16,24 @@ import type { StatutesAtLargeComponentSpans } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 import { isPlausibleYear } from "./dates"
 
+/**
+ * Trailing pincite for Statutes at Large citations (#639). The tokenizer
+ * pattern only captures `<vol> Stat. <page>`, so a comma-separated pincite
+ * (`100 Stat. 3743, 3755`) lives in `cleanedText` immediately after
+ * `span.cleanEnd`. Scan that tail for `, NNN[-MM]`.
+ *
+ * Boundary: the lookahead must reject `\s+[A-Z]` so a following parallel
+ * cite (`100 Stat. 3743, 42 U.S.C. § 1983`) is not absorbed as a pincite.
+ * Terminator set mirrors LOOKAHEAD_PINCITE_REGEX in extractCase.ts: accept
+ * end-of-string, sentence punctuation, brackets/parens, or whitespace not
+ * followed by a capital letter.
+ */
+const SAL_PINCITE_REGEX = /^,\s*(\d+)(?:[-–—](\d+))?(?=$|[.,:;)([\]»"'“”‘’]|\s(?![A-Z]))/
+
 export function extractStatutesAtLarge(
   token: Token,
   transformationMap: TransformationMap,
+  cleanedText?: string,
 ): StatutesAtLargeCitation {
   const { text, span } = token
 
@@ -42,10 +57,40 @@ export function extractStatutesAtLarge(
     }
   }
 
+  // Trailing pincite from cleanedText after the token. (#639)
+  let pincite: number | undefined
+  let pinciteEndPage: number | undefined
+  let pinciteIsRange: boolean | undefined
+  let pinciteConsumed = 0
+  if (cleanedText) {
+    const after = cleanedText.substring(span.cleanEnd)
+    const pinciteMatch = SAL_PINCITE_REGEX.exec(after)
+    if (pinciteMatch) {
+      pincite = Number.parseInt(pinciteMatch[1], 10)
+      pinciteConsumed = pinciteMatch[0].length
+      if (pinciteMatch[2]) {
+        const rawEnd = pinciteMatch[2]
+        // Abbreviated end pages: "3755-58" means 3758.
+        if (rawEnd.length < pinciteMatch[1].length) {
+          const prefix = pinciteMatch[1].slice(0, pinciteMatch[1].length - rawEnd.length)
+          pinciteEndPage = Number.parseInt(prefix + rawEnd, 10)
+        } else {
+          pinciteEndPage = Number.parseInt(rawEnd, 10)
+        }
+        pinciteIsRange = true
+      }
+    }
+  }
+
   // Extract optional year in parentheses.
   // Plausibility filter (#523): drop OCR-mangled or page-number years.
+  // Scan window includes any text the pincite consumed so `100 Stat. 3743,
+  // 3755 (1986)` still attaches the year.
+  const yearScanText = cleanedText
+    ? text + cleanedText.substring(span.cleanEnd, span.cleanEnd + pinciteConsumed + 16)
+    : text
   const yearRegex = /\((?:.*?\s)?(\d{4})\)/
-  const yearMatch = yearRegex.exec(text)
+  const yearMatch = yearRegex.exec(yearScanText)
   const rawYear = yearMatch ? Number.parseInt(yearMatch[1], 10) : undefined
   const year = rawYear !== undefined && isPlausibleYear(rawYear) ? rawYear : undefined
 
@@ -70,6 +115,9 @@ export function extractStatutesAtLarge(
     patternsChecked: 1,
     volume,
     page,
+    pincite,
+    pinciteEndPage,
+    pinciteIsRange,
     year,
     spans,
   }
