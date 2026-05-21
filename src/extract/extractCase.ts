@@ -737,8 +737,14 @@ function isNonMetadataParenContent(content: string): boolean {
  *  at least one period). Capture group 3 = court (optional), 4 = year.
  *  The `d` flag enables `match.indices` so the caller can compute a year
  *  span. See #19, #293. */
+// Latin-1 Supplement (À-ÿ) and Latin Extended-A (Ā-ſ)
+// cover the bulk of accented characters that appear in real case names
+// (Müller, Société, Pérez, González, Çelik, etc.). Uppercase initial
+// accepts both ASCII A-Z and uppercase Latin-1 (À-Þ), so
+// plaintiffs whose name begins with `Ç`, `Ö`, `É` etc. still anchor the
+// backscan.
 const V_CASE_NAME_REGEX =
-  /((?:\d[\d-]*\s+)?[A-Z][A-Za-z0-9\s.,'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9\s.,'&()/-]+?)\s*(?:,|\((?:([^)]*?\.[^)]*?)\s+)?(\d{4})\))\s*$/d
+  /((?:\d[\d-]*\s+)?[A-ZÀ-Þ][A-Za-z0-9À-ſ\s.,'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9À-ſ\s.,'&()/-]+?)\s*(?:,|\((?:([^)]*?\.[^)]*?)\s+)?(\d{4})\))\s*$/d
 
 /** Procedural prefix case name format.
  *  Longer prefixes listed first so the alternation prefers the longer match
