@@ -34,7 +34,7 @@ import { parseBody } from "./parseBody"
 // the structured `subsectionRange` field. Dash class accepts multi-hyphen
 // `---` (post `normalizeDashes` rewrite of em-dash).
 const ABBREVIATED_RE =
-  /^(?:(\d+)\s+)?(.+?)\s*,?\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9])|,(?=\d))*(?:\s*\((?![^)]*\d{4})[^)]*\)|\s*\[[^\]]*\])*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)$/d
+  /^(?:(\d+)\s+)?(.+?)\s*,?\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9])|,(?=\d))*(?:\s*\((?![^)]*\d{4})[A-Za-z0-9.-]+\)|\s*\[[A-Za-z0-9.-]+\])*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)$/d
 
 export function extractAbbreviated(
   token: Token,
@@ -129,9 +129,7 @@ export function extractAbbreviated(
     section,
     subsection,
     subsectionRange:
-      subsection && subsectionRangeEnd
-        ? { start: subsection, end: subsectionRangeEnd }
-        : undefined,
+      subsection && subsectionRangeEnd ? { start: subsection, end: subsectionRangeEnd } : undefined,
     pincite: subsection,
     jurisdiction,
     hasEtSeq: hasEtSeq || undefined,
