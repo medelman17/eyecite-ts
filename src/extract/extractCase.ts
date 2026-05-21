@@ -929,6 +929,17 @@ function stripDateFromCourt(content: string): string | undefined {
   if (/,\s+J\.?J?\.?\s*$|,\s+JJ\.?\s*$/.test(court)) {
     return undefined
   }
+  // Disposition tokens (Bluebook Rule 10.7) sometimes appear inside the
+  // court parenthetical: `(rev'd 1990)`, `(per curiam 1990)`, `(en banc)`,
+  // `(cert. denied 1990)`. After year-stripping, the bare disposition is
+  // not a court — reject it so we don't surface `court="rev'd"`.
+  if (
+    /^(?:rev'd|aff'd|aff'g|rev'g|mod'd|cert\.?\s+(?:denied|granted|dismissed)|appeal\s+(?:denied|dismissed|docketed)|dismissed|reversed|vacated|vacating|overruled(?:\s+by)?|overruling|en\s+banc|per\s+curiam)(?:\s+(?:in\s+part|on\s+other\s+grounds?|sub\s+nom\.?))?\s*$/i.test(
+      court,
+    )
+  ) {
+    return undefined
+  }
   if (!court.includes(".")) {
     const firstWord = court.match(/^[a-z]+/i)?.[0].toLowerCase()
     if (firstWord && (SIGNAL_WORDS.has(firstWord) ||
