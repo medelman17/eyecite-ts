@@ -980,6 +980,12 @@ function stripDateFromCourt(content: string): string | undefined {
   ) {
     return undefined
   }
+  // Approximate-year prefixes (`c.`, `circa`, `about`, `approx.`) and
+  // typo court abbreviations (`cir.` lowercase, no number). After year-
+  // stripping these leak as the bare prefix word.
+  if (/^(?:c\.|circa|about|approx\.?|approximately|cir\.)\s*$/i.test(court)) {
+    return undefined
+  }
   if (!court.includes(".")) {
     const firstWord = court.match(/^[a-z]+/i)?.[0].toLowerCase()
     if (firstWord && (SIGNAL_WORDS.has(firstWord) ||
