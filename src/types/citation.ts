@@ -22,6 +22,7 @@ export type CitationType =
   | "docket"
   | "statute"
   | "regulation"
+  | "stateRule"
   | "journal"
   | "neutral"
   | "publicLaw"
@@ -773,6 +774,37 @@ export interface FederalRuleCitation extends CitationBase {
 }
 
 /**
+ * State court rule citation (#636).
+ *
+ * Mirrors `FederalRuleCitation` for state-court rules of procedure. Each
+ * supported state has a closed set of distinctive abbreviations (Idaho
+ * `I.R.C.P.`, North Carolina `N.C. R. App. P.`, South Carolina `SCACR`,
+ * Court of Federal Claims `RCFC`, etc.) — bare `Rule N` without a
+ * jurisdiction anchor is intentionally not matched.
+ *
+ * `jurisdiction` is a 2-letter state code (`ID`, `NC`, `SC`) or `CFC`
+ * for the Court of Federal Claims.
+ *
+ * @example "I.R.C.P. 60(b)(6)" → { jurisdiction: "ID", ruleSet: "civil", rule: "60", subsection: "(b)(6)" }
+ * @example "N.C. R. App. P. 10(b)(1)" → { jurisdiction: "NC", ruleSet: "appellate", rule: "10", subsection: "(b)(1)" }
+ * @example "Rule 268(d)(2), SCACR" → { jurisdiction: "SC", ruleSet: "appellate", rule: "268", subsection: "(d)(2)" }
+ * @example "RCFC 56(c)" → { jurisdiction: "CFC", ruleSet: "civil", rule: "56", subsection: "(c)" }
+ */
+export interface StateRuleCitation extends CitationBase {
+  type: "stateRule"
+  /** 2-letter state code or `CFC` for Court of Federal Claims. */
+  jurisdiction: string
+  /** Rule set classification. */
+  ruleSet: "civil" | "criminal" | "evidence" | "appellate" | "bankruptcy" | "other"
+  /** Rule number. */
+  rule: string
+  /** Subsection chain (e.g., "(b)(6)"). */
+  subsection?: string
+  /** Precise text positions for each parsed component. */
+  spans?: FederalRuleComponentSpans
+}
+
+/**
  * Restatement citation (#578).
  *
  * Restatements of the Law are secondary legal authority published by the
@@ -1113,6 +1145,7 @@ export type Citation =
   | StatutesAtLargeCitation
   | ConstitutionalCitation
   | FederalRuleCitation
+  | StateRuleCitation
   | RestatementCitation
   | TreatiseCitation
   | AnnotationCitation
@@ -1134,6 +1167,7 @@ export type FullCitationType =
   | "statutesAtLarge"
   | "constitutional"
   | "federalRule"
+  | "stateRule"
   | "restatement"
   | "treatise"
   | "annotation"
@@ -1153,6 +1187,7 @@ export type FullCitation =
   | StatutesAtLargeCitation
   | ConstitutionalCitation
   | FederalRuleCitation
+  | StateRuleCitation
   | RestatementCitation
   | TreatiseCitation
   | AnnotationCitation

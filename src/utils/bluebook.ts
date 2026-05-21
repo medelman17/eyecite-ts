@@ -166,6 +166,24 @@ export function toBluebook(citation: Citation): string {
       return `Fed. R. ${ruleSetAbbrev[citation.ruleSet]} ${citation.rule}${subsection}`
     }
 
+    case "stateRule": {
+      // State court rules render as the jurisdiction-rule-set anchor used
+      // in the input. The extractor canonicalizes to a single
+      // `<jurisdiction> R. <ruleSet>. <rule>(<subsection>)?` form. #636
+      const ruleSetAbbrev: Record<typeof citation.ruleSet, string> = {
+        civil: "Civ. P.",
+        criminal: "Crim. P.",
+        evidence: "Evid.",
+        appellate: "App. P.",
+        bankruptcy: "Bankr. P.",
+        other: "",
+      }
+      const subsection = citation.subsection ?? ""
+      const setPart = ruleSetAbbrev[citation.ruleSet]
+      const tail = setPart ? ` R. ${setPart}` : ""
+      return `${citation.jurisdiction}${tail} ${citation.rule}${subsection}`
+    }
+
     case "restatement": {
       const subsection = citation.subsection ?? ""
       return `Restatement (${citation.edition}) of ${citation.subject} § ${citation.section}${subsection}`
