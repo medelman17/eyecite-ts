@@ -114,6 +114,65 @@ function parseNumeral(raw: string): number | undefined {
 }
 
 /**
+ * Full state name → 2-letter code mapping. Used for the prose-form
+ * state-constitution patterns (#656) where the state name appears as
+ * full words ("Massachusetts", "New Jersey") rather than the canonical
+ * Bluebook abbreviation ("Mass.", "N.J.").
+ */
+const FULL_STATE_NAME_TO_CODE: Record<string, string> = {
+  alabama: "AL",
+  alaska: "AK",
+  arizona: "AZ",
+  arkansas: "AR",
+  california: "CA",
+  colorado: "CO",
+  connecticut: "CT",
+  delaware: "DE",
+  florida: "FL",
+  georgia: "GA",
+  hawaii: "HI",
+  idaho: "ID",
+  illinois: "IL",
+  indiana: "IN",
+  iowa: "IA",
+  kansas: "KS",
+  kentucky: "KY",
+  louisiana: "LA",
+  maine: "ME",
+  maryland: "MD",
+  massachusetts: "MA",
+  michigan: "MI",
+  minnesota: "MN",
+  mississippi: "MS",
+  missouri: "MO",
+  montana: "MT",
+  nebraska: "NE",
+  nevada: "NV",
+  "new hampshire": "NH",
+  "new jersey": "NJ",
+  "new mexico": "NM",
+  "new york": "NY",
+  "north carolina": "NC",
+  "north dakota": "ND",
+  ohio: "OH",
+  oklahoma: "OK",
+  oregon: "OR",
+  pennsylvania: "PA",
+  "rhode island": "RI",
+  "south carolina": "SC",
+  "south dakota": "SD",
+  tennessee: "TN",
+  texas: "TX",
+  utah: "UT",
+  vermont: "VT",
+  virginia: "VA",
+  washington: "WA",
+  "west virginia": "WV",
+  wisconsin: "WI",
+  wyoming: "WY",
+}
+
+/**
  * State abbreviation → 2-letter code mapping.
  * Keys are lowercase abbreviation stems (without trailing period).
  */
@@ -212,6 +271,48 @@ export function extractConstitutional(
   transformationMap: TransformationMap,
 ): ConstitutionalCitation {
   const { text, span } = token
+
+  // #656 — Prose state-constitutional citations: `art. 14 of the
+  // Massachusetts Declaration of Rights` and `Section 5(B), Article IV
+  // of the Ohio Constitution`. Parse directly from the token text since
+  // CONSTITUTIONAL_BODY_RE doesn't recognize this shape; full state
+  // names map to 2-letter codes via FULL_STATE_NAME_TO_CODE.
+  if (
+    token.patternId === "state-const-prose-declaration" ||
+    token.patternId === "state-const-prose-section-article"
+  ) {
+    let article: number | undefined
+    let section: string | undefined
+    let stateName: string | undefined
+    if (token.patternId === "state-const-prose-declaration") {
+      const m = /\b(?:art(?:icle)?\.?)\s+(\d+)\s+of\s+the\s+([A-Za-z\s]+?)\s+(?:Declaration\s+of\s+Rights|Constitution)\b/i.exec(text)
+      if (m) {
+        article = Number.parseInt(m[1], 10)
+        stateName = m[2].trim().toLowerCase()
+      }
+    } else {
+      const m = /\bSection\s+([\w()-]+)\s*,\s*Article\s+([IVX]+|\d+)\s+of\s+the\s+([A-Za-z\s]+?)\s+Constitution\b/i.exec(text)
+      if (m) {
+        section = m[1]
+        article = parseNumeral(m[2])
+        stateName = m[3].trim().toLowerCase()
+      }
+    }
+    const jurisdiction = stateName ? FULL_STATE_NAME_TO_CODE[stateName] : undefined
+    const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
+    return {
+      type: "constitutional",
+      text,
+      span: { cleanStart: span.cleanStart, cleanEnd: span.cleanEnd, originalStart, originalEnd },
+      confidence: 0.85,
+      matchedText: text,
+      processTimeMs: 0,
+      patternsChecked: 1,
+      article,
+      section,
+      jurisdiction,
+    }
+  }
 
   // #657 — Coordinated amendment list leading-ordinal pattern. The token
   // text is just the ordinal (`Fifth`, `5th`, ...) with no `Amendment`
