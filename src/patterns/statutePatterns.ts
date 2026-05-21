@@ -214,6 +214,29 @@ export const statutePatterns: Pattern[] = [
     type: "statute",
   },
   {
+    // New York acronymized codes — RPAPL, RPL, BCL, EPTL, SCPA, DRL, LLCL,
+    // VTL. NY court opinions cite these as bare-acronym + bare-section in
+    // running prose (`RPAPL 711 [5]`, `EPTL § 5-1.1`, `VTL § 1192`).
+    // Bracket-subdivision (`[5]`, `[3-a]`) is the dominant NY style — see
+    // `parseBody`'s SUBSECTION_RE which already accepts either delimiter.
+    //
+    // Each acronym is distinctive enough (3-5 caps, no normal English word
+    // collides) that the closed alternation + mandatory trailing digit is
+    // safe. Bare-acronym-in-prose (`The RPAPL governs.`) does not match —
+    // the trailing `\s*(?:§§?\s*)?\d` is the disambiguator.
+    //
+    // Listed adjacent to `ny-cplr-bare` since the shape and overflow
+    // handling are identical. #640
+    //
+    // Captures: (1) acronym, (2) section body, (3) optional subsection chain.
+    id: "ny-acronym-bare",
+    regex:
+      /\b(?:N\.\s*Y\.\s*)?(RPAPL|RPL|BCL|EPTL|SCPA|DRL|LLCL|VTL)\s*(?:§§?\s*)?(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*)((?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)/g,
+    description:
+      'New York acronymized codes (RPAPL/RPL/BCL/EPTL/SCPA/DRL/LLCL/VTL) with bracket-or-paren subdivisions: "RPAPL 711 [5]", "EPTL § 5-1.1" — #640',
+    type: "statute",
+  },
+  {
     id: "named-code",
     // Matches: [State abbrev]. [Code/Law Name] § [section]
     // Captures: (1) jurisdiction prefix, (2) code name text, (3) section+subsections+et seq
