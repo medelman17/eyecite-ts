@@ -445,6 +445,35 @@ pnpm size              # Check bundle size limits
 
 Requires Node.js >= 18.0.0. See [ARCHITECTURE.md](ARCHITECTURE.md) for contributor orientation.
 
+### Internal Bughunt CLI
+
+`pnpm bughunt` is a repo-local development tool for reproducible citation-parser bug
+hunting. It is intentionally private to this repository: it is not exported as a
+package entry point and is not installed as a public binary.
+
+```bash
+pnpm bughunt run --lane all --seed 1234 --sample 5
+pnpm bughunt inspect .bughunt/latest.json --id <finding-id>
+pnpm bughunt promote .bughunt/latest.json --id <finding-id>
+```
+
+The `run` command writes local artifacts under `.bughunt/runs/<run-id>/` plus a
+`.bughunt/latest.json` pointer. Runs include `manifest.json`, `findings.jsonl`,
+`cases.jsonl`, `events.jsonl`, `report.json`, and `summary.md`; `.bughunt/` is
+gitignored and should not be committed.
+
+Available v1 lanes:
+
+- `corpus`: runs extraction and resolution over inline smoke cases and reports
+  crashes or performance outliers.
+- `invariants`: checks citation/span invariants and records violations.
+- `mutate`: uses `fast-check` with deterministic seeds and replay paths for
+  generated-input failures.
+
+`promote` is preview-only in v1. It prints a Vitest repro skeleton with the
+finding ID, original command, source context, and minimized/input text when
+available; it does not write files.
+
 ## License
 
 MIT
