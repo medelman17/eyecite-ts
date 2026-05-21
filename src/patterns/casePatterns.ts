@@ -107,8 +107,14 @@ export const casePatterns: Pattern[] = [
     // fires when `Id` / `Ibid` is followed by an optional period plus
     // whitespace and a page digit, which is the short-form shape, never
     // the start of a reporter abbreviation.
+    // `AND` / `OR` guard: a fully-capitalized conjunction word in
+    // prose (`Plaintiff cited 100 AND 200`) would otherwise be captured
+    // as a reporter abbreviation by the broad lazy match. The negative
+    // lookahead rejects this shape before the reporter capture starts.
+    // Genuine reporters like `Or.` (Oregon) and `Ore.` are unaffected
+    // because they contain a period or extend beyond the bare conjunction.
     regex: new RegExp(
-      String.raw`\b(\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)([A-Z](?:(?! L\.[JQR\s])(?! R\.\s+\d)(?!\s+vs?\.\s)(?!\s+at\s)[A-Za-z.\d\s&'])+?)(?:\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|\)|,|;|\.|\[|\])|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
+      String.raw`\b(\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)(?!(?:AND|OR)\s+\d)([A-Z](?:(?! L\.[JQR\s])(?! R\.\s+\d)(?!\s+vs?\.\s)(?!\s+at\s)[A-Za-z.\d\s&'])+?)(?:\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|\)|,|;|\.|\[|\])|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
       "g",
     ),
     description:
