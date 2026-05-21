@@ -75,4 +75,21 @@ export const stateRulePatterns: Pattern[] = [
     description: 'Court of Federal Claims rule: "RCFC 56(c)" — #636',
     type: "stateRule",
   },
+  {
+    // Ho-Chunk Nation Rules of Civil Procedure — `HCN R. Civ. P. 5(C)(1)`.
+    // Tribal court citations have distinctive jurisdiction prefixes that
+    // follow the same shape as state-rule patterns. #658
+    id: "hcn-rcp",
+    regex: /\bHCN\s+R\.\s?Civ\.\s?P\.\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/g,
+    description: 'Ho-Chunk Nation Rules of Civil Procedure: "HCN R. Civ. P. 5(C)(1)" — #658',
+    type: "stateRule",
+  },
+  {
+    // Territorial Courts Rules of Civil Procedure — `T.C.R.C.P. 19(a)`.
+    // Used by territorial / tribal courts (US Virgin Islands among others).
+    id: "tcrcp",
+    regex: /\bT\.C\.R\.C\.P\.\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/g,
+    description: 'Territorial Courts Rules of Civil Procedure: "T.C.R.C.P. 19(a)" — #658',
+    type: "stateRule",
+  },
 ]

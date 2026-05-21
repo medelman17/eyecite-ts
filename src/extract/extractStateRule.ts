@@ -53,6 +53,16 @@ const PATTERN_META: Record<string, PatternMeta> = {
     ruleSet: "civil",
     re: /^RCFC\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)$/d,
   },
+  "hcn-rcp": {
+    jurisdiction: "HCN",
+    ruleSet: "civil",
+    re: /^HCN\s+R\.\s?Civ\.\s?P\.\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)$/d,
+  },
+  tcrcp: {
+    jurisdiction: "TC",
+    ruleSet: "civil",
+    re: /^T\.C\.R\.C\.P\.\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)$/d,
+  },
 }
 
 /** Split a captured rule body into bare rule + subsection chain. */
