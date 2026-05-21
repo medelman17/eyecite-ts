@@ -394,6 +394,17 @@ export function extractConstitutional(
     confidence = 0.9
   }
 
+  // Downgrade confidence when the numeral failed to parse (invalid
+  // Roman numerals like `IIII`, `IIIIIII`, or non-canonical word forms).
+  // The body regex matches `[IVX]+` permissively but `parseNumeral`
+  // returns undefined for non-canonical Roman numerals. A constitutional
+  // citation with neither amendment nor article populated is structurally
+  // useless and should be flagged as low-confidence rather than passed
+  // through at 0.9.
+  if (amendment === undefined && article === undefined) {
+    confidence = 0.1
+  }
+
   // The section regex may greedily consume a sentence-terminating period ("§ 1.")
   const matchedText = text.endsWith(".") ? text.slice(0, -1) : text
 
