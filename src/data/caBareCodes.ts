@@ -36,7 +36,12 @@ export const caBareCodeEntries: CaBareCodeEntry[] = [
   // Two-word "<Subject> & <Subject> Code" / "<Subject> Code" forms
   { canonical: "Bus. & Prof. Code", regexFragment: "Bus\\.?\\s*&\\s*Prof\\.?\\s+Code" },
   { canonical: "Welf. & Inst. Code", regexFragment: "Welf\\.?\\s*&\\s*Inst\\.?\\s+Code" },
-  { canonical: "Health & Safety Code", regexFragment: "Health\\s*&\\s*Safety\\s+Code" },
+  // Accept the abbreviated `Saf.` form as well as the unabbreviated
+  // `Safety` (CA opinions use both); both forms canonicalize to the
+  // abbreviated `Health & Saf. Code` which is the dominant style in
+  // CA appellate practice. #655
+  { canonical: "Health & Saf. Code", regexFragment: "Health\\s*&\\s*Saf\\.?\\s+Code" },
+  { canonical: "Health & Saf. Code", regexFragment: "Health\\s*&\\s*Safety\\s+Code" },
   { canonical: "Fish & Game Code", regexFragment: "Fish\\s*&\\s*Game\\s+Code" },
   { canonical: "Food & Agric. Code", regexFragment: "Food\\s*&\\s*Agric\\.?\\s+Code" },
   { canonical: "Harb. & Nav. Code", regexFragment: "Harb\\.?\\s*&\\s*Nav\\.?\\s+Code" },
