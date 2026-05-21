@@ -109,10 +109,40 @@ export function parseBody(rawBody: string): ParsedBody {
 
   // Split section from subsections: "1983(a)(1)" → section="1983", subsection="(a)(1)"
   const trimmed = normalized.trim()
-  const subMatch = SUBSECTION_RE.exec(trimmed)
-  const subGroups = subMatch?.[2]
+  let subMatch = SUBSECTION_RE.exec(trimmed)
+  let subGroups = subMatch?.[2]
 
-  const sectionBody = subMatch !== null && subGroups ? subMatch[1].trim() : trimmed
+  // Reject paren content that isn't a real subsection chain. Real
+  // subsection chains are short tokens like `(a)`, `(1)`, `(B)`,
+  // `(ii)` — never `(Supp. III)`, `(West)`, `(West 2010)`,
+  // `(federal question)`. The latter are Bluebook
+  // publisher/supplement/parenthetical-context markers (#711). When
+  // matched as `subsection`, downstream consumers see meaningless data.
+  //
+  // Reject when ANY paren contains internal whitespace OR a known
+  // publisher word. Strip the rejected content from `section` so the
+  // section field stays clean.
+  let rejectedNonSubsection = false
+  if (
+    subGroups &&
+    (/\s/.test(subGroups) ||
+      /\((?:West|Lexis|Supp\.|Cum\.|Pamphlet|Pocket)\b/i.test(subGroups))
+  ) {
+    subMatch = null
+    subGroups = undefined
+    rejectedNonSubsection = true
+  }
+
+  let sectionBody = subMatch !== null && subGroups ? subMatch[1].trim() : trimmed
+  // When we explicitly rejected a publisher/whitespace paren, also
+  // strip it from the section field so the section doesn't carry
+  // `1331 (federal question)`. Only do this when the rejection fired —
+  // otherwise we'd break formats where the section legitimately
+  // contains `(...)` like Wisconsin's `48.415(l)(a)3` (#414).
+  if (rejectedNonSubsection) {
+    const parenIdx = sectionBody.indexOf("(")
+    if (parenIdx !== -1) sectionBody = sectionBody.slice(0, parenIdx).trim()
+  }
 
   // Detect plain numeric range (e.g. `591-99`, `1330-1332`). Callers may use
   // this to populate `sectionRange` and reset `section` to the start. #564
