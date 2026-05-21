@@ -53,8 +53,10 @@ export function extractFederalRegister(
   const { text, span } = token
 
   // Parse volume-page using regex
-  // Pattern: volume (digits) + "Fed. Reg." + page (digits)
-  const federalRegisterRegex = /^(\d+(?:-\d+)?)\s+Fed\.\s?Reg\.\s+(\d+)/d
+  // Pattern: volume (digits) + "Fed. Reg." + page (digits, optionally
+  // comma-grouped like `12,345`). Federal Register pages routinely
+  // exceed 10,000 so commas are common.
+  const federalRegisterRegex = /^(\d+(?:-\d+)?)\s+Fed\.\s?Reg\.\s+(\d{1,3}(?:,\d{3})+|\d+)/d
   const match = federalRegisterRegex.exec(text)
 
   if (!match) {
@@ -63,7 +65,8 @@ export function extractFederalRegister(
 
   const rawVolume = match[1]
   const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
-  const page = Number.parseInt(match[2], 10)
+  // Strip thousands-grouping commas before integer parse.
+  const page = Number.parseInt(match[2].replace(/,/g, ""), 10)
 
   let spans: FederalRegisterComponentSpans | undefined
   if (match.indices) {

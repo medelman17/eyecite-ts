@@ -37,8 +37,8 @@ export function extractStatutesAtLarge(
 ): StatutesAtLargeCitation {
   const { text, span } = token
 
-  // Parse volume-Stat.-page
-  const statRegex = /^(\d+(?:-\d+)?)\s+Stat\.\s+(\d+)/d
+  // Parse volume-Stat.-page. Page accepts thousands-grouping commas.
+  const statRegex = /^(\d+(?:-\d+)?)\s+Stat\.\s+(\d{1,3}(?:,\d{3})+|\d+)/d
   const match = statRegex.exec(text)
 
   if (!match) {
@@ -47,7 +47,8 @@ export function extractStatutesAtLarge(
 
   const rawVolume = match[1]
   const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
-  const page = Number.parseInt(match[2], 10)
+  // Strip thousands-grouping commas before integer parse.
+  const page = Number.parseInt(match[2].replace(/,/g, ""), 10)
 
   let spans: StatutesAtLargeComponentSpans | undefined
   if (match.indices) {
