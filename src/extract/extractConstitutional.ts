@@ -314,6 +314,28 @@ export function extractConstitutional(
     }
   }
 
+  // #657 — Coordinated amendment list leading-ordinal pattern. The token
+  // text is just the ordinal (`Fifth`, `5th`, ...) with no `Amendment`
+  // suffix because the lookahead matched the trailing context without
+  // consuming it. Parse the numeral directly and emit an amendment.
+  if (token.patternId === "bare-amendment-coord") {
+    const amendment = parseNumeral(text)
+    const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
+    return {
+      type: "constitutional",
+      text,
+      span: { cleanStart: span.cleanStart, cleanEnd: span.cleanEnd, originalStart, originalEnd },
+      confidence: 0.5,
+      matchedText: text,
+      processTimeMs: 0,
+      patternsChecked: 1,
+      amendment,
+      spans: {
+        amendment: { cleanStart: span.cleanStart, cleanEnd: span.cleanEnd, originalStart, originalEnd },
+      },
+    }
+  }
+
   const bodyMatch = CONSTITUTIONAL_BODY_RE.exec(text)
 
   let article: number | undefined

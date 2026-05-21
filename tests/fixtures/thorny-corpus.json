@@ -1220,6 +1220,10 @@
         },
         {
           "type": "constitutional",
+          "amendment": 8
+        },
+        {
+          "type": "constitutional",
           "amendment": 14
         },
         {

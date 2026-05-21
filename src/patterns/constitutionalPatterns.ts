@@ -167,4 +167,34 @@ export const constitutionalPatterns: Pattern[] = [
       'Bare word-form amendment references without "Const." prefix (e.g., "the Fifth Amendment", "the Fourteenth Amendment") — #534',
     type: "constitutional",
   },
+  {
+    // #657 — Coordinated amendment lists: `the Fifth and Sixth Amendment`,
+    // `Fourth, Fifth, and Fourteenth Amendments`. The `bare-amendment-word`
+    // pattern only matches the trailing `<ordinal> Amendment` portion;
+    // leading ordinals in the list (Fifth, Fourth) are silently dropped
+    // because no `Amendment` word follows them directly.
+    //
+    // This pattern matches each leading ordinal using a lookahead that
+    // requires the chain to terminate in `<ordinal>\s+Amendments?`. Two
+    // alternatives in the lookahead:
+    //   1. Comma form: `Fifth, Sixth, and Fourteenth Amendments`
+    //   2. Bare-and form: `Fourth and Fourteenth Amendments`
+    //
+    // Each match captures just the ordinal text (e.g., `Fifth`). The
+    // extractor parses the numeral via `parseNumeral` and emits a
+    // separate amendment citation. The trailing `<ordinal> Amendment`
+    // continues to be captured by `bare-amendment-word`.
+    //
+    // Confidence is set to 0.5 in the extractor (same as
+    // `bare-amendment-word`) since this is also a bare-prose match
+    // without the `Const.` anchor.
+    id: "bare-amendment-coord",
+    regex: new RegExp(
+      `(?<!Const\\.?,?\\s)\\b(${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})(?=,\\s+(?:(?:${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS}),?\\s+)*(?:and\\s+)?(?:${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})\\s+[Aa]mendments?|\\s+and\\s+(?:${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})\\s+[Aa]mendments?)`,
+      "g",
+    ),
+    description:
+      'Leading ordinals in coordinated amendment lists ("Fifth and Sixth Amendment" → Fifth + Sixth) — #657',
+    type: "constitutional",
+  },
 ]
