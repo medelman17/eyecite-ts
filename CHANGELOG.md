@@ -1,5 +1,166 @@
 # eyecite-ts
 
+## 0.25.0
+
+### Minor Changes
+
+- [#664](https://github.com/medelman17/eyecite-ts/pull/664) [`0de4d12`](https://github.com/medelman17/eyecite-ts/commit/0de4d12c103fcfb6166c2bef5002433c66019de8) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): prose-form state-constitutional citations — #656
+
+  State opinions frequently cite their own constitution in natural prose
+  instead of the canonical Bluebook `<State>. Const. art. <N>` form:
+
+  - `art. 14 of the Massachusetts Declaration of Rights`
+  - `Section 5(B), Article IV of the Ohio Constitution`
+  - `Section 2, Article I of the Pennsylvania Constitution`
+
+  Two new tokenizer patterns + extractor handling:
+
+  1. `state-const-prose-declaration` — matches the MA/PA/VT/NH/MD/NC/DE/NJ
+     "Declaration of Rights" / "Constitution" prose form with closed
+     state-name alternation.
+
+  2. `state-const-prose-section-article` — matches the more general
+     `Section <N>, Article <N> of the <State> Constitution` form across all
+     50 states.
+
+  Both patterns map full state names ("Massachusetts", "New Jersey") to
+  2-letter jurisdiction codes via a new FULL_STATE_NAME_TO_CODE table.
+  Closed alternations keep false positives bounded: `art. 14 of the
+document` does not match because `document` is not in the state list.
+
+  10 new tests in `tests/extract/issue656StateConstProse.test.ts` cover
+  both shapes across MA, OH, PA, NJ; mid-sentence prose; regression
+  guards for `U.S. Const.` and `Cal. Const.` canonical forms; and
+  false-positive guards for non-state contexts.
+
+- [#660](https://github.com/medelman17/eyecite-ts/pull/660) [`9fb434a`](https://github.com/medelman17/eyecite-ts/commit/9fb434a5f9b7b6b0d52d0f5b2e86c6e1d54e3ff2) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): emit each amendment in coordinated lists — #657
+
+  `the Fifth and Sixth Amendment`, `Fourth, Fifth, and Fourteenth
+Amendments`, `his Fifth and Sixth Amendment rights` previously only
+  emitted a citation for the LAST amendment in the chain — the
+  `bare-amendment-word` pattern (#534) requires `<ordinal>\s+Amendment`
+  adjacently, and leading ordinals (Fifth, Fourth) have no trailing
+  `Amendment` word.
+
+  New `bare-amendment-coord` tokenizer pattern matches each leading
+  ordinal in a coordinated list using a lookahead that requires the
+  chain to terminate in `<ordinal>\s+Amendments?`. Each match emits a
+  separate amendment citation; the trailing `<ordinal> Amendment`
+  continues to be captured by `bare-amendment-word`.
+
+  Documented examples (each emits an amendment citation per number):
+
+  - `the Fifth and Sixth Amendment` → 5, 6
+  - `the Fifth and Sixth Amendments` → 5, 6
+  - `his Fifth and Sixth Amendment rights` → 5, 6
+  - `Fourth and Fourteenth Amendments` → 4, 14
+  - `the Fifth, Sixth, and Fourteenth Amendments` → 5, 6, 14
+  - `First, Fourth, Fifth, and Fourteenth Amendments` → 1, 4, 5, 14
+  - `5th and 6th Amendments` → 5, 6
+
+  Confidence matches `bare-amendment-word` (0.5) since both are
+  bare-prose matches without a `Const.` anchor. Single-amendment forms
+  (`the Fifth Amendment`, `U.S. Const. amend. V`) are unchanged.
+
+  11 new tests in `tests/extract/issue657MultiAmendmentList.test.ts`
+  cover two/three/four-amendment lists, ordinal-abbreviation forms,
+  regression guards for singular forms, and a false-positive guard for
+  prose that mentions ordinals without the `Amendment` word.
+
+  One pre-existing thorny-corpus fixture entry (death-penalty brief with
+  `the Eighth and Fourteenth Amendments`) was updated to expect the
+  additional Eighth Amendment citation that now emits.
+
+### Patch Changes
+
+- [#662](https://github.com/medelman17/eyecite-ts/pull/662) [`a4eff3f`](https://github.com/medelman17/eyecite-ts/commit/a4eff3f6096177a7cba390424a1079d930f1a3b1) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): accept abbreviated `Health & Saf. Code` form — #655 (partial)
+
+  CA appellate practice uses `Health & Saf. Code` (with `Saf.` abbreviated)
+  as the dominant style; the parser only accepted `Health & Safety Code`
+  (unabbreviated `Safety`). Added the abbreviated regex fragment alongside
+  the unabbreviated one; both canonicalize to `Health & Saf. Code`.
+
+  Documented examples:
+
+  - `Health & Saf. Code, § 1375.4` → `code: "Health & Saf. Code"`, `section: "1375.4"`
+  - `Health & Saf. Code, § 1375.4, subd. (b)(4)` → with subdivision
+  - `Cal. Health & Saf. Code § 1375.4` → with explicit `Cal.` prefix
+
+  The dominant bare-section follow-on pattern (`Pen. Code § 148. Then § 149.`)
+  already works via existing inheritance — multiple bare-section cites in
+  CA opinions correctly inherit the upstream `Pen. Code` (or other bare-code
+  canonical).
+
+  **Scope note**: #655 also identified bare `§ 1347.15, subd. (a)` cites
+  (CA-shape section numbers `digits.digits`) that no tokenizer currently
+  captures. Tracked as a separate follow-up — requires either extending the
+  `nm-bare-section` shape to admit CA-shape numbers, or adding a new
+  `ca-bare-section` pattern. Deferred from this PR to keep the surface area
+  small.
+
+  Also updates one pre-existing extractStatute test and the caBareCodes
+  self-match invariant test to handle the new "multiple input fragments →
+  one canonical" mapping.
+
+- [#665](https://github.com/medelman17/eyecite-ts/pull/665) [`ff7e53f`](https://github.com/medelman17/eyecite-ts/commit/ff7e53f33c13587211a70560c1860f36033c8903) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): tribal court rule citations — #658 (partial)
+
+  Extend `stateRulePatterns` (#636) to cover two tribal/territorial court
+  rule sets that appeared in the post-Sprint-K judge sweep:
+
+  - Ho-Chunk Nation Rules of Civil Procedure: `HCN R. Civ. P. 5(C)(1)`,
+    `HCN R. Civ. P. 27(B)`
+  - Territorial Courts Rules of Civil Procedure: `T.C.R.C.P. 19(a)`
+
+  Both follow the same shape as existing state-rule patterns (closed
+  prefix alternation + mandatory trailing rule number) so false positives
+  on bare-prose mentions are bounded.
+
+  Jurisdiction codes:
+
+  - HCN — Ho-Chunk Nation
+  - TC — Territorial Courts
+
+  10 new tests covering both rule sets, mid-sentence prose, federal-rule
+  and state-rule regression guards, and false-positive guards.
+
+  **Scope note**: #658 originally bundled three tribal-court coverage gaps.
+  This PR covers only the rules. Two sub-issues deferred to follow-ups:
+
+  - Tribal constitutions (`Constitution of the Ho-Chunk Nation, Art. VII,
+sec. 7(B)`, `HCN Const. Art. V, § 4`)
+  - Tribal codes (CS&KT `Section 2-1-813` style bare-section cites)
+
+- [#661](https://github.com/medelman17/eyecite-ts/pull/661) [`465b619`](https://github.com/medelman17/eyecite-ts/commit/465b619d05b6f46c381f2e2ba33f205a3424c2c4) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): bare `Code § N` cites in DC opinions route to D.C. Code — #659
+
+  Both DC and VA write statute cites as bare `Code § N` without
+  jurisdiction prefix, and both use overlapping section formats (period-
+  laden `22-404.01` and no-period `22-404`). The existing
+  `extractVaBareCode` and GA pre-1983 extractors silently claimed every
+  bare `Code §` for VA or GA based on the section number's punctuation —
+  so DC opinions citing their own code came out as `Va. Code` or `Ga.
+Code`, breaking jurisdictional filters.
+
+  New post-process pass `reassignDcCodeJurisdiction` walks citations in
+  document order, looks back ~400 chars for the most recent
+  jurisdiction signal (`D.C. Code`, `D.C. Cir.`, `D.C.`, `District of
+Columbia` vs `Va.`, `Virginia`), and re-routes bare-`Code §` cites
+  tagged as VA or GA to DC when DC is the nearest signal.
+
+  Documented examples:
+
+  - `D.C. Code § 22-404(a). The court also considered Code § 22-404.01(a)(2).` → both DC
+  - `District of Columbia statute at issue is Code § 22-404(a)(2).` → DC (period-less section)
+  - `See Smith v. Jones, 500 F.2d 100 (D.C. Cir. 2010). Per Code § 22-404.01(a)(2), ...` → DC
+
+  Regression guards:
+
+  - `Code § 18.2-308.2` (no DC context) → still VA
+  - `Virginia Code § 8.01-581.17` → still VA
+  - VA opinion with subsequent bare cite → still VA
+  - Mixed `D.C. Code ... Va. Code ... Code § N` (VA is most recent) → VA
+
+  8 new tests in `tests/extract/issue659DcCodeJurisdiction.test.ts`.
+
 ## 0.24.0
 
 ### Minor Changes
@@ -951,7 +1112,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-          275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+            275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -977,7 +1138,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-          People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+            People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
