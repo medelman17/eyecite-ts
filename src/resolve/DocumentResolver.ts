@@ -840,7 +840,15 @@ export class DocumentResolver {
   private resolveShortFormCase(citation: ShortFormCaseCitation): ResolutionResult | undefined {
     const currentIndex = this.context.citationIndex
     const targetReporter = this.normalizeReporter(citation.reporter)
-    const targetParty = citation.partyNameNormalized
+    // Renormalize the short-form's partyName through the resolver's own
+    // `normalizePartyName` so corporate suffixes (`Inc.`, `LLC`, `Corp.`)
+    // and connector words (`et al.`) are stripped to match the
+    // already-normalized plaintiff/defendant on case citations. Without
+    // this, `Smith, Inc., 100 F.2d at 7` carries `partyNameNormalized =
+    // "smith, inc."` and fails to match a plaintiff of `"smith"`.
+    const targetParty = citation.partyName
+      ? this.normalizePartyName(citation.partyName)
+      : undefined
 
     // Collect all backward candidates (most recent first) that match
     // vol+reporter AND are in-scope.
@@ -887,9 +895,15 @@ export class DocumentResolver {
         if (c.type !== "case") return false
         const plaintiff = c.plaintiffNormalized
         const defendant = c.defendantNormalized
+        // Token-sequence match (whole-word, sequential): `Smith` matches
+        // `Smith, Inc.` (whole-word containment) but does NOT match
+        // `Smithers` (no whole-word boundary). The previous substring
+        // match (`name.includes(targetParty)`) caused prefix collisions.
         const hit = (name: string | undefined) =>
           name !== undefined &&
-          (name === targetParty || name.includes(targetParty) || targetParty.includes(name))
+          (name === targetParty ||
+            this.containsTokenSequence(name, targetParty) ||
+            this.containsTokenSequence(targetParty, name))
         if (hit(plaintiff) || hit(defendant)) return true
         // Antecedent without a `v.` separator carries the single party as
         // `caseName` only — `plaintiff`/`defendant` are undefined. Fall
