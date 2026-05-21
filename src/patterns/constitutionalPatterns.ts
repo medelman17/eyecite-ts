@@ -50,8 +50,12 @@ const ARTICLE_OR_AMENDMENT = String.raw`(?:art(?:icle)?\.?|amend(?:ment)?\.?|amd
 // never written with an ordinal-prefix form (`5th Art.` is not legal).
 const ORDINAL_PREFIX_AMENDMENT = `(${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})\\s+(?:amend(?:ment)?\\.?|amdt\\.?|Amendment)`
 
-const OPTIONAL_SECTION = String.raw`(?:[,;]\s*§\s*([\w-]+))?`
-const OPTIONAL_CLAUSE = String.raw`(?:[,;]\s*cl\.?\s*(\d+))?`
+// Comma/semicolon between the numeral and the section/clause is optional
+// (#680). `U.S. Const. amend. XIV § 1` and `U.S. Const. art. III § 2`
+// are valid Bluebook forms — separator-free spacing should not lose
+// the structured section/clause field.
+const OPTIONAL_SECTION = String.raw`(?:[,;]?\s*§\s*([\w-]+))?`
+const OPTIONAL_CLAUSE = String.raw`(?:[,;]?\s*cl\.?\s*(\d+))?`
 const BODY_TAIL = `(?:${ARTICLE_OR_AMENDMENT}|${ORDINAL_PREFIX_AMENDMENT})${OPTIONAL_SECTION}${OPTIONAL_CLAUSE}`
 
 /** Compiled body regex shared with the extractor to avoid duplicate definitions. */
