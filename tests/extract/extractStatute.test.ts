@@ -2712,11 +2712,12 @@ describe("extractStatute", () => {
     })
 
     it("captures `37 C.F.R. § 42.107(a)-(b)`", () => {
+      // CFR is type=regulation since #637.
       const cites = extractCitations("see 37 C.F.R. § 42.107(a)-(b).").filter(
-        (c) => c.type === "statute",
+        (c) => c.type === "regulation",
       )
       expect(cites).toHaveLength(1)
-      if (cites[0]?.type === "statute") {
+      if (cites[0]?.type === "regulation") {
         expect(cites[0].section).toBe("42.107")
         expect(cites[0].subsection).toBe("(a)")
         expect(cites[0].subsectionRange).toEqual({ start: "(a)", end: "(b)" })
@@ -3585,11 +3586,12 @@ describe("extractStatute", () => {
     })
 
     it("`42 CFR 447` (no §) → C.F.R.", () => {
+      // CFR is type=regulation since #637.
       const cites = extractCitations("see 42 CFR 447.").filter(
-        (c) => c.type === "statute",
+        (c) => c.type === "regulation",
       )
       expect(cites).toHaveLength(1)
-      if (cites[0]?.type === "statute") {
+      if (cites[0]?.type === "regulation") {
         expect(cites[0].code).toBe("C.F.R.")
         expect(cites[0].title).toBe(42)
         expect(cites[0].section).toBe("447")

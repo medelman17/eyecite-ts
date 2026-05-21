@@ -54,7 +54,12 @@ export function toBluebook(citation: Citation): string {
       return `${caseName}${core}${pincite}${year}`
     }
 
-    case "statute": {
+    case "statute":
+    case "regulation": {
+      // Statutes and regulations share the same Bluebook rendering shape
+      // (title + code + chapter? + \u00A7 section + subsection + et seq.).
+      // Regulations only differ in `type` discriminator; rendering is
+      // identical. #637
       const title = citation.title !== undefined ? `${citation.title} ` : ""
       // section may be absent (e.g. Massachusetts chapter-only like
       // `G.L. c. 93A` \u2014 #569). Render the chapter form when present and
