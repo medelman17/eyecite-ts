@@ -359,11 +359,11 @@ describe("extractStatute", () => {
       }
     })
 
-    it("extracts `Health & Safety Code § 11350`", () => {
+    it("extracts `Health & Safety Code § 11350` (now canonicalized to `Health & Saf. Code`)", () => {
       const cits = extractCitations("Health & Safety Code § 11350 controls.")
       expect(cits).toHaveLength(1)
       if (cits[0].type === "statute") {
-        expect(cits[0].code).toBe("Health & Safety Code")
+        expect(cits[0].code).toBe("Health & Saf. Code")
         expect(cits[0].section).toBe("11350")
         expect(cits[0].jurisdiction).toBe("CA")
       }
