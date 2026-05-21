@@ -41,7 +41,17 @@ export interface Pattern {
  * canonical `\s+` form keeps the broader trailing lookahead so existing
  * inline-citation shapes continue to work.
  */
-const COMMA_PAGE_TERMINATOR = String.raw`(?=$|[.;,)\]])`
+// Page-terminator character class. Citations end at:
+//   - end of input (`$`)
+//   - standard sentence punctuation: `.`, `;`, `,`, `)`, `]`
+//   - trailing-prose punctuation that follows the page directly without
+//     a space: `!`, `?`, em dash (—), en dash (–), apostrophe
+//     (possessive `1's holding`)
+//   - `-` followed by a non-digit. The cleaner normalizes in-word em/en
+//     dashes to ASCII `-`, so `1—a` arrives at the tokenizer as `1-a`.
+//     The `\D` lookahead keeps page-range syntax intact (`44-501` does
+//     not terminate at `44`, because `-5` is digit). #681-class.
+const COMMA_PAGE_TERMINATOR = String.raw`(?=$|[.;,)\]!?–—']|-\D)`
 
 export const casePatterns: Pattern[] = [
   {
@@ -54,7 +64,7 @@ export const casePatterns: Pattern[] = [
     // Terminator accepts `)` for citations wrapped in a sentence-internal
     // parenthetical — e.g., `(Smith v. Jones, 500 F.2d 123)` (#509).
     regex: new RegExp(
-      String.raw`\b(\d+(?:-\d+)?)\s+(F\.\s?Supp\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?|F\.\s?App'x|F\.(?:\d+(?:st|nd|rd|th)|2d|3d)?)(?:\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|\)|,|;|\.)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
+      String.raw`\b(\d+(?:-\d+)?)\s+(F\.\s?Supp\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?|F\.\s?App'x|F\.(?:\d+(?:st|nd|rd|th)|2d|3d)?)(?:\s+(\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—']|-\D)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
       "g",
     ),
     description:
@@ -69,7 +79,7 @@ export const casePatterns: Pattern[] = [
     // Terminator accepts `)` for sentence-internal parenthetical citations
     // (#509).
     regex: new RegExp(
-      String.raw`\b(\d+(?:-\d+)?)\s+(U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?)(?:\s+(?:\(\d+\s+[A-Z][A-Za-z.]+\)\s+)?(\d+|_{3,}|-{3,})(?=\s|$|\(|\)|,|;|\.)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
+      String.raw`\b(\d+(?:-\d+)?)\s+(U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?)(?:\s+(?:\(\d+\s+[A-Z][A-Za-z.]+\)\s+)?(\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—']|-\D)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
       "g",
     ),
     description:
@@ -131,7 +141,7 @@ export const casePatterns: Pattern[] = [
     // space to handle Illinois `R. <ruleNum>` and the `L.J./L.Q./L.R.`
     // journal-abbreviation guards (#332, #549).
     regex: new RegExp(
-      String.raw`\b(\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)(?!(?:AND|OR)\s+\d)([A-Z][A-Za-z.\d&']*(?:(?! L\.[JQR\s])(?! R\.\s+\d)\s+[A-Z\d&][A-Za-z.\d&']*)*?)(?:\s+(\d+|_{3,}|-{3,})(?=\s|$|\(|\)|,|;|\.|\[|\])|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
+      String.raw`\b(\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)(?!(?:AND|OR)\s+\d)([A-Z][A-Za-z.\d&']*(?:(?! L\.[JQR\s])(?! R\.\s+\d)\s+[A-Z\d&][A-Za-z.\d&']*)*?)(?:\s+(\d+|_{3,}|-{3,})(?=\s|$|[().,;!?\[\]–—']|-\D)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
       "g",
     ),
     description:
