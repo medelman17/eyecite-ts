@@ -34,7 +34,7 @@ import { parsePincite, type PinciteInfo } from "./pincite"
  * out the party name).
  */
 const SUPRA_PARTY_PREFIX_REGEX =
-  /^(?:But\s+(?:see|cf\.?)|See(?:\s+also)?(?:\s*,\s*e\.\s*g\.?)?|Compare|Cf\.?|Accord|E\.\s*g\.?|Also|In(?!\s+re\b)|Then)\s+/i
+  /^(?:But\s+(?:see|cf\.?)|But|See(?:\s+also)?(?:\s*,\s*e\.\s*g\.?)?|Compare|Cf\.?|Accord|Contra|E\.\s*g\.?|Also|In(?!\s+re\b)|Then|However|Moreover|Therefore|Indeed)\s+/i
 
 function stripSupraPartyPrefix(raw: string): string {
   const stripped = raw.replace(SUPRA_PARTY_PREFIX_REGEX, "").trim()
