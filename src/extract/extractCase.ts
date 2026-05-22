@@ -896,6 +896,13 @@ const SENTENCE_INITIAL_WORDS = new Set([
  *        "D. Mass. 1/15/2020" → "D. Mass."
  */
 function stripDateFromCourt(content: string): string | undefined {
+  // Reject volume/page-reference parentheticals BEFORE any date-stripping
+  // runs (`(Vol. 100)`, `(p. 5)`, `(at 7)`). The day-strip regex below
+  // would otherwise eat 1-2 trailing digits from `Vol. 100`, producing
+  // a garbage `court="Vol. 1"`. #700.
+  if (/^(?:Vol\.?|vol\.?|p\.?|pp\.?|at|n\.?|note)\s+\d/i.test(content)) {
+    return undefined
+  }
   // Strip trailing numeric date formats. Accepts:
   //   - M/D/YYYY  (`1/15/2020`)
   //   - MM-DD-YYYY (`02-15-2020`)
