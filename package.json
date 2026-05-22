@@ -58,7 +58,10 @@
   },
   "scripts": {
     "build": "tsdown",
+    "prebuild": "pnpm data:generate",
+    "data:generate": "tsx scripts/generate-reporters-data.ts",
     "test": "vitest",
+    "pretest": "pnpm data:generate",
     "typecheck": "tsc --noEmit",
     "lint": "biome lint src tests",
     "format": "biome format --write src tests",
