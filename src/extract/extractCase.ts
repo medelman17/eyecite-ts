@@ -992,8 +992,12 @@ function stripDateFromCourt(content: string): string | undefined {
   // court parenthetical: `(rev'd 1990)`, `(per curiam 1990)`, `(en banc)`,
   // `(cert. denied 1990)`. After year-stripping, the bare disposition is
   // not a court — reject it so we don't surface `court="rev'd"`.
+  //
+  // Optional leading adverb (`now`, `previously`, `formerly`, `since`)
+  // is allowed so `(now reversed, 1990)` / `(previously vacated)` are
+  // also rejected. #719.
   if (
-    /^(?:rev'd|aff'd|aff'g|rev'g|mod'd|cert\.?\s+(?:denied|granted|dismissed)|appeal\s+(?:denied|dismissed|docketed)|dismissed|reversed|vacated|vacating|overruled(?:\s+by)?|overruling|en\s+banc|per\s+curiam)(?:\s+(?:in\s+part|on\s+other\s+grounds?|sub\s+nom\.?))?\s*$/i.test(
+    /^(?:(?:now|previously|formerly|since)\s+)?(?:rev'd|aff'd|aff'g|rev'g|mod'd|cert\.?\s+(?:denied|granted|dismissed)|appeal\s+(?:denied|dismissed|docketed)|dismissed|reversed|vacated|vacating|overruled(?:\s+by)?|overruling|en\s+banc|per\s+curiam)(?:\s+(?:in\s+part|on\s+other\s+grounds?|sub\s+nom\.?))?\s*$/i.test(
       court,
     )
   ) {
