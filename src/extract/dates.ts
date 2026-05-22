@@ -133,6 +133,30 @@ export function parseMonth(monthStr: string): number {
   return month
 }
 
+/** Maximum day for each month (non-leap-year). Index 0 is unused (months are 1-based). */
+const DAYS_IN_MONTH: readonly number[] = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+/**
+ * Validate a (year, month, day) tuple. Returns true when the day is in
+ * the valid range for that month, accounting for leap years on February.
+ *
+ * Used by `parseDate` to reject impossible dates like `Feb 30 2020` or
+ * `Apr 31 2020` — the date string format is well-formed but the values
+ * are semantically invalid (often OCR artifacts). When invalid, the
+ * caller falls back to month-only (`{ year, month }`). #716.
+ */
+export function isValidDate(year: number, month: number, day: number): boolean {
+  if (month < 1 || month > 12) return false
+  if (day < 1) return false
+  let max = DAYS_IN_MONTH[month]
+  if (month === 2) {
+    // Leap year: divisible by 4, except centuries unless divisible by 400.
+    const isLeap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+    if (isLeap) max = 29
+  }
+  return day <= max
+}
+
 /**
  * Convert structured date components to ISO 8601 string.
  * Handles full dates, month+year, and year-only formats.
@@ -202,7 +226,9 @@ export function parseDate(dateStr: string): StructuredDate | undefined {
     const day = Number.parseInt(abbrMatch[2], 10)
     const year = Number.parseInt(abbrMatch[3], 10)
     if (isPlausibleYear(year)) {
-      const parsed = { year, month, day }
+      // Reject impossible dates (`Feb 30`, `Apr 31`, `Feb 29` non-leap)
+      // by falling back to month-only. #716.
+      const parsed = isValidDate(year, month, day) ? { year, month, day } : { year, month }
       return { iso: toIsoDate(parsed), parsed }
     }
   }
@@ -216,7 +242,7 @@ export function parseDate(dateStr: string): StructuredDate | undefined {
     const day = Number.parseInt(fullMatch[2], 10)
     const year = Number.parseInt(fullMatch[3], 10)
     if (isPlausibleYear(year)) {
-      const parsed = { year, month, day }
+      const parsed = isValidDate(year, month, day) ? { year, month, day } : { year, month }
       return { iso: toIsoDate(parsed), parsed }
     }
   }
@@ -230,7 +256,7 @@ export function parseDate(dateStr: string): StructuredDate | undefined {
     const month = Number.parseInt(isoMatch[3], 10)
     const day = Number.parseInt(isoMatch[4], 10)
     if (isPlausibleYear(year)) {
-      const parsed = { year, month, day }
+      const parsed = isValidDate(year, month, day) ? { year, month, day } : { year, month }
       return { iso: toIsoDate(parsed), parsed }
     }
   }
@@ -248,7 +274,7 @@ export function parseDate(dateStr: string): StructuredDate | undefined {
       year = year <= 50 ? 2000 + year : 1900 + year
     }
     if (isPlausibleYear(year)) {
-      const parsed = { year, month, day }
+      const parsed = isValidDate(year, month, day) ? { year, month, day } : { year, month }
       return { iso: toIsoDate(parsed), parsed }
     }
   }
@@ -266,7 +292,7 @@ export function parseDate(dateStr: string): StructuredDate | undefined {
     const month = parseMonth(euroMatch[2])
     const year = Number.parseInt(euroMatch[3], 10)
     if (isPlausibleYear(year)) {
-      const parsed = { year, month, day }
+      const parsed = isValidDate(year, month, day) ? { year, month, day } : { year, month }
       return { iso: toIsoDate(parsed), parsed }
     }
   }
