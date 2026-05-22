@@ -748,8 +748,12 @@ function isNonMetadataParenContent(content: string): boolean {
 // ordinal forms (`21st Century Fox`, `1st National Bank`, `100th
 // Anniversary`). Without the `(?:st|nd|rd|th)?` suffix the regex
 // stripped the ordinal prefix entirely.
+//
+// Defendant char class includes `:` so case-name subtitles like
+// `Smith v. Jones: A Sequel` extract correctly. Plaintiff also accepts
+// `:` for the same reason.
 const V_CASE_NAME_REGEX =
-  /((?:\d[\d-]*(?:st|nd|rd|th)?\s+)?[A-ZÀ-Þ][A-Za-z0-9À-ſ\s.,'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9À-ſ\s.,'&()/-]+?)\s*(?:,|\((?:([^)]*?\.[^)]*?)\s+)?(\d{4})\))\s*$/d
+  /((?:\d[\d-]*(?:st|nd|rd|th)?\s+)?[A-ZÀ-Þ][A-Za-z0-9À-ſ\s.,:'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9À-ſ\s.,:'&()/-]+?)\s*(?:,|\((?:([^)]*?\.[^)]*?)\s+)?(\d{4})\))\s*$/d
 
 /** Procedural prefix case name format.
  *  Longer prefixes listed first so the alternation prefers the longer match
