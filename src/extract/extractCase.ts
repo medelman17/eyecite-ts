@@ -97,10 +97,17 @@ const SIGNAL_STRIP_REGEX = (() => {
   return new RegExp(`^(${alternatives.join("|")}),?\\s+${proseConnector}`, "i")
 })()
 
-/** Parse a volume string as number when purely numeric, string when hyphenated */
+/** Parse a volume string as number when purely numeric, string when hyphenated.
+ *
+ * Leading zeros are stripped so `"01"` parses to `1` (not `"01"` as a string)
+ * for consistency with the no-leading-zero `"1"` form. Hyphenated forms
+ * like `"1984-1"` stay as strings. #703.
+ */
 function parseVolume(raw: string): number | string {
-  const num = Number.parseInt(raw, 10)
-  return String(num) === raw ? num : raw
+  if (/^\d+$/.test(raw)) {
+    return Number.parseInt(raw, 10)
+  }
+  return raw
 }
 
 /** Month abbreviations and full names found in legal citation parentheticals */
