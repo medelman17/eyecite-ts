@@ -903,6 +903,12 @@ function stripDateFromCourt(content: string): string | undefined {
   if (/^(?:Vol\.?|vol\.?|p\.?|pp\.?|at|n\.?|note)\s+\d/i.test(content)) {
     return undefined
   }
+  // Strip a trailing nested parenthetical (`(en banc)` / `(per curiam)`
+  // inside the outer year paren — `(1990 (en banc))`). Without this
+  // the trailing-year strip can't reach `1990` because `(en banc)`
+  // sits between it and end-of-string, and the entire `1990 (en banc)`
+  // residue leaks into court. #682.
+  const stripped = content.replace(/\s*\([^()]*\)\s*$/, "").trim()
   // Strip trailing numeric date formats. Accepts:
   //   - M/D/YYYY  (`1/15/2020`)
   //   - MM-DD-YYYY (`02-15-2020`)
@@ -912,7 +918,7 @@ function stripDateFromCourt(content: string): string | undefined {
   // caught. Each direction (year-first vs day-first) is handled by a
   // separate alternative so the regex doesn't accidentally absorb
   // unrelated text.
-  let court = content
+  let court = stripped
     .replace(/\s*\d{1,2}[/-]\d{1,2}[/-]\d{4}\s*$/, "")
     .replace(/\s*\d{4}[/-]\d{1,2}[/-]\d{1,2}\s*$/, "")
     .trim()
