@@ -56,7 +56,7 @@ const PARA_NUM_REGEX = /^(\d+)(?:\s*[-–—~]\s*(\d+))?\s*$/
  *  Tilde (`~`) is accepted as a range separator alongside hyphen and dashes
  *  for OCR-artifact tolerance (#516). */
 const PINCITE_PARSE_REGEX =
-  /^(?:at\s+)?(\*?)(\d+)(?:[-–—~]\*?(\d+))?(?:\s*,)?\s*(?:(?:nn?|fns?|note)\s*\.?\s*(\d+)(?:[-–—~](\d+))?)?$/i
+  /^(?:at\s+)?(\*?)(\d+)(?:\s*[-–—~]\s*\*?(\d+))?(?:\s*,)?\s*(?:(?:nn?|fns?|note)\s*\.?\s*(\d+)(?:\s*[-–—~]\s*(\d+))?)?$/i
 
 /** Footnote-only pincite — no page digits, just `n. 7`, `note 7`, `nn. 3-5`,
  *  `fn. 4` (#515). Surfaces when the cited material is on the citation's
