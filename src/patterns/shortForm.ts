@@ -36,13 +36,13 @@ import type { Pattern } from "./casePatterns"
  *  (`Id., 6.`) keeps working because its digits are not followed by a
  *  capital-letter reporter shape. */
 export const ID_PATTERN: RegExp =
-  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]d(?:\s*\.|\s*,(?=\s+at\s))(?:(?:,\s+(?!\d+\s+[A-Z])|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
+  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]d(?:\s*\.|\s*,(?=\s+at\s))(?:(?:,\s+(?!\d+\s+[A-Z])|,?\s*(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
 
 /** Ibid. with optional pincite (less common variant). Paragraph forms (#204)
  *  follow the same convention as Id. Optional space before the period (#305).
  *  Comma-pincite guard (#549) mirrors ID_PATTERN — see comment there. */
 export const IBID_PATTERN: RegExp =
-  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]bid\s*\.(?:(?:,\s+(?!\d+\s+[A-Z])|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
+  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]bid\s*\.(?:(?:,\s+(?!\d+\s+[A-Z])|,?\s*(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
 
 /**
  * Supra with party name and optional pincite.

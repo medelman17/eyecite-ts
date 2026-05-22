@@ -182,7 +182,7 @@ export function extractId(
   // truncates the token before reaching this point), but keeps the
   // regexes in lock-step to prevent future drift.
   const idRegex =
-    /([Ii])(?:d|bid)\s*([.,])(?:(,\s+(?!\d+\s+[A-Z])|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
+    /([Ii])(?:d|bid)\s*([.,])(?:(,\s+(?!\d+\s+[A-Z])|,?\s*(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?))?/d
   const match = idRegex.exec(text)
 
   if (!match) {
