@@ -35,6 +35,7 @@ import { getReportersSync } from "@/data/reportersCache"
 import { inferCourtFromReporter } from "./courtInference"
 import { parsePincite, type PinciteInfo } from "./pincite"
 import { normalizeCourt } from "./courtNormalization"
+import { levenshteinDistance } from "@/resolve/levenshtein"
 
 /** Valid CitationSignal values for safe validation after regex capture + normalization. */
 const VALID_SIGNALS = new Set([
@@ -105,6 +106,70 @@ function parseVolume(raw: string): number | string {
 /** Month abbreviations and full names found in legal citation parentheticals */
 const MONTH_PATTERN =
   /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)\.?/
+
+/** Canonical month names for fuzzy match. Includes both short and full forms. */
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const
+
+/** Court-abbrev tokens that should NEVER be stripped as a misspelled month
+ *  even if a fuzzy comparison happens to land within distance 2. Real court
+ *  T7 abbreviations that overlap with month-name fuzzy space. */
+const NO_STRIP_TRAILING = new Set([
+  "Cir",
+  "Ct",
+  "App",
+  "Sup",
+  "Dist",
+  "Div",
+  "Bankr",
+  "Crim",
+  "Civ",
+  "Mass",
+  "Tex",
+  "Penn",
+  "Wash",
+  "Ind",
+  "Ark",
+])
+
+/** Strip a trailing word if it fuzzy-matches a month name (Levenshtein ≤ 2)
+ *  and isn't a court-abbrev word. Used to clean OCR-mangled or misspelled
+ *  month names that the canonical strip didn't catch (`Jaunary`, `Ferbuary`,
+ *  `Marc`, `Septmber`). #717. */
+function stripMisspelledTrailingMonth(content: string): string {
+  const match = /\s+(\w{3,12})\.?\s*$/.exec(content)
+  if (!match) return content
+  const word = match[1]
+  // Must be Title-Case (starts with capital) to be a plausible month candidate.
+  if (!/^[A-Z]/.test(word)) return content
+  // Skip known court-abbrev tokens even if they're within fuzzy distance.
+  const wordStem = word.replace(/\.$/, "")
+  if (NO_STRIP_TRAILING.has(wordStem)) return content
+  // Fuzzy-match against month names with maxDistance=2 AND require the
+  // first letter to match. Without the first-letter constraint, real
+  // court abbreviations like `Cal.` collide with `Jan` (distance 2) and
+  // get mis-stripped.
+  const firstLetter = word[0]
+  for (const month of MONTH_NAMES) {
+    if (month[0] !== firstLetter) continue
+    if (levenshteinDistance(word, month, 2) <= 2) {
+      return content.slice(0, match.index).trim()
+    }
+  }
+  return content
+}
 
 // ============================================================================
 // Compiled regex patterns for performance (hoisted to module level)
@@ -940,6 +1005,13 @@ function stripDateFromCourt(content: string): string | undefined {
   // Strip trailing date components: optional day+comma, month abbreviation or full name
   court = court.replace(/\s*,?\s*\d{1,2}\s*,?\s*$/, "").trim()
   court = court.replace(new RegExp(`\\s*${MONTH_PATTERN.source}\\s*$`, "i"), "").trim()
+  // Fuzzy strip of misspelled / OCR-mangled month names — `Jaunary`,
+  // `Ferbuary`, `Marc`, etc. After the canonical month strip leaves
+  // a trailing Title-Case word, fuzzy-match it (Levenshtein ≤ 2)
+  // against the known month names; on match, strip. Bounded length
+  // (3-12) and Title-Case constraint keep the heuristic from chewing
+  // real court abbreviations. #717.
+  court = stripMisspelledTrailingMonth(court).trim()
   // Strip any trailing commas left over
   court = court.replace(/,\s*$/, "").trim()
   if (!court || !/[A-Za-z]/.test(court)) return undefined
