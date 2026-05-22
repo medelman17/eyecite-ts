@@ -428,7 +428,7 @@ const BLANK_PAGE_REGEX = /^[_-]{3,}$/
  *  Lexis, and other slip-opinion citations; see #191), and an optional
  *  trailing footnote suffix " n.14" / " nn.14-15" (see #202). */
 const PINCITE_REGEX =
-  /,\s*(?:at\s+)?(\*?\d+(?:-\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)/d
+  /,\s*(?:at\s+)?(\*?\d+(?:\s*-\s*\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:\s*[-–—]\s*\d+)?)?)/d
 
 /** Matches parenthetical content */
 const PAREN_REGEX = /\(([^)]+)\)/
@@ -493,7 +493,7 @@ const LOOKAHEAD_PAREN_REGEX =
 // `pinciteInfo.footnote` with `page=undefined`. The leading `at` prefix is
 // allowed for symmetry with the page-bearing forms.
 const LOOKAHEAD_PINCITE_REGEX =
-  /^(?:\s+at\s+(?:(?:pp?\.|pages?)\s*)?|,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?)(\*?\d+(?:[-–—~]\*?\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)?|¶¶?\s*\d+(?:[-–—~]\d+)?|paras?\.?\s*\d+(?:[-–—~]\d+)?|(?:nn?|fns?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)(?=$|[.,:;)([\]»"'“”‘’†‡§¶©°]|\s(?![A-Z]))/d
+  /^(?:\s+at\s+(?:(?:pp?\.|pages?)\s*)?|,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?)(\*?\d+(?:\s*[-–—~]\s*\*?\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:\s*[-–—~]\s*\d+)?)?|¶¶?\s*\d+(?:\s*[-–—~]\s*\d+)?|paras?\.?\s*\d+(?:\s*[-–—~]\s*\d+)?|(?:nn?|fns?|note)\s*\.?\s*\d+(?:\s*[-–—~]\s*\d+)?)(?=$|[.,:;)([\]»"'“”‘’†‡§¶©°]|\s(?![A-Z]))/d
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
