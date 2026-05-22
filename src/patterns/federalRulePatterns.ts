@@ -53,4 +53,15 @@ export const federalRulePatterns: Pattern[] = [
       'Spelled-out federal rules: "Federal Rule of Civil Procedure 56", "Federal Rules of Evidence 401" — #576',
     type: "federalRule",
   },
+  {
+    // Acronym form: `FRCP 12(b)(6)`, `FRE 401`, `FRAP 4(a)`, `FRCrP 11`,
+    // `FRBP 7001`, plus dotted variants `F.R.C.P.`, `F.R.E.`, etc.
+    // Common in casual writing, court orders, and briefs. #696.
+    id: "fed-rule-acronym",
+    regex:
+      /\b(FRCP|FRE|FRAP|FRCrP|FRBP|F\.\s?R\.\s?C\.\s?P\.|F\.\s?R\.\s?E\.|F\.\s?R\.\s?A\.\s?P\.|F\.\s?R\.\s?Cr\.\s?P\.|F\.\s?R\.\s?B\.\s?P\.)\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/g,
+    description:
+      'Acronym federal rules: "FRCP 12(b)(6)", "FRE 401", "F.R.C.P. 12" — #696',
+    type: "federalRule",
+  },
 ]
