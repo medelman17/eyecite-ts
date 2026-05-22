@@ -471,7 +471,7 @@ export function computeCaseConfidence(opts: {
  *  comma-form input and the caller falls through to
  *  `VOLUME_REPORTER_PAGE_REGEX_COMMA` instead — see #570. */
 const VOLUME_REPORTER_PAGE_REGEX =
-  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})(?=$|[\s.;,)\]])/d
+  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+-\d+|\d+|_{3,}|-{3,})(?=$|[\s.;,)\]])/d
 
 /** Comma-form variant of VOLUME_REPORTER_PAGE_REGEX (#570) for the old
  *  typesetting shape `<vol> <Reporter>, <page>` (`3 Den., 594`,
@@ -490,7 +490,7 @@ const VOLUME_REPORTER_PAGE_REGEX =
  *  tokenizer pattern in `src/patterns/casePatterns.ts` uses the same
  *  terminator constraint. */
 const VOLUME_REPORTER_PAGE_REGEX_COMMA =
-  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+?)\s*,\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})(?=$|[.;)\]])/d
+  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+?)\s*,\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+-\d+|\d+|_{3,}|-{3,})(?=$|[.;)\]])/d
 
 /** Detects blank page placeholders (3+ underscores or dashes) */
 const BLANK_PAGE_REGEX = /^[_-]{3,}$/

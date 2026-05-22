@@ -70,7 +70,7 @@ export const casePatterns: Pattern[] = [
     // Terminator accepts `)` for citations wrapped in a sentence-internal
     // parenthetical — e.g., `(Smith v. Jones, 500 F.2d 123)` (#509).
     regex: new RegExp(
-      String.raw`\b(\d+(?:-\d+)?)\s+(F\.\s?Supp\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?|F\.\s?App'x|F\.(?:\d+(?:st|nd|rd|th)|2d|3d)?)(?:\s+(\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
+      String.raw`\b(\d+(?:-\d+)?)\s+(F\.\s?Supp\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?|F\.\s?App'x|F\.(?:\d+(?:st|nd|rd|th)|2d|3d)?)(?:\s+(\d+-\d+(?=\s+\(\d{4}\))|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
       "g",
     ),
     description:
@@ -85,7 +85,7 @@ export const casePatterns: Pattern[] = [
     // Terminator accepts `)` for sentence-internal parenthetical citations
     // (#509).
     regex: new RegExp(
-      String.raw`\b(\d+(?:-\d+)?)\s+(U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?)(?:\s+(?:\(\d+\s+[A-Z][A-Za-z.]+\)\s+)?(\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
+      String.raw`\b(\d+(?:-\d+)?)\s+(U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?)(?:\s+(?:\(\d+\s+[A-Z][A-Za-z.]+\)\s+)?(\d+-\d+(?=\s+\(\d{4}\))|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
       "g",
     ),
     description:
@@ -147,7 +147,7 @@ export const casePatterns: Pattern[] = [
     // space to handle Illinois `R. <ruleNum>` and the `L.J./L.Q./L.R.`
     // journal-abbreviation guards (#332, #549).
     regex: new RegExp(
-      String.raw`\b(\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)(?!(?:AND|OR)\s+\d)([A-Z][A-Za-z.\d&']*(?:(?! L\.[JQR\s])(?! R\.\s+\d)\s+[A-Z\d&][A-Za-z.\d&']*)*?)(?:\s+(\d+|_{3,}|-{3,})(?=\s|$|[().,;!?\[\]–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
+      String.raw`\b(\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)(?!(?:AND|OR)\s+\d)([A-Z][A-Za-z.\d&']*(?:(?! L\.[JQR\s])(?! R\.\s+\d)\s+[A-Z\d&][A-Za-z.\d&']*)*?)(?:\s+(\d+-\d+(?=\s+\(\d{4}\))|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?\[\]–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
       "g",
     ),
     description:
