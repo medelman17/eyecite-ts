@@ -17,7 +17,14 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
  *  - deprecated `assert: { type: "json" }` rejected by Node 22+
  *  - orphan chunks / CJS path mismatch
  *  - any future packaging regression where dist/ + the import graph drift apart
+ *
+ * Skipped on Node < 20: the test invokes `pnpm build` (tsdown → Rolldown),
+ * which requires Node 20+ (`util.styleText`). The published artifact itself
+ * works on Node 18 — only the build toolchain needs the newer Node. Coverage
+ * of Node 18 consumer behavior comes from the rest of the test suite.
  */
+const nodeMajor = Number.parseInt(process.versions.node.split(".")[0], 10)
+const buildSupported = nodeMajor >= 20
 
 const projectRoot = resolve(__dirname, "../..")
 let workDir: string
@@ -46,25 +53,25 @@ function runScript(consumerDir: string, scriptName: string, source: string) {
   })
 }
 
-beforeAll(() => {
-  workDir = mkdtempSync(join(tmpdir(), "eyecite-tarball-"))
-  esmConsumer = join(workDir, "esm-consumer")
-  cjsConsumer = join(workDir, "cjs-consumer")
+describe.skipIf(!buildSupported)("Published tarball (#642 regression)", () => {
+  beforeAll(() => {
+    workDir = mkdtempSync(join(tmpdir(), "eyecite-tarball-"))
+    esmConsumer = join(workDir, "esm-consumer")
+    cjsConsumer = join(workDir, "cjs-consumer")
 
-  // Build is required; `files: ["dist"]` only ships what's already on disk,
-  // and a stale dist would mask real bugs.
-  execSync("pnpm build", { cwd: projectRoot, stdio: "pipe" })
-  execSync(`npm pack --pack-destination ${workDir}`, { cwd: projectRoot, stdio: "pipe" })
+    // Build is required; `files: ["dist"]` only ships what's already on disk,
+    // and a stale dist would mask real bugs.
+    execSync("pnpm build", { cwd: projectRoot, stdio: "pipe" })
+    execSync(`npm pack --pack-destination ${workDir}`, { cwd: projectRoot, stdio: "pipe" })
 
-  installTarball(esmConsumer, "module")
-  installTarball(cjsConsumer, "commonjs")
-}, 180_000)
+    installTarball(esmConsumer, "module")
+    installTarball(cjsConsumer, "commonjs")
+  }, 180_000)
 
-afterAll(() => {
-  if (workDir) rmSync(workDir, { recursive: true, force: true })
-})
+  afterAll(() => {
+    if (workDir) rmSync(workDir, { recursive: true, force: true })
+  })
 
-describe("Published tarball (#642 regression)", () => {
   it("ESM consumer can loadReporters()", () => {
     const proc = runScript(
       esmConsumer,
