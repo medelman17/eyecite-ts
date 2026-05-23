@@ -56,7 +56,13 @@ const ORDINAL_PREFIX_AMENDMENT = `(${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS
 // the structured section/clause field.
 const OPTIONAL_SECTION = String.raw`(?:[,;]?\s*§\s*([\w-]+))?`
 const OPTIONAL_CLAUSE = String.raw`(?:[,;]?\s*cl\.?\s*(\d+))?`
-const BODY_TAIL = `(?:${ARTICLE_OR_AMENDMENT}|${ORDINAL_PREFIX_AMENDMENT})${OPTIONAL_SECTION}${OPTIONAL_CLAUSE}`
+// Preamble (#321): `pmbl.` (Bluebook abbreviation) or `preamble`.
+// No numeral, no section, no clause — preamble has none. Captured as
+// a non-capturing alternative in BODY_TAIL so the existing group
+// layout (article/amendment numerals in groups 1/2, section in 3,
+// clause in 4) is preserved.
+const PREAMBLE = String.raw`(?:[,;]?\s*(?:pmbl\.?|preamble)\b)`
+const BODY_TAIL = `(?:(?:${ARTICLE_OR_AMENDMENT}|${ORDINAL_PREFIX_AMENDMENT})${OPTIONAL_SECTION}${OPTIONAL_CLAUSE}|${PREAMBLE})`
 
 /** Compiled body regex shared with the extractor to avoid duplicate definitions. */
 export const CONSTITUTIONAL_BODY_RE: RegExp = new RegExp(BODY_TAIL, "id")
