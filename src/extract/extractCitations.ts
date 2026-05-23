@@ -415,9 +415,25 @@ export function extractCitations(
       case "statute":
         citation = extractStatute(token, transformationMap)
         break
-      case "journal":
-        citation = extractJournal(token, transformationMap, cleaned)
+      case "journal": {
+        const journalCitation = extractJournal(token, transformationMap, cleaned)
+        // Phantom-prose filter (#615). Without a journals-db gate, the broad
+        // journal regex can fire on `[vol] [Capitalized Run] [page]` shapes
+        // where the capitalized run is just sentence prose (`1974 Senator
+        // Smith Jones 500`). Real journal abbreviations are either single
+        // words (`Neurology`, `JAMA`) or contain at least one period or
+        // short token (`Harv. L. Rev.`, `Brook L Rev`, `Yale L J` — `L`,
+        // `J`, `Rev` are short Bluebook abbreviations). Multi-word captures
+        // that lack both a period AND a short (≤2 char) word are almost
+        // always phantoms; drop them here.
+        const name = journalCitation.journal
+        const words = name.split(/\s+/)
+        const isPhantom =
+          words.length >= 2 && !name.includes(".") && !words.some((w) => w.length <= 2)
+        if (isPhantom) continue
+        citation = journalCitation
         break
+      }
       case "neutral":
         citation = extractNeutral(token, transformationMap, cleaned)
         break
