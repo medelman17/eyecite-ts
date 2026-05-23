@@ -560,6 +560,11 @@ export function extractCitations(
   // only scan backward for citations that still lack a signal.
   detectLeadingSignals(citations, cleaned)
 
+  // Step 4.85: Propagate `compare` signal across `with` connector (#702).
+  // Bluebook Rule 1.2(b) treats `compare A with B` as paired — B inherits
+  // the comparison signal from A.
+  propagateCompareWithSignal(citations, cleaned)
+
   // Step 4.9: Apply false positive filters (blocklist + year heuristic).
   // Passing `text` (the original pre-cleaning input) lets the filter detect
   // citations whose span crosses a hard line break in the source — those are
@@ -632,6 +637,25 @@ export async function extractCitationsAsync(
   // Async wrapper for future extensibility (e.g., async reporters-db lookup)
   // For MVP, wraps synchronous extractCitations
   return extractCitations(text, options)
+}
+
+/**
+ * Issue #702 — Bluebook Rule 1.2(b) paired-comparison signal. When a
+ * citation carries `signal=compare` and the gap to the next citation
+ * contains `with`, propagate the `compare` signal to the following
+ * citation. `compare A with B` is a paired construct; both citations
+ * belong to the same comparison.
+ */
+function propagateCompareWithSignal(citations: Citation[], cleaned: string): void {
+  for (let i = 0; i < citations.length - 1; i++) {
+    const a = citations[i]
+    const b = citations[i + 1]
+    if (a.signal !== "compare") continue
+    if (b.signal) continue
+    const gap = cleaned.slice(a.span.cleanEnd, b.span.cleanStart)
+    if (!/\bwith\b/i.test(gap)) continue
+    ;(b as { signal?: typeof a.signal }).signal = "compare"
+  }
 }
 
 /**
