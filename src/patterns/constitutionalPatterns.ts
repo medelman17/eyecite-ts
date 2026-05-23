@@ -42,8 +42,12 @@ const AMEND_ORDINAL_ABBREV = String.raw`(?:1st|2nd|3rd|4th|5th|6th|7th|8th|9th|1
 const NUMERAL_FORM = `(?:[IVX]+|\\d+|${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})`
 
 // Article-or-amendment word, including the unabbreviated `Amendment`
-// alternative (#534).
-const ARTICLE_OR_AMENDMENT = String.raw`(?:art(?:icle)?\.?|amend(?:ment)?\.?|amdt\.?|Amendment)\s+(${NUMERAL_FORM})`
+// alternative (#534). Plural forms (`arts.`, `amends.`, `amdts.`) are
+// accepted for chained citations (#321 partial) — the tokenizer only
+// captures the first numeral; chained continuations are out of scope
+// for this pattern (a separate post-extraction pass like
+// expandChainedConstitutional could handle them).
+const ARTICLE_OR_AMENDMENT = String.raw`(?:arts?(?:icle)?\.?|amends?(?:ment)?\.?|amdts?\.?|Amendment)\s+(${NUMERAL_FORM})`
 
 // Inverse shape: numeral BEFORE the amendment word (e.g., `5th Amend.`,
 // `Fifth Amendment`). Only matches the amendment family — articles are
