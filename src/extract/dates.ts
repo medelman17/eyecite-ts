@@ -212,14 +212,15 @@ export function toIsoDate(parsed: ParsedDate): string {
  * ```
  */
 export function parseDate(dateStr: string): StructuredDate | undefined {
-  // Try abbreviated month, US order: "Jan. 15, 2020", "Feb 9, 2015", or
-  // "Jan.15, 1990" (missing space after period — common OCR artifact, #554).
-  // The `(?:\.?\s+|\.\s*)` alternation accepts either an explicit space or a
-  // period-with-no-trailing-space ("Jan.15"). We do NOT accept bare
-  // "Jan15" (no period, no space) because that would match arbitrary text
-  // like `Jan15Foo`.
+  // Try abbreviated month, US order: "Jan. 15, 2020", "Feb 9, 2015",
+  // "Jan.15, 1990" (missing space after period — common OCR artifact, #554),
+  // or "Jan., 15, 2020" (comma immediately after period — #554).
+  // The `(?:\.?,?\s+|\.,?\s*)` alternation accepts an explicit space or a
+  // period (with optional comma) followed by zero or more whitespace. We
+  // do NOT accept bare "Jan15" (no period, no space) because that would
+  // match arbitrary text like `Jan15Foo`.
   const abbrMatch = dateStr.match(
-    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)(?:\.?\s+|\.\s*)(\d{1,2}),?\s+(\d{4})\b/i,
+    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)(?:\.?,?\s+|\.,?\s*)(\d{1,2}),?\s+(\d{4})\b/i,
   )
   if (abbrMatch) {
     const month = parseMonth(abbrMatch[1])
