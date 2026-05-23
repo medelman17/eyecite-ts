@@ -496,6 +496,10 @@ export function extractCitations(
     citations.push(citation)
   }
 
+  // Step 4.3: Expand constitutional citations chained with `;` that
+  // share an implied jurisdiction with the preceding cite. (#707)
+  expandChainedConstitutional(citations, cleaned, transformationMap)
+
   // Step 4.35: Detect bare-prefix `§§ N, N` lists that lack any code
   // identifier in front of the §§ marker. These never produce a head cite
   // through normal tokenization, so seed a head before expansion. (#563)
@@ -632,6 +636,92 @@ export async function extractCitationsAsync(
   // Async wrapper for future extensibility (e.g., async reporters-db lookup)
   // For MVP, wraps synchronous extractCitations
   return extractCitations(text, options)
+}
+
+/**
+ * Issue #707 — Expand constitutional citations chained with `;` that
+ * share an implied jurisdiction with the preceding cite. The canonical
+ * `U.S. Const.` prefix is required by the tokenizer pattern, so a chain
+ * like `U.S. Const. art. III, § 2; amend. XIV, § 1` only produces one
+ * citation. This pass scans forward from each constitutional cite's
+ * cleanEnd across `;` separators for additional body-tail matches
+ * (`art./amend. <numeral> [§ N] [cl. M]`) and emits a synthetic
+ * citation per chain element inheriting the head's jurisdiction.
+ */
+function expandChainedConstitutional(
+  citations: Citation[],
+  cleaned: string,
+  transformationMap: TransformationMap,
+): void {
+  const added: Citation[] = []
+  const chainRe =
+    /^\s*;\s*((?:art(?:icle)?\.?|amend(?:ment)?\.?|amdt\.?)\s+([IVX]+|\d+))(?:[,;]?\s*§\s*([\w-]+))?(?:[,;]?\s*cl\.?\s*(\d+))?/i
+
+  for (const c of citations) {
+    if (c.type !== "constitutional") continue
+    const jurisdiction = (c as { jurisdiction?: string }).jurisdiction
+    if (!jurisdiction) continue
+    let cursor = c.span.cleanEnd
+    while (cursor < cleaned.length) {
+      const tail = cleaned.slice(cursor)
+      const m = chainRe.exec(tail)
+      if (!m) break
+      const matchedText = m[0]
+      const article = m[1]
+      const numeralText = m[2]
+      const section = m[3]
+      const clauseText = m[4]
+      const isAmendment = /^amend|^amdt/i.test(article)
+      const numeral = parseChainNumeral(numeralText)
+      if (numeral === undefined) break
+      const matchStart = cursor + matchedText.indexOf(article)
+      const matchEnd = cursor + matchedText.length
+      const { originalStart, originalEnd } = resolveOriginalSpan(
+        { cleanStart: matchStart, cleanEnd: matchEnd },
+        transformationMap,
+      )
+      const cite: Citation = {
+        type: "constitutional",
+        text: cleaned.slice(matchStart, matchEnd),
+        span: { cleanStart: matchStart, cleanEnd: matchEnd, originalStart, originalEnd },
+        confidence: c.confidence,
+        matchedText: cleaned.slice(matchStart, matchEnd),
+        processTimeMs: 0,
+        patternsChecked: 1,
+        jurisdiction,
+        ...(isAmendment ? { amendment: numeral } : { article: numeral }),
+        ...(section ? { section } : {}),
+        ...(clauseText ? { clause: Number.parseInt(clauseText, 10) } : {}),
+      } as Citation
+      added.push(cite)
+      cursor = matchEnd
+    }
+  }
+  citations.push(...added)
+}
+
+const CHAIN_WORD_ORDINAL: Record<string, number> = {
+  first: 1, second: 2, third: 3, fourth: 4, fifth: 5,
+  sixth: 6, seventh: 7, eighth: 8, ninth: 9, tenth: 10,
+}
+function parseChainNumeral(raw: string): number | undefined {
+  if (!raw) return undefined
+  if (/^\d+$/.test(raw)) return Number.parseInt(raw, 10)
+  const word = raw.toLowerCase()
+  if (word in CHAIN_WORD_ORDINAL) return CHAIN_WORD_ORDINAL[word]
+  if (/^[IVX]+$/i.test(raw)) {
+    const map: Record<string, number> = { I: 1, V: 5, X: 10 }
+    let total = 0
+    let prev = 0
+    for (const ch of raw.toUpperCase()) {
+      const v = map[ch] ?? 0
+      if (v > prev) total += v - 2 * prev
+      else total += v
+      prev = v
+    }
+    return total > 0 ? total : undefined
+  }
+  return undefined
 }
 
 /**
