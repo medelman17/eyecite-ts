@@ -6,8 +6,10 @@ const cases = (text: string): FullCaseCitation[] =>
   extractCitations(text).filter((c) => c.type === "case") as FullCaseCitation[]
 
 describe("leading-zero volumes consistently parse as integers (#703)", () => {
+  // Removed the bare `0 F.2d 1` test case — #673 hard-rejects vol=0 as
+  // implausibly garbage. Leading-zero forms (`01`, `001`) still parse
+  // to their integer value.
   it.each([
-    ["0", "0 F.2d 1", 0],
     ["01", "01 F.2d 1", 1],
     ["001", "001 F.2d 1", 1],
     ["00100", "00100 F.2d 1", 100],
@@ -16,6 +18,10 @@ describe("leading-zero volumes consistently parse as integers (#703)", () => {
     const [c] = cases(input)
     expect(typeof c.volume).toBe("number")
     expect(c.volume).toBe(expected)
+  })
+
+  it("`0 F.2d 1` (true zero volume) is filtered as implausible (#673)", () => {
+    expect(cases("0 F.2d 1")).toHaveLength(0)
   })
 
   it("regression: hyphenated volume `1984-1` stays as string", () => {
