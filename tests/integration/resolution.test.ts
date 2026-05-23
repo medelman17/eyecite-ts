@@ -236,22 +236,25 @@ describe("Resolution Integration Tests", () => {
       expect(id!.resolution?.warnings).toBeDefined()
     })
 
-    it("Id. with no pincite after case → statute skips the statute (#480)", () => {
-      // Bluebook-aware behavior: `Id.` with a page-style (or absent) pincite
-      // refers to the most recent *case-family* authority. A statute in the
-      // gap is deprioritized when an earlier case is in scope.
+    it("Id. with no pincite after case → statute resolves to statute (#721, Bluebook 4.1)", () => {
+      // Updated for #721. Per Bluebook Rule 4.1, bare `Id.` (no pincite)
+      // attaches to the IMMEDIATELY preceding cited authority of any type.
+      // The earlier behavior (case-family preference) was changed because
+      // the family filter overrode positional priority for bare Id. Id.
+      // WITH an explicit page-style pincite still uses case-family
+      // preference (that's a meaningful disambiguator).
       const text = "Smith v. Jones, 500 F.2d 123 (2020). " + "42 U.S.C. § 1983. " + "Id."
 
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
 
-      const smith = citations.find((c) => c.type === "case")
+      const statute = citations.find((c) => c.type === "statute")
       const id = citations.find((c) => c.type === "id")
 
-      expect(smith).toBeDefined()
+      expect(statute).toBeDefined()
       expect(id).toBeDefined()
 
-      const smithIndex = citations.indexOf(smith!)
-      expect(id!.resolution?.resolvedTo).toBe(smithIndex)
+      const statuteIndex = citations.indexOf(statute!)
+      expect(id!.resolution?.resolvedTo).toBe(statuteIndex)
     })
 
     it("Id. resolves to a statute when no case is in scope", () => {

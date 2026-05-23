@@ -361,7 +361,22 @@ export class DocumentResolver {
    */
   private resolveId(citation: IdCitation): ResolutionResult | undefined {
     const currentIndex = this.context.citationIndex
-    const preferredFamily = this.getIdPreferredFamily(citation)
+    // Issue #721: bare `Id.` (no pincite/section marker) should attach to
+    // the immediately preceding cite of ANY type per Bluebook Rule 4.1.
+    // When the user wrote `42 U.S.C. § 1983. Id.`, they meant the statute,
+    // not the case three sentences earlier. The family preference still
+    // applies when Id. has a pincite shape that disambiguates (`Id. § 5`
+    // → statute; `Id. at 27` → case).
+    const hasPincite =
+      citation.pincite !== undefined || citation.pinciteInfo !== undefined
+    const tailHasSection = /^\s*[,]?\s*§§?\s*\d/.test(
+      this.text.substring(
+        citation.span.cleanEnd,
+        Math.min(this.text.length, citation.span.cleanEnd + 20),
+      ),
+    )
+    const preferredFamily =
+      hasPincite || tailHasSection ? this.getIdPreferredFamily(citation) : null
     const idQuoteZone = isInZone(citation.span.originalStart, this.quoteZones)
 
     interface Candidate {
@@ -449,7 +464,13 @@ export class DocumentResolver {
     // mention. Per Bluebook Rule 4.1, signal phrase does NOT affect
     // antecedent selection: `Id.` anchors to the immediately preceding
     // cited authority regardless of `See`, `Cf.`, etc. (#498).
-    const preferred = candidates.find((c) => c.family === preferredFamily)
+    // When preferredFamily is null (bare Id. with no pincite — #721),
+    // pick the most recent candidate regardless of family. Otherwise,
+    // prefer family-match first, then fall back to recency.
+    const preferred =
+      preferredFamily === null
+        ? undefined
+        : candidates.find((c) => c.family === preferredFamily)
     const best = preferred ?? candidates[0]
 
     // Case-name window check: if the prose immediately before Id. names a
