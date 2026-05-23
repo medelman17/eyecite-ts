@@ -25,7 +25,7 @@ const ET_SEQ_RE = /\s*et\s+seq\.?\s*$/i
  * consecutive paren groups so `(a) (8)` → `(a)(8)`. #589
  */
 const SUBD_KEYWORD_RE =
-  /,?\s+(?:subd\.?|subdivision|paragraphs?|pars?\.)\s+((?:\([^)]*\)|\[[^\]]*\])(?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)/i
+  /,?\s+(?:subd\.?|subds\.?|subdivisions?|paragraphs?|pars?\.)\s+((?:\([^)]*\)|\[[^\]]*\])(?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)/i
 
 function normalizeSubdKeyword(body: string): string {
   const m = SUBD_KEYWORD_RE.exec(body)
