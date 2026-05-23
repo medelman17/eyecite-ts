@@ -951,10 +951,14 @@ export interface ConstitutionalCitation extends CitationBase {
   type: "constitutional"
   /** Jurisdiction code: "US", 2-letter state code, or undefined for bare "Const." */
   jurisdiction?: string
-  /** Article number (parsed from Roman numerals) — mutually exclusive with amendment */
+  /** Article number (parsed from Roman numerals) — mutually exclusive with amendment / preamble */
   article?: number
-  /** Amendment number (parsed from Roman numerals) — mutually exclusive with article */
+  /** Amendment number (parsed from Roman numerals) — mutually exclusive with article / preamble */
   amendment?: number
+  /** True when the citation references the Preamble (`U.S. Const. pmbl.`,
+   *  `U.S. Const. preamble`). Mutually exclusive with article / amendment.
+   *  Section and clause are not applicable to preamble. #321 */
+  preamble?: boolean
   /** Section identifier (string to handle non-numeric like "3-a") */
   section?: string
   /** Clause number (always numeric) */
