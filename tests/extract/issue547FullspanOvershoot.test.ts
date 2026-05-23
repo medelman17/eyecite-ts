@@ -196,18 +196,15 @@ describe("issue #547: fullSpan overshoots on line-crossing false positives", () 
       "2. Denials of 1-⅕85 and 1-602 Applications\n" +
       "On October 19, 2015, USCIS issued Notices of Intent."
 
-    it("flags the line-crossing cite to confidence ≤ 0.1", () => {
+    // Updated for #669: the phantom's reporter `On October` contains a
+    // month-name token, which is now hard-rejected by isMonthInProseReporter
+    // (real reporters never contain month-name tokens). Previously this
+    // phantom was penalized to confidence 0.1 + fullSpan stripped; the
+    // hard-reject is unambiguously better — consumers never see them.
+    it("hard-rejects the month-in-reporter phantom (#669)", () => {
       const cits = extractCitations(text)
       const phantom = cits.find((c) => c.matchedText.includes("1-602 Applications"))
-      expect(phantom, "phantom cite should be extracted under broad regex").toBeDefined()
-      expect(phantom!.confidence).toBeLessThanOrEqual(0.1)
-    })
-
-    it("strips fullSpan from the flagged phantom (no preceding prose leaks)", () => {
-      const cits = extractCitations(text)
-      const phantom = cits.find((c) => c.matchedText.includes("1-602 Applications"))
-      expect(phantom).toBeDefined()
-      expect((phantom as FullCaseCitation).fullSpan).toBeUndefined()
+      expect(phantom).toBeUndefined()
     })
 
     it("removes the phantom entirely when filterFalsePositives is true", () => {
