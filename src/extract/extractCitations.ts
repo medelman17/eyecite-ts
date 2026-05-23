@@ -855,6 +855,21 @@ function inheritSubsequentHistoryCaseName(citations: Citation[]): void {
         originalEnd: child.fullSpan.originalEnd,
       }
     }
+
+    // The confidence score on `child` was computed by buildCaseCitation()
+    // when caseName was still undefined, so it missed the +0.15 caseName
+    // signal it now qualifies for. Re-derive with the same formula so the
+    // inherited caption registers in the score (#613, mirrors #556 fix in
+    // inheritParallelCaseName). Reporter / year / court are unchanged by
+    // this pass, so this only swings score for children that had their
+    // caseName mutated above.
+    child.confidence = computeCaseConfidence({
+      reporter: child.reporter,
+      year: child.year,
+      caseName: child.caseName,
+      court: child.court,
+      hasBlankPage: child.hasBlankPage ?? false,
+    })
   }
 }
 

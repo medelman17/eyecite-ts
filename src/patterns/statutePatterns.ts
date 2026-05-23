@@ -77,8 +77,11 @@ export const statutePatterns: Pattern[] = [
     // Code→connector separator admits an optional comma (`12 C.F.R.,
     // § 226`) — symmetric to the USC fix for #587. The Sprint F
     // year-paren guard `(?![^)]*\d{4})` is preserved intact.
+    // Title→code separator admits an optional comma (`Title 12, C.F.R.
+    // § 226`) — symmetric to the USC fix for #586. The trailing letter
+    // alternation is USC-only.
     regex:
-      /\b(\d+)\s+C\.?F\.?R\.?\s*,?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s*,?\s+C\.?F\.?R\.?\s*,?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
     description:
       'Code of Federal Regulations with optional Part/§/Section connector — #428 #587',
     type: "statute",
