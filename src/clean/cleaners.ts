@@ -105,6 +105,12 @@ export function stripHtmlTags(text: string): string {
  * with a hyphen at the line break: "Dil-\nlinger" or "F. Sup-\np. 3d".
  * This cleaner removes the hyphen + line break to restore the original word.
  *
+ * Issue #681: Digit-hyphen-newline-digit shapes are NOT word-wraps — they
+ * are pincite ranges (`5-\n7` = `5-7`). When both sides of the hyphen are
+ * digits, preserve the hyphen so the pincite parser sees the range
+ * correctly. Without this guard the hyphen got stripped and the two
+ * digits fused (`57`), fabricating a pincite that wasn't in the source.
+ *
  * Must run before normalizeWhitespace (which converts \n to spaces, leaving
  * "Dil- linger" instead of "Dillinger").
  *
@@ -115,9 +121,19 @@ export function stripHtmlTags(text: string): string {
  * @example
  * rejoinHyphenatedWords("F. Sup-\np. 3d 100")
  * // => "F. Supp. 3d 100"
+ *
+ * @example
+ * rejoinHyphenatedWords("100 F.2d 1, 5-\n7 (1990)")
+ * // => "100 F.2d 1, 5-7 (1990)"  // hyphen preserved (pincite range)
  */
 export function rejoinHyphenatedWords(text: string): string {
-  return text.replace(/(\w)-\s*[\n\r]+\s*(\w)/g, "$1$2")
+  return text.replace(/(\w)-\s*[\n\r]+\s*(\w)/g, (_match, before: string, after: string) => {
+    // Digit-on-both-sides → range, preserve hyphen and collapse the wrap
+    if (/\d/.test(before) && /\d/.test(after)) {
+      return `${before}-${after}`
+    }
+    return `${before}${after}`
+  })
 }
 
 /**
