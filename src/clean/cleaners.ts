@@ -187,7 +187,25 @@ export function normalizeUnicode(text: string): string {
   // case-name backscan and producing wrong captions). These symbols are
   // decorative — they don't affect canonical citation text — so removing
   // them entirely is preferable to letting NFKC expand them inline.
-  const stripped = text.replace(/[™®℠©]/g, "")
+  //
+  // Issue #605: Same problem class for vulgar fractions, the numero sign,
+  // and CJK compatibility units. NFKC decomposes them into multi-char
+  // ASCII (`½` → "1⁄2", `№` → "No", `㎡` → "m2"). These are vanishingly
+  // rare in legal text but their expansion can drift position mapping
+  // or create false-positive matches downstream. Strip pre-NFKC so the
+  // cleaned text length is never increased by the normalize() call.
+  const stripped = text
+    .replace(/[™®℠©]/g, "")
+    // Vulgar fractions (½ ⅓ ¼ ¾ ⅕ ⅖ ⅗ ⅘ ⅙ ⅚ ⅛ ⅜ ⅝ ⅞ ⅐ ⅑ ⅒ ⅔)
+    .replace(/[¼-¾⅐-⅞]/g, "")
+    // Numero sign (№) — common in older dockets; the surrounding "Docket"
+    // or "Case" word makes the prefix recoverable from context.
+    .replace(/№/g, "")
+    // CJK compatibility units (㎡ ㎏ ℃ ℉ ㏗ etc.) — NFKC expands these
+    // to letter+digit pairs that can collide with citation patterns.
+    // Range covers Unit Symbols + Squared Latin Abbreviations +
+    // Letterlike Symbols that decompose under NFKC.
+    .replace(/[㎀-㏿℀-⅏]/g, "")
   return stripped.normalize("NFKC")
 }
 
