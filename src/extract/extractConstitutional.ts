@@ -279,7 +279,8 @@ export function extractConstitutional(
   // names map to 2-letter codes via FULL_STATE_NAME_TO_CODE.
   if (
     token.patternId === "state-const-prose-declaration" ||
-    token.patternId === "state-const-prose-section-article"
+    token.patternId === "state-const-prose-section-article" ||
+    token.patternId === "state-const-prose-article-first"
   ) {
     let article: number | undefined
     let section: string | undefined
@@ -290,11 +291,20 @@ export function extractConstitutional(
         article = Number.parseInt(m[1], 10)
         stateName = m[2].trim().toLowerCase()
       }
-    } else {
+    } else if (token.patternId === "state-const-prose-section-article") {
       const m = /\bSection\s+([\w()-]+)\s*,\s*Article\s+([IVX]+|\d+)\s+of\s+the\s+([A-Za-z\s]+?)\s+Constitution\b/i.exec(text)
       if (m) {
         section = m[1]
         article = parseNumeral(m[2])
+        stateName = m[3].trim().toLowerCase()
+      }
+    } else {
+      // state-const-prose-article-first (#321):
+      // `article XII, section 5 of the California Constitution`
+      const m = /\b(?:article|art\.?)\s+([IVX]+|\d+)[,\s]+section\s+([\w()-]+),?\s+of\s+the\s+([A-Za-z\s]+?)\s+Constitution\b/i.exec(text)
+      if (m) {
+        article = parseNumeral(m[1])
+        section = m[2]
         stateName = m[3].trim().toLowerCase()
       }
     }

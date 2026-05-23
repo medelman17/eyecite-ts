@@ -175,6 +175,24 @@ export const constitutionalPatterns: Pattern[] = [
     type: "constitutional",
   },
   {
+    // #321 — Article-first prose form: `article XII, section 5 of the
+    // California Constitution`, `article VI, section 10, of the
+    // California Constitution`. Mirror of the section-first variant
+    // above. Same patternId because the extractor produces the same
+    // shape (article + section + jurisdiction). The extractor
+    // distinguishes the two variants by group layout.
+    //
+    // Shape: (1) article numeral, (2) section text, (3) state name.
+    id: "state-const-prose-article-first",
+    regex: new RegExp(
+      String.raw`\b(?:article|art\.?)\s+([IVX]+|\d+)[,\s]+section\s+([\w()-]+),?\s+of\s+the\s+(Massachusetts|Pennsylvania|Vermont|New\s+Hampshire|Maryland|North\s+Carolina|Delaware|New\s+Jersey|Ohio|California|Texas|Florida|Illinois|Michigan|New\s+York|Georgia|Virginia|Washington|Arizona|Colorado|Wisconsin|Minnesota|Indiana|Louisiana|Oregon|Tennessee|South\s+Carolina|Alabama|Missouri|Kentucky|Connecticut|Iowa|Mississippi|Arkansas|Kansas|Nevada|Utah|Hawaii|Alaska|Idaho|Maine|Montana|Nebraska|New\s+Mexico|North\s+Dakota|Oklahoma|Rhode\s+Island|South\s+Dakota|West\s+Virginia|Wyoming)\s+Constitution\b`,
+      "gi",
+    ),
+    description:
+      'Prose-form state constitutional citations, article-first: "article XII, section 5 of the California Constitution" — #321',
+    type: "constitutional",
+  },
+  {
     id: "bare-amendment-word",
     regex: new RegExp(
       `(?<!Const\\.?,?\\s)\\b(${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})\\s+(?:[Aa]mend(?:ment)?\\.?|[Aa]mdt\\.?)`,
