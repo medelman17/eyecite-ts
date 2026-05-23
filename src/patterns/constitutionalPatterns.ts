@@ -102,15 +102,18 @@ export const constitutionalPatterns: Pattern[] = [
   {
     id: "bare-article",
     // Lowest-priority pattern: bare "Art." with no "Const." prefix at all.
-    // Constrained to reduce false positives: Roman numerals only (no Arabic),
-    // must include a § section reference, and lookbehind rejects "Const." prefix
-    // (already handled by higher-priority patterns). Confidence set to 0.5 in extractor.
+    // Constrained to reduce false positives: must include a § section
+    // reference. Roman + Arabic numerals both accepted (#321). The
+    // mandatory `§ N` lookahead keeps FP risk low — prose like
+    // `Art. 1 of the treaty` does not match. Lookbehind rejects
+    // "Const." prefix (handled by higher-priority patterns).
+    // Confidence set to 0.5 in extractor.
     regex: new RegExp(
-      String.raw`(?<!Const\.?,?\s)\bArt\.?\s+[IVX]+[,;]\s*§\s*[\w-]+(?:[,;]\s*cl\.?\s*\d+)?`,
+      String.raw`(?<!Const\.?,?\s)\bArt\.?\s+([IVX]+|\d+)[,;]\s*§\s*[\w-]+(?:[,;]\s*cl\.?\s*\d+)?`,
       "g",
     ),
     description:
-      'Bare article references without "Const." prefix (e.g., "Art. I, §8, cl. 3")',
+      'Bare article references without "Const." prefix (e.g., "Art. I, §8, cl. 3", "Art. 1, § 10")',
     type: "constitutional",
   },
   {
