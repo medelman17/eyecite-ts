@@ -824,52 +824,62 @@ function linkSubsequentHistory(citations: Citation[]): void {
  * Closes #224.
  */
 function inheritSubsequentHistoryCaseName(citations: Citation[]): void {
-  for (const child of citations) {
-    if (child.type !== "case") continue
-    if (!child.subsequentHistoryOf) continue
-    const parent = citations[child.subsequentHistoryOf.index]
-    if (!parent || parent.type !== "case") continue
-    if (!parent.caseName) continue
+  // Issue #620: multi-link chains like `<root>, aff'd, <A>, cert. denied,
+  // <B>` need parents processed before children. A linear pass works only
+  // because chain links happen to appear in document order; any future
+  // re-ordering of `citations` would silently break multi-link
+  // propagation. Run until quiescence (fixed-point iteration) — robust
+  // to array order and bounded by chain depth.
+  let mutated = true
+  let safetyIterations = 0
+  const MAX_ITERATIONS = citations.length + 1
+  while (mutated && safetyIterations < MAX_ITERATIONS) {
+    mutated = false
+    safetyIterations++
+    for (const child of citations) {
+      if (child.type !== "case") continue
+      if (!child.subsequentHistoryOf) continue
+      if (child.caseName) continue // already inherited in prior iteration
+      const parent = citations[child.subsequentHistoryOf.index]
+      if (!parent || parent.type !== "case") continue
+      if (!parent.caseName) continue
 
-    child.caseName = parent.caseName
-    child.plaintiff = parent.plaintiff
-    child.defendant = parent.defendant
-    child.plaintiffNormalized = parent.plaintiffNormalized
-    child.defendantNormalized = parent.defendantNormalized
-    child.proceduralPrefix = parent.proceduralPrefix
+      child.caseName = parent.caseName
+      child.plaintiff = parent.plaintiff
+      child.defendant = parent.defendant
+      child.plaintiffNormalized = parent.plaintiffNormalized
+      child.defendantNormalized = parent.defendantNormalized
+      child.proceduralPrefix = parent.proceduralPrefix
 
-    if (child.spans) {
-      child.spans.caseName = undefined
-      child.spans.plaintiff = undefined
-      child.spans.defendant = undefined
-    }
-
-    // Trim fullSpan to the child's own citation core. extractCaseName had
-    // anchored fullSpan at the parent's case name; that's not the child's
-    // text. Keep the original cleanEnd/originalEnd (parenthetical end).
-    if (child.fullSpan) {
-      child.fullSpan = {
-        cleanStart: child.span.cleanStart,
-        cleanEnd: child.fullSpan.cleanEnd,
-        originalStart: child.span.originalStart,
-        originalEnd: child.fullSpan.originalEnd,
+      if (child.spans) {
+        child.spans.caseName = undefined
+        child.spans.plaintiff = undefined
+        child.spans.defendant = undefined
       }
-    }
 
-    // The confidence score on `child` was computed by buildCaseCitation()
-    // when caseName was still undefined, so it missed the +0.15 caseName
-    // signal it now qualifies for. Re-derive with the same formula so the
-    // inherited caption registers in the score (#613, mirrors #556 fix in
-    // inheritParallelCaseName). Reporter / year / court are unchanged by
-    // this pass, so this only swings score for children that had their
-    // caseName mutated above.
-    child.confidence = computeCaseConfidence({
-      reporter: child.reporter,
-      year: child.year,
-      caseName: child.caseName,
-      court: child.court,
-      hasBlankPage: child.hasBlankPage ?? false,
-    })
+      // Trim fullSpan to the child's own citation core. extractCaseName had
+      // anchored fullSpan at the parent's case name; that's not the child's
+      // text. Keep the original cleanEnd/originalEnd (parenthetical end).
+      if (child.fullSpan) {
+        child.fullSpan = {
+          cleanStart: child.span.cleanStart,
+          cleanEnd: child.fullSpan.cleanEnd,
+          originalStart: child.span.originalStart,
+          originalEnd: child.fullSpan.originalEnd,
+        }
+      }
+
+      // Re-derive confidence with the now-populated caseName (#613).
+      child.confidence = computeCaseConfidence({
+        reporter: child.reporter,
+        year: child.year,
+        caseName: child.caseName,
+        court: child.court,
+        hasBlankPage: child.hasBlankPage ?? false,
+      })
+
+      mutated = true
+    }
   }
 }
 
