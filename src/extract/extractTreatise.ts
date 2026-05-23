@@ -38,11 +38,31 @@ const KNOWN_TREATISES: ReadonlyArray<string> = [
   "Davis & Pierce, Administrative Law Treatise",
 ]
 
+/** Bare-title alternation for author-prefixed form (#643). Mirrors the
+ *  list in src/patterns/secondaryAuthorityPatterns.ts. */
+const KNOWN_TREATISE_BARE_TITLES: ReadonlyArray<string> = [
+  "Federal Practice and Procedure",
+  "Cal. Procedure",
+  "Summary of California Law",
+  "Criminal Procedure",
+  "Criminal Law",
+  "Administrative Law Treatise",
+]
+
 const escapeRegex = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 const TREATISE_ALTERNATION = KNOWN_TREATISES.map(escapeRegex).join("|")
+const TREATISE_BARE_TITLE_ALTERNATION = KNOWN_TREATISE_BARE_TITLES.map(escapeRegex).join("|")
 
+// Mirrors the tokenizer regex in secondaryAuthorityPatterns.ts. Two
+// title shapes (group 2 = bare title with prefix-author, group 3 =
+// compact title) and an edition paren (group 4), section (group 5).
+// Group 2 = compact title, group 3 = bare title (author-prefixed).
+// Exactly one is populated per match.
 const TREATISE_REGEX = new RegExp(
-  `\\b(\\d+)\\s+(${TREATISE_ALTERNATION})(?:\\s+\\(([^)]+)\\))?\\s+§§?\\s*(\\d+(?:[.:][A-Za-z0-9]+)*(?:\\[[A-Za-z0-9]+\\])?(?:\\([^)]*\\))*)`,
+  `\\b(\\d+[A-Z]?)\\s+(?:` +
+    `(${TREATISE_ALTERNATION})` +
+    `|(?:[A-Z][A-Za-z.]*(?:\\s+[A-Z][A-Za-z.]*)*(?:\\s*&\\s*[A-Z][A-Za-z.]*(?:\\s+[A-Z][A-Za-z.]*)*)?,\\s+)(${TREATISE_BARE_TITLE_ALTERNATION})` +
+    `)(?:\\s+\\(([^)]+)\\))?\\s+§§?\\s*(\\d+(?:[.:][A-Za-z0-9]+)*(?:\\[[A-Za-z0-9]+\\])?(?:\\([^)]*\\))*)`,
   "d",
 )
 
@@ -70,17 +90,23 @@ export function extractTreatise(
     throw new Error(`Failed to parse treatise citation: ${text}`)
   }
 
-  const volume = Number.parseInt(match[1], 10)
-  const title = match[2]
-  const edition = match[3]
-  const section = match[4]
+  // Volume now admits an optional letter suffix (`5A`). Parse only the
+  // numeric prefix for the structured volume field; the letter suffix is
+  // preserved in the text span. #643
+  const volNumMatch = /^(\d+)/.exec(match[1])
+  const volume = volNumMatch ? Number.parseInt(volNumMatch[1], 10) : 0
+  // Title shape: group 2 = bare title (with author prefix), group 3 =
+  // compact title (no author prefix). Exactly one is populated.
+  const title = match[2] ?? match[3]
+  const edition = match[4]
+  const section = match[5]
   const year = extractYearFromEdition(edition)
 
   let spans: TreatiseComponentSpans | undefined
   if (match.indices) {
     const volumeIdx = match.indices[1]
-    const titleIdx = match.indices[2]
-    const sectionIdx = match.indices[4]
+    const titleIdx = match.indices[2] ?? match.indices[3]
+    const sectionIdx = match.indices[5]
     if (volumeIdx && titleIdx && sectionIdx) {
       spans = {
         volume: spanFromGroupIndex(span.cleanStart, volumeIdx, transformationMap),

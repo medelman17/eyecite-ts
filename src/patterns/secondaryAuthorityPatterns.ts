@@ -61,8 +61,31 @@ const KNOWN_TREATISES: ReadonlyArray<string> = [
   "Davis & Pierce, Administrative Law Treatise",
 ]
 
+/**
+ * Bare-title alternation (#643): titles WITHOUT the author shortname
+ * prefix, for the Bluebook R15 canonical form where the citation
+ * spells out the full author names between the volume and the title:
+ * `5A Charles Alan Wright & Arthur R. Miller, Federal Practice and
+ * Procedure § 1357`.
+ *
+ * Only includes titles where the author is plausibly external and
+ * variable (Wright & Miller, LaFave, Witkin, Davis & Pierce). Titles
+ * with the author baked into the work itself (`Williston on Contracts`,
+ * `Nimmer on Copyright`, `Moore's Federal Practice`) are NOT included
+ * here — they always appear with their canonical short title.
+ */
+const KNOWN_TREATISE_BARE_TITLES: ReadonlyArray<string> = [
+  "Federal Practice and Procedure",
+  "Cal. Procedure",
+  "Summary of California Law",
+  "Criminal Procedure",
+  "Criminal Law",
+  "Administrative Law Treatise",
+]
+
 const escapeRegex = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 const TREATISE_ALTERNATION = KNOWN_TREATISES.map(escapeRegex).join("|")
+const TREATISE_BARE_TITLE_ALTERNATION = KNOWN_TREATISE_BARE_TITLES.map(escapeRegex).join("|")
 
 /**
  * Curated list of journal abbreviations that frequently appear in legal
@@ -186,13 +209,36 @@ export const secondaryAuthorityPatterns: Pattern[] = [
     // An optional `(\<edition\>\s+ed\.?\s+\<year\>)` parenthetical can
     // appear between the title and the section sigil; we capture it for
     // the `edition` / `year` fields.
+    // Issue #643: Volume admits an optional letter suffix (`5A`,
+    // `13C`) for sub-volume citations common in Federal Practice and
+    // Procedure and Williston. The pattern accepts two title shapes:
+    //   1. Bare-title with optional author-prefix: `5A Charles Alan
+    //      Wright & Arthur R. Miller, Federal Practice and Procedure`
+    //      — Bluebook R15 prescribes the full-author form as canonical
+    //      and it's the dominant style in modern federal briefs.
+    //   2. Compact title with embedded author shortname: `5 Wright &
+    //      Miller, Federal Practice and Procedure` (existing).
+    //
+    // The bare-title alternative requires the preceding author prefix
+    // (constrained to capitalized words optionally joined by `&`); the
+    // compact alternative requires no prefix. Prose like
+    // `5 because the section is long, Wright & Miller, ...` cannot
+    // match either branch.
     id: "treatise",
     regex: new RegExp(
-      `\\b(\\d+)\\s+(${TREATISE_ALTERNATION})(?:\\s+\\(([^)]+)\\))?\\s+§§?\\s*(\\d+(?:[.:][A-Za-z0-9]+)*(?:\\[[A-Za-z0-9]+\\])?(?:\\([^)]*\\))*)`,
+      `\\b(\\d+[A-Z]?)\\s+(?:` +
+        // Compact form FIRST so existing tests pass (`5 Wright & Miller,
+        // Federal Practice and Procedure`); only fall back to the
+        // bare-title-with-author shape when the compact alternation
+        // misses (e.g., `5A Charles Alan Wright & Arthur R. Miller,
+        // Federal Practice and Procedure`).
+        `(${TREATISE_ALTERNATION})` +
+        `|(?:[A-Z][A-Za-z.]*(?:\\s+[A-Z][A-Za-z.]*)*(?:\\s*&\\s*[A-Z][A-Za-z.]*(?:\\s+[A-Z][A-Za-z.]*)*)?,\\s+)(${TREATISE_BARE_TITLE_ALTERNATION})` +
+        `)(?:\\s+\\(([^)]+)\\))?\\s+§§?\\s*(\\d+(?:[.:][A-Za-z0-9]+)*(?:\\[[A-Za-z0-9]+\\])?(?:\\([^)]*\\))*)`,
       "g",
     ),
     description:
-      'Treatise: "5 Wright & Miller, Federal Practice and Procedure § 1290", "1 Nimmer on Copyright § 5.05[A]" — #579',
+      'Treatise: "5 Wright & Miller, Federal Practice and Procedure § 1290", "5A Charles Alan Wright & Arthur R. Miller, Federal Practice and Procedure § 1357" (#643), "1 Nimmer on Copyright § 5.05[A]" — #579',
     type: "treatise",
   },
 ]
