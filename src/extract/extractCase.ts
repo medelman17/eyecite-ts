@@ -35,6 +35,7 @@ import { getReportersSync } from "@/data/reportersCache"
 import { inferCourtFromReporter } from "./courtInference"
 import { parsePincite, type PinciteInfo } from "./pincite"
 import { normalizeCourt } from "./courtNormalization"
+import { levenshteinDistance } from "@/resolve/levenshtein"
 
 /** Valid CitationSignal values for safe validation after regex capture + normalization. */
 const VALID_SIGNALS = new Set([
@@ -96,15 +97,86 @@ const SIGNAL_STRIP_REGEX = (() => {
   return new RegExp(`^(${alternatives.join("|")}),?\\s+${proseConnector}`, "i")
 })()
 
-/** Parse a volume string as number when purely numeric, string when hyphenated */
+/** Parse a volume string as number when purely numeric, string when hyphenated.
+ *
+ * Leading zeros are stripped so `"01"` parses to `1` (not `"01"` as a string)
+ * for consistency with the no-leading-zero `"1"` form. Hyphenated forms
+ * like `"1984-1"` stay as strings. #703.
+ */
 function parseVolume(raw: string): number | string {
-  const num = Number.parseInt(raw, 10)
-  return String(num) === raw ? num : raw
+  if (/^\d+$/.test(raw)) {
+    return Number.parseInt(raw, 10)
+  }
+  return raw
 }
 
 /** Month abbreviations and full names found in legal citation parentheticals */
 const MONTH_PATTERN =
   /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)\.?/
+
+/** Canonical month names for fuzzy match. Includes both short and full forms. */
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const
+
+/** Court-abbrev tokens that should NEVER be stripped as a misspelled month
+ *  even if a fuzzy comparison happens to land within distance 2. Real court
+ *  T7 abbreviations that overlap with month-name fuzzy space. */
+const NO_STRIP_TRAILING = new Set([
+  "Cir",
+  "Ct",
+  "App",
+  "Sup",
+  "Dist",
+  "Div",
+  "Bankr",
+  "Crim",
+  "Civ",
+  "Mass",
+  "Tex",
+  "Penn",
+  "Wash",
+  "Ind",
+  "Ark",
+])
+
+/** Strip a trailing word if it fuzzy-matches a month name (Levenshtein ≤ 2)
+ *  and isn't a court-abbrev word. Used to clean OCR-mangled or misspelled
+ *  month names that the canonical strip didn't catch (`Jaunary`, `Ferbuary`,
+ *  `Marc`, `Septmber`). #717. */
+function stripMisspelledTrailingMonth(content: string): string {
+  const match = /\s+(\w{3,12})\.?\s*$/.exec(content)
+  if (!match) return content
+  const word = match[1]
+  // Must be Title-Case (starts with capital) to be a plausible month candidate.
+  if (!/^[A-Z]/.test(word)) return content
+  // Skip known court-abbrev tokens even if they're within fuzzy distance.
+  const wordStem = word.replace(/\.$/, "")
+  if (NO_STRIP_TRAILING.has(wordStem)) return content
+  // Fuzzy-match against month names with maxDistance=2 AND require the
+  // first letter to match. Without the first-letter constraint, real
+  // court abbreviations like `Cal.` collide with `Jan` (distance 2) and
+  // get mis-stripped.
+  const firstLetter = word[0]
+  for (const month of MONTH_NAMES) {
+    if (month[0] !== firstLetter) continue
+    if (levenshteinDistance(word, month, 2) <= 2) {
+      return content.slice(0, match.index).trim()
+    }
+  }
+  return content
+}
 
 // ============================================================================
 // Compiled regex patterns for performance (hoisted to module level)
@@ -281,6 +353,24 @@ const SCOTUS_BLACK_REPORTER_END_YEAR = 1862
  * resolution stands. The literal `reporter` field on the citation is
  * preserved verbatim; only `normalizedReporter` shifts.
  */
+/**
+ * Issue #687: OCR/typo substitutions for ordinal-suffix reporters.
+ * Common misreadings: `2d`→`2nd`/`2ds`/`2cl`, `3d`→`3rd`/`3ds`/`3cl`.
+ * The substitution is applied as a fallback when the literal reporter
+ * is not in reporters-db; we then look up the corrected form. The
+ * literal `reporter` field on the citation is preserved verbatim — only
+ * `normalizedReporter` switches to the canonical key. This lets parallel
+ * resolution and downstream `reporterKey` consumers link the typo'd
+ * variant to its real reporter.
+ */
+const OCR_TYPO_ORDINAL_REGEX = /(2|3)(nd|ds|cl|rd)$/i
+function applyOcrTypoFix(reporter: string): string | undefined {
+  const m = OCR_TYPO_ORDINAL_REGEX.exec(reporter)
+  if (!m) return undefined
+  const digit = m[1]
+  return `${reporter.slice(0, m.index)}${digit}d`
+}
+
 export function resolveNormalizedReporter(
   reporter: string,
   year?: number,
@@ -288,10 +378,22 @@ export function resolveNormalizedReporter(
   const reportersDb = getReportersSync()
   if (!reportersDb) return undefined
 
-  const matches = reportersDb.byAbbreviation.get(reporter.toLowerCase())
-  if (!matches || matches.length === 0) return undefined
+  let matches = reportersDb.byAbbreviation.get(reporter.toLowerCase())
+  let effectiveReporter = reporter
+  if (!matches || matches.length === 0) {
+    // Issue #687: try OCR-typo fallback (`F.2nd` → `F.2d`).
+    const fixed = applyOcrTypoFix(reporter)
+    if (fixed) {
+      const fixedMatches = reportersDb.byAbbreviation.get(fixed.toLowerCase())
+      if (fixedMatches && fixedMatches.length > 0) {
+        matches = fixedMatches
+        effectiveReporter = fixed
+      }
+    }
+    if (!matches || matches.length === 0) return undefined
+  }
 
-  const lower = reporter.toLowerCase()
+  const lower = effectiveReporter.toLowerCase()
 
   // Year-based era disambiguation for `Black.` (#572): the literal
   // `Black.` only maps to Blackford (Indiana) in reporters-db, but when
@@ -399,7 +501,7 @@ export function computeCaseConfidence(opts: {
  *  comma-form input and the caller falls through to
  *  `VOLUME_REPORTER_PAGE_REGEX_COMMA` instead — see #570. */
 const VOLUME_REPORTER_PAGE_REGEX =
-  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})(?=$|[\s.;,)\]])/d
+  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+-\d+|\d+|_{3,}|-{3,})(?=$|[\s.;,)\]])/d
 
 /** Comma-form variant of VOLUME_REPORTER_PAGE_REGEX (#570) for the old
  *  typesetting shape `<vol> <Reporter>, <page>` (`3 Den., 594`,
@@ -903,6 +1005,12 @@ function stripDateFromCourt(content: string): string | undefined {
   if (/^(?:Vol\.?|vol\.?|p\.?|pp\.?|at|n\.?|note)\s+\d/i.test(content)) {
     return undefined
   }
+  // Strip a trailing nested parenthetical (`(en banc)` / `(per curiam)`
+  // inside the outer year paren — `(1990 (en banc))`). Without this
+  // the trailing-year strip can't reach `1990` because `(en banc)`
+  // sits between it and end-of-string, and the entire `1990 (en banc)`
+  // residue leaks into court. #682.
+  const stripped = content.replace(/\s*\([^()]*\)\s*$/, "").trim()
   // Strip trailing numeric date formats. Accepts:
   //   - M/D/YYYY  (`1/15/2020`)
   //   - MM-DD-YYYY (`02-15-2020`)
@@ -912,7 +1020,7 @@ function stripDateFromCourt(content: string): string | undefined {
   // caught. Each direction (year-first vs day-first) is handled by a
   // separate alternative so the regex doesn't accidentally absorb
   // unrelated text.
-  let court = content
+  let court = stripped
     .replace(/\s*\d{1,2}[/-]\d{1,2}[/-]\d{4}\s*$/, "")
     .replace(/\s*\d{4}[/-]\d{1,2}[/-]\d{1,2}\s*$/, "")
     .trim()
@@ -934,6 +1042,13 @@ function stripDateFromCourt(content: string): string | undefined {
   // Strip trailing date components: optional day+comma, month abbreviation or full name
   court = court.replace(/\s*,?\s*\d{1,2}\s*,?\s*$/, "").trim()
   court = court.replace(new RegExp(`\\s*${MONTH_PATTERN.source}\\s*$`, "i"), "").trim()
+  // Fuzzy strip of misspelled / OCR-mangled month names — `Jaunary`,
+  // `Ferbuary`, `Marc`, etc. After the canonical month strip leaves
+  // a trailing Title-Case word, fuzzy-match it (Levenshtein ≤ 2)
+  // against the known month names; on match, strip. Bounded length
+  // (3-12) and Title-Case constraint keep the heuristic from chewing
+  // real court abbreviations. #717.
+  court = stripMisspelledTrailingMonth(court).trim()
   // Strip any trailing commas left over
   court = court.replace(/,\s*$/, "").trim()
   if (!court || !/[A-Za-z]/.test(court)) return undefined
@@ -992,8 +1107,12 @@ function stripDateFromCourt(content: string): string | undefined {
   // court parenthetical: `(rev'd 1990)`, `(per curiam 1990)`, `(en banc)`,
   // `(cert. denied 1990)`. After year-stripping, the bare disposition is
   // not a court — reject it so we don't surface `court="rev'd"`.
+  //
+  // Optional leading adverb (`now`, `previously`, `formerly`, `since`)
+  // is allowed so `(now reversed, 1990)` / `(previously vacated)` are
+  // also rejected. #719.
   if (
-    /^(?:rev'd|aff'd|aff'g|rev'g|mod'd|cert\.?\s+(?:denied|granted|dismissed)|appeal\s+(?:denied|dismissed|docketed)|dismissed|reversed|vacated|vacating|overruled(?:\s+by)?|overruling|en\s+banc|per\s+curiam)(?:\s+(?:in\s+part|on\s+other\s+grounds?|sub\s+nom\.?))?\s*$/i.test(
+    /^(?:(?:now|previously|formerly|since)\s+)?(?:rev'd|aff'd|aff'g|rev'g|mod'd|cert\.?\s+(?:denied|granted|dismissed)|appeal\s+(?:denied|dismissed|docketed)|dismissed|reversed|vacated|vacating|overruled(?:\s+by)?|overruling|en\s+banc|per\s+curiam)(?:\s+(?:in\s+part|on\s+other\s+grounds?|sub\s+nom\.?))?\s*$/i.test(
       court,
     )
   ) {
@@ -1906,6 +2025,16 @@ export function extractCaseName(
     adjustedSearchStart += openParenStop
   }
 
+  // Issue #691: Quoted case names — `"Smith v. Jones," 100 F.2d 1` and
+  // `"Smith v. Jones", 100 F.2d 1`. The V_CASE_NAME_REGEX anchors on a
+  // trailing comma and never matches when the closing quote sits between
+  // the defendant and the comma (or the leading quote sits before the
+  // plaintiff). Strip the envelope so the regex sees the bare caption.
+  // The quote chars are not legal-citation punctuation; nothing real
+  // depends on them being preserved at these positions.
+  precedingText = precedingText.replace(/^\s*["“”]/, "")
+  precedingText = precedingText.replace(/["“”](\s*,?\s*)$/, "$1")
+
   // Priority 1: Standard "v." or "vs." format with comma before citation
   // Match party names with letters, numbers (for "Doe No. 2"), periods, apostrophes, ampersands, hyphens, slashes
   const vMatch = V_CASE_NAME_REGEX.exec(precedingText)
@@ -1947,6 +2076,22 @@ export function extractCaseName(
                 const prefix = words.slice(0, i).join(" ")
                 trimOffset = prefix.length + 1
                 plaintiff = candidate
+                // Issue #710: when the trimmed plaintiff starts with
+                // `<single-letter>. ` (e.g., `X. Smith`) AND the
+                // immediately preceding context word (the one we just
+                // dropped, or its right neighbor) is a lowercase
+                // conjunction/verb like `that`/`because`, the single-
+                // letter token is a sentence-internal variable, not an
+                // initial. Strip the prefix.
+                const slMatch = /^([A-Z])\.\s+([A-Z][a-zA-Z'-]+)/.exec(plaintiff)
+                if (slMatch) {
+                  const lastDroppedWord = words[i - 1]?.toLowerCase().replace(/[.,]+$/, "")
+                  if (lastDroppedWord && /^[a-z]{4,}$/.test(lastDroppedWord)) {
+                    const slStrip = slMatch[0].length - slMatch[2].length
+                    plaintiff = `${slMatch[2]}${plaintiff.slice(slMatch[0].length)}`
+                    trimOffset += slStrip
+                  }
+                }
                 break
               }
             }

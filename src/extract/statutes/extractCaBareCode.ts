@@ -27,8 +27,12 @@ import { parseBody } from "./parseBody"
  * keyword tail introduced in #589). The actual normalization of
  * `1238, subd. (a)(8)` → `(a)(8)` happens inside `parseBody`.
  */
+// Trailing `(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?` captures the closing
+// paren of a paren-range like `(a)-(c)` so parseBody can surface the
+// structured `subsectionRange` field. Mirrors the tokenizer body
+// grammar in buildCaBareCodeRegex (#694).
 const CA_BARE_CODE_RE =
-  /^(.+?)\s*,?\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:,?\s+(?:subd\.|subdivision|paragraphs?|pars?\.)\s+(?:\([^)]*\)|\[[^\]]*\])(?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)?(?:\s*et\s+seq\.?)?)$/d
+  /^(.+?)\s*,?\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:,?\s+(?:subd\.|subdivision|paragraphs?|pars?\.)\s+(?:\([^)]*\)|\[[^\]]*\])(?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)?(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)$/d
 
 export function extractCaBareCode(
   token: Token,
@@ -47,7 +51,7 @@ export function extractCaBareCode(
   // tokens whose code text matched one of the canonical alternations.
   const code = findCaBareCode(rawCodeText)!
 
-  const { section, subsection, hasEtSeq } = parseBody(rawBody)
+  const { section, subsection, subsectionRangeEnd, hasEtSeq } = parseBody(rawBody)
 
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
@@ -93,6 +97,8 @@ export function extractCaBareCode(
     code,
     section,
     subsection,
+    subsectionRange:
+      subsection && subsectionRangeEnd ? { start: subsection, end: subsectionRangeEnd } : undefined,
     pincite: subsection,
     jurisdiction: "CA",
     hasEtSeq: hasEtSeq || undefined,

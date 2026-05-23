@@ -33,6 +33,13 @@ const RULE_SET_MAP: ReadonlyMap<string, FederalRuleCitation["ruleSet"]> = new Ma
   ["appellateprocedure", "appellate"],
   ["bankrp", "bankruptcy"],
   ["bankruptcyprocedure", "bankruptcy"],
+  // Acronym forms (#696). Both bare (`FRCP`) and dotted (`F.R.C.P.`)
+  // normalize via the period-and-space strip to the same lowercase key.
+  ["frcp", "civil"],
+  ["frcrp", "criminal"],
+  ["fre", "evidence"],
+  ["frap", "appellate"],
+  ["frbp", "bankruptcy"],
 ])
 
 /**
@@ -80,13 +87,17 @@ export function extractFederalRule(
 ): FederalRuleCitation {
   const { text, span } = token
 
-  // Try the abbreviated form first (more common), then the spelled-out form.
+  // Try the abbreviated form first (more common), then spelled-out,
+  // then acronym (#696).
   const abbreviatedRegex =
     /\bFed\.\s?R\.\s?(Civ\.\s?P\.|Crim\.\s?P\.|Evid\.|App\.\s?P\.|Bankr\.\s?P\.)\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/d
   const spelledRegex =
     /\bFederal\s+Rules?\s+of\s+(?:the\s+)?(Civil\s+Procedure|Criminal\s+Procedure|Evidence|Appellate\s+Procedure|Bankruptcy\s+Procedure)\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/di
+  const acronymRegex =
+    /\b(FRCP|FRE|FRAP|FRCrP|FRBP|F\.\s?R\.\s?C\.\s?P\.|F\.\s?R\.\s?E\.|F\.\s?R\.\s?A\.\s?P\.|F\.\s?R\.\s?Cr\.\s?P\.|F\.\s?R\.\s?B\.\s?P\.)\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/d
 
-  const match = abbreviatedRegex.exec(text) ?? spelledRegex.exec(text)
+  const match =
+    abbreviatedRegex.exec(text) ?? spelledRegex.exec(text) ?? acronymRegex.exec(text)
   if (!match) {
     throw new Error(`Failed to parse federal rule citation: ${text}`)
   }

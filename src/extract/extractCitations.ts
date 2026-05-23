@@ -496,6 +496,10 @@ export function extractCitations(
     citations.push(citation)
   }
 
+  // Step 4.3: Expand constitutional citations chained with `;` that
+  // share an implied jurisdiction with the preceding cite. (#707)
+  expandChainedConstitutional(citations, cleaned, transformationMap)
+
   // Step 4.35: Detect bare-prefix `§§ N, N` lists that lack any code
   // identifier in front of the §§ marker. These never produce a head cite
   // through normal tokenization, so seed a head before expansion. (#563)
@@ -559,6 +563,11 @@ export function extractCitations(
   // Runs after string cite detection (which sets mid-group signals) so we
   // only scan backward for citations that still lack a signal.
   detectLeadingSignals(citations, cleaned)
+
+  // Step 4.85: Propagate `compare` signal across `with` connector (#702).
+  // Bluebook Rule 1.2(b) treats `compare A with B` as paired — B inherits
+  // the comparison signal from A.
+  propagateCompareWithSignal(citations, cleaned)
 
   // Step 4.9: Apply false positive filters (blocklist + year heuristic).
   // Passing `text` (the original pre-cleaning input) lets the filter detect
@@ -629,6 +638,105 @@ export async function extractCitationsAsync(
   // Async wrapper for future extensibility (e.g., async reporters-db lookup)
   // For MVP, wraps synchronous extractCitations
   return extractCitations(text, options)
+}
+
+/**
+ * Issue #702 — Bluebook Rule 1.2(b) paired-comparison signal. When a
+ * citation carries `signal=compare` and the gap to the next citation
+ * contains `with`, propagate the `compare` signal to the following
+ * citation. `compare A with B` is a paired construct; both citations
+ * belong to the same comparison.
+ */
+function propagateCompareWithSignal(citations: Citation[], cleaned: string): void {
+  for (let i = 0; i < citations.length - 1; i++) {
+    const a = citations[i]
+    const b = citations[i + 1]
+    if (a.signal !== "compare") continue
+    if (b.signal) continue
+    const gap = cleaned.slice(a.span.cleanEnd, b.span.cleanStart)
+    if (!/\bwith\b/i.test(gap)) continue
+    ;(b as { signal?: typeof a.signal }).signal = "compare"
+  }
+}
+
+/**
+ * Issue #707 — Expand constitutional citations chained with `;` that
+ * share an implied jurisdiction with the preceding cite.
+ */
+function expandChainedConstitutional(
+  citations: Citation[],
+  cleaned: string,
+  transformationMap: TransformationMap,
+): void {
+  const added: Citation[] = []
+  const chainRe =
+    /^\s*;\s*((?:art(?:icle)?\.?|amend(?:ment)?\.?|amdt\.?)\s+([IVX]+|\d+))(?:[,;]?\s*§\s*([\w-]+))?(?:[,;]?\s*cl\.?\s*(\d+))?/i
+
+  for (const c of citations) {
+    if (c.type !== "constitutional") continue
+    const jurisdiction = (c as { jurisdiction?: string }).jurisdiction
+    if (!jurisdiction) continue
+    let cursor = c.span.cleanEnd
+    while (cursor < cleaned.length) {
+      const tail = cleaned.slice(cursor)
+      const m = chainRe.exec(tail)
+      if (!m) break
+      const matchedText = m[0]
+      const article = m[1]
+      const numeralText = m[2]
+      const section = m[3]
+      const clauseText = m[4]
+      const isAmendment = /^amend|^amdt/i.test(article)
+      const numeral = parseChainNumeral(numeralText)
+      if (numeral === undefined) break
+      const matchStart = cursor + matchedText.indexOf(article)
+      const matchEnd = cursor + matchedText.length
+      const { originalStart, originalEnd } = resolveOriginalSpan(
+        { cleanStart: matchStart, cleanEnd: matchEnd },
+        transformationMap,
+      )
+      const cite: Citation = {
+        type: "constitutional",
+        text: cleaned.slice(matchStart, matchEnd),
+        span: { cleanStart: matchStart, cleanEnd: matchEnd, originalStart, originalEnd },
+        confidence: c.confidence,
+        matchedText: cleaned.slice(matchStart, matchEnd),
+        processTimeMs: 0,
+        patternsChecked: 1,
+        jurisdiction,
+        ...(isAmendment ? { amendment: numeral } : { article: numeral }),
+        ...(section ? { section } : {}),
+        ...(clauseText ? { clause: Number.parseInt(clauseText, 10) } : {}),
+      } as Citation
+      added.push(cite)
+      cursor = matchEnd
+    }
+  }
+  citations.push(...added)
+}
+
+const CHAIN_WORD_ORDINAL: Record<string, number> = {
+  first: 1, second: 2, third: 3, fourth: 4, fifth: 5,
+  sixth: 6, seventh: 7, eighth: 8, ninth: 9, tenth: 10,
+}
+function parseChainNumeral(raw: string): number | undefined {
+  if (!raw) return undefined
+  if (/^\d+$/.test(raw)) return Number.parseInt(raw, 10)
+  const word = raw.toLowerCase()
+  if (word in CHAIN_WORD_ORDINAL) return CHAIN_WORD_ORDINAL[word]
+  if (/^[IVX]+$/i.test(raw)) {
+    const map: Record<string, number> = { I: 1, V: 5, X: 10 }
+    let total = 0
+    let prev = 0
+    for (const ch of raw.toUpperCase()) {
+      const v = map[ch] ?? 0
+      if (v > prev) total += v - 2 * prev
+      else total += v
+      prev = v
+    }
+    return total > 0 ? total : undefined
+  }
+  return undefined
 }
 
 /**
@@ -713,36 +821,61 @@ function linkSubsequentHistory(citations: Citation[]): void {
  * Closes #224.
  */
 function inheritSubsequentHistoryCaseName(citations: Citation[]): void {
-  for (const child of citations) {
-    if (child.type !== "case") continue
-    if (!child.subsequentHistoryOf) continue
-    const parent = citations[child.subsequentHistoryOf.index]
-    if (!parent || parent.type !== "case") continue
-    if (!parent.caseName) continue
+  // Issue #620: multi-link chains like `<root>, aff'd, <A>, cert. denied,
+  // <B>` need parents processed before children. A linear pass works only
+  // because chain links happen to appear in document order; any future
+  // re-ordering of `citations` would silently break multi-link
+  // propagation. Run until quiescence (fixed-point iteration) — robust
+  // to array order and bounded by chain depth.
+  let mutated = true
+  let safetyIterations = 0
+  const MAX_ITERATIONS = citations.length + 1
+  while (mutated && safetyIterations < MAX_ITERATIONS) {
+    mutated = false
+    safetyIterations++
+    for (const child of citations) {
+      if (child.type !== "case") continue
+      if (!child.subsequentHistoryOf) continue
+      if (child.caseName) continue // already inherited in prior iteration
+      const parent = citations[child.subsequentHistoryOf.index]
+      if (!parent || parent.type !== "case") continue
+      if (!parent.caseName) continue
 
-    child.caseName = parent.caseName
-    child.plaintiff = parent.plaintiff
-    child.defendant = parent.defendant
-    child.plaintiffNormalized = parent.plaintiffNormalized
-    child.defendantNormalized = parent.defendantNormalized
-    child.proceduralPrefix = parent.proceduralPrefix
+      child.caseName = parent.caseName
+      child.plaintiff = parent.plaintiff
+      child.defendant = parent.defendant
+      child.plaintiffNormalized = parent.plaintiffNormalized
+      child.defendantNormalized = parent.defendantNormalized
+      child.proceduralPrefix = parent.proceduralPrefix
 
-    if (child.spans) {
-      child.spans.caseName = undefined
-      child.spans.plaintiff = undefined
-      child.spans.defendant = undefined
-    }
-
-    // Trim fullSpan to the child's own citation core. extractCaseName had
-    // anchored fullSpan at the parent's case name; that's not the child's
-    // text. Keep the original cleanEnd/originalEnd (parenthetical end).
-    if (child.fullSpan) {
-      child.fullSpan = {
-        cleanStart: child.span.cleanStart,
-        cleanEnd: child.fullSpan.cleanEnd,
-        originalStart: child.span.originalStart,
-        originalEnd: child.fullSpan.originalEnd,
+      if (child.spans) {
+        child.spans.caseName = undefined
+        child.spans.plaintiff = undefined
+        child.spans.defendant = undefined
       }
+
+      // Trim fullSpan to the child's own citation core. extractCaseName had
+      // anchored fullSpan at the parent's case name; that's not the child's
+      // text. Keep the original cleanEnd/originalEnd (parenthetical end).
+      if (child.fullSpan) {
+        child.fullSpan = {
+          cleanStart: child.span.cleanStart,
+          cleanEnd: child.fullSpan.cleanEnd,
+          originalStart: child.span.originalStart,
+          originalEnd: child.fullSpan.originalEnd,
+        }
+      }
+
+      // Re-derive confidence with the now-populated caseName (#613).
+      child.confidence = computeCaseConfidence({
+        reporter: child.reporter,
+        year: child.year,
+        caseName: child.caseName,
+        court: child.court,
+        hasBlankPage: child.hasBlankPage ?? false,
+      })
+
+      mutated = true
     }
   }
 }
@@ -1120,8 +1253,11 @@ function detectBareSectionLists(
         originalEnd,
       },
       // Bare-prefix lists are inherently low-confidence — no code identifier
-      // means no jurisdiction grounding.
-      confidence: 0.5,
+      // means no jurisdiction grounding. When the only code marker we have
+      // is `§` (no surrounding `Code`/`Code Ann.` prefix), drop further to
+      // 0.3 so downstream consumers can confidently filter these out
+      // unless they specifically want unbound section refs. #726.
+      confidence: code === "§" ? 0.3 : 0.5,
       matchedText: fullMatch,
       processTimeMs: 0,
       patternsChecked: 1,
@@ -1168,7 +1304,10 @@ function expandPluralSectionList(
   // so bare `Code §§ 19.2-81 and 18.2-266` siblings are picked up.
   const sectionPart = "\\d[\\w-]*(?:\\.[\\d\\w-]+)*(?:\\([A-Za-z0-9]+\\))*"
   const connectorPart = "\\s*,\\s*|\\s+and\\s+|\\s+to\\s+"
-  const continuationRe = new RegExp(`^(?:${connectorPart})(${sectionPart})`)
+  // Issue #694: capture the connector so we can distinguish range (`to`)
+  // from list (`,`, `and`). Range-form chains populate `sectionRange` on
+  // the head; list-form chains continue emitting siblings.
+  const continuationRe = new RegExp(`^(${connectorPart})(${sectionPart})`)
   // `et seq.` immediately after a sibling — owner detection. (#566)
   const TRAILING_ET_SEQ_RE = /^\s*et\s+seq\.?/i
 
@@ -1185,9 +1324,42 @@ function expandPluralSectionList(
       if (!m) break
 
       const fullMatchLen = m[0].length
-      const sectionText = m[1]
+      const connectorText = m[1]
+      const sectionText = m[2]
       const sectionStart = cursor + fullMatchLen - sectionText.length
       const sectionEnd = cursor + fullMatchLen
+      const isRangeConnector = /^\s+to\s+$/.test(connectorText)
+
+      // Issue #694: `to` is a range connector, not a list connector.
+      // Populate sectionRange on the head and skip emitting a sibling.
+      if (isRangeConnector) {
+        const headSection =
+          typeof (cite as { section?: string }).section === "string"
+            ? (cite as { section: string }).section
+            : undefined
+        if (headSection) {
+          ;(cite as { sectionRange?: { start: string; end: string } }).sectionRange = {
+            start: headSection,
+            end: sectionText,
+          }
+          ;(cite as { matchedText: string }).matchedText = cleaned.slice(
+            cite.span.cleanStart,
+            sectionEnd,
+          )
+          ;(cite as { text: string }).text = cleaned.slice(cite.span.cleanStart, sectionEnd)
+          ;(cite as { span: { cleanStart: number; cleanEnd: number; originalStart: number; originalEnd: number } }).span = {
+            cleanStart: cite.span.cleanStart,
+            cleanEnd: sectionEnd,
+            originalStart: cite.span.originalStart,
+            originalEnd: resolveOriginalSpan(
+              { cleanStart: cite.span.cleanStart, cleanEnd: sectionEnd },
+              transformationMap,
+            ).originalEnd,
+          }
+        }
+        cursor = sectionEnd
+        continue
+      }
 
       const { originalStart, originalEnd } = resolveOriginalSpan(
         { cleanStart: sectionStart, cleanEnd: sectionEnd },
