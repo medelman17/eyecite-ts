@@ -95,8 +95,12 @@ export function buildCaBareCodeRegex(): RegExp {
     .sort((a, b) => b.regexFragment.length - a.regexFragment.length)
     .map((e) => e.regexFragment)
   const alternation = fragments.join("|")
+  // Subsection-range trailer `(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?` (#694)
+  // captures the closing paren of a paren-range like `(a)-(c)` so
+  // parseBody can surface the structured `subsectionRange` field —
+  // symmetric to the abbreviated-code and USC patterns.
   return new RegExp(
-    `\\b(${alternation})\\s*,?\\s*§§?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9]))*(?:\\([^)]*\\))*(?:,?\\s+(?:subd\\.|subdivision|paragraph|par\\.)\\s+(?:\\([^)]*\\)|\\[[^\\]]*\\])(?:\\s*(?:\\([^)]*\\)|\\[[^\\]]*\\]))*)?(?:\\s*et\\s+seq\\.?)?)`,
+    `\\b(${alternation})\\s*,?\\s*§§?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9]))*(?:\\([^)]*\\))*(?:,?\\s+(?:subd\\.|subdivision|paragraph|par\\.)\\s+(?:\\([^)]*\\)|\\[[^\\]]*\\])(?:\\s*(?:\\([^)]*\\)|\\[[^\\]]*\\]))*)?(?:\\s*[-–—]+\\s*\\([A-Za-z0-9]+\\))?(?:\\s*et\\s+seq\\.?)?)`,
     "g",
   )
 }

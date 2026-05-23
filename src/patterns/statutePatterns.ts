@@ -274,8 +274,13 @@ export const statutePatterns: Pattern[] = [
     // `paragraph (a)` / `par. (a)` follows the section number. Captured
     // inside the section group so parseBody can normalize to a canonical
     // paren chain.
+    // Subsection-range trailer `(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?` (#694)
+    // captures the closing paren of a paren-range like `(a)-(c)` so the
+    // extractor + parseBody can surface the structured `subsectionRange`
+    // field — symmetric to the federal USC pattern and the bare
+    // abbreviated-code patterns.
     regex:
-      /\b(N\.?\s*Y\.?|Cal(?:ifornia)?\.?|Tex(?:as)?\.?|Md\.?|(?<!W\.?\s?)Va\.?|Ala(?:bama)?\.?)\s+([A-Z][A-Za-z.&']*(?:(?:\s+|,\s+)(?:&|[A-Z][A-Za-z.&']*))*)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:,?\s+(?:subd\.|subdivision|paragraphs?|pars?\.)\s+(?:\([^)]*\)|\[[^\]]*\])(?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)?(?:\s*et\s+seq\.?)?)/g,
+      /\b(N\.?\s*Y\.?|Cal(?:ifornia)?\.?|Tex(?:as)?\.?|Md\.?|(?<!W\.?\s?)Va\.?|Ala(?:bama)?\.?)\s+([A-Z][A-Za-z.&']*(?:(?:\s+|,\s+)(?:&|[A-Z][A-Za-z.&']*))*)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:,?\s+(?:subd\.|subdivision|paragraphs?|pars?\.)\s+(?:\([^)]*\)|\[[^\]]*\])(?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)?(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
     description:
       "Named-code state citations (NY, CA, TX, MD, VA, AL) with jurisdiction prefix + code name + §",
     type: "statute",
