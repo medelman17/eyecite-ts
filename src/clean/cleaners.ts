@@ -181,7 +181,14 @@ export function normalizeWhitespace(text: string): string {
  * // => "Smith v. Doe, 500 F.2d 123" // normalized
  */
 export function normalizeUnicode(text: string): string {
-  return text.normalize("NFKC")
+  // Issue #693: Strip trademark / registered / service-mark / copyright
+  // symbols BEFORE NFKC. NFKC decomposes ™ → "TM", ® → "(R)", ℠ → "SM",
+  // which then corrupt party names (`Smith™` becomes `SmithTM`, breaking
+  // case-name backscan and producing wrong captions). These symbols are
+  // decorative — they don't affect canonical citation text — so removing
+  // them entirely is preferable to letting NFKC expand them inline.
+  const stripped = text.replace(/[™®℠©]/g, "")
+  return stripped.normalize("NFKC")
 }
 
 /**
