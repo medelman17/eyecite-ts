@@ -184,6 +184,23 @@ function isMonthNameDateMisparse(citation: Citation): boolean {
   return page >= MIN_PLAUSIBLE_REPORT_YEAR && page <= MAX_PLAUSIBLE_REPORT_YEAR
 }
 
+/**
+ * Issue #669: Multi-word "reporter" containing a month-name token is
+ * always prose, never a real citation. Real reporters never contain
+ * month names. Catches phantoms like `On July`, `From January` that
+ * the existing isMonthNameDateMisparse misses because the reporter
+ * isn't EXACTLY a month name. Hard-reject so consumers don't see them
+ * even at confidence=0.1.
+ */
+function isMonthInProseReporter(citation: Citation): boolean {
+  if (citation.type !== "case" && citation.type !== "shortFormCase") return false
+  const c = citation as FullCaseCitation | ShortFormCaseCitation
+  if (!c.reporter) return false
+  const words = c.reporter.toLowerCase().split(/\s+/)
+  if (words.length < 2) return false
+  return words.some((w) => MONTH_NAMES.has(w))
+}
+
 /** Maximum length for a reporter string without periods.
  *  Real period-less reporters (e.g., "Cal", "Wis", "Mass") are short.
  *  Prose false positives ("Court dismissed the complaint...") are long.
@@ -552,7 +569,9 @@ export function applyFalsePositiveFilters(
   // `<day> <Month> <year>` date misparses (#302). These are never legitimate
   // citations under any policy, so they should not survive even when the
   // caller asked for soft-flag mode.
-  const hardFiltered = citations.filter((c) => !isMonthNameDateMisparse(c))
+  const hardFiltered = citations.filter(
+    (c) => !isMonthNameDateMisparse(c) && !isMonthInProseReporter(c),
+  )
 
   if (remove) {
     return hardFiltered.filter((c) => !isFalsePositive(c, originalText))

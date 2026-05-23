@@ -27,11 +27,11 @@ describe("phantom case-citation rejection (broad state-reporter regex)", () => {
     // require extending the FP filter's hard-reject pass, which broke
     // pre-existing tests that asserted penalize-mode behavior. Deferred
     // to a follow-up that re-baselines those expectations.
-    it.skip("`¶ 8 On July 11` — needs FP filter hard-reject extension", () => {
+    it("`¶ 8 On July 11` — month-in-prose-reporter hard-reject (#669)", () => {
       expect(caseCitesOf("¶ 8 On July 11")).toHaveLength(0)
     })
 
-    it.skip("`¶ 2 On March 18, 2003` — needs FP filter hard-reject extension", () => {
+    it("`¶ 2 On March 18, 2003` — month-in-prose-reporter hard-reject (#669)", () => {
       expect(caseCitesOf("¶ 2 On March 18, 2003")).toHaveLength(0)
     })
   })
