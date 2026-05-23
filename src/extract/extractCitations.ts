@@ -1123,8 +1123,11 @@ function detectBareSectionLists(
         originalEnd,
       },
       // Bare-prefix lists are inherently low-confidence — no code identifier
-      // means no jurisdiction grounding.
-      confidence: 0.5,
+      // means no jurisdiction grounding. When the only code marker we have
+      // is `§` (no surrounding `Code`/`Code Ann.` prefix), drop further to
+      // 0.3 so downstream consumers can confidently filter these out
+      // unless they specifically want unbound section refs. #726.
+      confidence: code === "§" ? 0.3 : 0.5,
       matchedText: fullMatch,
       processTimeMs: 0,
       patternsChecked: 1,
