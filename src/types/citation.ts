@@ -305,9 +305,16 @@ export interface FullCaseCitation extends CitationBase {
   parentheticals?: Parenthetical[]
 
   /**
-   * Subsequent history entries for this citation.
+   * Subsequent history entries attached to this citation.
+   *
+   * Populated on every chain link that received a history clause from the
+   * scanner — not just the chain's root (#619, post-#527 contract change).
+   * For `Smith, aff'd, X, cert. denied, Y`, both `Smith` (carrying
+   * `[affirmed]` linking to `X`) and `X` (carrying `[cert_denied]`
+   * linking to `Y`) populate this field. Walk `subsequentHistoryOf`
+   * back-pointers from child→parent to traverse the chain in reverse.
+   *
    * Each entry describes a procedural event (affirmed, reversed, etc.).
-   * Only populated on the parent (original) citation.
    * @example [{ signal: "affirmed", rawSignal: "aff'd", signalSpan: {...}, order: 0 }]
    */
   subsequentHistoryEntries?: SubsequentHistoryEntry[]
