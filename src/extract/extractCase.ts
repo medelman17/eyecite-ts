@@ -1995,6 +1995,16 @@ export function extractCaseName(
     adjustedSearchStart += openParenStop
   }
 
+  // Issue #691: Quoted case names — `"Smith v. Jones," 100 F.2d 1` and
+  // `"Smith v. Jones", 100 F.2d 1`. The V_CASE_NAME_REGEX anchors on a
+  // trailing comma and never matches when the closing quote sits between
+  // the defendant and the comma (or the leading quote sits before the
+  // plaintiff). Strip the envelope so the regex sees the bare caption.
+  // The quote chars are not legal-citation punctuation; nothing real
+  // depends on them being preserved at these positions.
+  precedingText = precedingText.replace(/^\s*["“”]/, "")
+  precedingText = precedingText.replace(/["“”](\s*,?\s*)$/, "$1")
+
   // Priority 1: Standard "v." or "vs." format with comma before citation
   // Match party names with letters, numbers (for "Doe No. 2"), periods, apostrophes, ampersands, hyphens, slashes
   const vMatch = V_CASE_NAME_REGEX.exec(precedingText)
