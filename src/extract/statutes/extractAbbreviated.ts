@@ -68,7 +68,8 @@ export function extractAbbreviated(
       ? codeEntry.abbreviation
       : abbrevText
 
-  const { section, subsection, subsectionRangeEnd, hasEtSeq } = parseBody(rawBody)
+  const { section, subsection, sectionRangeEnd, subsectionRangeEnd, hasEtSeq } =
+    parseBody(rawBody)
 
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
@@ -127,6 +128,7 @@ export function extractAbbreviated(
     title,
     code,
     section,
+    sectionRange: section && sectionRangeEnd ? { start: section, end: sectionRangeEnd } : undefined,
     subsection,
     subsectionRange:
       subsection && subsectionRangeEnd ? { start: subsection, end: subsectionRangeEnd } : undefined,

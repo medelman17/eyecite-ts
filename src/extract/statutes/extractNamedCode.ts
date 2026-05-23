@@ -189,7 +189,8 @@ export function extractNamedCode(
     }
   }
 
-  const { section, subsection, subsectionRangeEnd, hasEtSeq } = parseBody(rawBody)
+  const { section, subsection, sectionRangeEnd, subsectionRangeEnd, hasEtSeq } =
+    parseBody(rawBody)
 
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
@@ -260,6 +261,10 @@ export function extractNamedCode(
     code,
     chapter,
     section: sectionOut,
+    sectionRange:
+      sectionOut && sectionRangeEnd
+        ? { start: sectionOut, end: sectionRangeEnd }
+        : undefined,
     subsection,
     subsectionRange:
       subsection && subsectionRangeEnd ? { start: subsection, end: subsectionRangeEnd } : undefined,
