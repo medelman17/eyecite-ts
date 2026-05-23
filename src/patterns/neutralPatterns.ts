@@ -81,6 +81,17 @@ export const neutralPatterns: Pattern[] = [
     type: "neutral",
   },
   {
+    // Tax Court Memorandum decisions — `T.C. Memo. 2002-89` (#324). Format
+    // is `T.C. Memo. YYYY-NNN` where YYYY is the year and NNN is the
+    // sequential decision number within that year. Treated as a neutral
+    // citation because year acts as the volume identifier.
+    id: "tc-memo",
+    regex: /\bT\.\s?C\.\s+Memo\.\s+(\d{4})-(\d+)\b/g,
+    description:
+      'Tax Court Memorandum decisions (e.g., "T.C. Memo. 2002-89", "T.C. Memo. 1970-86") — #324',
+    type: "neutral",
+  },
+  {
     // Generalized to accept any uppercase-prefixed court abbreviation before
     // LEXIS so state variants (Cal. LEXIS, Tex. App. LEXIS, N.Y. Misc. LEXIS,
     // Ill. App. LEXIS, etc.) tokenize alongside the federal U.S. forms (#228).
