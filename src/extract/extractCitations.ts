@@ -46,6 +46,7 @@ import {
   stateRulePatterns,
   statutePatterns,
 } from "@/patterns"
+import { parseBody } from "./statutes/parseBody"
 import { tokenize } from "@/tokenize"
 import type { Citation, HistorySignal } from "@/types/citation"
 import { resolveCitations } from "../resolve"
@@ -610,11 +611,8 @@ export function extractCitations(
  * Note (#555): a previous version of this fix had `extractCitationsAsync`
  * auto-await `loadReporters()` so the DB-backed reporter validation kicked
  * in automatically on the async path. That coupled the core bundle to the
- * data chunk and tripped the size-limit esbuild config (which cannot
- * resolve the `data/reporters.json` dynamic import from `dist/index.mjs`).
- * Pre-existing dist runtime issues with the JSON resolution path also
- * surfaced. The async auto-load was deferred to a follow-up that can
- * address both concerns together.
+ * data chunk and tripped the size-limit budget. The async auto-load was
+ * deferred so callers opt in via an explicit `await loadReporters()`.
  *
  * @param text - Raw text to extract citations from
  * @param options - Optional customization (cleaners, patterns, resolve)
@@ -1434,7 +1432,12 @@ function detectBareSectionShortForms(
   cleaned: string,
   transformationMap: TransformationMap,
 ): void {
-  const BARE_SECTION_RE = /(?<![A-Za-z\d-])§\s*(\d[\w]*(?:\.[\w]+)*(?:\([A-Za-z0-9.]+\))*)/g
+  // Section body mirrors the CA bare-code body grammar — accepts optional
+  // `, subd. (X)` / `paragraph (Y)` / `par. (Z)` keyword chain so bare
+  // shortform cites like `§ 1347.15, subd. (b)(1)-(3)` inherit the full
+  // subsection from the antecedent code's context. #663 #655
+  const BARE_SECTION_RE =
+    /(?<![A-Za-z\d-])§\s*(\d[\w]*(?:\.[\w]+)*(?:\([A-Za-z0-9.]+\))*(?:,?\s+(?:subd\.|subdivision|subds\.|subdivisions|paragraphs?|pars?\.)\s+(?:\([^)]*\)|\[[^\]]*\])(?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)?(?:\s*[-–—]\s*\([A-Za-z0-9]+\))?)/g
   const SCAN_WINDOW = 300
 
   // Snapshot the input list — we'll push results to newCitations and sort.
@@ -1481,6 +1484,11 @@ function detectBareSectionShortForms(
         transformationMap,
       )
 
+      // Parse the captured section body via parseBody so the optional
+      // `, subd. (X)(Y)` keyword chain (#663) splits into a real
+      // subsection field rather than being absorbed into `section`.
+      const parsed = parseBody(sectionText)
+
       const inherited: import("@/types/citation").StatuteCitation = {
         type: "statute",
         text: match[0],
@@ -1497,7 +1505,12 @@ function detectBareSectionShortForms(
         patternsChecked: 1,
         title: cite.title,
         code: cite.code,
-        section: sectionText,
+        section: parsed.section,
+        subsection: parsed.subsection,
+        subsectionRange:
+          parsed.subsection && parsed.subsectionRangeEnd
+            ? { start: parsed.subsection, end: parsed.subsectionRangeEnd }
+            : undefined,
         jurisdiction: cite.jurisdiction,
       }
       newCitations.push(inherited)
