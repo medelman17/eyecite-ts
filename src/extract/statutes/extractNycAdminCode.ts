@@ -22,8 +22,11 @@ import type { StatuteComponentSpans } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 import { parseBody } from "./parseBody"
 
+// Mirror of the tokenizer pattern in `nyc-admin-code`. Accepts the
+// canonical `N.Y.C. Admin. Code`, the spelled-out form, and the bare
+// `NYC Admin. Code` (#594).
 const NYC_ADMIN_CODE_RE =
-  /^(?:N\.\s*Y\.\s*C\.\s*Admin\.?\s+Code|New\s+York\s+City\s+Administrative\s+Code)\s+§§?\s*(\d+-\d+(?![\d-])(?!\.\d)(?:[A-Za-z0-9])?)((?:\([^)]*\))*)$/d
+  /^(?:N\.\s*Y\.\s*C\.\s*Admin\.?\s+Code|NYC\s+Admin\.?\s+Code|New\s+York\s+City\s+Administrative\s+Code)\s+§§?\s*(\d+-\d+(?![\d-])(?!\.\d)(?:[A-Za-z0-9])?)((?:\([^)]*\))*)$/d
 
 export function extractNycAdminCode(
   token: Token,

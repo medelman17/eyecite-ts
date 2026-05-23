@@ -987,6 +987,24 @@ const SENTENCE_INITIAL_WORDS = new Set([
   "whereas",
   "pursuant",
   "applying",
+  // Sentence-internal connector adverbs (#670). These commonly precede
+  // a citation as `<Connector>, <Party> v. <Party>` and the trailing
+  // comma fools the trim-block check into thinking the connector is
+  // a multi-word party-name prefix. Real party names that start with
+  // these adverbs are vanishingly rare; the false-negative risk is
+  // dominated by the false-positive cost of absorbing prose context.
+  "rather",
+  "moreover",
+  "furthermore",
+  "however",
+  "nevertheless",
+  "accordingly",
+  "consequently",
+  "instead",
+  "meanwhile",
+  "indeed",
+  "thus",
+  "hence",
 ])
 
 /**
