@@ -648,9 +648,11 @@ const SIGNAL_TABLE: ReadonlyArray<readonly [RegExp, HistorySignal]> = [
   [/^reversed\s+and\s+remanded\b/i, "reversed"],
   [/^rev'?d\b/i, "reversed"],
   [/^reversed\b/i, "reversed"],
-  // cert denied
+  // cert denied — `[` admitted in the trailing lookahead so the
+  // `cert. denied[,]` form (bracketed comma — editorial insertion
+  // convention used by some reporters) tokenizes. #526
   [/^certiorari\s+denied\b/i, "cert_denied"],
-  [/^cert\.\s*den(ied|\.)(?=[\s,;(]|$)/i, "cert_denied"],
+  [/^cert\.\s*den(ied|\.)(?=[\s,;(\[]|$)/i, "cert_denied"],
   // cert granted
   [/^certiorari\s+granted\b/i, "cert_granted"],
   [/^cert\.\s*granted\b/i, "cert_granted"],
