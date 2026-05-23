@@ -379,19 +379,21 @@ export function resolveNormalizedReporter(
   if (!reportersDb) return undefined
 
   let matches = reportersDb.byAbbreviation.get(reporter.toLowerCase())
+  let effectiveReporter = reporter
   if (!matches || matches.length === 0) {
     // Issue #687: try OCR-typo fallback (`F.2nd` → `F.2d`).
     const fixed = applyOcrTypoFix(reporter)
     if (fixed) {
-      matches = reportersDb.byAbbreviation.get(fixed.toLowerCase())
-      if (matches && matches.length > 0) {
-        reporter = fixed
+      const fixedMatches = reportersDb.byAbbreviation.get(fixed.toLowerCase())
+      if (fixedMatches && fixedMatches.length > 0) {
+        matches = fixedMatches
+        effectiveReporter = fixed
       }
     }
     if (!matches || matches.length === 0) return undefined
   }
 
-  const lower = reporter.toLowerCase()
+  const lower = effectiveReporter.toLowerCase()
 
   // Year-based era disambiguation for `Black.` (#572): the literal
   // `Black.` only maps to Blackford (Indiana) in reporters-db, but when
