@@ -3,7 +3,7 @@
  *
  * Separated from reporters.ts so modules in the core bundle
  * (e.g., filterFalsePositives) can read the cached database
- * without pulling in the heavy reporters.json dynamic import.
+ * without pulling in the heavy reporters.gen.ts dynamic import chunk.
  *
  * @module data/reportersCache
  */

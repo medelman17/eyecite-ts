@@ -22,6 +22,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm data:generate
       - run: pnpm lint
       - run: pnpm typecheck
 
@@ -39,6 +40,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm data:generate
       - name: Run tests
         run: pnpm exec vitest run
         if: matrix.node-version != 22
