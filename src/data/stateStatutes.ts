@@ -439,6 +439,14 @@ export const stateStatuteEntries: StateStatuteEntry[] = [
     abbreviations: ["Nev. Rev. Stat. Ann.", "Nev. Rev. Stat.", "NRS"],
     regexFragment: "Nev\\.?\\s+Rev\\.?\\s+Stat\\.?(?:\\s+Ann\\.?)?|NRS",
   },
+  // Nevada Administrative Code — `NAC 616.650` (#377). Separate entry
+  // because the canonical-code resolution treats it as a regulation
+  // code distinct from NRS.
+  {
+    jurisdiction: "NV",
+    abbreviations: ["Nev. Admin. Code", "NAC"],
+    regexFragment: "Nev\\.?\\s+Admin\\.?\\s+Code|NAC",
+  },
   // ── Oklahoma ──────────────────────────────────────────────────────────────
   {
     jurisdiction: "OK",
