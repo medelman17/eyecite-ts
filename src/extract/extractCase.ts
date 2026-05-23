@@ -353,6 +353,24 @@ const SCOTUS_BLACK_REPORTER_END_YEAR = 1862
  * resolution stands. The literal `reporter` field on the citation is
  * preserved verbatim; only `normalizedReporter` shifts.
  */
+/**
+ * Issue #687: OCR/typo substitutions for ordinal-suffix reporters.
+ * Common misreadings: `2d`→`2nd`/`2ds`/`2cl`, `3d`→`3rd`/`3ds`/`3cl`.
+ * The substitution is applied as a fallback when the literal reporter
+ * is not in reporters-db; we then look up the corrected form. The
+ * literal `reporter` field on the citation is preserved verbatim — only
+ * `normalizedReporter` switches to the canonical key. This lets parallel
+ * resolution and downstream `reporterKey` consumers link the typo'd
+ * variant to its real reporter.
+ */
+const OCR_TYPO_ORDINAL_REGEX = /(2|3)(nd|ds|cl|rd)$/i
+function applyOcrTypoFix(reporter: string): string | undefined {
+  const m = OCR_TYPO_ORDINAL_REGEX.exec(reporter)
+  if (!m) return undefined
+  const digit = m[1]
+  return `${reporter.slice(0, m.index)}${digit}d`
+}
+
 export function resolveNormalizedReporter(
   reporter: string,
   year?: number,
@@ -360,10 +378,22 @@ export function resolveNormalizedReporter(
   const reportersDb = getReportersSync()
   if (!reportersDb) return undefined
 
-  const matches = reportersDb.byAbbreviation.get(reporter.toLowerCase())
-  if (!matches || matches.length === 0) return undefined
+  let matches = reportersDb.byAbbreviation.get(reporter.toLowerCase())
+  let effectiveReporter = reporter
+  if (!matches || matches.length === 0) {
+    // Issue #687: try OCR-typo fallback (`F.2nd` → `F.2d`).
+    const fixed = applyOcrTypoFix(reporter)
+    if (fixed) {
+      const fixedMatches = reportersDb.byAbbreviation.get(fixed.toLowerCase())
+      if (fixedMatches && fixedMatches.length > 0) {
+        matches = fixedMatches
+        effectiveReporter = fixed
+      }
+    }
+    if (!matches || matches.length === 0) return undefined
+  }
 
-  const lower = reporter.toLowerCase()
+  const lower = effectiveReporter.toLowerCase()
 
   // Year-based era disambiguation for `Black.` (#572): the literal
   // `Black.` only maps to Blackford (Indiana) in reporters-db, but when
