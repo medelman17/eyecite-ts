@@ -2076,6 +2076,22 @@ export function extractCaseName(
                 const prefix = words.slice(0, i).join(" ")
                 trimOffset = prefix.length + 1
                 plaintiff = candidate
+                // Issue #710: when the trimmed plaintiff starts with
+                // `<single-letter>. ` (e.g., `X. Smith`) AND the
+                // immediately preceding context word (the one we just
+                // dropped, or its right neighbor) is a lowercase
+                // conjunction/verb like `that`/`because`, the single-
+                // letter token is a sentence-internal variable, not an
+                // initial. Strip the prefix.
+                const slMatch = /^([A-Z])\.\s+([A-Z][a-zA-Z'-]+)/.exec(plaintiff)
+                if (slMatch) {
+                  const lastDroppedWord = words[i - 1]?.toLowerCase().replace(/[.,]+$/, "")
+                  if (lastDroppedWord && /^[a-z]{4,}$/.test(lastDroppedWord)) {
+                    const slStrip = slMatch[0].length - slMatch[2].length
+                    plaintiff = `${slMatch[2]}${plaintiff.slice(slMatch[0].length)}`
+                    trimOffset += slStrip
+                  }
+                }
                 break
               }
             }
