@@ -667,8 +667,14 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) section body (two-part hyphen), (2) optional
     //   paren subsection chain.
     id: "nyc-admin-code",
+    // Accept the canonical `N.Y.C. Admin. Code`, the spelled-out
+    // `New York City Administrative Code`, and the bare `NYC Admin.
+    // Code` form (common in modern briefs and employment opinions
+    // where the periods are dropped). Bare `NYC` was previously routed
+    // to Georgia by the ga-pre-1983 fallback; this prefix-qualified
+    // shape now wins span dedup. #594
     regex:
-      /\b(?:N\.\s*Y\.\s*C\.\s*Admin\.?\s+Code|New\s+York\s+City\s+Administrative\s+Code)\s+§§?\s*(\d+-\d+(?![\d-])(?!\.\d)(?:[A-Za-z0-9])?)((?:\([^)]*\))*)/g,
+      /\b(?:N\.\s*Y\.\s*C\.\s*Admin\.?\s+Code|NYC\s+Admin\.?\s+Code|New\s+York\s+City\s+Administrative\s+Code)\s+§§?\s*(\d+-\d+(?![\d-])(?!\.\d)(?:[A-Za-z0-9])?)((?:\([^)]*\))*)/g,
     description:
       'New York City Administrative Code: "N.Y.C. Admin. Code § 8-107(1)(a)" / "New York City Administrative Code § 8-107(1)(a)" — #594',
     type: "statute",
