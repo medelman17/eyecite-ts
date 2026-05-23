@@ -185,6 +185,29 @@ function isMonthNameDateMisparse(citation: Citation): boolean {
 }
 
 /**
+ * Issue #673 (bugs 6-8): Implausible volume / page magnitudes. Real
+ * reporters always have volume ≥ 1 and page ≥ 1; volumes never reach
+ * 10-digit territory. Hard-reject these — they're unambiguously
+ * garbage parses (citations like `0 U.S. 1`, `1 U.S. 0`, and
+ * `1234567890 U.S. 1` come from misread digit sequences in prose).
+ */
+const MAX_ABSURD_VOLUME = 999999
+function isImplausibleVolumePageMagnitude(citation: Citation): boolean {
+  if (citation.type !== "case" && citation.type !== "shortFormCase") return false
+  const c = citation as FullCaseCitation | ShortFormCaseCitation
+  // Volume = 0 is never valid
+  if (typeof c.volume === "number" && c.volume === 0) return true
+  // Volume ≥ 1 million is never a real reporter volume
+  if (typeof c.volume === "number" && c.volume > MAX_ABSURD_VOLUME) return true
+  // Page = 0 is never valid
+  if (citation.type === "case") {
+    const cc = c as FullCaseCitation
+    if (typeof cc.page === "number" && cc.page === 0) return true
+  }
+  return false
+}
+
+/**
  * Issue #669: Multi-word "reporter" containing a month-name token is
  * always prose, never a real citation. Real reporters never contain
  * month names. Catches phantoms like `On July`, `From January` that
@@ -603,7 +626,10 @@ export function applyFalsePositiveFilters(
   // citations under any policy, so they should not survive even when the
   // caller asked for soft-flag mode.
   const hardFiltered = citations.filter(
-    (c) => !isMonthNameDateMisparse(c) && !isMonthInProseReporter(c),
+    (c) =>
+      !isMonthNameDateMisparse(c) &&
+      !isMonthInProseReporter(c) &&
+      !isImplausibleVolumePageMagnitude(c),
   )
 
   if (remove) {
