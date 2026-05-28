@@ -41,11 +41,14 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm data:generate
+      # The published-tarball integration test runs in the dedicated `tarball`
+      # job below (built once, consumed across the Node matrix), so it is
+      # excluded here to avoid a redundant per-leg build.
       - name: Run tests
-        run: pnpm exec vitest run
+        run: pnpm exec vitest run --exclude '**/publishedTarball.test.ts'
         if: matrix.node-version != 22
       - name: Run tests with coverage
-        run: pnpm exec vitest run --coverage
+        run: pnpm exec vitest run --coverage --exclude '**/publishedTarball.test.ts'
         if: matrix.node-version == 22
       - uses: actions/upload-artifact@v4
         if: matrix.node-version == 22
@@ -78,3 +81,42 @@ jobs:
           test -f dist/index.mjs
           test -f dist/data/index.mjs
           test -f dist/annotate/index.mjs
+      - name: Pack tarball
+        run: npm pack --pack-destination pack
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tarball
+          path: pack/*.tgz
+          retention-days: 1
+
+  tarball:
+    name: Tarball consumer (Node ${{ matrix.node-version }})
+    needs: [build]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Download packed tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: tarball
+          path: pack
+      - name: Resolve tarball path
+        id: tarball
+        run: echo "path=$(ls "$PWD"/pack/*.tgz)" >> "$GITHUB_OUTPUT"
+      # Consume the once-built (Node 20+) artifact on every supported Node,
+      # including Node 18 — verifies the published package actually loads there.
+      - name: Verify published tarball loads
+        run: pnpm exec vitest run tests/integration/publishedTarball.test.ts
+        env:
+          EYECITE_TARBALL: ${{ steps.tarball.outputs.path }}

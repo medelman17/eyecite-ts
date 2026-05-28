@@ -18,16 +18,21 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
  *  - orphan chunks / CJS path mismatch
  *  - any future packaging regression where dist/ + the import graph drift apart
  *
- * Skipped on Node < 20: the test invokes `pnpm build` (tsdown → Rolldown),
- * which requires Node 20+ (`util.styleText`). The published artifact itself
- * works on Node 18 — only the build toolchain needs the newer Node. Coverage
- * of Node 18 consumer behavior comes from the rest of the test suite.
+ * Build vs consume are decoupled: set EYECITE_TARBALL to a pre-packed `.tgz` and
+ * the test installs that artifact directly — no local build — so it runs on any
+ * Node version, including Node 18. CI builds + packs once (Node 20+) and feeds
+ * the artifact to a Node 18/20/22 matrix. Without EYECITE_TARBALL the test builds
+ * and packs itself, which needs Node 20+ (tsdown → Rolldown `util.styleText`); on
+ * older Node with no tarball provided it skips.
  */
+const providedTarball = process.env.EYECITE_TARBALL
 const nodeMajor = Number.parseInt(process.versions.node.split(".")[0], 10)
 const buildSupported = nodeMajor >= 20
+const canRun = Boolean(providedTarball) || buildSupported
 
 const projectRoot = resolve(__dirname, "../..")
 let workDir: string
+let tarballPath: string
 let esmConsumer: string
 let cjsConsumer: string
 
@@ -37,11 +42,9 @@ function installTarball(consumerDir: string, type: "module" | "commonjs"): void 
     join(consumerDir, "package.json"),
     JSON.stringify({ name: `consumer-${type}`, version: "0.0.0", type, private: true }),
   )
-  const tarball = readdirSync(workDir).find((f) => f.endsWith(".tgz"))
-  if (!tarball) throw new Error(`no packed tarball (*.tgz) found in ${workDir}`)
   // Quote the path (TMPDIR may contain spaces); --no-audit/--no-fund keep the
   // install hermetic (no registry audit/funding requests — zero runtime deps).
-  execSync(`npm install --no-audit --no-fund "${join(workDir, tarball)}"`, {
+  execSync(`npm install --no-audit --no-fund "${tarballPath}"`, {
     cwd: consumerDir,
     stdio: "pipe",
   })
@@ -56,16 +59,25 @@ function runScript(consumerDir: string, scriptName: string, source: string) {
   })
 }
 
-describe.skipIf(!buildSupported)("Published tarball (#642 regression)", () => {
+describe.skipIf(!canRun)("Published tarball (#642 regression)", () => {
   beforeAll(() => {
     workDir = mkdtempSync(join(tmpdir(), "eyecite-tarball-"))
     esmConsumer = join(workDir, "esm-consumer")
     cjsConsumer = join(workDir, "cjs-consumer")
 
-    // Build is required; `files: ["dist"]` only ships what's already on disk,
-    // and a stale dist would mask real bugs.
-    execSync("pnpm build", { cwd: projectRoot, stdio: "pipe" })
-    execSync(`npm pack --pack-destination "${workDir}"`, { cwd: projectRoot, stdio: "pipe" })
+    if (providedTarball) {
+      // Consume a pre-built artifact (CI builds once on Node 20+ and runs this
+      // across the Node matrix). No build step — works on Node 18.
+      tarballPath = resolve(providedTarball)
+    } else {
+      // Local mode: build + pack ourselves. `files: ["dist"]` only ships what's
+      // already on disk, and a stale dist would mask real bugs.
+      execSync("pnpm build", { cwd: projectRoot, stdio: "pipe" })
+      execSync(`npm pack --pack-destination "${workDir}"`, { cwd: projectRoot, stdio: "pipe" })
+      const packed = readdirSync(workDir).find((f) => f.endsWith(".tgz"))
+      if (!packed) throw new Error(`no packed tarball (*.tgz) found in ${workDir}`)
+      tarballPath = join(workDir, packed)
+    }
 
     installTarball(esmConsumer, "module")
     installTarball(cjsConsumer, "commonjs")
