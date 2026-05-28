@@ -1,4 +1,5 @@
 ---
+"eyecite-ts": patch
 ---
 
-CI/test only (no runtime or package changes): verify the published tarball loads on Node 18 by building + packing once (Node 20+) and consuming that artifact across a Node 18/20/22 matrix, and enforce the vitest coverage thresholds that were previously silently ignored (they sat at the wrong config level). Closes #776.
+Verify in CI that the published package loads on Node 18 — the tarball is now built once (Node 20+) and exercised by a real consumer on Node 18/20/22, closing a gap where Node 18 was never tested against the actual published artifact. Also enforce the vitest coverage thresholds, which previously sat at the wrong config level and were silently ignored. No public API or runtime behavior changes. Closes #776.
