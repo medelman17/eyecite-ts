@@ -1,5 +1,5 @@
 import { execSync, spawnSync } from "node:child_process"
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
@@ -32,16 +32,19 @@ let esmConsumer: string
 let cjsConsumer: string
 
 function installTarball(consumerDir: string, type: "module" | "commonjs"): void {
-  execSync(`mkdir -p ${consumerDir}`)
+  mkdirSync(consumerDir, { recursive: true })
   writeFileSync(
     join(consumerDir, "package.json"),
     JSON.stringify({ name: `consumer-${type}`, version: "0.0.0", type, private: true }),
   )
-  execSync(`npm install ${workDir}/eyecite-ts-*.tgz`, {
+  const tarball = readdirSync(workDir).find((f) => f.endsWith(".tgz"))
+  if (!tarball) throw new Error(`no packed tarball (*.tgz) found in ${workDir}`)
+  // Quote the path (TMPDIR may contain spaces); --no-audit/--no-fund keep the
+  // install hermetic (no registry audit/funding requests — zero runtime deps).
+  execSync(`npm install --no-audit --no-fund "${join(workDir, tarball)}"`, {
     cwd: consumerDir,
     stdio: "pipe",
-    shell: "/bin/sh",
-  } as Parameters<typeof execSync>[1])
+  })
 }
 
 function runScript(consumerDir: string, scriptName: string, source: string) {
@@ -62,7 +65,7 @@ describe.skipIf(!buildSupported)("Published tarball (#642 regression)", () => {
     // Build is required; `files: ["dist"]` only ships what's already on disk,
     // and a stale dist would mask real bugs.
     execSync("pnpm build", { cwd: projectRoot, stdio: "pipe" })
-    execSync(`npm pack --pack-destination ${workDir}`, { cwd: projectRoot, stdio: "pipe" })
+    execSync(`npm pack --pack-destination "${workDir}"`, { cwd: projectRoot, stdio: "pipe" })
 
     installTarball(esmConsumer, "module")
     installTarball(cjsConsumer, "commonjs")
@@ -83,7 +86,7 @@ if (db.all.length < 1000) throw new Error("too few reporters: " + db.all.length)
 console.log("OK " + db.all.length)
 `,
     )
-    expect(proc.status, `stdout: ${proc.stdout}\nstderr: ${proc.stderr}`).toBe(0)
+    expect(proc.status, `error: ${proc.error?.message}\nstdout: ${proc.stdout}\nstderr: ${proc.stderr}`).toBe(0)
     expect(proc.stdout.trim()).toMatch(/^OK \d{4,}$/)
   })
 
@@ -95,7 +98,7 @@ console.log("OK " + db.all.length)
 await loadReporters()
 `,
     )
-    expect(proc.status, `stderr: ${proc.stderr}`).toBe(0)
+    expect(proc.status, `error: ${proc.error?.message}\nstderr: ${proc.stderr}`).toBe(0)
     expect(proc.stderr).not.toMatch(/ExperimentalWarning.*JSON/i)
     expect(proc.stderr).not.toMatch(/Import assertions/i)
     expect(proc.stderr).not.toMatch(/import attribute/i)
@@ -115,7 +118,7 @@ loadReporters()
   .catch(e => { console.error("FAIL", e.message); process.exit(1) })
 `,
     )
-    expect(proc.status, `stdout: ${proc.stdout}\nstderr: ${proc.stderr}`).toBe(0)
+    expect(proc.status, `error: ${proc.error?.message}\nstdout: ${proc.stdout}\nstderr: ${proc.stderr}`).toBe(0)
     expect(proc.stdout.trim()).toMatch(/^OK \d{4,}$/)
   })
 })
