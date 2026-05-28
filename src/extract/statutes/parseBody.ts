@@ -25,7 +25,7 @@ const ET_SEQ_RE = /\s*et\s+seq\.?\s*$/i
  * consecutive paren groups so `(a) (8)` → `(a)(8)`. #589
  */
 const SUBD_KEYWORD_RE =
-  /,?\s+(?:subd\.?|subdivision|paragraphs?|pars?\.)\s+((?:\([^)]*\)|\[[^\]]*\])(?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)/i
+  /,?\s+(?:subd\.?|subds\.?|subdivisions?|paragraphs?|pars?\.)\s+((?:\([^)]*\)|\[[^\]]*\])(?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)/i
 
 function normalizeSubdKeyword(body: string): string {
   const m = SUBD_KEYWORD_RE.exec(body)
@@ -147,7 +147,36 @@ export function parseBody(rawBody: string): ParsedBody {
   // Detect plain numeric range (e.g. `591-99`, `1330-1332`). Callers may use
   // this to populate `sectionRange` and reset `section` to the start. #564
   const rangeMatch = PLAIN_NUMERIC_RANGE_RE.exec(sectionBody)
-  const sectionRangeEnd = rangeMatch ? rangeMatch[2] : undefined
+  let sectionRangeEnd = rangeMatch ? rangeMatch[2] : undefined
+
+  // Decimal section range (#694 pt 3). Two forms:
+  //   - `17.50-.55` (Bluebook partial shorthand) — trailing endpoint
+  //     inherits the stem of the start endpoint.
+  //   - `17.50-17.55` (full repeated form).
+  // Common in Texas Business & Commerce Code and other state codes
+  // with decimal-suffixed sections. Section field is trimmed to just
+  // the start endpoint so downstream consumers see a clean section
+  // number.
+  let sectionStartOnly = sectionBody
+  if (!sectionRangeEnd) {
+    const partialMatch = /^(\d+)\.(\d+)-\.(\d+)$/.exec(sectionBody)
+    if (partialMatch) {
+      sectionRangeEnd = `${partialMatch[1]}.${partialMatch[3]}`
+      sectionStartOnly = `${partialMatch[1]}.${partialMatch[2]}`
+      sectionBody = sectionStartOnly
+    } else {
+      // Full repeated form `17.50-17.55` — only treat as a range when
+      // the integer stem matches on both sides. Without this constraint
+      // VA hyphenated section identifiers like `18.2-308.2` would be
+      // mis-parsed as range `18.2` to `308.2`.
+      const fullDecimalMatch = /^(\d+)\.(\d+)-(\d+)\.(\d+)$/.exec(sectionBody)
+      if (fullDecimalMatch && fullDecimalMatch[1] === fullDecimalMatch[3]) {
+        sectionStartOnly = `${fullDecimalMatch[1]}.${fullDecimalMatch[2]}`
+        sectionRangeEnd = `${fullDecimalMatch[3]}.${fullDecimalMatch[4]}`
+        sectionBody = sectionStartOnly
+      }
+    }
+  }
 
   if (subMatch !== null && subGroups) {
     return {

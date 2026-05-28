@@ -42,8 +42,12 @@ const AMEND_ORDINAL_ABBREV = String.raw`(?:1st|2nd|3rd|4th|5th|6th|7th|8th|9th|1
 const NUMERAL_FORM = `(?:[IVX]+|\\d+|${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})`
 
 // Article-or-amendment word, including the unabbreviated `Amendment`
-// alternative (#534).
-const ARTICLE_OR_AMENDMENT = String.raw`(?:art(?:icle)?\.?|amend(?:ment)?\.?|amdt\.?|Amendment)\s+(${NUMERAL_FORM})`
+// alternative (#534). Plural forms (`arts.`, `amends.`, `amdts.`) are
+// accepted for chained citations (#321 partial) — the tokenizer only
+// captures the first numeral; chained continuations are out of scope
+// for this pattern (a separate post-extraction pass like
+// expandChainedConstitutional could handle them).
+const ARTICLE_OR_AMENDMENT = String.raw`(?:arts?(?:icle)?\.?|amends?(?:ment)?\.?|amdts?\.?|Amendment)\s+(${NUMERAL_FORM})`
 
 // Inverse shape: numeral BEFORE the amendment word (e.g., `5th Amend.`,
 // `Fifth Amendment`). Only matches the amendment family — articles are
@@ -56,7 +60,13 @@ const ORDINAL_PREFIX_AMENDMENT = `(${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS
 // the structured section/clause field.
 const OPTIONAL_SECTION = String.raw`(?:[,;]?\s*§\s*([\w-]+))?`
 const OPTIONAL_CLAUSE = String.raw`(?:[,;]?\s*cl\.?\s*(\d+))?`
-const BODY_TAIL = `(?:${ARTICLE_OR_AMENDMENT}|${ORDINAL_PREFIX_AMENDMENT})${OPTIONAL_SECTION}${OPTIONAL_CLAUSE}`
+// Preamble (#321): `pmbl.` (Bluebook abbreviation) or `preamble`.
+// No numeral, no section, no clause — preamble has none. Captured as
+// a non-capturing alternative in BODY_TAIL so the existing group
+// layout (article/amendment numerals in groups 1/2, section in 3,
+// clause in 4) is preserved.
+const PREAMBLE = String.raw`(?:[,;]?\s*(?:pmbl\.?|preamble)\b)`
+const BODY_TAIL = `(?:(?:${ARTICLE_OR_AMENDMENT}|${ORDINAL_PREFIX_AMENDMENT})${OPTIONAL_SECTION}${OPTIONAL_CLAUSE}|${PREAMBLE})`
 
 /** Compiled body regex shared with the extractor to avoid duplicate definitions. */
 export const CONSTITUTIONAL_BODY_RE: RegExp = new RegExp(BODY_TAIL, "id")
@@ -102,15 +112,18 @@ export const constitutionalPatterns: Pattern[] = [
   {
     id: "bare-article",
     // Lowest-priority pattern: bare "Art." with no "Const." prefix at all.
-    // Constrained to reduce false positives: Roman numerals only (no Arabic),
-    // must include a § section reference, and lookbehind rejects "Const." prefix
-    // (already handled by higher-priority patterns). Confidence set to 0.5 in extractor.
+    // Constrained to reduce false positives: must include a § section
+    // reference. Roman + Arabic numerals both accepted (#321). The
+    // mandatory `§ N` lookahead keeps FP risk low — prose like
+    // `Art. 1 of the treaty` does not match. Lookbehind rejects
+    // "Const." prefix (handled by higher-priority patterns).
+    // Confidence set to 0.5 in extractor.
     regex: new RegExp(
-      String.raw`(?<!Const\.?,?\s)\bArt\.?\s+[IVX]+[,;]\s*§\s*[\w-]+(?:[,;]\s*cl\.?\s*\d+)?`,
+      String.raw`(?<!Const\.?,?\s)\bArt\.?\s+([IVX]+|\d+)[,;]\s*§\s*[\w-]+(?:[,;]\s*cl\.?\s*\d+)?`,
       "g",
     ),
     description:
-      'Bare article references without "Const." prefix (e.g., "Art. I, §8, cl. 3")',
+      'Bare article references without "Const." prefix (e.g., "Art. I, §8, cl. 3", "Art. 1, § 10")',
     type: "constitutional",
   },
   {
@@ -159,6 +172,24 @@ export const constitutionalPatterns: Pattern[] = [
     ),
     description:
       'Prose-form state constitutional citations: "Section 5(B), Article IV of the Ohio Constitution" — #656',
+    type: "constitutional",
+  },
+  {
+    // #321 — Article-first prose form: `article XII, section 5 of the
+    // California Constitution`, `article VI, section 10, of the
+    // California Constitution`. Mirror of the section-first variant
+    // above. Same patternId because the extractor produces the same
+    // shape (article + section + jurisdiction). The extractor
+    // distinguishes the two variants by group layout.
+    //
+    // Shape: (1) article numeral, (2) section text, (3) state name.
+    id: "state-const-prose-article-first",
+    regex: new RegExp(
+      String.raw`\b(?:article|art\.?)\s+([IVX]+|\d+)[,\s]+section\s+([\w()-]+),?\s+of\s+the\s+(Massachusetts|Pennsylvania|Vermont|New\s+Hampshire|Maryland|North\s+Carolina|Delaware|New\s+Jersey|Ohio|California|Texas|Florida|Illinois|Michigan|New\s+York|Georgia|Virginia|Washington|Arizona|Colorado|Wisconsin|Minnesota|Indiana|Louisiana|Oregon|Tennessee|South\s+Carolina|Alabama|Missouri|Kentucky|Connecticut|Iowa|Mississippi|Arkansas|Kansas|Nevada|Utah|Hawaii|Alaska|Idaho|Maine|Montana|Nebraska|New\s+Mexico|North\s+Dakota|Oklahoma|Rhode\s+Island|South\s+Dakota|West\s+Virginia|Wyoming)\s+Constitution\b`,
+      "gi",
+    ),
+    description:
+      'Prose-form state constitutional citations, article-first: "article XII, section 5 of the California Constitution" — #321',
     type: "constitutional",
   },
   {
