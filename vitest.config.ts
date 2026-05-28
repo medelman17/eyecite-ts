@@ -20,10 +20,15 @@ export default defineConfig({
       reporter: ["text", "json", "html"],
       include: ["src/**/*.ts"],
       exclude: ["src/**/*.test.ts", "src/types/**", "src/data/reporters.gen.ts"],
-      lines: 80,
-      functions: 80,
-      branches: 75,
-      statements: 80,
+      // vitest 4 reads thresholds from `coverage.thresholds`; top-level keys are
+      // silently ignored (the gate was previously a no-op). Current coverage sits
+      // well above these (~96 stmts / 87 branch / 99 funcs / 98 lines).
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 75,
+        statements: 80,
+      },
     },
     testTimeout: 10000,
   },
