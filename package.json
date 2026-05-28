@@ -49,7 +49,8 @@
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "files": [
-    "dist"
+    "dist",
+    "!dist/reporters.gen-*.map"
   ],
   "sideEffects": false,
   "packageManager": "pnpm@10.6.5",
@@ -60,8 +61,10 @@
     "build": "tsdown",
     "prebuild": "pnpm data:generate",
     "data:generate": "tsx scripts/generate-reporters-data.ts",
+    "prepare": "pnpm data:generate",
     "test": "vitest",
     "pretest": "pnpm data:generate",
+    "pretypecheck": "pnpm data:generate",
     "typecheck": "tsc --noEmit",
     "lint": "biome lint src tests",
     "format": "biome format --write src tests",
