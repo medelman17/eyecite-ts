@@ -87,16 +87,16 @@ export async function loadReporters(): Promise<ReportersDatabase> {
   const existing = _getReportersSync()
   if (existing) return existing
 
-  // Dynamic import prevents loading until requested (keeps core bundle small)
-  const data = await import("../../data/reporters.json", {
-    assert: { type: "json" },
-  })
+  // Dynamic import of a codegenned TS module. Rolldown auto-splits this into
+  // a separate ESM + CJS chunk in dist/, preserving lazy loading without the
+  // import-attribute syntax that was deprecated in Node 22+. See #642.
+  const mod = await import("./reporters.gen.js")
 
   const byAbbreviation = new Map<string, ReporterEntry[]>()
   const all: ReporterEntry[] = []
 
   // reporters.json structure: { "A.": [...], "F.2d": [...], ... }
-  const reportersData = (data.default || data) as Record<string, ReporterEntry[]>
+  const reportersData = mod.default as Record<string, ReporterEntry[]>
 
   // Build fast lookup index with lowercase normalization
   for (const [_canonicalAbbr, reporters] of Object.entries(reportersData)) {

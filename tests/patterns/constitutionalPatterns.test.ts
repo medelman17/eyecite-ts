@@ -162,8 +162,16 @@ describe("constitutionalPatterns", () => {
       expect(matches.some((m) => m.patternId === "bare-article")).toBe(false)
     })
 
-    it("does not match Art. with Arabic numeral", () => {
+    // Updated for #321: Arabic numerals are now accepted in bare-article
+    // form (`Art. 1, § 10`). The mandatory `§ N` requirement keeps FP
+    // risk low — `Art. 1 of the treaty` (no section) still won't match.
+    it("matches Art. with Arabic numeral when followed by section (#321)", () => {
       const matches = findMatches("see Art. 42, §3 of the treaty")
+      expect(matches.some((m) => m.patternId === "bare-article")).toBe(true)
+    })
+
+    it("does not match Art. with Arabic numeral but no section", () => {
+      const matches = findMatches("see Art. 42 of the treaty")
       expect(matches.some((m) => m.patternId === "bare-article")).toBe(false)
     })
   })

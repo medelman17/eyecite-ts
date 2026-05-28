@@ -11,15 +11,24 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["tests/**/*.test.ts"],
+    // Generate the gitignored reporters.gen.ts before any test runs, so
+    // `pnpm exec vitest run` (which skips the `pretest` lifecycle hook) works
+    // on a fresh clone. See tests/setup/generateReporters.ts and #642.
+    globalSetup: ["./tests/setup/generateReporters.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
       include: ["src/**/*.ts"],
-      exclude: ["src/**/*.test.ts", "src/types/**"],
-      lines: 80,
-      functions: 80,
-      branches: 75,
-      statements: 80,
+      exclude: ["src/**/*.test.ts", "src/types/**", "src/data/reporters.gen.ts"],
+      // vitest 4 reads thresholds from `coverage.thresholds`; top-level keys are
+      // silently ignored (the gate was previously a no-op). Current coverage sits
+      // well above these (~96 stmts / 87 branch / 99 funcs / 98 lines).
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 75,
+        statements: 80,
+      },
     },
     testTimeout: 10000,
   },

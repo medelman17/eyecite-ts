@@ -353,6 +353,24 @@ const SCOTUS_BLACK_REPORTER_END_YEAR = 1862
  * resolution stands. The literal `reporter` field on the citation is
  * preserved verbatim; only `normalizedReporter` shifts.
  */
+/**
+ * Issue #687: OCR/typo substitutions for ordinal-suffix reporters.
+ * Common misreadings: `2d`→`2nd`/`2ds`/`2cl`, `3d`→`3rd`/`3ds`/`3cl`.
+ * The substitution is applied as a fallback when the literal reporter
+ * is not in reporters-db; we then look up the corrected form. The
+ * literal `reporter` field on the citation is preserved verbatim — only
+ * `normalizedReporter` switches to the canonical key. This lets parallel
+ * resolution and downstream `reporterKey` consumers link the typo'd
+ * variant to its real reporter.
+ */
+const OCR_TYPO_ORDINAL_REGEX = /(2|3)(nd|ds|cl|rd)$/i
+function applyOcrTypoFix(reporter: string): string | undefined {
+  const m = OCR_TYPO_ORDINAL_REGEX.exec(reporter)
+  if (!m) return undefined
+  const digit = m[1]
+  return `${reporter.slice(0, m.index)}${digit}d`
+}
+
 export function resolveNormalizedReporter(
   reporter: string,
   year?: number,
@@ -360,10 +378,22 @@ export function resolveNormalizedReporter(
   const reportersDb = getReportersSync()
   if (!reportersDb) return undefined
 
-  const matches = reportersDb.byAbbreviation.get(reporter.toLowerCase())
-  if (!matches || matches.length === 0) return undefined
+  let matches = reportersDb.byAbbreviation.get(reporter.toLowerCase())
+  let effectiveReporter = reporter
+  if (!matches || matches.length === 0) {
+    // Issue #687: try OCR-typo fallback (`F.2nd` → `F.2d`).
+    const fixed = applyOcrTypoFix(reporter)
+    if (fixed) {
+      const fixedMatches = reportersDb.byAbbreviation.get(fixed.toLowerCase())
+      if (fixedMatches && fixedMatches.length > 0) {
+        matches = fixedMatches
+        effectiveReporter = fixed
+      }
+    }
+    if (!matches || matches.length === 0) return undefined
+  }
 
-  const lower = reporter.toLowerCase()
+  const lower = effectiveReporter.toLowerCase()
 
   // Year-based era disambiguation for `Black.` (#572): the literal
   // `Black.` only maps to Blackford (Indiana) in reporters-db, but when
@@ -518,8 +548,12 @@ const PAREN_REGEX = /\(([^)]+)\)/
  *  the leading ` at 638` could not be consumed and the regex failed.
  *  The at-form is repeatable too (rare in practice, but the comma form
  *  already was), so the entire prefix is wrapped in `(?:...)*`. */
+// Pincite separator admits `;` alongside `,` (#525). OCR'd older
+// opinions sometimes use semicolon between page and pincite
+// (`256 F.Supp. 572; 573-574 (court year)`); the existing comma-only
+// alternation blocked year+court extraction entirely.
 const LOOKAHEAD_PAREN_REGEX =
-  /^(?:(?:,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?|\s+at\s+(?:(?:pp?\.|pages?)\s*)?)\*?\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d+)?\s*\(([^)]+)\)/
+  /^(?:(?:[,;]\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?|\s+at\s+(?:(?:pp?\.|pages?)\s*)?)\*?\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d+)?\s*\(([^)]+)\)/
 
 /** Extracts pincite from look-ahead text.
  *  Accepts five prefix forms:
@@ -564,8 +598,12 @@ const LOOKAHEAD_PAREN_REGEX =
 // the trailing alternation. `parsePincite` surfaces this as
 // `pinciteInfo.footnote` with `page=undefined`. The leading `at` prefix is
 // allowed for symmetry with the page-bearing forms.
+// Leading separator accepts both comma and semicolon (#525). OCR'd
+// older opinions sometimes write `256 F.Supp. 572; 573-574 (court year)`
+// — the semicolon between page and pincite would otherwise block
+// pincite + year-paren extraction entirely.
 const LOOKAHEAD_PINCITE_REGEX =
-  /^(?:\s+at\s+(?:(?:pp?\.|pages?)\s*)?|,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?)(\*?\d+(?:\s*[-–—~]\s*\*?\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:\s*[-–—~]\s*\d+)?)?|¶¶?\s*\d+(?:\s*[-–—~]\s*\d+)?|paras?\.?\s*\d+(?:\s*[-–—~]\s*\d+)?|(?:nn?|fns?|note)\s*\.?\s*\d+(?:\s*[-–—~]\s*\d+)?)(?=$|[.,:;)([\]»"'“”‘’†‡§¶©°]|\s(?![A-Z]))/d
+  /^(?:\s+at\s+(?:(?:pp?\.|pages?)\s*)?|[,;]\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?)(\*?\d+(?:\s*[-–—~]\s*\*?\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:\s*[-–—~]\s*\d+)?)?|¶¶?\s*\d+(?:\s*[-–—~]\s*\d+)?|paras?\.?\s*\d+(?:\s*[-–—~]\s*\d+)?|(?:nn?|fns?|note)\s*\.?\s*\d+(?:\s*[-–—~]\s*\d+)?)(?=$|[.,:;)([\]»"'“”‘’†‡§¶©°]|\s(?![A-Z]))/d
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
@@ -618,9 +656,11 @@ const SIGNAL_TABLE: ReadonlyArray<readonly [RegExp, HistorySignal]> = [
   [/^reversed\s+and\s+remanded\b/i, "reversed"],
   [/^rev'?d\b/i, "reversed"],
   [/^reversed\b/i, "reversed"],
-  // cert denied
+  // cert denied — `[` admitted in the trailing lookahead so the
+  // `cert. denied[,]` form (bracketed comma — editorial insertion
+  // convention used by some reporters) tokenizes. #526
   [/^certiorari\s+denied\b/i, "cert_denied"],
-  [/^cert\.\s*den(ied|\.)(?=[\s,;(]|$)/i, "cert_denied"],
+  [/^cert\.\s*den(ied|\.)(?=[\s,;(\[]|$)/i, "cert_denied"],
   // cert granted
   [/^certiorari\s+granted\b/i, "cert_granted"],
   [/^cert\.\s*granted\b/i, "cert_granted"],
@@ -957,6 +997,24 @@ const SENTENCE_INITIAL_WORDS = new Set([
   "whereas",
   "pursuant",
   "applying",
+  // Sentence-internal connector adverbs (#670). These commonly precede
+  // a citation as `<Connector>, <Party> v. <Party>` and the trailing
+  // comma fools the trim-block check into thinking the connector is
+  // a multi-word party-name prefix. Real party names that start with
+  // these adverbs are vanishingly rare; the false-negative risk is
+  // dominated by the false-positive cost of absorbing prose context.
+  "rather",
+  "moreover",
+  "furthermore",
+  "however",
+  "nevertheless",
+  "accordingly",
+  "consequently",
+  "instead",
+  "meanwhile",
+  "indeed",
+  "thus",
+  "hence",
 ])
 
 /**
@@ -1995,6 +2053,16 @@ export function extractCaseName(
     adjustedSearchStart += openParenStop
   }
 
+  // Issue #691: Quoted case names — `"Smith v. Jones," 100 F.2d 1` and
+  // `"Smith v. Jones", 100 F.2d 1`. The V_CASE_NAME_REGEX anchors on a
+  // trailing comma and never matches when the closing quote sits between
+  // the defendant and the comma (or the leading quote sits before the
+  // plaintiff). Strip the envelope so the regex sees the bare caption.
+  // The quote chars are not legal-citation punctuation; nothing real
+  // depends on them being preserved at these positions.
+  precedingText = precedingText.replace(/^\s*["“”]/, "")
+  precedingText = precedingText.replace(/["“”](\s*,?\s*)$/, "$1")
+
   // Priority 1: Standard "v." or "vs." format with comma before citation
   // Match party names with letters, numbers (for "Doe No. 2"), periods, apostrophes, ampersands, hyphens, slashes
   const vMatch = V_CASE_NAME_REGEX.exec(precedingText)
@@ -2036,6 +2104,22 @@ export function extractCaseName(
                 const prefix = words.slice(0, i).join(" ")
                 trimOffset = prefix.length + 1
                 plaintiff = candidate
+                // Issue #710: when the trimmed plaintiff starts with
+                // `<single-letter>. ` (e.g., `X. Smith`) AND the
+                // immediately preceding context word (the one we just
+                // dropped, or its right neighbor) is a lowercase
+                // conjunction/verb like `that`/`because`, the single-
+                // letter token is a sentence-internal variable, not an
+                // initial. Strip the prefix.
+                const slMatch = /^([A-Z])\.\s+([A-Z][a-zA-Z'-]+)/.exec(plaintiff)
+                if (slMatch) {
+                  const lastDroppedWord = words[i - 1]?.toLowerCase().replace(/[.,]+$/, "")
+                  if (lastDroppedWord && /^[a-z]{4,}$/.test(lastDroppedWord)) {
+                    const slStrip = slMatch[0].length - slMatch[2].length
+                    plaintiff = `${slMatch[2]}${plaintiff.slice(slMatch[0].length)}`
+                    trimOffset += slStrip
+                  }
+                }
                 break
               }
             }

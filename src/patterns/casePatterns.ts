@@ -69,8 +69,12 @@ export const casePatterns: Pattern[] = [
     //
     // Terminator accepts `)` for citations wrapped in a sentence-internal
     // parenthetical — e.g., `(Smith v. Jones, 500 F.2d 123)` (#509).
+    // Page capture accepts `N` (single) or `N-M` (range, #705). The
+    // range form has tighter terminator: must be followed by end-of-input,
+    // whitespace, or a clause-ending punctuation. This prevents `1-5-7`
+    // from matching as `page=1-5` with stray `-7`.
     regex: new RegExp(
-      String.raw`\b(\d+(?:-\d+)?)\s+(F\.\s?Supp\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?|F\.\s?App'x|F\.(?:\d+(?:st|nd|rd|th)|2d|3d)?)(?:\s+(\d+-\d+(?=\s+\(\d{4}\))|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
+      String.raw`\b(\d+(?:-\d+)?)\s+(F\.\s?Supp\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?|F\.\s?App'x|F\.(?:\d+(?:st|nd|rd|th)|2d|3d)?)(?:\s+(\d+-\d+|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°])|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
       "g",
     ),
     description:

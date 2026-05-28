@@ -279,7 +279,8 @@ export function extractConstitutional(
   // names map to 2-letter codes via FULL_STATE_NAME_TO_CODE.
   if (
     token.patternId === "state-const-prose-declaration" ||
-    token.patternId === "state-const-prose-section-article"
+    token.patternId === "state-const-prose-section-article" ||
+    token.patternId === "state-const-prose-article-first"
   ) {
     let article: number | undefined
     let section: string | undefined
@@ -290,11 +291,20 @@ export function extractConstitutional(
         article = Number.parseInt(m[1], 10)
         stateName = m[2].trim().toLowerCase()
       }
-    } else {
+    } else if (token.patternId === "state-const-prose-section-article") {
       const m = /\bSection\s+([\w()-]+)\s*,\s*Article\s+([IVX]+|\d+)\s+of\s+the\s+([A-Za-z\s]+?)\s+Constitution\b/i.exec(text)
       if (m) {
         section = m[1]
         article = parseNumeral(m[2])
+        stateName = m[3].trim().toLowerCase()
+      }
+    } else {
+      // state-const-prose-article-first (#321):
+      // `article XII, section 5 of the California Constitution`
+      const m = /\b(?:article|art\.?)\s+([IVX]+|\d+)[,\s]+section\s+([\w()-]+),?\s+of\s+the\s+([A-Za-z\s]+?)\s+Constitution\b/i.exec(text)
+      if (m) {
+        article = parseNumeral(m[1])
+        section = m[2]
         stateName = m[3].trim().toLowerCase()
       }
     }
@@ -342,27 +352,34 @@ export function extractConstitutional(
   let amendment: number | undefined
   let section: string | undefined
   let clause: number | undefined
+  let preamble: boolean | undefined
 
   // BODY_TAIL groups (#534 — added inverse-shape `5th Amend.` branch):
   //   1: numeral (canonical `art./amend. <numeral>` branch)
   //   2: ordinal (inverse `<ordinal> amend.` branch)
   //   3: section
   //   4: clause
-  // Exactly one of group 1 or group 2 is populated per match.
+  // Exactly one of group 1 or group 2 is populated per match. When ALL
+  // groups are undefined, the match came from the preamble alternative
+  // in BODY_TAIL (#321). Detect via raw match text.
   if (bodyMatch) {
     const numeralText = bodyMatch[1] ?? bodyMatch[2]
-    const numeral = parseNumeral(numeralText)
-    const isInverseShape = bodyMatch[2] !== undefined
-    const isAmendment = isInverseShape || IS_AMENDMENT_RE.test(bodyMatch[0])
+    if (numeralText) {
+      const numeral = parseNumeral(numeralText)
+      const isInverseShape = bodyMatch[2] !== undefined
+      const isAmendment = isInverseShape || IS_AMENDMENT_RE.test(bodyMatch[0])
 
-    if (isAmendment) {
-      amendment = numeral
-    } else {
-      article = numeral
+      if (isAmendment) {
+        amendment = numeral
+      } else {
+        article = numeral
+      }
+
+      section = bodyMatch[3] || undefined
+      clause = bodyMatch[4] ? Number.parseInt(bodyMatch[4], 10) : undefined
+    } else if (/\b(?:pmbl\.?|preamble)\b/i.test(bodyMatch[0])) {
+      preamble = true
     }
-
-    section = bodyMatch[3] || undefined
-    clause = bodyMatch[4] ? Number.parseInt(bodyMatch[4], 10) : undefined
   }
 
   let jurisdiction: string | undefined
@@ -470,6 +487,7 @@ export function extractConstitutional(
     jurisdiction,
     article,
     amendment,
+    preamble,
     section,
     clause,
     spans,

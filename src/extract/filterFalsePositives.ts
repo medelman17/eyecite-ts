@@ -184,6 +184,46 @@ function isMonthNameDateMisparse(citation: Citation): boolean {
   return page >= MIN_PLAUSIBLE_REPORT_YEAR && page <= MAX_PLAUSIBLE_REPORT_YEAR
 }
 
+/**
+ * Issue #673 (bugs 6-8): Implausible volume / page magnitudes. Real
+ * reporters always have volume ≥ 1 and page ≥ 1; volumes never reach
+ * 10-digit territory. Hard-reject these — they're unambiguously
+ * garbage parses (citations like `0 U.S. 1`, `1 U.S. 0`, and
+ * `1234567890 U.S. 1` come from misread digit sequences in prose).
+ */
+const MAX_ABSURD_VOLUME = 999999
+function isImplausibleVolumePageMagnitude(citation: Citation): boolean {
+  if (citation.type !== "case" && citation.type !== "shortFormCase") return false
+  const c = citation as FullCaseCitation | ShortFormCaseCitation
+  // Volume = 0 is never valid
+  if (typeof c.volume === "number" && c.volume === 0) return true
+  // Volume ≥ 1 million is never a real reporter volume
+  if (typeof c.volume === "number" && c.volume > MAX_ABSURD_VOLUME) return true
+  // Page = 0 is never valid
+  if (citation.type === "case") {
+    const cc = c as FullCaseCitation
+    if (typeof cc.page === "number" && cc.page === 0) return true
+  }
+  return false
+}
+
+/**
+ * Issue #669: Multi-word "reporter" containing a month-name token is
+ * always prose, never a real citation. Real reporters never contain
+ * month names. Catches phantoms like `On July`, `From January` that
+ * the existing isMonthNameDateMisparse misses because the reporter
+ * isn't EXACTLY a month name. Hard-reject so consumers don't see them
+ * even at confidence=0.1.
+ */
+function isMonthInProseReporter(citation: Citation): boolean {
+  if (citation.type !== "case" && citation.type !== "shortFormCase") return false
+  const c = citation as FullCaseCitation | ShortFormCaseCitation
+  if (!c.reporter) return false
+  const words = c.reporter.toLowerCase().split(/\s+/)
+  if (words.length < 2) return false
+  return words.some((w) => MONTH_NAMES.has(w))
+}
+
 /** Maximum length for a reporter string without periods.
  *  Real period-less reporters (e.g., "Cal", "Wis", "Mass") are short.
  *  Prose false positives ("Court dismissed the complaint...") are long.
@@ -532,15 +572,32 @@ function collectFalsePositiveReasons(citation: Citation, originalText?: string):
   return reasons
 }
 
+/** Tracks whether the missing-originalText warning has already fired
+ *  to avoid spamming the console on repeated calls. Reset by tests. */
+let warnedMissingOriginalText = false
+
+/** @internal — exported for test reset only. */
+export function _resetMissingOriginalTextWarning(): void {
+  warnedMissingOriginalText = false
+}
+
 /**
  * Apply false positive filters to extracted citations.
  *
  * @param citations - Extracted citations (may be mutated in penalize mode)
  * @param remove - If true, remove flagged citations. If false, penalize confidence + add warning.
- * @param originalText - Original (pre-cleaning) source text. Required for the
- *   line-crossing check (#547) which inspects the raw bytes of the cite span.
- *   When omitted, the line-crossing check is skipped to preserve backward
- *   compatibility for callers that hold only parsed citations.
+ * @param originalText - Original (pre-cleaning) source text. **Strongly
+ *   recommended** — required for the line-crossing check (#547) which
+ *   inspects the raw bytes of the cite span. Passing `undefined`
+ *   silently skips the line-crossing FP check, allowing line-crossing
+ *   false positives to slip through with default confidence (#606).
+ *
+ *   When this function is invoked WITHOUT `originalText` AND the input
+ *   contains at least one case/shortFormCase citation, a one-time
+ *   `console.warn` fires (per process, idempotent across repeated
+ *   calls) to alert callers to the silently-skipped check. Pass
+ *   `originalText` explicitly to silence the warning, or call
+ *   `_resetMissingOriginalTextWarning()` in tests.
  * @returns Filtered array (same reference if remove=false, new array if remove=true and items removed)
  */
 export function applyFalsePositiveFilters(
@@ -548,11 +605,32 @@ export function applyFalsePositiveFilters(
   remove: boolean,
   originalText?: string,
 ): Citation[] {
+  // Issue #606: warn (once per process) when originalText is omitted
+  // AND the input could plausibly contain line-crossing false positives.
+  // Line-crossing only applies to case/shortFormCase, so a pure
+  // statute/journal/neutral input has nothing to skip.
+  if (originalText === undefined && !warnedMissingOriginalText) {
+    const hasCaseCite = citations.some(
+      (c) => c.type === "case" || c.type === "shortFormCase",
+    )
+    if (hasCaseCite) {
+      warnedMissingOriginalText = true
+      // eslint-disable-next-line no-console
+      console.warn(
+        "[eyecite-ts] applyFalsePositiveFilters: called without `originalText` — line-crossing false-positive check (#547) is silently skipped. Pass the original source text as the 3rd argument to enable it. This warning fires only once per process; see issue #606.",
+      )
+    }
+  }
   // Hard-reject pass: unconditionally drop unambiguous garbage like
   // `<day> <Month> <year>` date misparses (#302). These are never legitimate
   // citations under any policy, so they should not survive even when the
   // caller asked for soft-flag mode.
-  const hardFiltered = citations.filter((c) => !isMonthNameDateMisparse(c))
+  const hardFiltered = citations.filter(
+    (c) =>
+      !isMonthNameDateMisparse(c) &&
+      !isMonthInProseReporter(c) &&
+      !isImplausibleVolumePageMagnitude(c),
+  )
 
   if (remove) {
     return hardFiltered.filter((c) => !isFalsePositive(c, originalText))

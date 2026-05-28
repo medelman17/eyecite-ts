@@ -105,6 +105,12 @@ export function stripHtmlTags(text: string): string {
  * with a hyphen at the line break: "Dil-\nlinger" or "F. Sup-\np. 3d".
  * This cleaner removes the hyphen + line break to restore the original word.
  *
+ * Issue #681: Digit-hyphen-newline-digit shapes are NOT word-wraps — they
+ * are pincite ranges (`5-\n7` = `5-7`). When both sides of the hyphen are
+ * digits, preserve the hyphen so the pincite parser sees the range
+ * correctly. Without this guard the hyphen got stripped and the two
+ * digits fused (`57`), fabricating a pincite that wasn't in the source.
+ *
  * Must run before normalizeWhitespace (which converts \n to spaces, leaving
  * "Dil- linger" instead of "Dillinger").
  *
@@ -115,9 +121,19 @@ export function stripHtmlTags(text: string): string {
  * @example
  * rejoinHyphenatedWords("F. Sup-\np. 3d 100")
  * // => "F. Supp. 3d 100"
+ *
+ * @example
+ * rejoinHyphenatedWords("100 F.2d 1, 5-\n7 (1990)")
+ * // => "100 F.2d 1, 5-7 (1990)"  // hyphen preserved (pincite range)
  */
 export function rejoinHyphenatedWords(text: string): string {
-  return text.replace(/(\w)-\s*[\n\r]+\s*(\w)/g, "$1$2")
+  return text.replace(/(\w)-\s*[\n\r]+\s*(\w)/g, (_match, before: string, after: string) => {
+    // Digit-on-both-sides → range, preserve hyphen and collapse the wrap
+    if (/\d/.test(before) && /\d/.test(after)) {
+      return `${before}-${after}`
+    }
+    return `${before}${after}`
+  })
 }
 
 /**
@@ -165,7 +181,32 @@ export function normalizeWhitespace(text: string): string {
  * // => "Smith v. Doe, 500 F.2d 123" // normalized
  */
 export function normalizeUnicode(text: string): string {
-  return text.normalize("NFKC")
+  // Issue #693: Strip trademark / registered / service-mark / copyright
+  // symbols BEFORE NFKC. NFKC decomposes ™ → "TM", ® → "(R)", ℠ → "SM",
+  // which then corrupt party names (`Smith™` becomes `SmithTM`, breaking
+  // case-name backscan and producing wrong captions). These symbols are
+  // decorative — they don't affect canonical citation text — so removing
+  // them entirely is preferable to letting NFKC expand them inline.
+  //
+  // Issue #605: Same problem class for vulgar fractions, the numero sign,
+  // and CJK compatibility units. NFKC decomposes them into multi-char
+  // ASCII (`½` → "1⁄2", `№` → "No", `㎡` → "m2"). These are vanishingly
+  // rare in legal text but their expansion can drift position mapping
+  // or create false-positive matches downstream. Strip pre-NFKC so the
+  // cleaned text length is never increased by the normalize() call.
+  const stripped = text
+    .replace(/[™®℠©]/g, "")
+    // Vulgar fractions (½ ⅓ ¼ ¾ ⅕ ⅖ ⅗ ⅘ ⅙ ⅚ ⅛ ⅜ ⅝ ⅞ ⅐ ⅑ ⅒ ⅔)
+    .replace(/[¼-¾⅐-⅞]/g, "")
+    // Numero sign (№) — common in older dockets; the surrounding "Docket"
+    // or "Case" word makes the prefix recoverable from context.
+    .replace(/№/g, "")
+    // CJK compatibility units (㎡ ㎏ ℃ ℉ ㏗ etc.) — NFKC expands these
+    // to letter+digit pairs that can collide with citation patterns.
+    // Range covers Unit Symbols + Squared Latin Abbreviations +
+    // Letterlike Symbols that decompose under NFKC.
+    .replace(/[㎀-㏿℀-⅏]/g, "")
+  return stripped.normalize("NFKC")
 }
 
 /**
