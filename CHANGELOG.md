@@ -1,5 +1,1699 @@
 # eyecite-ts
 
+## 0.27.0
+
+### Minor Changes
+
+- [#770](https://github.com/medelman17/eyecite-ts/pull/770) [`33f99d8`](https://github.com/medelman17/eyecite-ts/commit/33f99d80ba031be79741d8ac7f65c9745f2af64f) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): constitutional preamble citations (`U.S. Const. pmbl.`) (#321 partial)
+
+  Resolves the preamble sub-issue of #321. `U.S. Const. pmbl.` and
+  `U.S. Const. preamble` references weren't extracted — the BODY_TAIL
+  regex required `art.` / `amend.` + numeral.
+
+  Added a `PREAMBLE` alternative (`pmbl.` / `preamble`) to BODY_TAIL.
+  A new `preamble: boolean` field on `ConstitutionalCitation` is set
+  to `true` when the preamble branch matches. The field is mutually
+  exclusive with `article` and `amendment` (none of which apply to
+  the preamble).
+
+  | input                                  | before    | after                            |
+  | -------------------------------------- | --------- | -------------------------------- |
+  | `U.S. Const. pmbl.`                    | 0 cites   | preamble=true, jurisdiction=US ✓ |
+  | `U.S. Const, pmbl.` (comma)            | 0 cites   | preamble=true ✓                  |
+  | `U.S. Const. preamble` (unabbreviated) | 0 cites   | preamble=true ✓                  |
+  | `U.S. Const. art. III, § 2` (control)  | unchanged | unchanged ✓                      |
+  | `U.S. Const. amend. XIV` (control)     | unchanged | unchanged ✓                      |
+
+  5 regression tests in `tests/extract/issueConstitutionPreamble.test.ts`.
+
+  Other #321 sub-issues (plural `amends.`, full prose form
+  `article XII, section 5 of the California Constitution`) remain
+  open.
+
+- [#773](https://github.com/medelman17/eyecite-ts/pull/773) [`1c48967`](https://github.com/medelman17/eyecite-ts/commit/1c48967a39a2c2833b69ddd86a7d6e00f8b880d7) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): Nevada Administrative Code (`NAC`) recognized (#377 partial)
+
+  Resolves the NAC sub-issue of #377. Nevada Administrative Code citations
+  (`NAC 616.650`) weren't extracted. The NRS (Nevada Revised Statutes)
+  entry was already supported; NAC needed its own entry because it's
+  a separate regulation code.
+
+  | input                              | before    | after                         |
+  | ---------------------------------- | --------- | ----------------------------- |
+  | `NAC 616.650`                      | 0 cites   | code=`NAC`, jurisdiction=NV ✓ |
+  | `Nev. Admin. Code 616.650`         | 0 cites   | code=`Nev. Admin. Code`, NV ✓ |
+  | `NRS 174.295` (regression control) | unchanged | unchanged ✓                   |
+
+  Other #377 sub-issues (CCCO Clark County Ordinances, Nevada session
+  laws `Nev. Stat., ch. NNN, § N`) remain open.
+
+  3 regression tests in `tests/extract/issueNevadaNAC.test.ts`.
+
+- [#771](https://github.com/medelman17/eyecite-ts/pull/771) [`f819987`](https://github.com/medelman17/eyecite-ts/commit/f8199876ea426018b02e3044e42a80b08ba6ff3d) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): plural `amends.` / `arts.` with chained continuations (#321 partial)
+
+  Resolves the plural-amendments sub-issue of #321.
+  `U.S. Const. amends. V, XIV` (plural `amends.` form) wasn't
+  tokenized at all; even after enabling the plural form, only the
+  first amendment was extracted.
+
+  | input                             | before    | after                       |
+  | --------------------------------- | --------- | --------------------------- |
+  | `U.S. Const. amends. V, XIV`      | 0 cites   | 2 cites (amendment=5, 14) ✓ |
+  | `U.S. Const. amends. V and XIV`   | 0 cites   | 2 cites ✓                   |
+  | `U.S. Const. arts. I, II, III`    | 0 cites   | 3 cites (article=1, 2, 3) ✓ |
+  | `U.S. Const. amend. V` (singular) | unchanged | unchanged ✓                 |
+
+  Two coordinated changes:
+
+  1. `ARTICLE_OR_AMENDMENT` regex now accepts `arts?` / `amends?` /
+     `amdts?` plural forms.
+  2. `expandChainedConstitutional` accepts a bare-numeral continuation
+     (`, XIV` / ` and XIV`) inheriting the article-or-amendment type
+     from the head cite — alongside the existing `; art./amend. <numeral>`
+     continuation shape from #707.
+
+  4 regression tests in `tests/extract/issuePluralAmendsChain.test.ts`.
+
+  Other #321 sub-issues (full prose form `article XII, section 5 of
+the California Constitution`) remain open.
+
+- [#772](https://github.com/medelman17/eyecite-ts/pull/772) [`bde9139`](https://github.com/medelman17/eyecite-ts/commit/bde9139809ac669a184ae933c09a4c7eb396f094) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): state-const prose article-first form (#321 partial)
+
+  Resolves the article-first prose sub-issue of #321.
+  `article XII, section 5 of the California Constitution` (article-first
+  ordering) wasn't recognized. The pre-existing
+  `state-const-prose-section-article` pattern handled only the
+  section-first form (`Section 5, Article IV of the Ohio Constitution`).
+
+  | input                                                                  | before    | after                       |
+  | ---------------------------------------------------------------------- | --------- | --------------------------- |
+  | `article XII, section 5 of the California Constitution`                | 0 cites   | article=12, section=5, CA ✓ |
+  | `article VI, section 10, of the California Constitution` (extra comma) | 0 cites   | article=6, section=10, CA ✓ |
+  | `Section 5(B), Article IV of the Ohio Constitution` (section-first)    | unchanged | unchanged ✓                 |
+  | `art. 14 of the Massachusetts Declaration of Rights`                   | unchanged | unchanged ✓                 |
+
+  Added `state-const-prose-article-first` pattern + matching extractor
+  branch. Covers all 50 US states.
+
+  4 regression tests in `tests/extract/issueStateConstProseArticleFirst.test.ts`.
+
+  This completes the major sub-issues of #321 covered in this PR series.
+  The original issue's `Sections 5 and 10 of Article I of the Ohio
+Constitution` plural-section form remains open (rare; would need
+  another bare-numeral chain expansion analogous to PR #771).
+
+- [#768](https://github.com/medelman17/eyecite-ts/pull/768) [`a0d6951`](https://github.com/medelman17/eyecite-ts/commit/a0d6951ec656df7565a19b134ad44f1e9392dcef) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): Tax Court Memorandum decisions (`T.C. Memo. YYYY-NNN`) (#324)
+
+  Resolves #324. Tax Court Memorandum decisions — the dominant authority
+  in U.S. Tax Court opinions and common in any federal tax-related
+  opinion — weren't recognized.
+
+  | input                                                | before  | after                                               |
+  | ---------------------------------------------------- | ------- | --------------------------------------------------- |
+  | `T.C. Memo. 2002-89`                                 | 0 cites | neutral / court=`T.C. Memo.` / year=2002 / doc=89 ✓ |
+  | `Robida v. Commissioner, T.C. Memo. 1970-86`         | 0 cites | neutral with caseName backscan ✓                    |
+  | `Shollenberger v. Commissioner, T.C. Memo. 2009-306` | 0 cites | neutral ✓                                           |
+
+  Added a new `tc-memo` pattern in `neutralPatterns` and a matching
+  branch in `extractNeutral`. Treated as a neutral citation because the
+  year acts as the volume identifier. Requires the periodized `T.C.`
+  form (`TC Memo.` without periods does not match — strict to avoid
+  false positives).
+
+  4 regression tests in `tests/extract/issueTcMemo.test.ts`.
+
+### Patch Changes
+
+- [#777](https://github.com/medelman17/eyecite-ts/pull/777) [`920558a`](https://github.com/medelman17/eyecite-ts/commit/920558a3a093c7d1d70b921ef192dee7b8d64669) Thanks [@medelman17](https://github.com/medelman17)! - Verify in CI that the published package loads on Node 18 — the tarball is now built once (Node 20+) and exercised by a real consumer on Node 18/20/22, closing a gap where Node 18 was never tested against the actual published artifact. Also enforce the vitest coverage thresholds, which previously sat at the wrong config level and were silently ignored. No public API or runtime behavior changes. Closes #776.
+
+- [#749](https://github.com/medelman17/eyecite-ts/pull/749) [`33f5808`](https://github.com/medelman17/eyecite-ts/commit/33f5808f1220bb52bf57b62d69e9e4e62578873e) Thanks [@medelman17](https://github.com/medelman17)! - docs: update `subsequentHistoryEntries` JSDoc for post-#527 contract (#619)
+
+  Resolves #619. The JSDoc still said "Only populated on the parent
+  (original) citation" — that was true before PR #617's #527 rewrite,
+  which changed the field to populate on every chain link that received
+  a history clause from the scanner. The minor version bump (0.22.0)
+  flagged the contract change but the JSDoc was not updated.
+
+  Replaced with text documenting the new contract:
+
+  > Populated on every chain link that received a history clause from
+  > the scanner — not just the chain's root. For `Smith, aff'd, X,
+cert. denied, Y`, both Smith and X populate this field.
+
+  No code changes. Doc-only patch.
+
+- [#763](https://github.com/medelman17/eyecite-ts/pull/763) [`9a98615`](https://github.com/medelman17/eyecite-ts/commit/9a986159121726c0864c65e92d37d453c7e44d5f) Thanks [@medelman17](https://github.com/medelman17)! - docs: document supra party-name case-sensitivity constraint (#688)
+
+  Resolves #688 via the "document as explicit constraint" path the
+  issue author offered as an acceptable resolution. SUPRA_PATTERN
+  requires an uppercase initial on the party-name capture — `Smith,
+supra` matches; `smith, supra` does not.
+
+  Adds a prominent **CASE SENSITIVITY (#688)** block to SUPRA_PATTERN's
+  JSDoc explaining why: a lowercase-permissive regex generates 18+
+  regressions in resolver tests because words like `Later`, `However`,
+  and `In re` would be absorbed as multi-word party names.
+
+  Lowercase party-name supras (informal/OCR-extracted text) must
+  either be hand-corrected upstream or handled by a future
+  resolver-side fuzzy match.
+
+  No code change. Doc-only patch.
+
+- [#759](https://github.com/medelman17/eyecite-ts/pull/759) [`5dd731c`](https://github.com/medelman17/eyecite-ts/commit/5dd731cd6eb10dddc9eb3377634d90bfc4ea3dca) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): strip sentence-internal connector prefix from caseName (#670 part)
+
+  Resolves the connector-prefix sub-issue of #670. The trim block in
+  `extractCaseName` considered words like `Rather,` as plausible
+  party-name prefixes (`Rather, State v. Epps` → caseName=`Rather,
+State v. Epps`) because they pass the `firstWordIsProperName` check.
+
+  Fix: added common sentence-internal connector adverbs (`rather`,
+  `moreover`, `furthermore`, `however`, `nevertheless`, `accordingly`,
+  `consequently`, `instead`, `meanwhile`, `indeed`, `thus`, `hence`) to
+  `SENTENCE_INITIAL_WORDS`. This routes them to the prefix-strip branch.
+
+  | input                                  | before                    | after              |
+  | -------------------------------------- | ------------------------- | ------------------ |
+  | `Rather, State v. Epps, 100 F.2d 1`    | `Rather, State v. Epps`   | `State v. Epps` ✓  |
+  | `However, Smith v. Jones, 100 F.2d 1`  | `However, Smith v. Jones` | `Smith v. Jones` ✓ |
+  | `Moreover, Doe v. Roe, 100 F.2d 1`     | `Moreover, Doe v. Roe`    | `Doe v. Roe` ✓     |
+  | `Indeed, Brown v. Board, 347 U.S. 483` | `Indeed, Brown v. Board`  | `Brown v. Board` ✓ |
+  | `Smith v. Jones, 100 F.2d 1` (control) | unchanged                 | unchanged ✓        |
+
+  Real party names that start with these adverbs are vanishingly rare;
+  the false-negative risk is dominated by the false-positive cost of
+  absorbing prose context.
+
+  Known limitations (not in this patch): all-caps preamble absorption
+  and the additional `Professional Conduct.` sentence-prefix forms
+  remain open.
+
+  6 regression tests in `tests/extract/issueBackscanSentencePrefix.test.ts`.
+
+- [#767](https://github.com/medelman17/eyecite-ts/pull/767) [`fe8df95`](https://github.com/medelman17/eyecite-ts/commit/fe8df954a5d350ece7fffd4a9d78d0069e72f772) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): `bare-article` accepts Arabic numerals (`Art. 1, § 10`) (#321 partial)
+
+  Resolves the bare-article-Arabic sub-issue of #321. The `bare-article`
+  pattern previously required Roman numerals only (`Art. I, § 8`),
+  missing the common-in-modern-state-codes Arabic form (`Art. 1, § 10`).
+
+  | input                                | before    | after                   |
+  | ------------------------------------ | --------- | ----------------------- |
+  | `Art. 1, § 10`                       | 0 cites   | article=1, section=10 ✓ |
+  | `Art. 42, §3`                        | 0 cites   | article=42, section=3 ✓ |
+  | `Art. I, § 8` (Roman)                | unchanged | unchanged ✓             |
+  | `Art. 42 of the treaty` (no section) | 0 cites   | unchanged ✓             |
+
+  Fix: extended the numeral capture from `[IVX]+` to `([IVX]+|\d+)`.
+  The mandatory `§ N` requirement keeps false-positive risk low —
+  prose like `Art. 1 of the treaty` (no section) still won't match.
+
+  One existing test in `constitutionalPatterns.test.ts` asserted the
+  old Roman-only behavior — updated to reflect the new acceptance and
+  added a regression control for the no-section case.
+
+  5 regression tests in `tests/extract/issueBareArticleArabic.test.ts`.
+
+  Other #321 sub-issues (plural `amends.`, `pmbl.`, full prose form)
+  remain open.
+
+- [#738](https://github.com/medelman17/eyecite-ts/pull/738) [`17482e4`](https://github.com/medelman17/eyecite-ts/commit/17482e4117387d61facaaf1efb2c681fd02ea7ec) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): bare `§§ N, M` lists (no code prefix) get lower confidence (#726)
+
+  Resolves #726. `detectBareSectionLists` produced statute citations
+  from `§§ 1983, 1985` (bare section-list with no code prefix) at
+  confidence 0.5 — same as a real statute. The `code` field defaulted
+  to the literal `§` character, which isn't a meaningful code
+  identifier.
+
+  Lowered confidence to 0.3 when the only code marker is `§` (no
+  surrounding `Code`/`Code Ann.` prefix). Downstream consumers can now
+  confidently filter these out at the 0.5 threshold unless they
+  specifically want unbound section refs.
+
+  | input                                               | before         | after            |
+  | --------------------------------------------------- | -------------- | ---------------- |
+  | `§§ 1983, 1985`                                     | confidence=0.5 | confidence=0.3 ✓ |
+  | `Code §§ 19.2-81 and 18.2-266` (with `Code` prefix) | confidence=0.5 | unchanged ✓      |
+  | `42 U.S.C. § 1983` (real code)                      | unchanged      | unchanged ✓      |
+
+  3 regression tests in `tests/extract/issueBareSectionConfidence.test.ts`.
+
+- [#761](https://github.com/medelman17/eyecite-ts/pull/761) [`b3bdc9f`](https://github.com/medelman17/eyecite-ts/commit/b3bdc9f52cbfea2e0a3ec9dac5ba330fab669f9d) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): bare-section short-form captures subdivision keyword (#663 / #655)
+
+  Resolves the subdivision-keyword sub-issue of #663 and #655. Bare
+  `§ N` short-form citations that inherit from an upstream CA-code
+  antecedent (`Health & Saf. Code, § 1375.4`) lost their subdivision
+  chain — `§ 1347.15, subd. (b)(1)-(3)` extracted with
+  `section="1347.15"` and `subsection=undefined`.
+
+  | input (in CA-code context)    | before                                | after                              |
+  | ----------------------------- | ------------------------------------- | ---------------------------------- |
+  | `§ 1347.15, subd. (b)(1)-(3)` | subsection=undefined                  | `(b)(1)` + range to `(3)` ✓        |
+  | `§ 1317, subds. (a), (b)`     | section=`1317, subds.`, no subsection | section=`1317`, subsection=`(a)` ✓ |
+  | `§ 1371.4(e)` (no keyword)    | unchanged                             | unchanged ✓                        |
+  | `§ 1348.6, subd. (b)`         | subsection=undefined                  | `(b)` ✓                            |
+
+  Two coordinated changes:
+
+  1. `BARE_SECTION_RE` in `detectBareSectionShortForms` now captures the
+     optional `,?\s+(?:subd\.|subdivision|subds\.|subdivisions|...)\s+(\X\)...` keyword chain plus an optional `-(N)` range trailer.
+  2. `normalizeSubdKeyword` in `parseBody` accepts the plural `subds.` /
+     `subdivisions` forms alongside the existing singular variants.
+
+  The captured body is now passed through `parseBody`, which splits the
+  section from the subsection chain and surfaces `subsectionRange` when
+  the keyword chain ends with a paren-range trailer.
+
+  4 regression tests in `tests/extract/issueBareSectionSubd.test.ts`.
+
+  CA bare-section without an upstream code anchor (the broader #655 /
+  #663 scope) remains a separate issue requiring context-tracking.
+
+- [#723](https://github.com/medelman17/eyecite-ts/pull/723) [`47a3df7`](https://github.com/medelman17/eyecite-ts/commit/47a3df7b95046fe8177aff53ae1a23105a3b1f2a) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): case-name backscan accepts colon in subtitles
+
+  V_CASE_NAME_REGEX's plaintiff/defendant char class lacked `:`, so case
+  names with subtitle separators returned `caseName=null`:
+
+  | input                                   | before | after                         |
+  | --------------------------------------- | ------ | ----------------------------- |
+  | `Smith v. Jones: Continued, 100 F.2d 1` | null   | `Smith v. Jones: Continued` ✓ |
+  | `Smith v. Jones: A Sequel, 100 F.2d 1`  | null   | `Smith v. Jones: A Sequel` ✓  |
+
+  Added `:` to both plaintiff and defendant char classes. Case names
+  without colons (most cases) are unaffected.
+
+  4 regression tests in `tests/extract/issueCaseNameColon.test.ts`.
+
+- [#713](https://github.com/medelman17/eyecite-ts/pull/713) [`5db83e8`](https://github.com/medelman17/eyecite-ts/commit/5db83e8b76f07d207c6d453cbf84661eac668205) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): case-name backscan preserves ordinal-prefix party names
+
+  The numeric prefix in `V_CASE_NAME_REGEX` was `(?:\d[\d-]*\s+)?` — bare
+  digits only, with no ordinal-suffix support. When a real party name
+  began with an ordinal (`21st Century Fox`, `1st National Bank`,
+  `100th Anniversary`), the regex skipped the ordinal prefix entirely
+  because the digit-prefix branch couldn't consume `21st` and the
+  plaintiff branch started at the next uppercase letter.
+
+  | input                                    | before                   | after                          |
+  | ---------------------------------------- | ------------------------ | ------------------------------ |
+  | `21st Century Fox v. Smith, 100 F.2d 1`  | `Century Fox v. Smith`   | `21st Century Fox v. Smith` ✓  |
+  | `1st National Bank v. Smith, 100 F.2d 1` | `National Bank v. Smith` | `1st National Bank v. Smith` ✓ |
+  | `100th Anniversary v. Smith, 100 F.2d 1` | `Anniversary v. Smith`   | `100th Anniversary v. Smith` ✓ |
+
+  Extended the numeric prefix to `(?:\d[\d-]*(?:st|nd|rd|th)?\s+)?` so
+  ordinal suffixes are absorbed. Bare-number prefixes (`12 Lincoln
+Square`) and no-prefix names (`Smith v. Jones`) continue to work.
+
+  7 regression tests in `tests/extract/issueCaseNameOrdinalPrefix.test.ts`.
+
+- [#686](https://github.com/medelman17/eyecite-ts/pull/686) [`891614f`](https://github.com/medelman17/eyecite-ts/commit/891614f9673c4a1144841f65f63c7cdd3859d895) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): case-name backscan handles non-ASCII letters (umlaut, accents, cedilla)
+
+  The plaintiff/defendant character class in `V_CASE_NAME_REGEX` was
+  ASCII-only (`[A-Za-z0-9\s.,'&()/-]+?`), so any case name containing
+  non-ASCII letters failed the backscan and surfaced as `caseName=null`:
+
+  - `Müller v. Schmidt, 100 F.2d 1 (1990)` → `caseName=null` ⇒ now `Müller v. Schmidt` ✓
+  - `Société Générale v. Banque, 100 F.2d 1 (1990)` → null ⇒ `Société Générale v. Banque` ✓
+  - `Pérez v. González, 100 F.2d 1 (1990)` → null ⇒ `Pérez v. González` ✓
+  - `Çelik v. Banque, 100 F.2d 1 (1990)` → null ⇒ `Çelik v. Banque` ✓
+  - `Smith v. Müller, 100 F.2d 1 (1990)` → null ⇒ `Smith v. Müller` ✓
+
+  Extended the character class to include Latin-1 Supplement (`À`-`ÿ`) and
+  Latin Extended-A (`Ā`-`ſ`), which covers the bulk of accented characters
+  in real case names (French, German, Spanish, Polish, etc.). The
+  uppercase anchor accepts both ASCII and uppercase Latin-1
+  (`À`-`Þ`), so plaintiffs whose name begins with `Ç`, `É`, `Ö` still
+  anchor the scan correctly.
+
+  6 regression tests in `tests/extract/issueCaseNameUnicode.test.ts`.
+
+- [#766](https://github.com/medelman17/eyecite-ts/pull/766) [`8e872a2`](https://github.com/medelman17/eyecite-ts/commit/8e872a204286916f58258e163f8374029710fd8e) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): `cert. denied[,]` (bracketed comma) detects subsequent history (#526)
+
+  Resolves #526. The `cert. denied` history-signal regex required the
+  next char to be whitespace / comma / semicolon / paren / EOF — `[`
+  was not admitted. The `cert. denied[,]` form (bracketed comma — an
+  editorial-insertion convention used by some reporters) silently
+  dropped the subsequent-history clause. Both the parent's
+  `subsequentHistoryEntries` and the child's `subsequentHistoryOf`
+  back-pointer were lost.
+
+  | input                                     | before     | after                                       |
+  | ----------------------------------------- | ---------- | ------------------------------------------- |
+  | `cert. denied[,] 479 U.S. 1059`           | no history | parent=`[cert_denied]`, child back-points ✓ |
+  | `cert. denied, 479 U.S. 1059` (canonical) | unchanged  | unchanged ✓                                 |
+
+  Fix: extended the lookahead character class to include `[`.
+
+  2 regression tests in `tests/extract/issueCertDeniedBracketedComma.test.ts`.
+
+- [#750](https://github.com/medelman17/eyecite-ts/pull/750) [`09aaa0d`](https://github.com/medelman17/eyecite-ts/commit/09aaa0d37be75d299e3b8ec21c464a15016976a7) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): CFR `Title 12, C.F.R.` form recognized (#630)
+
+  Resolves #630. CFR pattern's title→code separator required pure
+  whitespace (`\s+`), missing the comma-tolerant form that USC got in
+  Sprint H (#586).
+
+  | input                               | before     | after        |
+  | ----------------------------------- | ---------- | ------------ |
+  | `Title 12, C.F.R. § 226`            | 0 cites    | regulation ✓ |
+  | `Title 12, C.F.R., § 226`           | 0 cites    | regulation ✓ |
+  | `Title 12 C.F.R. § 226` (no comma)  | regulation | unchanged ✓  |
+  | `12 C.F.R. § 226` (no Title prefix) | regulation | unchanged ✓  |
+
+  Fix: change CFR title→code separator from `\s+` to `\s*,?\s+` —
+  mirrors the USC fix for #586. Trailing letter alternation is USC-only,
+  so no other changes.
+
+  5 regression tests in `tests/extract/issueCfrTitleComma.test.ts`.
+
+- [#709](https://github.com/medelman17/eyecite-ts/pull/709) [`8a03866`](https://github.com/medelman17/eyecite-ts/commit/8a038669a956e4c41446c108e4c478fa9471c81e) Thanks [@medelman17](https://github.com/medelman17)! - fix(clean): preserve space in `<X>. <N>th Cir.` court parentheticals
+
+  The reporter-spacing cleaner's general ordinal-suffix rule
+  (`([A-Za-z])\.\s+(\d+[a-z]+)` → collapse) blindly stripped the space
+  before any ordinal token, even when the ordinal was a circuit number
+  rather than a reporter edition:
+
+  | input              | before            | after                |
+  | ------------------ | ----------------- | -------------------- |
+  | `B.A.P. 9th Cir.`  | `B.A.P.9th Cir.`  | `B.A.P. 9th Cir.` ✓  |
+  | `Bankr. 9th Cir.`  | `Bankr.9th Cir.`  | `Bankr. 9th Cir.` ✓  |
+  | `La. App. 3d Cir.` | `La. App.3d Cir.` | `La. App. 3d Cir.` ✓ |
+
+  Fix: anchor the ordinal with `\b` to defeat greedy backtracking, then
+  add a negative lookahead `(?!\s+Cir\.)` so the collapse skips circuit
+  numbers. Reporter editions (`Wis. 2d`, `F. Supp. 2d`, `So. 2d`, `Cal.
+Rptr. 2d`) continue to collapse correctly.
+
+  Pre-existing Louisiana date-in-number tests (#232) that pinned the
+  buggy `La. App.3d Cir.` form are updated to expect the canonical
+  Bluebook T7 form `La. App. 3d Cir.`.
+
+  6 regression tests in `tests/extract/issueCleanerBAPSpacing.test.ts`.
+
+- [#743](https://github.com/medelman17/eyecite-ts/pull/743) [`f70130d`](https://github.com/medelman17/eyecite-ts/commit/f70130d89dabbdab967c17e9ee777ed7298a6af1) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): `compare A with B` propagates compare signal to B (#702)
+
+  Resolves #702. Bluebook Rule 1.2(b) treats `compare A with B` as a
+  paired signal — both citations belong to the same comparison. The
+  extractor previously assigned `signal=compare` only to A, leaving B
+  with `signal=undefined`.
+
+  | input                                             | before                 | after                                   |
+  | ------------------------------------------------- | ---------------------- | --------------------------------------- |
+  | `Compare Smith, 100 F.2d 1, with Doe, 200 F.3d 5` | A=compare, B=undefined | A=compare, B=compare ✓                  |
+  | `Compare Smith, 100 F.2d 1 with Doe, 200 F.3d 5`  | A=compare, B=undefined | A=compare, B=compare ✓                  |
+  | `See Smith, 100 F.2d 1, with Doe, 200 F.3d 5`     | A=see, B=undefined     | unchanged (no compare) ✓                |
+  | `Compare A; see Doe, 200 F.3d 5`                  | A=compare, B=see       | unchanged (explicit signal preserved) ✓ |
+
+  Added `propagateCompareWithSignal` post-process pass: when a citation
+  carries `signal=compare` and the gap to the next citation contains
+  `with`, propagate `compare` to the following citation. Does not
+  overwrite an explicit signal on the follow-on.
+
+  5 regression tests in `tests/extract/issueCompareWithSignal.test.ts`.
+
+- [#699](https://github.com/medelman17/eyecite-ts/pull/699) [`3f226b7`](https://github.com/medelman17/eyecite-ts/commit/3f226b7f9b86a61e2a3c216ab96db3e8b9e43868) Thanks [@medelman17](https://github.com/medelman17)! - fix(constitutional): invalid Roman numerals downgraded to low confidence
+
+  The constitutional body regex matches `[IVX]+` permissively (to support
+  real Roman numerals up to `XXVII`), but `parseNumeral` rejects
+  non-canonical Roman forms like `IIII`, `IIIIIII`, and out-of-range
+  numerals like `XXVIII`. The extractor previously surfaced these as
+  constitutional citations with confidence 0.9 but with `amendment=undefined`
+  AND `article=undefined` — a structurally useless citation passed through
+  at the same confidence as a valid one.
+
+  | input                        | before                                         | after      |
+  | ---------------------------- | ---------------------------------------------- | ---------- |
+  | `U.S. Const. amend. IIII`    | type=constitutional, amend=undefined, conf=0.9 | conf=0.1 ✓ |
+  | `U.S. Const. amend. IIIIIII` | type=constitutional, amend=undefined, conf=0.9 | conf=0.1 ✓ |
+  | `U.S. Const. art. XXVIII`    | type=constitutional, art=undefined, conf=0.9   | conf=0.1 ✓ |
+
+  When both `amendment` and `article` fail to parse, confidence is now
+  downgraded to 0.1 so downstream consumers can filter it out.
+
+  5 regression tests in `tests/extract/issueConstInvalidNumeral.test.ts`.
+
+- [#679](https://github.com/medelman17/eyecite-ts/pull/679) [`da209d5`](https://github.com/medelman17/eyecite-ts/commit/da209d5549b57dcd21b7c8ebd2c04906f1a466a2) Thanks [@medelman17](https://github.com/medelman17)! - fix(constitutional): capture `§ N` section without comma separator
+
+  `OPTIONAL_SECTION` and `OPTIONAL_CLAUSE` in the constitutional body
+  regex required a leading `[,;]` between the article/amendment numeral
+  and the `§`/`cl.` token. Real-world Bluebook citations frequently omit
+  the separator:
+
+  - `U.S. Const. amend. XIV § 1` → section dropped (now: `section="1"`)
+  - `U.S. Const. art. III § 2` → section dropped (now: `section="2"`)
+  - `Cal. Const. art. I § 7` → section dropped (now: `section="7"`)
+  - `U.S. Const. art. III § 2 cl. 1` → section + clause dropped
+
+  Made the leading punctuation optional. Existing comma/semicolon forms
+  continue to parse as before. The bare-numeral guard
+  (`U.S. Const. amend. XIV 1` — no `§`) still rejects, because the regex
+  still requires `§ <numeral>` to capture as section.
+
+  7 regression tests in `tests/extract/issueConstSectionNoComma.test.ts`.
+
+- [#741](https://github.com/medelman17/eyecite-ts/pull/741) [`f34ac7e`](https://github.com/medelman17/eyecite-ts/commit/f34ac7e718a9c6615f693c2e18aa9af06cb5024e) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): constitutional citations chained with `;` now expand (#707)
+
+  Resolves #707. String-cited constitutional references separated by `;`
+  (`U.S. Const. art. III, § 2, cl. 1; amend. XIV, § 1`) only produced
+  a citation for the head — the trailing `;\s*art./amend. ...` had no
+  `Const.` anchor for the tokenizer pattern to match. Common in
+  scholarly footnotes and brief arguments.
+
+  | input                                               | before | after               |
+  | --------------------------------------------------- | ------ | ------------------- |
+  | `U.S. Const. art. III, § 2, cl. 1; amend. XIV, § 1` | 1 cite | 2 cites ✓           |
+  | `U.S. Const. art. I, § 8; art. II, § 1`             | 1 cite | 2 cites ✓           |
+  | `U.S. Const. art. I, § 1; amend. V; amend. XIV`     | 1 cite | 3 cites ✓           |
+  | `Cal. Const. art. I, § 7; art. II, § 2`             | 1 cite | 2 cites (both CA) ✓ |
+
+  Added a post-extraction pass `expandChainedConstitutional` that scans
+  forward from each constitutional cite's cleanEnd across `;` separators
+  for additional body-tail matches (`art./amend. <numeral> [§ N] [cl. M]`)
+  and emits a synthetic citation per element inheriting the head's
+  jurisdiction (US / state code).
+
+  6 regression tests in `tests/extract/issueConstSemicolonChain.test.ts`.
+
+- [#715](https://github.com/medelman17/eyecite-ts/pull/715) [`3285798`](https://github.com/medelman17/eyecite-ts/commit/32857989c69745741b8b989232bffce480a6b649) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): date-strip handles dashed and ISO-format dates
+
+  The numeric-date strip in `stripDateFromCourt` only handled `M/D/YYYY`
+  (slash separator). Other common formats leaked partial date content
+  into the `court` field:
+
+  | input                   | before                      | after                |
+  | ----------------------- | --------------------------- | -------------------- |
+  | `(9th Cir. 02-15-2020)` | `court="9th Cir. 02-15-"`   | `court="9th Cir."` ✓ |
+  | `(9th Cir. 2020-02-15)` | `court="9th Cir. 2020-02-"` | `court="9th Cir."` ✓ |
+  | `(9th Cir. 2020/02/15)` | `court="9th Cir. 2020/02/"` | `court="9th Cir."` ✓ |
+
+  Extended to two regex alternatives:
+
+  - `\d{1,2}[/-]\d{1,2}[/-]\d{4}` — day-first or M/D forms
+  - `\d{4}[/-]\d{1,2}[/-]\d{1,2}` — ISO year-first forms
+
+  6 regression tests in `tests/extract/issueCourtDateFormatLeaks.test.ts`.
+
+- [#704](https://github.com/medelman17/eyecite-ts/pull/704) [`bd89cd7`](https://github.com/medelman17/eyecite-ts/commit/bd89cd708a3b254de4a023eab0fdb8f64e5692d0) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): year + trailing disposition modifier no longer leaks into court field
+
+  When a court parenthetical had `<court> <year> <modifier>` shape — e.g.,
+  `(9th Cir. 1990 mem.)`, `(2d Cir. 1990 unpublished)`,
+  `(D. Mass. 1990 per curiam)` — the year sat in the middle and the bare
+  trailing-`\d{4}` strip could not reach it. The full `<year> <modifier>`
+  chunk leaked into the `court` field:
+
+  | input                                           | before                              | after                |
+  | ----------------------------------------------- | ----------------------------------- | -------------------- |
+  | `Smith, 100 F.2d 1 (9th Cir. 1990 mem.)`        | `court="9th Cir. 1990 mem."`        | `court="9th Cir."` ✓ |
+  | `Smith, 100 F.2d 1 (9th Cir. 1990 unpublished)` | `court="9th Cir. 1990 unpublished"` | `court="9th Cir."` ✓ |
+  | `Smith, 100 F.2d 1 (9th Cir. 1990 per curiam)`  | leaks                               | `court="9th Cir."` ✓ |
+  | `Smith, 100 F.2d 1 (9th Cir. 1990 en banc)`     | leaks                               | `court="9th Cir."` ✓ |
+
+  Added an early-pass `\s*\d{4}\s+(?:mem\.?|unpub\.?|unpublished|per\s+curiam|en\s+banc|slip\s+op\.?|table|supp\.?)\s*$`
+  regex in `stripDateFromCourt` that lifts the year+modifier suffix before
+  the existing date-component strips run.
+
+  7 regression tests in `tests/extract/issueCourtWithTrailingModifier.test.ts`.
+
+- [#685](https://github.com/medelman17/eyecite-ts/pull/685) [`132cb4d`](https://github.com/medelman17/eyecite-ts/commit/132cb4dc468c86d85fd7f268c0f86d10b7d4ae4d) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): date-modifier verbs (`filed`, `decided`, `argued`, etc.) no longer pollute `court` field
+
+  Following the disposition + editorial + judge-attribution fixes,
+  Bluebook Rule 10.5 date-modifier verbs that prefix a date inside the
+  court parenthetical still leaked into the `court` field:
+
+  - `(filed Jan. 15, 1990)` → `court="filed"` ⇒ now `undefined`
+  - `(decided Mar. 15, 1990)` → `court="decided"` ⇒ now `undefined`
+  - `(argued Apr. 1, 1990)` → `court="argued"` ⇒ now `undefined`
+  - `(submitted Jan. 1, 1990)` → `court="submitted"` ⇒ now `undefined`
+  - `(effective Jan. 1, 1990)` → `court="effective"` ⇒ now `undefined`
+  - `(entered Jan. 1, 1990)` → `court="entered"` ⇒ now `undefined`
+  - `(heard Jan. 1, 1990)` → `court="heard"` ⇒ now `undefined`
+  - `(argued ..., decided ...)` → `court="argued Apr. 1, 1990, decided"` ⇒ now `undefined`
+
+  Detection: after year+date-stripping, content starting with one of
+  these verb prefixes is rejected.
+
+  10 regression tests in `tests/extract/issueDateModifierAsCourt.test.ts`.
+
+- [#678](https://github.com/medelman17/eyecite-ts/pull/678) [`9bb4755`](https://github.com/medelman17/eyecite-ts/commit/9bb47551295c2c3674c037c2e84a40ff03321a6c) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): disposition tokens no longer pollute the court field
+
+  When a citation's parenthetical contained a bare disposition signal
+  (Bluebook Rule 10.7) without a court abbreviation —
+  `Smith, 100 F.2d 1 (rev'd 1990)`, `(per curiam 1990)`, `(en banc)`,
+  `(cert. denied 1990)`, `(dismissed 1990)` — the post-year-strip token
+  fell through `stripDateFromCourt` and surfaced as a (wrong) court value:
+  `court="rev'd"`, `court="per curiam"`, etc.
+
+  Fix: after stripping the trailing date, reject content that matches a
+  known disposition signal (`rev'd`, `aff'd`, `rev'g`, `aff'g`, `mod'd`,
+  `cert. denied|granted|dismissed`, `appeal denied|dismissed|docketed`,
+  `dismissed`, `reversed`, `vacated`, `vacating`, `overruled (by)`,
+  `overruling`, `en banc`, `per curiam`), optionally followed by
+  `in part`, `on other grounds`, or `sub nom.`.
+
+  The disposition information itself is not yet surfaced as a structured
+  field for bare-parenthetical cases like `(en banc)` — that remains a
+  follow-up. This patch only stops the wrong value from leaking into
+  `court`.
+
+  8 regression tests in `tests/extract/issueDispositionAsCourt.test.ts`.
+
+- [#695](https://github.com/medelman17/eyecite-ts/pull/695) [`d15422a`](https://github.com/medelman17/eyecite-ts/commit/d15422a613923e92f3879c3f5c06bfd24d8f3788) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): Federal Register and Statutes at Large pages accept thousands-grouping commas
+
+  The Federal Register and Statutes at Large patterns + extractors used
+  bare `\d+` for the page, so a comma-grouped page (`12,345`,
+  `1,234,567`) truncated to just the digits before the first comma:
+
+  | input                 | before                                     | after                                               |
+  | --------------------- | ------------------------------------------ | --------------------------------------------------- |
+  | `85 Fed. Reg. 12,345` | `matchedText="85 Fed. Reg. 12"`, `page=12` | `matchedText="85 Fed. Reg. 12,345"`, `page=12345` ✓ |
+  | `134 Stat. 1,234`     | `matchedText="134 Stat. 1"`, `page=1`      | `matchedText="134 Stat. 1,234"`, `page=1234` ✓      |
+
+  Federal Register pages routinely exceed 10,000 so the comma form is
+  common in practice. Both pattern and extractor regex now accept
+  `\d{1,3}(?:,\d{3})+|\d+`; the integer `page` field strips commas
+  before `parseInt`.
+
+  4 regression tests in `tests/extract/issueFedRegCommaPage.test.ts`.
+
+- [#708](https://github.com/medelman17/eyecite-ts/pull/708) [`0124ac3`](https://github.com/medelman17/eyecite-ts/commit/0124ac311ee75a2cd182e9609d61e15daf92c77b) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): Federal Register year extracts from trailing parens beyond the matched token
+
+  The Federal Register extractor's year regex only scanned the matched
+  token text. Since the token only covers `<vol> Fed. Reg. <page>` (not
+  the trailing date parenthetical), the year was never extracted:
+
+  | input                                | before         | after       |
+  | ------------------------------------ | -------------- | ----------- |
+  | `85 Fed. Reg. 12,345 (2020)`         | year=undefined | year=2020 ✓ |
+  | `85 Fed. Reg. 12,345 (Mar. 1, 2020)` | year=undefined | year=2020 ✓ |
+  | `85 Fed. Reg. 12345 (2020)`          | year=undefined | year=2020 ✓ |
+
+  Mirrored the `cleanedText`-based year scan from `extractStatutesAtLarge`:
+  extend the scan window 64 characters beyond `span.cleanEnd` to catch
+  the trailing date paren. Plausibility filter (`isPlausibleYear`) still
+  rejects page-like numbers.
+
+  5 regression tests in `tests/extract/issueFedRegYear.test.ts`.
+
+- [#734](https://github.com/medelman17/eyecite-ts/pull/734) [`1f448f6`](https://github.com/medelman17/eyecite-ts/commit/1f448f6786f292d14234a833c5d7ecd0b0ab6858) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): federal rule acronym forms recognized (`FRCP`, `F.R.C.P.`, `FRE`, etc.) (#696)
+
+  Resolves #696. The federal-rule extractor recognized only the canonical
+  `Fed. R. Civ. P. 12` and spelled-out `Federal Rule of Civil Procedure 12`
+  forms. Common acronym shorthand used in casual writing, court orders,
+  and briefs was silently dropped:
+
+  | input           | before  | after                |
+  | --------------- | ------- | -------------------- |
+  | `FRCP 12(b)(6)` | 0 cites | ruleSet=civil ✓      |
+  | `FRE 401`       | 0 cites | ruleSet=evidence ✓   |
+  | `FRAP 4(a)`     | 0 cites | ruleSet=appellate ✓  |
+  | `FRCrP 11`      | 0 cites | ruleSet=criminal ✓   |
+  | `FRBP 7001`     | 0 cites | ruleSet=bankruptcy ✓ |
+  | `F.R.C.P. 12`   | 0 cites | ruleSet=civil ✓      |
+  | `F.R.E. 401`    | 0 cites | ruleSet=evidence ✓   |
+  | `F.R.A.P. 4(a)` | 0 cites | ruleSet=appellate ✓  |
+
+  Added a third pattern (`fed-rule-acronym`) for bare acronyms and dotted
+  forms, plus matching entries in `RULE_SET_MAP`. The dotted forms
+  (`F.R.C.P.`) normalize via the period-and-space strip to the same key
+  as the bare form (`FRCP`).
+
+  10 regression tests in `tests/extract/issueFedRuleAcronym.test.ts`.
+
+- [#755](https://github.com/medelman17/eyecite-ts/pull/755) [`1e45cdf`](https://github.com/medelman17/eyecite-ts/commit/1e45cdf4c2649be91cac0cc5858d442c28fe517a) Thanks [@medelman17](https://github.com/medelman17)! - fix(filter): warn when applyFalsePositiveFilters called without originalText (#606)
+
+  Resolves #606. `applyFalsePositiveFilters` silently skipped the
+  line-crossing check (#547) when the `originalText` parameter was
+  omitted, letting line-crossing false positives slip through.
+
+  Now emits a one-time `console.warn` (per process, idempotent across
+  repeated calls) when called without `originalText` AND the input
+  contains at least one case/shortFormCase citation (the only types
+  the line-crossing check applies to). Pure statute / journal / neutral
+  inputs do not trigger the warning.
+
+  The signature is unchanged so this is a non-breaking patch. JSDoc
+  updated to mark `originalText` as **strongly recommended**.
+
+  Internal export `_resetMissingOriginalTextWarning()` added for test
+  fixtures.
+
+  5 regression tests in
+  `tests/extract/issueFpFilterMissingOriginalTextWarning.test.ts`.
+
+- [#727](https://github.com/medelman17/eyecite-ts/pull/727) [`d3925e3`](https://github.com/medelman17/eyecite-ts/commit/d3925e3e1f21eccc45789a214380405491d1b8fb) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): `Id.at 5` (no space before `at`) captures pincite
+
+  Resolves #683. The Id./Ibid. pincite-capture regexes required at least
+  one whitespace character between the closing period/comma and the `at`
+  keyword. OCR / compressed text frequently omits this space, producing
+  `Id.at 5` which silently dropped the pincite:
+
+  | input                           | before                               | after                              |
+  | ------------------------------- | ------------------------------------ | ---------------------------------- |
+  | `Smith, 100 F.2d 1. Id.at 5.`   | matchedText=`Id.`, pincite=undefined | matchedText=`Id.at 5`, pincite=5 ✓ |
+  | `Smith, 100 F.2d 1. Ibid.at 5.` | similar                              | pincite=5 ✓                        |
+
+  Changed `\s+at` to `\s*at` in three regexes: `ID_PATTERN` and
+  `IBID_PATTERN` (tokenizer) and the inline `idRegex` in `extractId`
+  (extractor). Canonical `Id. at 5` and bare `Id.` continue to work.
+
+  5 regression tests in `tests/extract/issueIdAtNoSpace.test.ts`.
+
+- [#764](https://github.com/medelman17/eyecite-ts/pull/764) [`d6060d4`](https://github.com/medelman17/eyecite-ts/commit/d6060d40558530851874f1f1bee0be8ca236c276) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): bare `Id.` attaches to immediately preceding cite of any type (#721)
+
+  Resolves #721. Per Bluebook Rule 4.1, bare `Id.` (no pincite)
+  attaches to the immediately preceding cited authority of any type.
+  The resolver's case-family-preference filter overrode positional
+  priority — `42 U.S.C. § 1983. Id.` resolved to an earlier case if
+  one was in scope.
+
+  | input                                                                             | before       | after       |
+  | --------------------------------------------------------------------------------- | ------------ | ----------- |
+  | `Smith, 100 F.2d 1. 42 U.S.C. § 1983. Id.`                                        | Smith (case) | statute ✓   |
+  | `42 U.S.C. § 1983. Id.` (statute only)                                            | statute      | unchanged ✓ |
+  | `Smith, 100 F.2d 1. 42 U.S.C. § 1983. Id. at 5.` (page pincite, case family)      | Smith        | unchanged ✓ |
+  | `Smith, 100 F.2d 1. 42 U.S.C. § 1983. Id. § 7.` (section pincite, statute family) | statute      | unchanged ✓ |
+  | `42 U.S.C. § 1983. Smith, 100 F.2d 1. Id.` (case is most recent)                  | Smith        | unchanged ✓ |
+
+  `resolveId` now skips family preference when Id. has NO pincite AND
+  NO trailing `§ N` section marker — the bare form is unambiguously
+  positional. Id. WITH an explicit pincite still uses family
+  preference (the pincite shape disambiguates: `Id. § 5` → statute
+  family; `Id. at 27` → case family).
+
+  Two existing tests (issue480_idAntecedent.test.ts:217, integration/
+  resolution.test.ts:239) asserted the old behavior — both updated to
+  match the corrected positional rule.
+
+  5 regression tests in `tests/extract/issueIdCrossType.test.ts`.
+
+- [#760](https://github.com/medelman17/eyecite-ts/pull/760) [`9eefef7`](https://github.com/medelman17/eyecite-ts/commit/9eefef757d825b7417c821ca3a746d94a91709e4) Thanks [@medelman17](https://github.com/medelman17)! - fix(filter): hard-reject vol=0, page=0, vol > 999999 (#673 bugs 6-8)
+
+  Resolves bugs 6-8 of #673. Implausible volume / page magnitudes are
+  now hard-rejected — real reporters always have volume ≥ 1 and page
+  ≥ 1, and volumes never reach 10-digit territory. These citations
+  come from misread digit sequences in prose.
+
+  | input                         | before                 | after           |
+  | ----------------------------- | ---------------------- | --------------- |
+  | `0 U.S. 1`                    | extracts with conf=0.6 | hard-rejected ✓ |
+  | `1 U.S. 0`                    | extracts with conf=0.6 | hard-rejected ✓ |
+  | `1234567890 U.S. 1`           | extracts with conf=0.1 | hard-rejected ✓ |
+  | `100 U.S. 1` (normal)         | unchanged              | unchanged ✓     |
+  | `100 U.S. 1234` (normal page) | unchanged              | unchanged ✓     |
+
+  Added `isImplausibleVolumePageMagnitude` to the hard-reject pass.
+  The existing `isImplausibleVolume` flag-and-penalize behavior still
+  applies for the in-between range (vol > 2000 but ≤ 999999) so
+  year-as-volume neutral citations continue to work.
+
+  The previously-asserted `0 F.2d 1` → vol=0 test case in
+  `issueLeadingZeroVolume.test.ts` was updated to expect 0 cites
+  (leading-zero forms `01`, `001` etc. still parse correctly to
+  integer values).
+
+  7 regression tests in `tests/extract/issueImplausibleVolPage.test.ts`
+  covering the three rejection paths plus regression controls.
+
+- [#736](https://github.com/medelman17/eyecite-ts/pull/736) [`0897e12`](https://github.com/medelman17/eyecite-ts/commit/0897e12da4f9fe5085b071d6382fd47c0b28ae9a) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): impossible dates (Feb 30, Apr 31, Feb 29 non-leap) fall back to month-only (#716)
+
+  Resolves #716. `parseDate` accepted syntactically well-formed but
+  semantically impossible dates (`Feb 30`, `Apr 31`, `Feb 29` in non-leap
+  years), producing a syntactically valid ISO string for a date that
+  doesn't exist:
+
+  | input                    | before                       | after                              |
+  | ------------------------ | ---------------------------- | ---------------------------------- |
+  | `Feb 30 2020`            | `iso="2020-02-30"`, `day=30` | `iso="2020-02"`, `day=undefined` ✓ |
+  | `Apr 31 2020`            | `iso="2020-04-31"`           | `iso="2020-04"` ✓                  |
+  | `Feb 29 2021` (non-leap) | `iso="2021-02-29"`           | `iso="2021-02"` ✓                  |
+  | `Feb 29 2020` (leap)     | `iso="2020-02-29"`           | unchanged ✓                        |
+
+  Added `isValidDate(year, month, day)` helper with leap-year awareness
+  (div-4, except centuries unless div-400). All four parseDate code paths
+  (abbreviated month, full month, ISO, European) now drop the `day`
+  field when invalid and return `{ year, month }` instead.
+
+  6 regression tests in `tests/extract/dates.invalidDate.test.ts`.
+
+- [#761](https://github.com/medelman17/eyecite-ts/pull/761) [`b3bdc9f`](https://github.com/medelman17/eyecite-ts/commit/b3bdc9f52cbfea2e0a3ec9dac5ba330fab669f9d) Thanks [@medelman17](https://github.com/medelman17)! - Fix `loadReporters()` packaging — `data/reporters.json` was missing from the published tarball and the loader used the deprecated `assert: { type: "json" }` import attribute that Node 22+ rejects. Both compounded: every fresh `npm install` produced `ERR_MODULE_NOT_FOUND`, and even with the file present, modern Node failed with `ERR_IMPORT_ATTRIBUTE_MISSING`. A third latent bug shipped a 485 KB orphan chunk that nothing imported.
+
+  `reporters.json` is now codegenned into a TypeScript module (`src/data/reporters.gen.ts`) at build time, wrapped in `JSON.parse('...')` for V8's fast-path. Rolldown auto-splits the dynamic import into a sibling ESM + CJS chunk in `dist/`, preserving lazy loading without any import-attribute syntax. The generated chunks' sourcemaps (~2.3 MB, no debugging value for a `JSON.parse` blob) are excluded from the tarball, trimming the unpacked install by ~33%. Includes a new integration test that builds, packs, and installs the tarball into a fresh consumer to prevent regression.
+
+  Fixes #642.
+
+- [#775](https://github.com/medelman17/eyecite-ts/pull/775) [`746a1ad`](https://github.com/medelman17/eyecite-ts/commit/746a1ad03dd842440323c00b5cacd7702421ac30) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): filter journal phantom matches in standalone prose (#615)
+
+  Resolves #615. The journal `law-review` regex is intentionally broad
+  (no journals-db gate) so it can fire on any `[volume] [Capitalized Run]
+[page]` shape — including pure prose like `In 1974 Senator Smith Jones
+500 cases were filed.`. The post-#614 overlap-dedup pass catches phantoms
+  that overlap higher-priority citations, but standalone-prose phantoms
+  slipped through.
+
+  The extractor now drops multi-word journal captures that lack BOTH a
+  period AND a short (≤2 char) word. Real journal abbreviations satisfy
+  at least one of:
+
+  - single word (`Neurology`, `JAMA`, `Science`), OR
+  - contains a period (`Harv. L. Rev.`, `Yale L.J.`), OR
+  - contains a short token (`Brook L Rev`, `Yale L J` — `L`, `J`, `Rev`).
+
+  | input                                               | before                                | after       |
+  | --------------------------------------------------- | ------------------------------------- | ----------- |
+  | `In 1974 Senator Smith Jones 500 cases were filed.` | phantom journal `Senator Smith Jones` | dropped ✓   |
+  | `70 Brook L Rev 1045`                               | journal `Brook L Rev`                 | unchanged ✓ |
+  | `96 Yale L J 1234`                                  | journal `Yale L J`                    | unchanged ✓ |
+  | `53 Neurology 1107`                                 | journal `Neurology`                   | unchanged ✓ |
+  | `100 Harv. L. Rev. 500`                             | journal `Harv. L. Rev.`               | unchanged ✓ |
+  | `285 JAMA 2486`                                     | journal `JAMA`                        | unchanged ✓ |
+
+  7 regression tests in `tests/extract/issue615JournalPhantom.test.ts`.
+
+- [#735](https://github.com/medelman17/eyecite-ts/pull/735) [`666b677`](https://github.com/medelman17/eyecite-ts/commit/666b6774f7d8d955bcbf4e1de64f4de0e227780c) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): leading-zero volumes consistently parse as integers (#703)
+
+  Resolves #703. The case-extractor's `parseVolume` used `String(num) === raw`
+  to decide whether a volume was purely numeric. Leading-zero forms
+  (`"01"`, `"001"`) failed that equality check (`String(1) !== "01"`) and
+  fell through to the string branch, producing inconsistent typing:
+
+  | input           | before                     | after                 |
+  | --------------- | -------------------------- | --------------------- |
+  | `0 F.2d 1`      | volume=`0` (number)        | volume=`0` (number) ✓ |
+  | `01 F.2d 1`     | volume=`"01"` (string)     | volume=`1` (number) ✓ |
+  | `001 F.2d 1`    | volume=`"001"` (string)    | volume=`1` (number) ✓ |
+  | `1984-1 F.2d 1` | volume=`"1984-1"` (string) | unchanged ✓           |
+
+  Fix: parse purely-digit volumes via `Number.parseInt` unconditionally
+  (detected by `/^\d+$/`). Hyphenated forms (`1984-1`) still return as
+  strings.
+
+  7 regression tests in `tests/extract/issueLeadingZeroVolume.test.ts`.
+
+- [#733](https://github.com/medelman17/eyecite-ts/pull/733) [`f80f57c`](https://github.com/medelman17/eyecite-ts/commit/f80f57c0c7cb834fb5adfa59570139f93a73f93d) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): misspelled / OCR-mangled month names stripped from court (#717)
+
+  Resolves #717. The date-strip pipeline only knew canonical month names
+  and abbreviations (`Jan`-`Dec`, `January`-`December`). Misspelled or
+  truncated month names (`Jaunary` for January, `Ferbuary` for February,
+  `Marc` for March, `Septmber` for September) leaked into the court field:
+
+  | input                                           | before                    | after              |
+  | ----------------------------------------------- | ------------------------- | ------------------ |
+  | `Smith, 100 F.2d 1 (9th Cir. Jaunary 15, 2020)` | court=`9th Cir. Jaunary`  | court=`9th Cir.` ✓ |
+  | `Smith, 100 F.2d 1 (9th Cir. Ferbuary 2020)`    | court=`9th Cir. Ferbuary` | court=`9th Cir.` ✓ |
+  | `Smith, 100 F.2d 1 (9th Cir. Marc 15, 2020)`    | court=`9th Cir. Marc`     | court=`9th Cir.` ✓ |
+
+  Added a fuzzy-match strip after the canonical month strip: if the
+  trailing word is Title-Case, 3-12 chars, starts with the same letter
+  as a month name, and has Levenshtein distance ≤ 2 from that month,
+  strip it. The first-letter constraint prevents real court abbreviations
+  like `Cal.` (distance 2 from `Jan`) from being mis-stripped.
+
+  A `NO_STRIP_TRAILING` blocklist (Cir, Ct, App, Sup, Dist, Div, etc.)
+  provides an explicit safety net for court abbreviation tokens.
+
+  8 regression tests in `tests/extract/issueMisspelledMonthStrip.test.ts`.
+
+- [#747](https://github.com/medelman17/eyecite-ts/pull/747) [`1f3b86f`](https://github.com/medelman17/eyecite-ts/commit/1f3b86ff5ef36b73a455bfd6a3ffbc8e5e4877db) Thanks [@medelman17](https://github.com/medelman17)! - fix(filter): hard-reject phantoms whose reporter contains a month name (#669)
+
+  Resolves #669. Multi-word "reporter" captures containing a month-name
+  token (`On July`, `From January`, `By December`) are always prose, never
+  real citations — real reporter abbreviations never contain month names.
+  Previously these survived as confidence=0.1 + warning under the
+  penalize path; now they are hard-rejected so consumers never see them.
+
+  | input                                     | before            | after       |
+  | ----------------------------------------- | ----------------- | ----------- |
+  | `¶ 8 On July 11`                          | 1 cite (conf 0.1) | 0 cites ✓   |
+  | `¶ 2 On March 18, 2003`                   | 1 cite (conf 0.1) | 0 cites ✓   |
+  | `1-602 Applications\nOn October 19, 2015` | 1 cite (conf 0.1) | 0 cites ✓   |
+  | `Smith v. Jones, 100 F.2d 1` (real cite)  | unchanged         | unchanged ✓ |
+
+  Added `isMonthInProseReporter` to `applyFalsePositiveFilters`' hard-
+  reject pass alongside the existing `isMonthNameDateMisparse`. The new
+  check fires when the reporter has ≥2 words and any word is a month
+  name (case-insensitive).
+
+  Two previously-skipped tests in `issuePhantomCaseRejection.test.ts`
+  are now enabled. The penalize-mode test in `issue547FullspanOvershoot.test.ts`
+  was updated to assert hard-rejection (the cleaner outcome the issue
+  asked for).
+
+- [#698](https://github.com/medelman17/eyecite-ts/pull/698) [`1d3cbf5`](https://github.com/medelman17/eyecite-ts/commit/1d3cbf57c69ab613ce1f00ef6bfa5d8ee5d62362) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): approximate-year prefixes (`c.`, `circa`, `about`, `cir.`) no longer pollute court
+
+  Extends PR #685 (date-modifier verbs) by catching additional non-court
+  prefixes that leak after year-stripping:
+
+  | input                              | before                | after             |
+  | ---------------------------------- | --------------------- | ----------------- |
+  | `Smith, 100 F.2d 1 (c. 1990)`      | `court="c."`          | `court=undefined` |
+  | `Smith, 100 F.2d 1 (circa 1990)`   | `court="circa"`       | `court=undefined` |
+  | `Smith, 100 F.2d 1 (about 1990)`   | `court="about"`       | `court=undefined` |
+  | `Smith, 100 F.2d 1 (approx. 1990)` | `court="approx."`     | `court=undefined` |
+  | `Smith, 100 F.2d 1 (cir. 1990)`    | `court="cir."` (typo) | `court=undefined` |
+
+  These are approximate-year prefixes that historians, academic writing,
+  and OCR artifacts use when the exact decision date is unknown. The
+  lowercase `cir.` is a common typo for `Cir.`. Added a leading-word
+  check for `c.|circa|about|approx.|approximately|cir.` after year/date
+  stripping.
+
+  8 regression tests in `tests/extract/issueMoreNonCourtPrefixes.test.ts`.
+
+- [#732](https://github.com/medelman17/eyecite-ts/pull/732) [`c4e7621`](https://github.com/medelman17/eyecite-ts/commit/c4e7621338a061c7c7f5f0ffcb1b2138c2a2a484) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): nested year parenthetical does not leak into court (#682)
+
+  Resolves #682. When a citation's year parenthetical contained a nested
+  disposition paren (`(1990 (en banc))`, `(9th Cir. 1990 (per curiam))`),
+  the trailing-year strip couldn't reach the year because `(en banc)`
+  sat between it and end-of-string. The whole `1990 (en banc)` residue
+  leaked into the `court` field:
+
+  | input                                         | before                          | after              |
+  | --------------------------------------------- | ------------------------------- | ------------------ |
+  | `Smith, 100 F.2d 1 (1990 (en banc))`          | court=`1990 (en banc)`          | undefined ✓        |
+  | `Smith, 100 F.2d 1 (9th Cir. 1990 (en banc))` | court=`9th Cir. 1990 (en banc)` | court=`9th Cir.` ✓ |
+
+  Added a leading-pass that strips a trailing nested `\([^()]*\)` before
+  the year/date strips run. The year stays in the parent paren and is
+  extracted normally; the nested disposition is discarded (could be
+  surfaced as structured disposition in a future enhancement).
+
+  4 regression tests in `tests/extract/issueNestedYearParen.test.ts`.
+
+- [#757](https://github.com/medelman17/eyecite-ts/pull/757) [`8a86e2d`](https://github.com/medelman17/eyecite-ts/commit/8a86e2d41ef6a7dea74b928b98afef2df9fe93fb) Thanks [@medelman17](https://github.com/medelman17)! - fix(clean): strip vulgar fractions, numero sign, CJK units pre-NFKC (#605)
+
+  Resolves #605. Sprint A audit identified additional chars beyond
+  ™ ® ℠ © that NFKC expands to multi-char ASCII — `½` → "1⁄2",
+  `№` → "No", `㎡` → "m2", `℃` → "°C", etc. These expansions break
+  the implicit invariant that cleaning never lengthens text, and can
+  drift position mapping or create false-positive citation matches.
+
+  Extended `normalizeUnicode` to strip these chars before NFKC:
+
+  - Vulgar fractions (`¼-¾`, `⅐-⅞`)
+  - Numero sign (`№`)
+  - CJK compatibility units + Letterlike Symbols (`㎀-㏿`, `℀-⅏`)
+
+  These chars are vanishingly rare in legal text — when they do appear
+  (`Case № 12-345`), surrounding context preserves the meaning, so
+  stripping is a safer default than letting NFKC expand inline.
+
+  The cleaned text length is now guaranteed never to _exceed_ the
+  original length under `normalizeUnicode`.
+
+  6 regression tests in `tests/clean/issueNfkcExpansionAudit.test.ts`,
+  including a length-invariant assertion across a sample of inputs.
+
+- [#680](https://github.com/medelman17/eyecite-ts/pull/680) [`9802b4d`](https://github.com/medelman17/eyecite-ts/commit/9802b4df313acefe032da415aefe2dc0f9d5ec18) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): editorial and judge-attribution parentheticals no longer pollute `court` field
+
+  Following the disposition-token fix, several other non-court tokens
+  still leaked into the `court` field when they appeared in the
+  year/court parenthetical position:
+
+  - **Editorial status**: `(n.d.)`, `(no date)`, `(year omitted)`,
+    `(unpub.)`, `(unpublished)`, `(slip op.)`, `(table)`, `(mem.)`
+  - **Judge attribution with role**: `(Smith, J., dissenting)`,
+    `(Jones, J., concurring)`, `(Doe, JJ., joining)` — the existing
+    trailing-only `, J.` guard missed these because the role word
+    (`dissenting`/`concurring`/`joining`) followed the `J.` marker.
+
+  Added two new guards inside `stripDateFromCourt`:
+
+  1. A mid-string `, J.,` / `, JJ.,` followed by a role keyword
+  2. A whole-content regex for editorial status tokens
+
+  Real court abbreviations (`9th Cir.`, `D. Mass.`, `S.D.N.Y.`) continue
+  to pass through unchanged.
+
+  11 regression tests in `tests/extract/issueNonCourtParentheticals.test.ts`.
+
+- [#730](https://github.com/medelman17/eyecite-ts/pull/730) [`a12a7ca`](https://github.com/medelman17/eyecite-ts/commit/a12a7cad47088079d76fbd7968fe6ea98c7adf55) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): adverb-prefixed disposition tokens don't pollute court (#719)
+
+  Resolves #719. PR #678's disposition-token rejection required the
+  disposition to start the content (`^(?:rev'd|aff'd|...|reversed|...)`).
+  When the disposition is prefixed with `now`, `previously`, `formerly`,
+  or `since`, the regex didn't match and the prefix+disposition leaked
+  into court:
+
+  | input                                          | before               | after       |
+  | ---------------------------------------------- | -------------------- | ----------- |
+  | `Smith, 100 F.2d 1 (now reversed, 1990)`       | court=`now reversed` | undefined ✓ |
+  | `Smith, 100 F.2d 1 (previously vacated, 1990)` | leaks                | undefined ✓ |
+  | `Smith, 100 F.2d 1 (formerly aff'd, 1990)`     | leaks                | undefined ✓ |
+  | `Smith, 100 F.2d 1 (since overruled, 1990)`    | leaks                | undefined ✓ |
+
+  Added an optional leading adverb (`(?:(?:now|previously|formerly|since)\s+)?`)
+  before the disposition token. Existing bare-disposition forms continue
+  to be rejected.
+
+  8 regression tests in `tests/extract/issueNowReversedDisposition.test.ts`.
+
+- [#756](https://github.com/medelman17/eyecite-ts/pull/756) [`7209e5e`](https://github.com/medelman17/eyecite-ts/commit/7209e5ebc0b9f6fdadab391d989e35e06c782958) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): `NYC Admin. Code` bare prefix routes to NY (#594)
+
+  Resolves the bare-prefix gap of #594. The canonical `N.Y.C. Admin.
+Code` and spelled-out `New York City Administrative Code` forms were
+  already correct, but the bare-period form (`NYC Admin. Code § 8-107`)
+  was mis-tagged as Georgia by the `ga-pre-1983` fallback because the
+  `nyc-admin-code` pattern only matched the period-rich variant.
+
+  | input                                       | before          | after                      |
+  | ------------------------------------------- | --------------- | -------------------------- |
+  | `NYC Admin. Code § 8-107`                   | code=`Code`, GA | `N.Y.C. Admin. Code`, NY ✓ |
+  | `NYC Admin Code § 8-107` (no `.`)           | code=`Code`, GA | `N.Y.C. Admin. Code`, NY ✓ |
+  | `N.Y.C. Admin. Code § 8-107(1)(a)`          | unchanged       | unchanged ✓                |
+  | `New York City Administrative Code § 8-107` | unchanged       | unchanged ✓                |
+
+  Extended the tokenizer (`nyc-admin-code` pattern) and the matching
+  extractor regex to accept the bare `NYC` prefix alongside the
+  period-rich `N.Y.C.` form.
+
+  4 regression tests in `tests/extract/issueNycAdminCodeBare.test.ts`.
+
+- [#740](https://github.com/medelman17/eyecite-ts/pull/740) [`d9b4473`](https://github.com/medelman17/eyecite-ts/commit/d9b447362e76d8f3091a20cf4dfcf5e1b50bd6eb) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): OCR-typo ordinal reporters normalize to canonical form (#687)
+
+  Resolves #687. Common OCR misreadings and spelled-ordinal variants of
+  the `2d`/`3d` reporter suffix left `normalizedReporter` undefined,
+  breaking parallel-citation grouping and `reporterKey`-based resolution:
+
+  | input                           | before               | after       |
+  | ------------------------------- | -------------------- | ----------- |
+  | `100 F.2nd 1` (spelled ordinal) | normalized=undefined | `F.2d` ✓    |
+  | `100 F.2ds 1` (spurious `s`)    | normalized=undefined | `F.2d` ✓    |
+  | `100 F.2cl 1` (OCR `d`→`cl`)    | normalized=undefined | `F.2d` ✓    |
+  | `100 F.3rd 1` (spelled)         | normalized=undefined | `F.3d` ✓    |
+  | `100 F.3cl 1` (OCR)             | normalized=undefined | `F.3d` ✓    |
+  | `100 Cal.2nd 1`                 | normalized=undefined | `Cal.2d` ✓  |
+  | `100 F.4th 1` (canonical)       | unchanged            | unchanged ✓ |
+
+  `resolveNormalizedReporter` now applies an OCR-typo fallback when the
+  literal reporter is not in reporters-db. The literal `reporter` field
+  on the citation is preserved verbatim — only `normalizedReporter`
+  switches to the canonical key. This lets downstream consumers
+  (`reporterKey`, parallel-group matching) link the typo'd variant to
+  its real reporter without needing to re-clean the source text.
+
+  8 regression tests in `tests/extract/issueOcrTypoReporters.test.ts`.
+
+- [#737](https://github.com/medelman17/eyecite-ts/pull/737) [`d827acf`](https://github.com/medelman17/eyecite-ts/commit/d827acf3b93bf3666c48bd7819a3114c8f146378) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): page ranges in non-Federal case citations followed by a year (#705 partial)
+
+  Case citations written as `<vol> <reporter> <pageStart>-<pageEnd> (<year>)`
+  now extract for the U.S./S.Ct./L.Ed. and generic state-reporter patterns
+  (the Federal Reporter already accepts page ranges). Previously only a bare
+  page number `\d+` was accepted for these, so the citations were silently
+  dropped:
+
+  | input                                 | before  | after    |
+  | ------------------------------------- | ------- | -------- |
+  | `100 U.S. 1-5 (1990)`                 | 0 cites | 1 cite ✓ |
+  | `100 Cal.4th 1-5 (1990)`              | 0 cites | 1 cite ✓ |
+  | `Smith v. Jones, 100 U.S. 1-5 (1990)` | 0 cites | 1 cite ✓ |
+
+  The new page-range alternative is gated on a following year parenthetical,
+  which preserves K.S.A. statute extraction: `K.S.A. 1988 Supp. 44-556` (no
+  year paren) still extracts as a statute, not as a phantom case.
+
+  The `page` field still reports the start of the range (`1` for `1-5`); the
+  full range is in `matchedText`. Surfacing the end page as a structured
+  field is a follow-up.
+
+  8 regression tests in `tests/extract/issuePageRangeHyphenWithYear.test.ts`.
+
+- [#746](https://github.com/medelman17/eyecite-ts/pull/746) [`256a06c`](https://github.com/medelman17/eyecite-ts/commit/256a06c7e14997521ec877ee2bfa74313d8b3056) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): page-range with hyphen and no comma now extracts (#705)
+
+  Resolves #705. `100 F.2d 1-5` (page range without comma) produced
+  zero citations. The federal-reporter tokenizer's page-capture
+  trailing lookahead (`-\D`) required hyphen + non-digit, which
+  rejected the digit-hyphen-digit shape.
+
+  | input                 | before    | after               |
+  | --------------------- | --------- | ------------------- |
+  | `100 F.2d 1-5`        | 0 cites   | page=1 ✓            |
+  | `See 100 F.2d 1-5.`   | 0 cites   | page=1 ✓            |
+  | `100 F.2d 1-5 (1990)` | 0 cites   | page=1, year=1990 ✓ |
+  | `100 F.2d 1`          | unchanged | unchanged ✓         |
+  | `100 F.2d 1, 5`       | unchanged | unchanged ✓         |
+
+  Fix: extend the page capture in both the federal-reporter tokenizer
+  pattern and the `VOLUME_REPORTER_PAGE_REGEX` extractor to accept
+  `\d+-\d+` (range form) alongside `\d+` (single page).
+
+  The `page` field reports the start of the range (1). End-of-range
+  capture as a structured field is not part of this fix.
+
+  5 regression tests in `tests/extract/issuePageRangeHyphen.test.ts`.
+
+- [#690](https://github.com/medelman17/eyecite-ts/pull/690) [`64bfe4a`](https://github.com/medelman17/eyecite-ts/commit/64bfe4a0d06a4a5f511f048a1c7074c4e6d6404b) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): page terminators accept trailing quote, asterisk, angle brackets
+
+  Extends PR #684's terminator fix. Citations followed by trailing quote
+  or markdown asterisk were silently dropped:
+
+  | input                           | before  | after    |
+  | ------------------------------- | ------- | -------- |
+  | `Smith, 100 F.2d 1"`            | 0 cites | 1 cite ✓ |
+  | `Smith, 100 F.2d 1”` (curly)    | 0 cites | 1 cite ✓ |
+  | `Smith, 100 F.2d 1*` (markdown) | 0 cites | 1 cite ✓ |
+  | `Smith, 100 F.2d 1>`            | 0 cites | 1 cite ✓ |
+  | `Smith, 100 F.2d 1<`            | 0 cites | 1 cite ✓ |
+
+  Added `"`, `“`, `”`, `*`, `<`, `>` to the page-terminator character class
+  across all three case-citation patterns. Real reporters never end with
+  these characters, so this is safe and recovers common quoted/markdown
+  trailing forms.
+
+  8 regression tests in `tests/extract/issuePageTerminatorQuoteAsterisk.test.ts`.
+
+- [#684](https://github.com/medelman17/eyecite-ts/pull/684) [`41e4dcb`](https://github.com/medelman17/eyecite-ts/commit/41e4dcb5a53e95f51b735a519ccc055139a4ed08) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): page terminators accept `!`, `?`, em/en dash, possessive `'s`
+
+  The page-terminator character classes in all three case-citation
+  patterns (federal, supreme, state) accepted only `\s`, `$`, parens,
+  comma, semicolon, period, and brackets. Citations followed by
+  common trailing punctuation were silently dropped:
+
+  | input                              | before      | after        |
+  | ---------------------------------- | ----------- | ------------ |
+  | `Smith, 100 F.2d 1!`               | 0 citations | 1 citation ✓ |
+  | `Smith, 100 F.2d 1?`               | 0 citations | 1 citation ✓ |
+  | `Smith, 100 F.2d 1's holding`      | 0 citations | 1 citation ✓ |
+  | `Smith, 100 F.2d 1—a notable case` | 0 citations | 1 citation ✓ |
+  | `Smith, 100 F.2d 1–a notable case` | 0 citations | 1 citation ✓ |
+
+  Added `!`, `?`, em dash (`—`), en dash (`–`), and apostrophe (`'`)
+  to the terminator class. Also added `-` followed by `\D` (non-digit),
+  because `normalizeDashes` rewrites in-word em/en dashes to ASCII `-`
+  before tokenization, so `1—a` arrives as `1-a`. The `\D` lookahead
+  preserves page-range syntax: `K.S.A. 2009 Supp. 44-501(d)(2)` is still
+  parsed as the K.S.A. statute (not as a phantom case with page 44).
+
+  8 regression tests in `tests/extract/issueTrailingPunctTerminator.test.ts`.
+
+- [#762](https://github.com/medelman17/eyecite-ts/pull/762) [`81170f3`](https://github.com/medelman17/eyecite-ts/commit/81170f3db0ce7e72d3f9fd515a0f33c9ba9a3e83) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): parallel cites without year-paren propagate caseName (#653)
+
+  Resolves #653. Parallel-cite caseName propagation required a shared
+  closing parenthetical. When the chain ended at sentence-end (`.` or
+  `;`) without a year-paren — common in older opinions citing parallel
+  reporters — `caseName` did not propagate to the secondary.
+
+  | input                                                          | before                       | after                            |
+  | -------------------------------------------------------------- | ---------------------------- | -------------------------------- |
+  | `Kauffman v. Griesemer, 26 Pa. 407, 67 Am. Dec. 437.`          | secondary caseName=undefined | both = `Kauffman v. Griesemer` ✓ |
+  | `Smith v. Jones, 100 F.2d 1, 200 F. Supp. 5;`                  | secondary caseName=undefined | both = `Smith v. Jones` ✓        |
+  | `Smith v. Jones, 100 F.2d 1, 200 F.2d 5 (1990).`               | unchanged                    | unchanged ✓                      |
+  | `Smith v. Jones, 100 F.2d 1, 200 F. Supp. 456` (no terminator) | unchanged (strict)           | unchanged ✓                      |
+
+  `isParallelChainTerminator` accepts `.` or `;` (followed by space/EOF)
+  as an alternate chain terminator alongside the existing
+  `hasSharedParenthetical` check. EOF alone is still rejected — that's
+  the pre-existing test asserting strict behavior to prevent
+  unrelated-cite grouping in truncated text.
+
+  4 regression tests in `tests/extract/issueParallelNoYearParen.test.ts`.
+
+- [#765](https://github.com/medelman17/eyecite-ts/pull/765) [`95b7843`](https://github.com/medelman17/eyecite-ts/commit/95b78433ad22f79a0c06e805a97651f099881030) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): parseDate handles `Mon., DD, YYYY` (comma after period) (#554)
+
+  Resolves the remaining sub-issue of #554. `parseDate` dropped month/day
+  for the `Mon., DD, YYYY` form (comma immediately after the period).
+  The other non-canonical forms (ISO, European, slash, missing-space-
+  after-period) had already been fixed by prior PRs.
+
+  | input                       | before                       | after       |
+  | --------------------------- | ---------------------------- | ----------- |
+  | `Jan., 15, 2020`            | year=2020, month/day dropped | full date ✓ |
+  | `Feb., 9, 2015`             | year=2015, month/day dropped | full date ✓ |
+  | `Jan. 15, 1990` (canonical) | full date                    | unchanged ✓ |
+  | `Jan.15, 1990` (no space)   | full date                    | unchanged ✓ |
+  | `Jan 15, 1990` (no period)  | full date                    | unchanged ✓ |
+
+  Fix: extended the abbreviated-month regex separator alternation from
+  `(?:\.?\s+|\.\s*)` to `(?:\.?,?\s+|\.,?\s*)` to accept an optional
+  comma between the period and the day.
+
+  5 regression tests in `tests/extract/issueParseDateCommaAfterPeriod.test.ts`.
+
+- [#774](https://github.com/medelman17/eyecite-ts/pull/774) [`4592683`](https://github.com/medelman17/eyecite-ts/commit/4592683cca82a52bffdef341daba3a944868fae8) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): partial-decimal section ranges populate sectionRange (#694 pt 3)
+
+  Resolves part 3 of #694. Bluebook shorthand for state codes with
+  decimal-suffixed sections (`Tex. Bus. & Com. Code Ann. §§ 17.50-.55`,
+  where the trailing endpoint inherits the integer stem) and the full
+  repeated form (`§§ 17.50-17.55`) weren't expanded into structured
+  `sectionRange` data.
+
+  | input                                             | before                          | after                                      |
+  | ------------------------------------------------- | ------------------------------- | ------------------------------------------ |
+  | `Tex. Bus. & Com. Code Ann. §§ 17.50-.55`         | section=`17.50-.55`, no range   | section=`17.50` + range `(17.50, 17.55)` ✓ |
+  | `Tex. Bus. & Com. Code Ann. §§ 17.50-17.55`       | section=`17.50-17.55`, no range | section=`17.50` + range `(17.50, 17.55)` ✓ |
+  | `Va. Code § 18.2-308.2` (regression: not a range) | unchanged                       | unchanged ✓                                |
+  | `Tex. Bus. & Com. Code Ann. § 17.50` (single)     | unchanged                       | unchanged ✓                                |
+
+  `parseBody` recognizes both partial (`.NN`) and full (`X.NN-X.MM`)
+  decimal-range shorthand. The full-repeated form requires the integer
+  stem to match on both sides to avoid mis-parsing VA hyphenated
+  section identifiers (`18.2-308.2`) as ranges.
+
+  Wired sectionRangeEnd through `extractAbbreviated` and `extractNamedCode`
+  so the new sectionRange field is surfaced on the returned
+  StatuteCitation.
+
+  4 regression tests in `tests/extract/issuePartialDecimalSectionRange.test.ts`.
+
+  This completes all 3 sub-issues of #694 across PRs #742, #754, and this PR.
+
+- [#729](https://github.com/medelman17/eyecite-ts/pull/729) [`cdf623a`](https://github.com/medelman17/eyecite-ts/commit/cdf623abdf199d151c9c23ff032777818ac4e72d) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): pincite range accepts asymmetric spacing around hyphen (#722)
+
+  Resolves #722. The pincite range regex required either no spaces or
+  symmetric spaces around the hyphen. The asymmetric form (`5- 7`,
+  `5 -7`) silently dropped the pincite:
+
+  | input                      | before            | after       |
+  | -------------------------- | ----------------- | ----------- |
+  | `Smith, 100 F.2d 1, 5 - 7` | pincite=5         | pincite=5 ✓ |
+  | `Smith, 100 F.2d 1, 5- 7`  | pincite=undefined | pincite=5 ✓ |
+  | `Smith, 100 F.2d 1, 5 -7`  | pincite=5         | pincite=5 ✓ |
+  | `Smith, 100 F.2d 1, 5-7`   | pincite=5         | pincite=5 ✓ |
+
+  Changed `[-–—~]` to `\s*[-–—~]\s*` in three regexes:
+
+  - `PINCITE_REGEX` (extractCase.ts inner)
+  - `LOOKAHEAD_PINCITE_REGEX` (extractCase.ts trailing pincite scan)
+  - `PINCITE_PARSE_REGEX` (pincite.ts numeric parser)
+
+  All asymmetric and symmetric spacing forms now parse correctly.
+
+  5 regression tests in `tests/extract/issuePinciteAsymmetricSpacing.test.ts`.
+
+- [#725](https://github.com/medelman17/eyecite-ts/pull/725) [`855888d`](https://github.com/medelman17/eyecite-ts/commit/855888d952878633a58c50119e899c50708f2e6a) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): pincite parser accepts typography terminator (†, ‡, §, ¶, ©, °)
+
+  Extends PR #724 (page terminator) to the pincite parsers. When a
+  pincite digit was immediately followed by a typographic reference
+  mark (`Smith, 100 F.2d 1, 5†`), the LOOKAHEAD_PINCITE_REGEX and
+  ADDITIONAL_PINCITE_REGEX terminator classes did not include these
+  chars, so the pincite was silently dropped:
+
+  | input                   | before            | after       |
+  | ----------------------- | ----------------- | ----------- |
+  | `Smith, 100 F.2d 1, 5†` | pincite=undefined | pincite=5 ✓ |
+  | `Smith, 100 F.2d 1, 5‡` | undefined         | 5 ✓         |
+  | `Smith, 100 F.2d 1, 5§` | undefined         | 5 ✓         |
+  | `Smith, 100 F.2d 1, 5¶` | undefined         | 5 ✓         |
+  | `Smith, 100 F.2d 1, 5©` | undefined         | 5 ✓         |
+  | `Smith, 100 F.2d 1, 5°` | undefined         | 5 ✓         |
+
+  Added the six typography markers to both pincite-regex terminator
+  character classes.
+
+  8 regression tests in `tests/extract/issuePinciteTypographyTerminator.test.ts`.
+
+- [#739](https://github.com/medelman17/eyecite-ts/pull/739) [`aa7e2f7`](https://github.com/medelman17/eyecite-ts/commit/aa7e2f7172847f27acf433921d43aff93b4de88b) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): case names inside quotation marks now capture caseName (#691)
+
+  Resolves #691. When a case caption was wrapped in quotation marks
+  (`"Smith v. Jones," 100 F.2d 1`), the V_CASE_NAME_REGEX anchored on
+  a trailing comma and never matched — the closing quote sat between
+  the defendant and the comma, breaking the anchor. Both common
+  quote/comma orderings were affected:
+
+  | input                                     | before             | after              |
+  | ----------------------------------------- | ------------------ | ------------------ |
+  | `"Smith v. Jones," 100 F.2d 1` (American) | caseName=undefined | `Smith v. Jones` ✓ |
+  | `"Smith v. Jones", 100 F.2d 1` (British)  | caseName=undefined | `Smith v. Jones` ✓ |
+  | `as held in "Smith v. Jones," 100 F.2d 1` | caseName=undefined | `Smith v. Jones` ✓ |
+  | `“Smith v. Jones,” 100 F.2d 1` (curly)    | caseName=undefined | `Smith v. Jones` ✓ |
+  | `Smith v. Jones, 100 F.2d 1` (no quotes)  | unchanged          | unchanged ✓        |
+
+  Fix: in `extractCaseName`, strip a leading straight/curly quote and a
+  trailing straight/curly quote adjacent to the citation-side comma
+  before applying V_CASE_NAME_REGEX. Quote chars are not legal-citation
+  punctuation; nothing real depends on them surviving at these
+  positions.
+
+  6 regression tests in `tests/extract/issueQuotedCaseName.test.ts`.
+
+- [#769](https://github.com/medelman17/eyecite-ts/pull/769) [`2f3af24`](https://github.com/medelman17/eyecite-ts/commit/2f3af2448530f87e61eb7b9b849f4b20b7ec87a4) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): semicolon between page and pincite still extracts year+court (#525)
+
+  Resolves the semicolon-pincite sub-issue of #525. OCR'd older
+  opinions sometimes use a semicolon between page and pincite
+  (`256 F.Supp. 572; 573-574 (S.D.N.Y. 1966)`). The comma-only
+  separator in both `LOOKAHEAD_PINCITE_REGEX` and `LOOKAHEAD_PAREN_REGEX`
+  dropped both the pincite AND the trailing year/court paren.
+
+  | input                                                    | before                       | after                                      |
+  | -------------------------------------------------------- | ---------------------------- | ------------------------------------------ |
+  | `256 F.Supp. 572; 573-574 (S.D.N.Y. 1966)`               | pincite/year/court=undefined | pincite=573, year=1966, court=`S.D.N.Y.` ✓ |
+  | `Smith, 100 F.2d 1; 5-7 (9th Cir. 1990)`                 | pincite/year=undefined       | pincite=5, year=1990 ✓                     |
+  | `256 F.Supp. 572, 573 (S.D.N.Y. 1966)` (canonical comma) | unchanged                    | unchanged ✓                                |
+  | `256 F.Supp. 572 at 573 (S.D.N.Y. 1966)` (at form)       | unchanged                    | unchanged ✓                                |
+
+  Both lookahead regexes now accept `[,;]` as the page-to-pincite
+  separator.
+
+  4 regression tests in `tests/extract/issueSemicolonPincite.test.ts`.
+
+- [#677](https://github.com/medelman17/eyecite-ts/pull/677) [`b73d042`](https://github.com/medelman17/eyecite-ts/commit/b73d0428cb6e0eb669aa596c86b3992f212afba5) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): shortFormCase partyName disambiguation works when antecedent has no `v.`
+
+  When two full case citations shared the same volume + reporter and the
+  antecedents were one-party references (`Smith, 100 F.2d 1.`,
+  `Doe, 100 F.2d 5.`), the shortFormCase resolver fell back to recency
+  because the antecedents had `plaintiffNormalized`/`defendantNormalized`
+  both undefined (the `v.` separator is what splits caseName into
+  plaintiff + defendant). The disambiguation block at
+  `DocumentResolver.ts:884` only checked those two fields, so
+  `Smith, 100 F.2d at 3` resolved to **Doe** (most recent same-vol+reporter)
+  instead of **Smith** (correct party-name match).
+
+  Fix: in the party-name fallback, also check the antecedent's normalized
+  `caseName` when neither plaintiff nor defendant is populated. Single-
+  party shortform anchors now resolve correctly:
+
+  - `Smith, 100 F.2d 1. Doe, 100 F.2d 5. Smith, 100 F.2d at 3.` → resolvedTo=0 (Smith) ✓
+  - `Smith, 100 F.2d 1. Doe, 100 F.2d 5. Roe, 100 F.2d 9. Smith, 100 F.2d at 3.` → resolvedTo=0 ✓
+
+  Full `v.` antecedents continue to resolve via the existing plaintiff/
+  defendant check unchanged.
+
+  6 new tests in `tests/resolve/issueShortformPartynameDisambig.test.ts`
+  cover single-party + multi-party scenarios with same vol+reporter.
+
+- [#689](https://github.com/medelman17/eyecite-ts/pull/689) [`5a0ef9b`](https://github.com/medelman17/eyecite-ts/commit/5a0ef9b1cd3e9a81633dd6578a683e8992030b70) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): shortFormCase partyName uses token-sequence match (no prefix collisions)
+
+  PR #677's party-name disambiguation block used plain substring containment
+  (`name.includes(targetParty) || targetParty.includes(name)`), which
+  caused prefix collisions:
+
+  - `Smith v. Jones, 100 F.2d 1. Smithers v. Brown, 100 F.2d 50. Smith, 100 F.2d at 7.`
+    → resolvedTo=1 (Smithers, wrong) — `"Smithers".includes("Smith")` ✗
+    → now resolvedTo=0 (Smith, correct) ✓
+  - `Doe v. Acme, 100 F.2d 1. Doering v. Beta, 100 F.2d 50. Doe, 100 F.2d at 7.`
+    → similarly fixed
+
+  Switched to the existing `containsTokenSequence` helper (whole-word,
+  sequential containment) so `Smith` matches `Smith Industries` but not
+  `Smithers`.
+
+  Additionally, renormalized the short-form's `partyName` through the
+  resolver's own `normalizePartyName` (instead of using the raw
+  `partyNameNormalized` from extraction). Corporate suffixes (`Inc.`,
+  `LLC`, `Corp.`) and connectors (`et al.`) are now stripped on both
+  sides of the comparison so `Smith, Inc., 100 F.2d at 7` matches a
+  `Smith v. Jones` antecedent.
+
+  5 regression tests in
+  `tests/resolve/issueShortformPartyNameSubstringCollision.test.ts`.
+
+- [#745](https://github.com/medelman17/eyecite-ts/pull/745) [`554836f`](https://github.com/medelman17/eyecite-ts/commit/554836f2cbcf797294009c569b00109dc7a6718a) Thanks [@medelman17](https://github.com/medelman17)! - fix(clean): soft-wrapped pincite ranges (`5-\n7`) preserve hyphen (#681)
+
+  Resolves #681. `rejoinHyphenatedWords` stripped every `<word>-\n<word>`
+  shape on the assumption it was a wrapped word (`Dil-\nlinger` →
+  `Dillinger`). A wrapped pincite range — `5-\n7` — got the same
+  treatment and fused into a fabricated `57` pincite that didn't exist
+  in the source.
+
+  | input                        | before        | after                      |
+  | ---------------------------- | ------------- | -------------------------- |
+  | `5-\n7`                      | `57`          | `5-7` ✓                    |
+  | `100 F.2d 1, 5-\n7 (1990)`   | pincite=`57`  | pincite=`5`, range `5-7` ✓ |
+  | `Dil-\nlinger` (word wrap)   | `Dillinger`   | unchanged ✓                |
+  | `F. Sup-\np. 3d` (word wrap) | `F. Supp. 3d` | unchanged ✓                |
+
+  Fix: `rejoinHyphenatedWords` now preserves the hyphen when both sides
+  of the wrap are digits (range form). Letter on either side keeps the
+  existing word-rejoin behavior.
+
+  5 regression tests in `tests/clean/issueSoftWrapPinciteRange.test.ts`.
+
+- [#706](https://github.com/medelman17/eyecite-ts/pull/706) [`a05c620`](https://github.com/medelman17/eyecite-ts/commit/a05c6201097867284cbbd390789e8c3526d0d0bd) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): Statutes at Large pincite accepts thousands-grouping commas
+
+  Extends PR #695 (which fixed comma-grouped pages on Fed. Reg. and
+  Statutes at Large) to also handle comma-grouped pincites. Previously,
+  `134 Stat. 1,234, 1,236` parsed `pincite=1` instead of `1236` because
+  the pincite regex `^,\s*(\d+)` stopped at the first comma in the
+  pincite token.
+
+  | input                          | before               | after                     |
+  | ------------------------------ | -------------------- | ------------------------- |
+  | `134 Stat. 1,234, 1,236`       | page=1234, pincite=1 | page=1234, pincite=1236 ✓ |
+  | `134 Stat. 1,234, 1,236-1,240` | range broken         | pincite=1236, end=1240 ✓  |
+
+  Extended `SAL_PINCITE_REGEX` to accept `\d{1,3}(?:,\d{3})+|\d+` on both
+  endpoints. Integer parse strips commas. Abbreviated-end-page detection
+  uses post-strip digit length so `285-99` still expands to `299`.
+
+  5 regression tests in `tests/extract/issueStatPinciteComma.test.ts`.
+
+- [#754](https://github.com/medelman17/eyecite-ts/pull/754) [`0b103e2`](https://github.com/medelman17/eyecite-ts/commit/0b103e2e271696c0e156f7670c4431418c865eba) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): state statute subsection ranges populate subsectionRange (#694)
+
+  Resolves part 2 of #694. State statute extractors (`named-code` for
+  `Cal. Civ. Code §...`, `extractCaBareCode` for `Civ. Code §...`)
+  dropped the `-(c)` subsection-range trailer entirely. Federal USC
+  already populated `subsectionRange: {start, end}` for the same shape.
+
+  | input                                       | before                     | after                     |
+  | ------------------------------------------- | -------------------------- | ------------------------- |
+  | `Cal. Civ. Code §§ 1714.5(a)-(c)`           | subsection=`(a)`, no range | `(a)` + range `(a)→(c)` ✓ |
+  | `Cal. Penal Code § 148(b)-(d)`              | subsection=`(b)`, no range | `(b)` + range `(b)→(d)` ✓ |
+  | `42 U.S.C. § 1983(a)-(c)` (federal control) | unchanged                  | unchanged ✓               |
+  | `Cal. Civ. Code § 1714.5(a)` (single)       | unchanged                  | unchanged ✓               |
+
+  Four parallel sites updated:
+
+  1. `named-code` tokenizer pattern in `statutePatterns.ts`
+  2. `buildCaBareCodeRegex` tokenizer in `caBareCodes.ts`
+  3. `extractNamedCode` extractor regex + parseBody destructure + return
+  4. `extractCaBareCode` extractor regex + parseBody destructure + return
+
+  4 regression tests in `tests/extract/issueStateSubsectionRange.test.ts`.
+
+  Parts 1 and 3 of #694 (`to` connector — fixed earlier in PR #742;
+  partial-range `.55` semantics) closed elsewhere.
+
+- [#712](https://github.com/medelman17/eyecite-ts/pull/712) [`6c72b71`](https://github.com/medelman17/eyecite-ts/commit/6c72b713ec1816276cb651403203f5e03635a356) Thanks [@medelman17](https://github.com/medelman17)! - fix(statute): publisher/supplement markers no longer mis-parsed as subsection
+
+  The statute body parser's `SUBSECTION_RE` accepted any paren content as
+  a subsection chain. Bluebook publisher/supplement markers and
+  parenthetical context phrases were silently captured as `subsection`:
+
+  | input                                 | before                          | after       |
+  | ------------------------------------- | ------------------------------- | ----------- |
+  | `42 U.S.C. § 1983 (Supp. III)`        | subsection=`(Supp. III)`        | undefined ✓ |
+  | `42 U.S.C. § 1983 (West)`             | subsection=`(West)`             | undefined ✓ |
+  | `42 U.S.C. § 1983 (Cum. Supp. 2020)`  | subsection=`(Cum. Supp. 2020)`  | undefined ✓ |
+  | `28 U.S.C. § 1331 (federal question)` | subsection=`(federal question)` | undefined ✓ |
+
+  Reject paren content as a subsection when it contains internal whitespace
+  OR matches a known publisher word (`West`, `Lexis`, `Supp.`, `Cum.`,
+  `Pamphlet`, `Pocket`). When rejected, also strip the paren content from
+  the `section` field so section stays clean (`1331`, not `1331 (federal
+question)`).
+
+  Wisconsin's idiosyncratic `48.415(l)(a)3` format (#414) where the
+  section legitimately contains parens is unaffected — the reject-and-
+  strip path only fires when the rejection criteria match.
+
+  7 regression tests in `tests/extract/issueStatuteSupplementSubsection.test.ts`.
+
+- [#742](https://github.com/medelman17/eyecite-ts/pull/742) [`c450199`](https://github.com/medelman17/eyecite-ts/commit/c4501991d565802a6329b8ed00e1fd75e40ac0d7) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): `§§ N to M` statute ranges populate sectionRange (#694)
+
+  Resolves part 1 of #694. `§§ 1983 to 1985` produced two sibling
+  statute citations with no range marker, despite `to` being a
+  canonical Bluebook range connector.
+
+  | input                        | before                         | after                                                      |
+  | ---------------------------- | ------------------------------ | ---------------------------------------------------------- |
+  | `42 U.S.C. §§ 1983 to 1985`  | 2 cites (1983, 1985), no range | 1 cite with `sectionRange: {start: "1983", end: "1985"}` ✓ |
+  | `42 U.S.C. §§ 1983 and 1985` | 2 siblings                     | unchanged ✓                                                |
+  | `42 U.S.C. §§ 1983, 1984`    | 2 siblings                     | unchanged ✓                                                |
+  | `42 U.S.C. § 1983`           | 1 cite                         | unchanged ✓                                                |
+
+  `expandPluralSectionList` now captures the connector substring. When
+  the connector matches `^\s+to\s+$` (range form), it populates
+  `sectionRange` on the head citation and skips emitting the sibling.
+  Comma/and connectors continue to emit siblings (list semantics).
+
+  5 regression tests in `tests/extract/issueStatuteRangeTo.test.ts`.
+
+  Subsection range gaps and partial-range semantics (parts 2 and 3 of
+  #694) remain open.
+
+- [#748](https://github.com/medelman17/eyecite-ts/pull/748) [`3b4d6e3`](https://github.com/medelman17/eyecite-ts/commit/3b4d6e31ed91ca5dfba485c309c60bc5b3fb2997) Thanks [@medelman17](https://github.com/medelman17)! - fix(score): `inheritSubsequentHistoryCaseName` recomputes child confidence (#613)
+
+  Resolves #613. `inheritSubsequentHistoryCaseName` mutated `caseName` /
+  `plaintiff` / `defendant` onto subsequent-history child citations
+  AFTER `buildCaseCitation` had already locked in their confidence
+  score. The +0.15 caseName bonus never fired for the child.
+
+  This is the same bug pattern as #556 (parallel-cite secondaries),
+  fixed there in PR #611. Mechanical port: call `computeCaseConfidence`
+  on each child after the caption mutation.
+
+  | input                                                           | before                                 | after                    |
+  | --------------------------------------------------------------- | -------------------------------------- | ------------------------ |
+  | `Smith v. Jones, 100 F.2d 1 (9th Cir. 1990), aff'd, 200 U.S. 5` | child confidence missed caseName bonus | child confidence ≥ 0.9 ✓ |
+  | `Smith v. Jones, 100 F.2d 1, rev'd, 200 U.S. 5`                 | child confidence missed caseName bonus | child confidence ≥ 0.9 ✓ |
+  | `Smith v. Jones, 100 F.2d 1` (standalone)                       | unchanged                              | unchanged ✓              |
+
+  3 regression tests in `tests/extract/issueSubsequentHistoryConfidence.test.ts`.
+
+- [#720](https://github.com/medelman17/eyecite-ts/pull/720) [`d6a5aa1`](https://github.com/medelman17/eyecite-ts/commit/d6a5aa1b257bd743a91522d45fef4fe75a27a4ba) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): supra `partyName` strips additional sentence-initial connectors
+
+  `SUPRA_PARTY_PREFIX_REGEX` stripped `See`, `Cf.`, `Compare`, `Accord`,
+  `But see`, `But cf.`, `E.g.`, `Also`, `In` (non-`In re`), and `Then`.
+  It did not strip bare `But`, `However`, `Moreover`, `Therefore`,
+  `Indeed`, or `Contra` (Bluebook contrastive signal). Result: when a
+  supra followed a contrastive connector in prose, `partyName` absorbed
+  the connector:
+
+  | input                          | before                      | after       |
+  | ------------------------------ | --------------------------- | ----------- |
+  | `But Smith, supra, at 7`       | `partyName="But Smith"`     | `"Smith"` ✓ |
+  | `However Smith, supra, at 7`   | `partyName="However Smith"` | `"Smith"` ✓ |
+  | `Moreover Smith, supra, at 7`  | leaks                       | `"Smith"` ✓ |
+  | `Therefore Smith, supra, at 7` | leaks                       | `"Smith"` ✓ |
+  | `Indeed Smith, supra, at 7`    | leaks                       | `"Smith"` ✓ |
+  | `Contra Smith, supra, at 7`    | leaks                       | `"Smith"` ✓ |
+
+  Added `But`, `Contra`, `However`, `Moreover`, `Therefore`, `Indeed` to
+  the alternation. Existing `In(?!\s+re\b)` negative lookahead is
+  unchanged.
+
+  9 regression tests in `tests/extract/issueSupraButPrefix.test.ts`.
+
+- [#752](https://github.com/medelman17/eyecite-ts/pull/752) [`1b1270b`](https://github.com/medelman17/eyecite-ts/commit/1b1270b925d56f876ec5f1ee2f037f699ea32b4e) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): topological inheritance for multi-link history chains (#620)
+
+  Resolves #620. `inheritSubsequentHistoryCaseName` iterated linearly and
+  worked for multi-link chains (`<root>, aff'd, <A>, cert. denied, <B>`)
+  only because chain links appear in document order. Any future re-
+  ordering of the citations array would silently break multi-link
+  propagation.
+
+  Fix: run the inheritance loop until quiescence (fixed-point iteration).
+  Robust to array order, bounded by chain depth + 1.
+
+  3 regression tests in `tests/extract/issueTopologicalInheritance.test.ts`
+  covering two-link chains, single-link controls, and standalone-cite
+  controls.
+
+- [#744](https://github.com/medelman17/eyecite-ts/pull/744) [`98001d6`](https://github.com/medelman17/eyecite-ts/commit/98001d61c7a076215bc16adc1543690e1229d60e) Thanks [@medelman17](https://github.com/medelman17)! - fix(clean): strip ™ ® ℠ © before NFKC normalization (#693)
+
+  Resolves part 1 of #693. NFKC normalization decomposed `™` → "TM",
+  `®` → "(R)", `℠` → "SM" inline, which corrupted party names
+  (`Smith™ v. Jones®` produced caseName=`SmithTM v. Jones`) and broke
+  case-name backscan.
+
+  | input                         | before                       | after              |
+  | ----------------------------- | ---------------------------- | ------------------ |
+  | `Smith™ v. Jones, 100 F.2d 1` | caseName=`SmithTM v. Jones`  | `Smith v. Jones` ✓ |
+  | `Smith v. Jones®, 100 F.2d 1` | caseName=`Smith v. Jones(R)` | `Smith v. Jones` ✓ |
+  | `Acme℠ v. Beta, 100 F.2d 1`   | caseName=`AcmeSM v. Beta`    | `Acme v. Beta` ✓   |
+  | `Smith v. Jones, 100 F.2d 1`  | unchanged                    | unchanged ✓        |
+
+  Fix: in `normalizeUnicode`, strip the four mark symbols (`™ ® ℠ ©`)
+  BEFORE applying NFKC. They are decorative and never affect canonical
+  citation text.
+
+  Em-dash separators, ellipses, and zero-width-space-as-separator
+  (other parts of #693) have different root causes and remain open.
+
+  6 regression tests in `tests/extract/issueTrademarkSymbols.test.ts`.
+
+- [#758](https://github.com/medelman17/eyecite-ts/pull/758) [`c781704`](https://github.com/medelman17/eyecite-ts/commit/c781704a9180d324133e5e291e1836ba01d5ebb5) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): treatise author-prefixed form recognized (#643)
+
+  Resolves #643. The treatise extractor missed Bluebook R15's canonical
+  full-author form (`5A Charles Alan Wright & Arthur R. Miller, Federal
+Practice and Procedure § 1357`) — the dominant style in modern
+  federal briefs and law-review footnotes.
+
+  | input                                                                              | before    | after                                              |
+  | ---------------------------------------------------------------------------------- | --------- | -------------------------------------------------- |
+  | `5A Charles Alan Wright & Arthur R. Miller, Federal Practice and Procedure § 1357` | 0 cites   | volume=5, title=`Federal Practice and Procedure` ✓ |
+  | `2 Wayne LaFave, Criminal Law § 5.1`                                               | 0 cites   | volume=2, title=`Criminal Law` ✓                   |
+  | `5 Wright & Miller, Federal Practice and Procedure § 1290` (compact form)          | unchanged | unchanged ✓                                        |
+  | `1 Witkin, Cal. Procedure (5th ed. 2008) § 234` (compact + edition)                | unchanged | unchanged ✓                                        |
+
+  Changes:
+
+  - Volume admits an optional letter suffix (`5A`, `13C`) for sub-volume citations
+  - Added a `KNOWN_TREATISE_BARE_TITLES` alternation (just the title, no embedded author)
+  - Tokenizer + extractor regexes now accept either the compact form (winning by alternation order to preserve existing tests) OR an author-prefix + bare title
+  - Author prefix constrained to capitalized words optionally joined by `&`, so prose can't false-positive
+
+  Known limitation (not in this patch): trailing `(3d ed. 2004)` parenthetical AFTER the section is not yet captured as edition/year. The existing pattern only handles edition-paren BEFORE the section.
+
+  5 regression tests in `tests/extract/issueTreatiseAuthorPrefix.test.ts`.
+
+- [#724](https://github.com/medelman17/eyecite-ts/pull/724) [`7461c54`](https://github.com/medelman17/eyecite-ts/commit/7461c542ea69d3c33cdd3d7668d48705c9d6588a) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): page terminator accepts typography / footnote markers (†, ‡, §, ¶, ©, °)
+
+  When a citation was immediately followed by a typographic reference
+  mark (`100 F.2d 1†`, `100 F.2d 1‡`, `100 F.2d 1§`), the terminator
+  character class did not include these characters and the whole citation
+  was silently dropped:
+
+  | input                | before  | after    |
+  | -------------------- | ------- | -------- |
+  | `Smith, 100 F.2d 1†` | 0 cites | 1 cite ✓ |
+  | `Smith, 100 F.2d 1‡` | 0 cites | 1 cite ✓ |
+  | `Smith, 100 F.2d 1§` | 0 cites | 1 cite ✓ |
+  | `Smith, 100 F.2d 1¶` | 0 cites | 1 cite ✓ |
+  | `Smith, 100 F.2d 1©` | 0 cites | 1 cite ✓ |
+  | `Smith, 100 F.2d 1°` | 0 cites | 1 cite ✓ |
+
+  Added `†`, `‡`, `§`, `¶`, `©`, `°` to the page-terminator character
+  class across all three case patterns. Real reporters never end with
+  these characters.
+
+  7 regression tests in `tests/extract/issueTypographyTerminator.test.ts`.
+
+- [#718](https://github.com/medelman17/eyecite-ts/pull/718) [`2d14a6b`](https://github.com/medelman17/eyecite-ts/commit/2d14a6b0e7cda4ca01d38832d03abd0b08509daf) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): URL/filepath in court parenthetical no longer polluting court field
+
+  When a citation's court parenthetical contained a URL (web link or
+  filepath), the URL leaked into the `court` field. Real court
+  abbreviations never contain `://` or `file:///`:
+
+  | input                                                  | before                         | after               |
+  | ------------------------------------------------------ | ------------------------------ | ------------------- |
+  | `Smith, 100 F.2d 1 (file:///opinions/100-f2d-1.pdf)`   | `court="file:///opinions/..."` | `court=undefined` ✓ |
+  | `Smith, 100 F.2d 1 (https://example.com/100-f2d-1)`    | leaks                          | `court=undefined` ✓ |
+  | `Smith, 100 F.2d 1 (avail. at https://courts.gov/...)` | leaks                          | `court=undefined` ✓ |
+
+  Added a URL-detection check in `stripDateFromCourt` — `://` (any URI
+  scheme) or `file:///` triggers rejection.
+
+  6 regression tests in `tests/extract/issueUrlInParensCourt.test.ts`.
+
+- [#728](https://github.com/medelman17/eyecite-ts/pull/728) [`a6adc4f`](https://github.com/medelman17/eyecite-ts/commit/a6adc4f92f1de58c99033c580d0015509d1d4c43) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): volume/page reference parentheticals not parsed as court (#700)
+
+  Resolves #700. Parentheticals starting with volume/page reference
+  tokens (`Vol. 100`, `p. 5`, `at 7`, `note 7`) leaked into the `court`
+  field. Worse, the trailing-day-strip regex chewed 1-2 digits off
+  `Vol. 100` producing the malformed `court="Vol. 1"`.
+
+  | input                          | before         | after       |
+  | ------------------------------ | -------------- | ----------- |
+  | `Smith, 100 F.2d 1 (Vol. 100)` | court=`Vol. 1` | undefined ✓ |
+  | `Smith, 100 F.2d 1 (p. 5)`     | court=`p.`     | undefined ✓ |
+  | `Smith, 100 F.2d 1 (at 7)`     | court=`at`     | undefined ✓ |
+  | `Smith, 100 F.2d 1 (note 7)`   | court=`note`   | undefined ✓ |
+
+  Added an early-exit check at the top of `stripDateFromCourt` that
+  rejects parentheticals starting with `Vol.|vol.|p.|pp.|at|n.|note`
+  followed by a digit. This runs BEFORE the date-strip pipeline so the
+  digits don't get chewed away.
+
+  9 regression tests in `tests/extract/issueVolParenNotCourt.test.ts`.
+
+- [#753](https://github.com/medelman17/eyecite-ts/pull/753) [`035bb44`](https://github.com/medelman17/eyecite-ts/commit/035bb44d8cc80d23c0c570618c3172acfd9dff6d) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): strip variable single-letter prefix from plaintiff (#710)
+
+  Resolves part of #710. When `<single-letter>. ` appears immediately
+  before what looks like a party name (`held that X. Smith v. Jones`)
+  and the trim block fires (because the regex captured surrounding
+  prose context), strip the single-letter prefix — it's a sentence-
+  internal variable, not an initial.
+
+  Disambiguator: the dropped word immediately before the single-letter
+  token must be a lowercase ≥4-char word (verb/conjunction like
+  `that`/`because`/`unless`/`when`). Signal contexts (`See J. Smith`)
+  and procedural-prefix contexts (`In re J. Smith`) are unaffected
+  because those drop different prefixes.
+
+  | input                                             | before               | after       |
+  | ------------------------------------------------- | -------------------- | ----------- |
+  | `The Smith case held that X. Smith v. Jones, ...` | plaintiff=`X. Smith` | `Smith` ✓   |
+  | `In re J. Smith v. Jones`                         | plaintiff=`J. Smith` | unchanged ✓ |
+  | `See J. Smith v. Jones`                           | plaintiff=`J. Smith` | unchanged ✓ |
+  | `K. Brown was right; M. Jones v. K. Brown`        | plaintiff=`M. Jones` | unchanged ✓ |
+  | `The court held that K. Brown v. Smith`           | plaintiff=`K. Brown` | `Brown` ✓   |
+
+  Known limitation (not covered by this fix): standalone shapes where
+  the regex doesn't trim at all (e.g., `held because X. Smith v. Y`
+  with no longer surrounding prose) still produce `X. Smith`. Those
+  need a different anchor and are deferred.
+
+  5 regression tests in `tests/extract/issueXVarPrefixStrip.test.ts`.
+
+- [#714](https://github.com/medelman17/eyecite-ts/pull/714) [`01a6914`](https://github.com/medelman17/eyecite-ts/commit/01a6914fa1909d4c8f37ce782139b0f8cd267661) Thanks [@medelman17](https://github.com/medelman17)! - fix(extract): year+comma+modifier form (`1990, en banc`) no longer leaks into court
+
+  Extends PR #704. The strip-pass for trailing year+modifier accepted only
+  whitespace between year and modifier (`1990 mem.`). Bluebook also allows
+  a comma form (`1990, en banc`, `1990, per curiam`):
+
+  | input                         | before                           | after                |
+  | ----------------------------- | -------------------------------- | -------------------- |
+  | `(9th Cir. 1990, en banc)`    | `court="9th Cir. 1990, en banc"` | `court="9th Cir."` ✓ |
+  | `(9th Cir. 1990, per curiam)` | leaks                            | `court="9th Cir."` ✓ |
+  | `(1990, mem.)`                | `court="1990, mem."`             | `court=undefined` ✓  |
+
+  The regex now accepts `\d{4}(?:\s+|,\s+)<modifier>` so both forms work.
+
+  6 regression tests in `tests/extract/issueYearCommaModifier.test.ts`.
+
+- [#675](https://github.com/medelman17/eyecite-ts/pull/675) [`ae1c143`](https://github.com/medelman17/eyecite-ts/commit/ae1c14357d8723aa1075638b58bf302dcc86192d) Thanks [@medelman17](https://github.com/medelman17)! - test(extract): adversarial-input regression suite round 2 — 16 passing + 4 documented gaps
+
+  Continued probing the extractor with adversarial inputs. Added 20 more
+  regression tests in `tests/extract/issueAdversarialInputs2.test.ts`:
+
+  **Verified safe today (16 passing):**
+
+  - Form feed character (`\f`) and line breaks inside citations normalize correctly
+  - String citation grouping with `;` separator and `and` connector
+  - String cites with mixed leading signals (`See`, `see also`, `cf.`)
+  - `Id.` resolves to immediately preceding case (with `resolve: true`)
+  - `Id.` chain anchors to MOST RECENT case across multiple
+  - `Id.` skips over intervening statute and resolves to the case
+  - `Id.` without antecedent doesn't crash (resolvedTo = undefined)
+  - `supra` after parallel cite resolves to the parallel group
+  - Non-English party names (accented characters)
+  - Annotation roundtrip with template wrapping
+  - Annotation handles overlapping cites
+  - Annotation no-op when neither template nor callback provided
+  - Bare-section pincite (`100 F.2d 100` with no pincite) extracts
+
+  **Documented gaps (4 `it.todo`):**
+
+  - Soft hyphen `­` (U+00AD) inside reporter breaks extraction (PDF artifact)
+  - Page-number artifact `Smith, 100\n— 14 —\nF.2d 123` breaks extraction
+  - Paragraph pincite `¶ 12` not captured by pincite parser
+  - URL with citation-shaped path doesn't currently false-positive (documented invariant)
+
+  No production code changes — pure verification + documentation of current
+  behavior. The annotate-roundtrip tests are particularly valuable since
+  the annotation API hasn't had broad smoke coverage in the regression
+  suite before.
+
+- [#672](https://github.com/medelman17/eyecite-ts/pull/672) [`0994fed`](https://github.com/medelman17/eyecite-ts/commit/0994fed67d8262ff5b52ca5d7006e1d789d130fe) Thanks [@medelman17](https://github.com/medelman17)! - test(extract): adversarial-input regression suite documenting current behavior + 8 known gaps
+
+  Probed the extractor with adversarial inputs across multiple categories
+  to find ways to break it. Added 21 regression tests in
+  `tests/extract/issueAdversarialInputs.test.ts`:
+
+  **Verified safe today (13 passing):**
+
+  - Empty string, single space, just punctuation — no crash
+  - 100 repeated identical citations — completes in <500ms
+  - Extremely long case names (500-char party names) — no hang
+  - Deeply nested parens, unbalanced parens — no crash
+  - `v.` inside party names — handled
+  - Unicode normalization for NBSP / tab between volume / reporter / page
+  - Fullwidth digits normalized to ASCII
+  - Smart-quote handling in case names
+  - HTML formatting tags split across citation
+  - HTML entities (numeric) treated as literal — sensible no-op
+
+  **Documented gaps (8 `it.todo`):**
+
+  - `100 U..S. 123` (doubled period) extracts phantom reporter `U..S.`
+  - `100 US 123` (missing periods) extracts 2-letter all-caps as reporter
+  - `100 U . S . 123` (spaced periods) doesn't extract
+  - `100 U.S. 1,234` (thousands separator) parses as page=1+pincite=234
+  - `100 U.S. 1-5` (page range) mis-routes to journal
+  - Implausible volumes: `0 U.S. 1`, `1 U.S. 0`, `1234567890 U.S. 1`
+
+  Each gap has a comment explaining why it wasn't fixed in this PR — most
+  require coordinated changes across multiple patterns or the FP filter
+  that would break pre-existing tests. The `.todo` markers ensure these
+  surface in test counts as known follow-up work.
+
+  No production code changes — pure documentation of current behavior.
+
+- [#751](https://github.com/medelman17/eyecite-ts/pull/751) [`3da5d01`](https://github.com/medelman17/eyecite-ts/commit/3da5d01210c48698779048254829308abe9d94c6) Thanks [@medelman17](https://github.com/medelman17)! - test: backfill isPlausibleYear coverage for FedReg + StatutesAtLarge (#623)
+
+  Resolves #623. Sprint E audit verified `isPlausibleYear` is applied
+  at the FedReg and StatutesAtLarge extractors but no direct
+  integration tests covered those sites. Added 5 tests covering the
+  [1700, currentYear+1] window for both extractors.
+
+  No code changes. Test-only.
+
 ## 0.26.0
 
 ### Minor Changes
@@ -1196,7 +2890,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-              275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+                275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -1222,7 +2916,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-              People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+                People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
