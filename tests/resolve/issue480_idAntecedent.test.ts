@@ -214,12 +214,18 @@ describe("Issue #480: Id./short-form antecedent resolution", () => {
       expect(id.resolution?.resolvedTo).toBe(citations.indexOf(smith))
     })
 
-    it("case → statute → Id. (no pincite) skips the statute", () => {
+    it("case → statute → Id. (no pincite) resolves to statute (#721, Bluebook Rule 4.1)", () => {
+      // Per Bluebook Rule 4.1, bare `Id.` (no pincite) attaches to the
+      // IMMEDIATELY preceding cited authority of any type — not the most
+      // recent case. The earlier behavior was changed in #721 because the
+      // family-preference filter overrode positional priority for bare Id.
+      // Id. with an explicit pincite (`Id. at 125`) still uses family
+      // preference, as that's a meaningful disambiguator.
       const text = "Smith v. Jones, 500 F.2d 123 (2020). 42 U.S.C. § 1983. Id."
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
-      const smith = citations.find((c) => c.type === "case")!
+      const statute = citations.find((c) => c.type === "statute")!
       const id = citations.find((c) => c.type === "id")!
-      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(smith))
+      expect(id.resolution?.resolvedTo).toBe(citations.indexOf(statute))
     })
 
     it("statute-only context: Id. still resolves to the statute (only option)", () => {

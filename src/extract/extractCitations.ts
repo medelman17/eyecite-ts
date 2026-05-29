@@ -415,9 +415,25 @@ export function extractCitations(
       case "statute":
         citation = extractStatute(token, transformationMap)
         break
-      case "journal":
-        citation = extractJournal(token, transformationMap, cleaned)
+      case "journal": {
+        const journalCitation = extractJournal(token, transformationMap, cleaned)
+        // Phantom-prose filter (#615). Without a journals-db gate, the broad
+        // journal regex can fire on `[vol] [Capitalized Run] [page]` shapes
+        // where the capitalized run is just sentence prose (`1974 Senator
+        // Smith Jones 500`). Real journal abbreviations are either single
+        // words (`Neurology`, `JAMA`) or contain at least one period or
+        // short token (`Harv. L. Rev.`, `Brook L Rev`, `Yale L J` — `L`,
+        // `J`, `Rev` are short Bluebook abbreviations). Multi-word captures
+        // that lack both a period AND a short (≤2 char) word are almost
+        // always phantoms; drop them here.
+        const name = journalCitation.journal
+        const words = name.split(/\s+/)
+        const isPhantom =
+          words.length >= 2 && !name.includes(".") && !words.some((w) => w.length <= 2)
+        if (isPhantom) continue
+        citation = journalCitation
         break
+      }
       case "neutral":
         citation = extractNeutral(token, transformationMap, cleaned)
         break
@@ -670,47 +686,87 @@ function expandChainedConstitutional(
   transformationMap: TransformationMap,
 ): void {
   const added: Citation[] = []
+  // Two chain shapes:
+  //   1. `; art./amend. <numeral>` — full continuation with explicit
+  //      article/amendment keyword (#707).
+  //   2. `, <numeral>` — bare-numeral continuation inheriting the
+  //      article-or-amendment type from the head cite (#321 partial).
+  //      Only valid when head cite has article or amendment set —
+  //      we use that to decide which field the continuation populates.
   const chainRe =
     /^\s*;\s*((?:art(?:icle)?\.?|amend(?:ment)?\.?|amdt\.?)\s+([IVX]+|\d+))(?:[,;]?\s*§\s*([\w-]+))?(?:[,;]?\s*cl\.?\s*(\d+))?/i
+  const bareNumeralChainRe = /^\s*(?:,|and)\s+([IVX]+|\d+)\b/
 
   for (const c of citations) {
     if (c.type !== "constitutional") continue
     const jurisdiction = (c as { jurisdiction?: string }).jurisdiction
     if (!jurisdiction) continue
+    const headIsAmendment = (c as { amendment?: number }).amendment !== undefined
+    const headIsArticle = (c as { article?: number }).article !== undefined
     let cursor = c.span.cleanEnd
     while (cursor < cleaned.length) {
       const tail = cleaned.slice(cursor)
       const m = chainRe.exec(tail)
-      if (!m) break
-      const matchedText = m[0]
-      const article = m[1]
-      const numeralText = m[2]
-      const section = m[3]
-      const clauseText = m[4]
-      const isAmendment = /^amend|^amdt/i.test(article)
-      const numeral = parseChainNumeral(numeralText)
-      if (numeral === undefined) break
-      const matchStart = cursor + matchedText.indexOf(article)
-      const matchEnd = cursor + matchedText.length
-      const { originalStart, originalEnd } = resolveOriginalSpan(
-        { cleanStart: matchStart, cleanEnd: matchEnd },
-        transformationMap,
-      )
-      const cite: Citation = {
-        type: "constitutional",
-        text: cleaned.slice(matchStart, matchEnd),
-        span: { cleanStart: matchStart, cleanEnd: matchEnd, originalStart, originalEnd },
-        confidence: c.confidence,
-        matchedText: cleaned.slice(matchStart, matchEnd),
-        processTimeMs: 0,
-        patternsChecked: 1,
-        jurisdiction,
-        ...(isAmendment ? { amendment: numeral } : { article: numeral }),
-        ...(section ? { section } : {}),
-        ...(clauseText ? { clause: Number.parseInt(clauseText, 10) } : {}),
-      } as Citation
-      added.push(cite)
-      cursor = matchEnd
+      const bareMatch = !m && (headIsAmendment || headIsArticle)
+        ? bareNumeralChainRe.exec(tail)
+        : null
+      if (!m && !bareMatch) break
+
+      if (m) {
+        const matchedText = m[0]
+        const article = m[1]
+        const numeralText = m[2]
+        const section = m[3]
+        const clauseText = m[4]
+        const isAmendment = /^amend|^amdt/i.test(article)
+        const numeral = parseChainNumeral(numeralText)
+        if (numeral === undefined) break
+        const matchStart = cursor + matchedText.indexOf(article)
+        const matchEnd = cursor + matchedText.length
+        const { originalStart, originalEnd } = resolveOriginalSpan(
+          { cleanStart: matchStart, cleanEnd: matchEnd },
+          transformationMap,
+        )
+        const cite: Citation = {
+          type: "constitutional",
+          text: cleaned.slice(matchStart, matchEnd),
+          span: { cleanStart: matchStart, cleanEnd: matchEnd, originalStart, originalEnd },
+          confidence: c.confidence,
+          matchedText: cleaned.slice(matchStart, matchEnd),
+          processTimeMs: 0,
+          patternsChecked: 1,
+          jurisdiction,
+          ...(isAmendment ? { amendment: numeral } : { article: numeral }),
+          ...(section ? { section } : {}),
+          ...(clauseText ? { clause: Number.parseInt(clauseText, 10) } : {}),
+        } as Citation
+        added.push(cite)
+        cursor = matchEnd
+      } else if (bareMatch) {
+        const matchedText = bareMatch[0]
+        const numeralText = bareMatch[1]
+        const numeral = parseChainNumeral(numeralText)
+        if (numeral === undefined) break
+        const matchStart = cursor + matchedText.indexOf(numeralText)
+        const matchEnd = cursor + matchedText.length
+        const { originalStart, originalEnd } = resolveOriginalSpan(
+          { cleanStart: matchStart, cleanEnd: matchEnd },
+          transformationMap,
+        )
+        const cite: Citation = {
+          type: "constitutional",
+          text: cleaned.slice(matchStart, matchEnd),
+          span: { cleanStart: matchStart, cleanEnd: matchEnd, originalStart, originalEnd },
+          confidence: c.confidence,
+          matchedText: cleaned.slice(matchStart, matchEnd),
+          processTimeMs: 0,
+          patternsChecked: 1,
+          jurisdiction,
+          ...(headIsAmendment ? { amendment: numeral } : { article: numeral }),
+        } as Citation
+        added.push(cite)
+        cursor = matchEnd
+      }
     }
   }
   citations.push(...added)

@@ -520,7 +520,7 @@ const VOLUME_REPORTER_PAGE_REGEX =
  *  tokenizer pattern in `src/patterns/casePatterns.ts` uses the same
  *  terminator constraint. */
 const VOLUME_REPORTER_PAGE_REGEX_COMMA =
-  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+?)\s*,\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+|_{3,}|-{3,})(?=$|[.;)\]])/d
+  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+?)\s*,\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+-\d+|\d+|_{3,}|-{3,})(?=$|[.;)\]])/d
 
 /** Detects blank page placeholders (3+ underscores or dashes) */
 const BLANK_PAGE_REGEX = /^[_-]{3,}$/
@@ -548,8 +548,12 @@ const PAREN_REGEX = /\(([^)]+)\)/
  *  the leading ` at 638` could not be consumed and the regex failed.
  *  The at-form is repeatable too (rare in practice, but the comma form
  *  already was), so the entire prefix is wrapped in `(?:...)*`. */
+// Pincite separator admits `;` alongside `,` (#525). OCR'd older
+// opinions sometimes use semicolon between page and pincite
+// (`256 F.Supp. 572; 573-574 (court year)`); the existing comma-only
+// alternation blocked year+court extraction entirely.
 const LOOKAHEAD_PAREN_REGEX =
-  /^(?:(?:,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?|\s+at\s+(?:(?:pp?\.|pages?)\s*)?)\*?\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d+)?\s*\(([^)]+)\)/
+  /^(?:(?:[,;]\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?|\s+at\s+(?:(?:pp?\.|pages?)\s*)?)\*?\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d+)?\s*\(([^)]+)\)/
 
 /** Extracts pincite from look-ahead text.
  *  Accepts five prefix forms:
@@ -594,8 +598,12 @@ const LOOKAHEAD_PAREN_REGEX =
 // the trailing alternation. `parsePincite` surfaces this as
 // `pinciteInfo.footnote` with `page=undefined`. The leading `at` prefix is
 // allowed for symmetry with the page-bearing forms.
+// Leading separator accepts both comma and semicolon (#525). OCR'd
+// older opinions sometimes write `256 F.Supp. 572; 573-574 (court year)`
+// — the semicolon between page and pincite would otherwise block
+// pincite + year-paren extraction entirely.
 const LOOKAHEAD_PINCITE_REGEX =
-  /^(?:\s+at\s+(?:(?:pp?\.|pages?)\s*)?|,\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?)(\*?\d+(?:\s*[-–—~]\s*\*?\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:\s*[-–—~]\s*\d+)?)?|¶¶?\s*\d+(?:\s*[-–—~]\s*\d+)?|paras?\.?\s*\d+(?:\s*[-–—~]\s*\d+)?|(?:nn?|fns?|note)\s*\.?\s*\d+(?:\s*[-–—~]\s*\d+)?)(?=$|[.,:;)([\]»"'“”‘’†‡§¶©°]|\s(?![A-Z]))/d
+  /^(?:\s+at\s+(?:(?:pp?\.|pages?)\s*)?|[,;]\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?)(\*?\d+(?:\s*[-–—~]\s*\*?\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:\s*[-–—~]\s*\d+)?)?|¶¶?\s*\d+(?:\s*[-–—~]\s*\d+)?|paras?\.?\s*\d+(?:\s*[-–—~]\s*\d+)?|(?:nn?|fns?|note)\s*\.?\s*\d+(?:\s*[-–—~]\s*\d+)?)(?=$|[.,:;)([\]»"'“”‘’†‡§¶©°]|\s(?![A-Z]))/d
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
@@ -648,9 +656,11 @@ const SIGNAL_TABLE: ReadonlyArray<readonly [RegExp, HistorySignal]> = [
   [/^reversed\s+and\s+remanded\b/i, "reversed"],
   [/^rev'?d\b/i, "reversed"],
   [/^reversed\b/i, "reversed"],
-  // cert denied
+  // cert denied — `[` admitted in the trailing lookahead so the
+  // `cert. denied[,]` form (bracketed comma — editorial insertion
+  // convention used by some reporters) tokenizes. #526
   [/^certiorari\s+denied\b/i, "cert_denied"],
-  [/^cert\.\s*den(ied|\.)(?=[\s,;(]|$)/i, "cert_denied"],
+  [/^cert\.\s*den(ied|\.)(?=[\s,;(\[]|$)/i, "cert_denied"],
   // cert granted
   [/^certiorari\s+granted\b/i, "cert_granted"],
   [/^cert\.\s*granted\b/i, "cert_granted"],

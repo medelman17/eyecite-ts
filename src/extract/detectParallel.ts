@@ -165,8 +165,16 @@ export function detectParallelCitations(tokens: Token[], cleanedText = ""): Map<
       }
 
       // Check that there IS a parenthetical after the secondary citation
-      if (!hasSharedParenthetical(cleanedText, secondary.span.cleanEnd)) {
-        break // No shared parenthetical, stop looking
+      // OR that the chain ends at sentence end (`.` / `;` / EOF) (#653).
+      // Sentence-end terminator catches `Kauffman v. Griesemer, 26 Pa. 407,
+      // 67 Am. Dec. 437.` — common when courts omit the year-paren on
+      // older parallel reporters. The tight-gap and intervening-`)` checks
+      // above already prevent unrelated cites from being grouped.
+      if (
+        !hasSharedParenthetical(cleanedText, secondary.span.cleanEnd) &&
+        !isParallelChainTerminator(cleanedText, secondary.span.cleanEnd)
+      ) {
+        break
       }
 
       // All conditions met - this is a parallel citation
@@ -193,6 +201,26 @@ export function detectParallelCitations(tokens: Token[], cleanedText = ""): Map<
  * @param position - Position to start searching from
  * @returns true if closing parenthetical found
  */
+/**
+ * Issue #653: When no shared parenthetical follows the secondary cite,
+ * accept the parallel grouping if the chain terminates at clean
+ * sentence-end punctuation within a short window. Catches forms like
+ * `Kauffman v. Griesemer, 26 Pa. 407, 67 Am. Dec. 437.` where older
+ * courts omit the year-paren.
+ *
+ * Restrictive on purpose: only `.` or `;` immediately (or after one
+ * space) is accepted as a chain terminator. The tight-gap check
+ * upstream already prevents unrelated citations being grouped.
+ */
+function isParallelChainTerminator(cleanedText: string, position: number): boolean {
+  // Require explicit sentence-end punctuation (`.` or `;`). EOF alone is
+  // not enough — the pre-existing test asserts that two cites with no
+  // following punctuation should NOT be grouped (avoids accidentally
+  // joining unrelated citations in chains the cleaner truncated).
+  const tail = cleanedText.slice(position, position + 5)
+  return /^\s*[.;](?:\s|$)/.test(tail)
+}
+
 function hasSharedParenthetical(cleanedText: string, position: number): boolean {
   // Look ahead up to 200 characters for opening parenthesis
   const searchText = cleanedText.substring(position, position + 200)

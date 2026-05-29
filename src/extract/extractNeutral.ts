@@ -102,6 +102,25 @@ export function extractNeutral(
   let unpublished = false
   let spans: NeutralComponentSpans | undefined
 
+  // Issue #324: T.C. Memo. YYYY-NNN. Recognized BEFORE the generic
+  // neutral-regex fallback because the trailing `-NNN` would otherwise
+  // be misparsed as the document number with year=undefined.
+  const tcMemoMatch = /^T\.\s?C\.\s+Memo\.\s+(\d{4})-(\d+)$/d.exec(text)
+  if (tcMemoMatch) {
+    year = Number.parseInt(tcMemoMatch[1], 10)
+    court = "T.C. Memo."
+    documentNumber = tcMemoMatch[2]
+    if (tcMemoMatch.indices) {
+      spans = {
+        year: spanFromGroupIndex(span.cleanStart, tcMemoMatch.indices[1]!, transformationMap),
+        documentNumber: spanFromGroupIndex(
+          span.cleanStart,
+          tcMemoMatch.indices[2]!,
+          transformationMap,
+        ),
+      }
+    }
+  } else {
   const msMatch = /^(\d{4})-([A-Z]+)-(\d+)-([A-Z]+)$/d.exec(text)
   if (msMatch) {
     year = Number.parseInt(msMatch[1], 10)
@@ -149,6 +168,7 @@ export function extractNeutral(
         ),
       }
     }
+  }
   }
 
   // Look ahead in cleaned text for a trailing pincite (e.g., ", at *3" on
