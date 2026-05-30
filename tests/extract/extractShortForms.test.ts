@@ -1001,9 +1001,10 @@ describe("star-pagination pincite (#191)", () => {
     it("captures 'at *1' on a NY Slip Op neutral full cite", () => {
       const text = `Smith v. Jones, 2020 NY Slip Op 00001, at *1 (2d Dep't 2020).`
       const cits = extractCitations(text)
-      const cs = cits.find((c) => c.type === "case")
-      expect(cs?.type).toBe("case")
-      if (cs?.type === "case") {
+      // NY Slip Op is a neutral citation (#692); the star pincite is preserved.
+      const cs = cits.find((c) => c.type === "neutral")
+      expect(cs?.type).toBe("neutral")
+      if (cs?.type === "neutral") {
         expect(cs.pincite).toBe(1)
         expect(cs.pinciteInfo?.starPage).toBe(true)
       }
@@ -1012,16 +1013,14 @@ describe("star-pagination pincite (#191)", () => {
     it("captures pincite on NY Slip Op shortform repeat without comma", () => {
       const text = `Smith, 2020 NY Slip Op 00001, at *1 (2020). Smith, 2020 NY Slip Op 00001 at *2.`
       const cits = extractCitations(text)
-      // Classification quirk: NY Slip Op short-form isn't caught by the
-      // shortFormCase pattern (which forbids a page between reporter and "at"),
-      // so both occurrences come back as `case`. The pincite data is still
-      // captured correctly on the second occurrence.
+      // NY Slip Op is a neutral citation (#692); both occurrences come back as
+      // `neutral`. The pincite data is still captured on the second occurrence.
       const seconds = cits.filter(
-        (c) => c.type === "case" && c.span.cleanStart > 40,
+        (c) => c.type === "neutral" && c.span.cleanStart > 40,
       )
       expect(seconds.length).toBeGreaterThanOrEqual(1)
       const second = seconds[0]
-      if (second.type === "case") {
+      if (second.type === "neutral") {
         expect(second.pincite).toBe(2)
         expect(second.pinciteInfo?.starPage).toBe(true)
       }

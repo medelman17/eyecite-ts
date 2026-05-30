@@ -2249,8 +2249,9 @@ describe("nominative reporter support (#49, #16)", () => {
       const text =
         "See Alfred-Almond Cent. Sch. Dist. v. NY44 Health Benefits Plan Trust, 2019 NY Slip Op 6303 (4th Dep't 2019)."
       const [cite] = extractCitations(text)
-      expect(cite.type).toBe("case")
-      if (cite.type === "case") {
+      // NY Slip Op is a vendor-neutral citation (#692); caseName is preserved.
+      expect(cite.type).toBe("neutral")
+      if (cite.type === "neutral") {
         expect(cite.caseName).toContain("Alfred-Almond Cent. Sch. Dist.")
         expect(cite.caseName).toContain("NY44 Health Benefits Plan Trust")
       }
@@ -2260,8 +2261,8 @@ describe("nominative reporter support (#49, #16)", () => {
       const text =
         "A.N.L.Y.H. Invs. LP v. JDS Principal Highline LLC, 2024 NY Slip Op 05133 (1st Dep't 2024)."
       const [cite] = extractCitations(text)
-      expect(cite.type).toBe("case")
-      if (cite.type === "case") {
+      expect(cite.type).toBe("neutral")
+      if (cite.type === "neutral") {
         expect(cite.caseName).toContain("A.N.L.Y.H. Invs. LP")
         expect(cite.caseName).toContain("JDS Principal Highline LLC")
       }
@@ -2337,8 +2338,8 @@ describe("nominative reporter support (#49, #16)", () => {
       const text =
         "See Fields Enters. Inc. v. Bristol Harbour Vil. Assn., Inc., 2023 N.Y. Slip Op. 03165 (4th Dep't 2023)."
       const [cite] = extractCitations(text)
-      expect(cite.type).toBe("case")
-      if (cite.type === "case") {
+      expect(cite.type).toBe("neutral")
+      if (cite.type === "neutral") {
         expect(cite.caseName).toBe(
           "Fields Enters. Inc. v. Bristol Harbour Vil. Assn., Inc.",
         )
@@ -2522,8 +2523,8 @@ describe("case name boundary bugs (#193)", () => {
       const text =
         "See Board of Mgrs. of the St. Tropez Condominium, 2021 NY Slip Op 00520, at *1."
       const [cite] = extractCitations(text)
-      expect(cite.type).toBe("case")
-      if (cite.type === "case") {
+      expect(cite.type).toBe("neutral")
+      if (cite.type === "neutral") {
         expect(cite.caseName).toBe(
           "Board of Mgrs. of the St. Tropez Condominium",
         )
@@ -2534,8 +2535,8 @@ describe("case name boundary bugs (#193)", () => {
       const text =
         "See Board of Managers of the St. Tropez Condominium, 2021 NY Slip Op 00520, at *1."
       const [cite] = extractCitations(text)
-      expect(cite.type).toBe("case")
-      if (cite.type === "case") {
+      expect(cite.type).toBe("neutral")
+      if (cite.type === "neutral") {
         expect(cite.caseName).toBe(
           "Board of Managers of the St. Tropez Condominium",
         )
@@ -2546,8 +2547,8 @@ describe("case name boundary bugs (#193)", () => {
       const text =
         "See Board of Directors of Hill Park, 2021 NY Slip Op 00520."
       const [cite] = extractCitations(text)
-      expect(cite.type).toBe("case")
-      if (cite.type === "case") {
+      expect(cite.type).toBe("neutral")
+      if (cite.type === "neutral") {
         expect(cite.caseName).toBe("Board of Directors of Hill Park")
       }
     })
@@ -2567,8 +2568,8 @@ describe("case name boundary bugs (#193)", () => {
       const text =
         "See In the Matter of Long Is. Power Auth. Litig., 2021 NY Slip Op 00520."
       const [cite] = extractCitations(text)
-      expect(cite.type).toBe("case")
-      if (cite.type === "case") {
+      expect(cite.type).toBe("neutral")
+      if (cite.type === "neutral") {
         expect(cite.caseName).toBe(
           "In the Matter of Long Is. Power Auth. Litig.",
         )
@@ -2607,8 +2608,8 @@ describe("case name boundary bugs (#193)", () => {
     it("'Smith v. Jones' still matches via V. regex", () => {
       const text = "See Smith v. Jones, 2021 NY Slip Op 00520, at *1."
       const [cite] = extractCitations(text)
-      expect(cite.type).toBe("case")
-      if (cite.type === "case") {
+      expect(cite.type).toBe("neutral")
+      if (cite.type === "neutral") {
         expect(cite.caseName).toBe("Smith v. Jones")
       }
     })
@@ -2616,8 +2617,8 @@ describe("case name boundary bugs (#193)", () => {
     it("'People ex rel. Smith v. Jones' still matches via V. regex", () => {
       const text = "See People ex rel. Smith v. Jones, 2021 NY Slip Op 00520."
       const [cite] = extractCitations(text)
-      expect(cite.type).toBe("case")
-      if (cite.type === "case") {
+      expect(cite.type).toBe("neutral")
+      if (cite.type === "neutral") {
         expect(cite.caseName).toBe("People ex rel. Smith v. Jones")
       }
     })
@@ -2625,8 +2626,8 @@ describe("case name boundary bugs (#193)", () => {
     it("'Estate of X' still matches via procedural prefix", () => {
       const text = "See Estate of Smith, 2021 NY Slip Op 00520, at *1."
       const [cite] = extractCitations(text)
-      expect(cite.type).toBe("case")
-      if (cite.type === "case") {
+      expect(cite.type).toBe("neutral")
+      if (cite.type === "neutral") {
         expect(cite.caseName).toBe("Estate of Smith")
       }
     })
@@ -3037,17 +3038,20 @@ describe("phantom-citation suppression (#196)", () => {
   it("does not emit a phantom from numeric-prefixed party name with v.", () => {
     const text = `Board of Mgrs. of the 15 Union Sq. W. Condominium v. BCRE 15 Union St., LLC, 2025 NY Slip Op 00784 (1st Dep't 2025).`
     const cits = extractCitations(text)
-    const cases = cits.filter((c) => c.type === "case")
-    expect(cases).toHaveLength(1)
-    expect(cases[0].text).toBe("2025 NY Slip Op 00784")
+    // NY Slip Op is now neutral (#692); the phantom-suppression intent is that
+    // exactly one citation is emitted — no phantom from the numeric-prefixed party.
+    expect(cits).toHaveLength(1)
+    expect(cits[0].type).toBe("neutral")
+    expect(cits[0].text).toBe("2025 NY Slip Op 00784")
   })
 
   it("does not emit a phantom with 'vs.' form", () => {
     const text = `See 10 Smith vs. Jones 10 Corp., 2025 NY Slip Op 00784.`
     const cits = extractCitations(text)
-    const cases = cits.filter((c) => c.type === "case")
-    expect(cases).toHaveLength(1)
-    expect(cases[0].text).toBe("2025 NY Slip Op 00784")
+    // NY Slip Op is now neutral (#692); no phantom should accompany it.
+    expect(cits).toHaveLength(1)
+    expect(cits[0].type).toBe("neutral")
+    expect(cits[0].text).toBe("2025 NY Slip Op 00784")
   })
 
   it("does not mis-classify phantom as a law-review journal", () => {
@@ -3464,10 +3468,11 @@ describe("California bracketed parallel citations (#237)", () => {
   describe("regression — non-CA-bracket forms unaffected", () => {
     it("NY Slip Op '[U]' unpublished marker is NOT treated as a bracket parallel", () => {
       const cits = extractCitations("2024 NY Slip Op 51192[U]")
-      const cases = cits.filter((c) => c.type === "case")
-      expect(cases).toHaveLength(1)
-      if (cases[0].type === "case") {
-        expect(cases[0].unpublished).toBe(true)
+      // NY Slip Op is neutral (#692); [U] is the unpublished marker, not a bracket parallel.
+      const neutrals = cits.filter((c) => c.type === "neutral")
+      expect(neutrals).toHaveLength(1)
+      if (neutrals[0].type === "neutral") {
+        expect(neutrals[0].unpublished).toBe(true)
       }
     })
 
@@ -3707,23 +3712,24 @@ describe("NY Slip Op (U)/[U] unpublished markers (#231)", () => {
   describe("bare (U) suffix", () => {
     it("recognizes '52377(U)' as unpublished, court is not 'U'", () => {
       const cits = extractCitations("2007 N.Y. Slip Op. 52377(U)")
-      const cases = cits.filter((c) => c.type === "case")
-      expect(cases).toHaveLength(1)
-      if (cases[0].type === "case") {
-        expect(cases[0].page).toBe(52377)
-        expect(cases[0].unpublished).toBe(true)
+      // NY Slip Op is a neutral citation (#692); doc number lives in documentNumber.
+      const neutrals = cits.filter((c) => c.type === "neutral")
+      expect(neutrals).toHaveLength(1)
+      if (neutrals[0].type === "neutral") {
+        expect(neutrals[0].documentNumber).toBe("52377")
+        expect(neutrals[0].unpublished).toBe(true)
         // The (U) must not pollute the court field
-        expect(cases[0].court).not.toBe("U")
+        expect(neutrals[0].court).not.toBe("U")
       }
     })
 
     it("recognizes '64325(U)' as unpublished", () => {
       const cits = extractCitations("2024 NY Slip Op 64325(U)")
-      const cases = cits.filter((c) => c.type === "case")
-      expect(cases).toHaveLength(1)
-      if (cases[0].type === "case") {
-        expect(cases[0].page).toBe(64325)
-        expect(cases[0].unpublished).toBe(true)
+      const neutrals = cits.filter((c) => c.type === "neutral")
+      expect(neutrals).toHaveLength(1)
+      if (neutrals[0].type === "neutral") {
+        expect(neutrals[0].documentNumber).toBe("64325")
+        expect(neutrals[0].unpublished).toBe(true)
       }
     })
   })
@@ -3731,11 +3737,11 @@ describe("NY Slip Op (U)/[U] unpublished markers (#231)", () => {
   describe("bracket [U] suffix (newer form)", () => {
     it("recognizes '51192[U]' as unpublished", () => {
       const cits = extractCitations("2024 NY Slip Op 51192[U]")
-      const cases = cits.filter((c) => c.type === "case")
-      expect(cases).toHaveLength(1)
-      if (cases[0].type === "case") {
-        expect(cases[0].page).toBe(51192)
-        expect(cases[0].unpublished).toBe(true)
+      const neutrals = cits.filter((c) => c.type === "neutral")
+      expect(neutrals).toHaveLength(1)
+      if (neutrals[0].type === "neutral") {
+        expect(neutrals[0].documentNumber).toBe("51192")
+        expect(neutrals[0].unpublished).toBe(true)
       }
     })
   })
@@ -3745,13 +3751,14 @@ describe("NY Slip Op (U)/[U] unpublished markers (#231)", () => {
       const cits = extractCitations(
         "Pickard v. Tarnow, 2007 N.Y. Slip Op. 52377(U) (Sup. Ct. 2007)",
       )
-      const cases = cits.filter((c) => c.type === "case")
-      expect(cases).toHaveLength(1)
-      if (cases[0].type === "case") {
-        expect(cases[0].page).toBe(52377)
-        expect(cases[0].unpublished).toBe(true)
-        expect(cases[0].court).toBe("Sup. Ct.")
-        expect(cases[0].year).toBe(2007)
+      const neutrals = cits.filter((c) => c.type === "neutral")
+      expect(neutrals).toHaveLength(1)
+      if (neutrals[0].type === "neutral") {
+        expect(neutrals[0].documentNumber).toBe("52377")
+        expect(neutrals[0].unpublished).toBe(true)
+        // Real court comes from the trailing paren, not the (U) marker.
+        expect(neutrals[0].court).toBe("Sup. Ct.")
+        expect(neutrals[0].year).toBe(2007)
       }
     })
 
@@ -3759,11 +3766,11 @@ describe("NY Slip Op (U)/[U] unpublished markers (#231)", () => {
       const cits = extractCitations(
         "Doe v. Roe, 2024 NY Slip Op 51192[U] (Sup. Ct. 2024)",
       )
-      const cases = cits.filter((c) => c.type === "case")
-      expect(cases).toHaveLength(1)
-      if (cases[0].type === "case") {
-        expect(cases[0].unpublished).toBe(true)
-        expect(cases[0].caseName).toBe("Doe v. Roe")
+      const neutrals = cits.filter((c) => c.type === "neutral")
+      expect(neutrals).toHaveLength(1)
+      if (neutrals[0].type === "neutral") {
+        expect(neutrals[0].unpublished).toBe(true)
+        expect(neutrals[0].caseName).toBe("Doe v. Roe")
       }
     })
   })
@@ -3771,12 +3778,12 @@ describe("NY Slip Op (U)/[U] unpublished markers (#231)", () => {
   describe("regression — non-(U) Slip Op still extracts normally", () => {
     it("'2020 NY Slip Op 12345' without (U) — unpublished is undefined/false", () => {
       const cits = extractCitations("Smith v. Jones, 2020 NY Slip Op 12345 (Sup. Ct. 2020)")
-      const cases = cits.filter((c) => c.type === "case")
-      expect(cases).toHaveLength(1)
-      if (cases[0].type === "case") {
-        expect(cases[0].page).toBe(12345)
-        expect(cases[0].unpublished).toBeFalsy()
-        expect(cases[0].court).toBe("Sup. Ct.")
+      const neutrals = cits.filter((c) => c.type === "neutral")
+      expect(neutrals).toHaveLength(1)
+      if (neutrals[0].type === "neutral") {
+        expect(neutrals[0].documentNumber).toBe("12345")
+        expect(neutrals[0].unpublished).toBeFalsy()
+        expect(neutrals[0].court).toBe("Sup. Ct.")
       }
     })
 

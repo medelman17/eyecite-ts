@@ -22,10 +22,13 @@ describe("Year-as-volume neutral citations survive filterFalsePositives", () => 
 
     const cites = extractCitations(text, { filterFalsePositives: true })
     expect(cites).toHaveLength(1)
-    expect(cites[0].type === "case" || cites[0].type === "neutral").toBe(true)
-    const cit = cites[0] as { volume: number | string; reporter: string }
-    expect(cit.volume).toBe(2026)
-    expect(cit.reporter).toBe("NY Slip Op")
+    // NY Slip Op is a neutral citation (#692): the leading 4-digit number is the
+    // year (not a volume), and it survives the implausible-volume filter.
+    expect(cites[0].type).toBe("neutral")
+    const cit = cites[0] as { year: number; database?: string; documentNumber?: string }
+    expect(cit.year).toBe(2026)
+    expect(cit.database).toBe("NY Slip Op")
+    expect(cit.documentNumber).toBe("01627")
   })
 
   it("extracts 2030 NY Slip Op (future-year safety)", () => {

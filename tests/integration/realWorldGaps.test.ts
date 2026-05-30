@@ -132,21 +132,14 @@ describe("Real-world gaps from beta feedback (2026-04-29)", () => {
 
     it("extracts the slip-op citation with case name attached", () => {
       const citations = extractCitations(text)
-      // NY Slip Op may parse as `case` (with reporter "NY Slip Op") or `neutral`
-      // depending on classification. Find by the slip-op number 5208.
+      // NY Slip Op is a vendor-neutral citation (#692). The case-name backsearch
+      // runs on neutral cites too (#441), so the caseName still attaches.
       const meer = citations.find((c) => c.text.includes("5208"))
 
       expect(meer).toBeDefined()
-      if (meer?.type === "case") {
+      expect(meer?.type).toBe("neutral")
+      if (meer?.type === "neutral") {
         expect(meer.caseName).toBe("Meer Enterprises, LLC v. Kocak")
-      } else if (meer?.type === "neutral") {
-        // Neutral citations don't carry caseName; if classified as neutral
-        // we want to know — that would mean the case-name path isn't run.
-        expect.fail(
-          "NY Slip Op classified as neutral, so caseName path doesn't run. " +
-            "If case-name attachment is needed for neutral cites, that's a " +
-            "separate enhancement; otherwise classify as case.",
-        )
       }
     })
   })

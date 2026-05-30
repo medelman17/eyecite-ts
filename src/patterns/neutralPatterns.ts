@@ -75,6 +75,25 @@ export const neutralPatterns: Pattern[] = [
     type: "neutral",
   },
   {
+    // NY Slip Op vendor-neutral citations (#692). Official NY neutral form
+    // `2024 NY Slip Op 51234`, with an optional `(U)` / `(UV)` / `[U]`
+    // unpublished marker, and the period variant `N.Y. Slip Op.`. "NY Slip Op"
+    // is also a known reporter, so without this neutral pattern the form is
+    // captured by the reporter-backed case path and mis-typed as `case`. Lives
+    // in the neutral bucket, which outranks `casePatterns` during dedup, so the
+    // neutral token subsumes the competing case token. PLAUSIBLE_YEAR keeps the
+    // leading number anchored to a real year (the volume-shaped `100 NY Slip Op`
+    // form is malformed and intentionally not matched).
+    id: "ny-slip-op",
+    regex: new RegExp(
+      `\\b(${PLAUSIBLE_YEAR})\\s+N\\.?Y\\.?\\s+Slip\\s+Op\\.?\\s+(\\d+)(\\((?:U|UV)\\)|\\[U\\])?`,
+      "g",
+    ),
+    description:
+      'NY Slip Op vendor-neutral citations (e.g., "2024 NY Slip Op 51234", "2020 NY Slip Op 51234(U)", "2023 N.Y. Slip Op. 03165")',
+    type: "neutral",
+  },
+  {
     id: "westlaw",
     regex: /\b(\d{4})\s+WL\s+(\d+)\b/g,
     description: 'WestLaw citations (e.g., "2021 WL 123456")',
