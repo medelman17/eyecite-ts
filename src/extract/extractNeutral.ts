@@ -45,7 +45,7 @@ const NEUTRAL_PAREN_LOOKAHEAD =
 /** Identifies whether a captured "court" string is actually a database
  *  identifier (WL/LEXIS/BL) rather than a real jurisdictional code. #294 */
 function isDatabaseIdentifier(s: string): boolean {
-  if (s === "WL" || s === "BL") return true
+  if (s === "WL" || s === "BL" || s === "NY Slip Op") return true
   return /\bLEXIS\b/.test(s)
 }
 
@@ -121,6 +121,29 @@ export function extractNeutral(
       }
     }
   } else {
+  // NY Slip Op vendor-neutral form (#692): `2024 NY Slip Op 51234` with an
+  // optional `(U)` / `(UV)` / `[U]` unpublished marker and the `N.Y. Slip Op.`
+  // period variant. Recognized before the generic regex because the marker and
+  // multi-word identifier would otherwise misparse. "NY Slip Op" is routed to
+  // `database` (not `court`) by isDatabaseIdentifier below.
+  const slipOpMatch =
+    /^(\d{4})\s+N\.?Y\.?\s+Slip\s+Op\.?\s+(\d+)(\((?:U|UV)\)|\[U\])?$/d.exec(text)
+  if (slipOpMatch) {
+    year = Number.parseInt(slipOpMatch[1], 10)
+    court = "NY Slip Op"
+    documentNumber = slipOpMatch[2]
+    unpublished = slipOpMatch[3] !== undefined
+    if (slipOpMatch.indices) {
+      spans = {
+        year: spanFromGroupIndex(span.cleanStart, slipOpMatch.indices[1]!, transformationMap),
+        documentNumber: spanFromGroupIndex(
+          span.cleanStart,
+          slipOpMatch.indices[2]!,
+          transformationMap,
+        ),
+      }
+    }
+  } else {
   const msMatch = /^(\d{4})-([A-Z]+)-(\d+)-([A-Z]+)$/d.exec(text)
   if (msMatch) {
     year = Number.parseInt(msMatch[1], 10)
@@ -168,6 +191,7 @@ export function extractNeutral(
         ),
       }
     }
+  }
   }
   }
 
@@ -255,7 +279,7 @@ export function extractNeutral(
         // in caseName otherwise.
         caseName = caseName
           .replace(
-            /^(?:But\s+see(?:\s+also)?,?\s+|See\s+also,?\s+|See\s+generally\s+|See,\s+e\.g\.,?\s+|See\s+|Cf\.\s+|In\s+|Accord\s+|Contra\s+|Compare\s+|E\.g\.,?\s+)/,
+            /^(?:But\s+see(?:\s+also)?,?\s+|See\s+also,?\s+|See\s+generally\s+|See,\s+e\.g\.,?\s+|See\s+|Cf\.\s+|In\s+(?!re\b|the\s+(?:Matter|Interest)\s+of\b)|Accord\s+|Contra\s+|Compare\s+|E\.g\.,?\s+)/,
             "",
           )
           .trim()
