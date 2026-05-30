@@ -16,6 +16,7 @@ pnpm lint                         # Lint with Biome
 pnpm format                       # Format with Biome (auto-fix)
 pnpm size                         # Check bundle size limits
 pnpm changeset                    # Create a changeset for the next release
+pnpm exec tsx scripts/foo.ts      # Ad-hoc TS run (import from ./src/index) for quick extraction repros
 ```
 
 ## Architecture
@@ -31,6 +32,7 @@ Citations flow through a 4-stage pipeline: **clean → tokenize → extract → 
 3. **Extract** (`src/extract/`): Parse metadata from tokens (volume, reporter, page, court, year). Each citation type has its own extractor (`extractCase.ts`, `extractStatute.ts`, etc.). The main orchestrator is `extractCitations.ts`.
    - `extractCase.ts` also handles case name backward search (`extractCaseName`), full span calculation (`findParentheticalEnd`), unified parenthetical parsing (`parseParenthetical`), and disposition extraction.
    - `dates.ts` provides date parsing utilities (`parseMonth`, `parseDate`, `toIsoDate`) for structured date extraction from parentheticals.
+   - New state statutory/regulatory codes (e.g. NRS, NAC) are data entries in `stateStatuteEntries` (`src/data/stateStatutes.ts`), not new patterns — they extract as `type: "statute"`.
 4. **Resolve** (`src/resolve/`): Link short-form citations (Id., supra, short-form case) to their full antecedents. `DocumentResolver` uses scope boundaries and Levenshtein matching.
 
 ### Footnote Detection
@@ -50,8 +52,10 @@ The `Span` type carries dual positions: `cleanStart/cleanEnd` (for internal pars
 
 ### Type System
 
-Citations use a discriminated union on the `type` field: `case | docket | statute | journal | neutral | publicLaw | federalRegister | statutesAtLarge | constitutional | id | supra | shortFormCase`. All share `CitationBase` (text, span, confidence, matchedText, processTimeMs). Switch on `citation.type` for type-safe field access.
+Citations use a discriminated union on the `type` field (authoritative list in `src/types/citation.ts`): `case | docket | statute | regulation | stateRule | journal | neutral | publicLaw | federalRegister | statutesAtLarge | constitutional | federalRule | restatement | treatise | annotation | id | supra | shortFormCase`. All share `CitationBase` (text, span, confidence, matchedText, processTimeMs). Switch on `citation.type` for type-safe field access.
 - Volume is `number | string` — numeric for standard volumes, string for hyphenated (e.g., "1984-1")
+- Statute locators are split across fields — `section`, `sectionRange`, `chapter`, `subsection`, `subsectionRange`; `section` excludes the subsection (`§ 1983(a)(1)` → section `1983`, subsection `(a)(1)`)
+- Adding a citation type touches coordinated spots: the `CitationType` union + interface (`src/types/citation.ts`), `src/types/guards.ts`, `src/types/componentSpans.ts`, a `src/patterns/` pattern, and an extractor
 
 ### Entry Points
 
