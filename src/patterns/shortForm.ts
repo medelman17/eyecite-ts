@@ -49,6 +49,15 @@ export const IBID_PATTERN: RegExp =
  * Pattern: word(s), supra [note N] [, at page]
  * Captures: (1) party name, (2) note number (if any), (3) pincite
  *
+ * **CASE SENSITIVITY (#688):** The party-name capture requires an
+ * uppercase initial — `Smith, supra` matches, `smith, supra` does
+ * NOT. This is intentional: the lowercase-permissive variant generates
+ * 18+ regressions in resolver tests because words like `Later`,
+ * `However`, and `In re` get absorbed as multi-word party names.
+ * Lowercase party-name supras (informal/OCR-extracted text) must
+ * either be hand-corrected upstream or handled by a future
+ * resolver-side fuzzy match.
+ *
  * Party-name capture (#301): continuation accepts `\s+v\.?\s+` (v.),
  * `\s+&\s+` (ampersand-joined parties — `Walker & Horwich, supra`),
  * `,\s+` (corporate-suffix continuation — `Thorn Americas, Inc., supra`),
