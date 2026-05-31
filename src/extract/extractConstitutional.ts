@@ -346,6 +346,35 @@ export function extractConstitutional(
     }
   }
 
+  // #321 — Bare spelled-out `Article N, Section N` prose with no `Const.`
+  // anchor and no state trailer (`Article I, Section 8`, `Art. 1, Section
+  // 6`). CONSTITUTIONAL_BODY_RE doesn't recognize the spelled-out
+  // "Article"/"Section" word forms, so parse the article numeral + section
+  // directly. Jurisdiction is undefined and confidence is 0.5 (matching
+  // `bare-article`); the tight comma-separated adjacency captured by the
+  // pattern is the false-positive guard.
+  if (token.patternId === "bare-article-section") {
+    const m =
+      /(?<!Const\.?,?\s)\b(?:Article|Art\.?)\s+([IVX]+|\d+)\s*[,;]\s*(?:Section|§)\s*([\w()-]+)/.exec(
+        text,
+      )
+    const article = m ? parseNumeral(m[1]) : undefined
+    const section = m ? m[2] : undefined
+    const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
+    return {
+      type: "constitutional",
+      text,
+      span: { cleanStart: span.cleanStart, cleanEnd: span.cleanEnd, originalStart, originalEnd },
+      confidence: article === undefined ? 0.1 : 0.5,
+      matchedText: text,
+      processTimeMs: 0,
+      patternsChecked: 1,
+      article,
+      section,
+      jurisdiction: undefined,
+    }
+  }
+
   const bodyMatch = CONSTITUTIONAL_BODY_RE.exec(text)
 
   let article: number | undefined
