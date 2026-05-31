@@ -280,12 +280,27 @@ export function extractConstitutional(
   if (
     token.patternId === "state-const-prose-declaration" ||
     token.patternId === "state-const-prose-section-article" ||
-    token.patternId === "state-const-prose-article-first"
+    token.patternId === "state-const-prose-article-first" ||
+    token.patternId === "state-const-prose-plural-section"
   ) {
     let article: number | undefined
     let section: string | undefined
     let stateName: string | undefined
-    if (token.patternId === "state-const-prose-declaration") {
+    if (token.patternId === "state-const-prose-plural-section") {
+      // #321 plural-section: `Sections 5 and 10 of Article I of the Ohio
+      // Constitution`. Head cite = FIRST section number; the remaining
+      // sections become siblings in expandPluralSectionConstitutional.
+      // Group layout: (1) section-number list, (2) article, (3) state.
+      const m =
+        /\bSections\s+(\d+(?:[\s,]+(?:and\s+)?\d+)+)\s+of\s+Article\s+([IVX]+|\d+)\s+of\s+the\s+([A-Za-z\s]+?)\s+Constitution\b/.exec(
+          text,
+        )
+      if (m) {
+        section = m[1].match(/\d+/)?.[0]
+        article = parseNumeral(m[2])
+        stateName = m[3].trim().toLowerCase()
+      }
+    } else if (token.patternId === "state-const-prose-declaration") {
       const m = /\b(?:art(?:icle)?\.?)\s+(\d+)\s+of\s+the\s+([A-Za-z\s]+?)\s+(?:Declaration\s+of\s+Rights|Constitution)\b/i.exec(text)
       if (m) {
         article = Number.parseInt(m[1], 10)
