@@ -1143,7 +1143,14 @@
       "category": "international",
       "description": "Treaty citation",
       "text": "Vienna Convention on the Law of Treaties art. 31, May 23, 1969, 1155 U.N.T.S. 331",
-      "expected": []
+      "expected": [
+        {
+          "type": "treaty",
+          "series": "U.N.T.S.",
+          "volume": 1155,
+          "page": 331
+        }
+      ]
     },
     {
       "id": "dense-landmark-scotus",

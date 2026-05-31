@@ -17,6 +17,7 @@ import type {
   StatutesAtLargeCitation,
   SupraCitation,
   TreatiseCitation,
+  TreatyCitation,
 } from "../../src/types/citation"
 
 /** Minimal CitationBase fields for test fixtures */
@@ -415,6 +416,29 @@ describe("toBluebook", () => {
         chapter: "598",
       }
       expect(toBluebook(cite)).toBe("1977 Nev. Stat., ch. 598")
+    })
+  })
+
+  describe("TreatyCitation (#309)", () => {
+    it("formats a 'No.'-style series (T.I.A.S.)", () => {
+      const cite: TreatyCitation = {
+        ...BASE,
+        type: "treaty",
+        series: "T.I.A.S.",
+        seriesNumber: "1502",
+      }
+      expect(toBluebook(cite)).toBe("T.I.A.S. No. 1502")
+    })
+
+    it("formats a volume-series-page citation (U.N.T.S.)", () => {
+      const cite: TreatyCitation = {
+        ...BASE,
+        type: "treaty",
+        series: "U.N.T.S.",
+        volume: 1155,
+        page: 331,
+      }
+      expect(toBluebook(cite)).toBe("1155 U.N.T.S. 331")
     })
   })
 
