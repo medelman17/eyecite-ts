@@ -31,6 +31,7 @@ export type CitationType =
   | "sessionLaw"
   | "treaty"
   | "legislativeMaterial"
+  | "localOrdinance"
   | "constitutional"
   | "federalRule"
   | "restatement"
@@ -843,6 +844,23 @@ export interface LegislativeMaterialCitation extends CitationBase {
 }
 
 /**
+ * Local / municipal ordinance citation (#778).
+ *
+ * Clark County Code/Ordinance (`CCCO § 2.12.010(1)`) is the first member of this
+ * jurisdiction-general type (designed to also fit Cook County, L.A. County, and
+ * Miami-Dade municipal codes).
+ */
+export interface LocalOrdinanceCitation extends CitationBase {
+  type: "localOrdinance"
+  /** Ordinance code abbreviation (e.g. "CCCO" — Clark County Code/Ordinance) */
+  code: string
+  /** Locality the code belongs to (e.g. "Clark County, NV") */
+  locality?: string
+  /** Cited section (e.g. "2.12.010(1)") */
+  section: string
+}
+
+/**
  * Federal Rules of Procedure citation (#576).
  *
  * Covers the four primary federal rule sets (civil, criminal, evidence,
@@ -1252,6 +1270,7 @@ export type Citation =
   | SessionLawCitation
   | TreatyCitation
   | LegislativeMaterialCitation
+  | LocalOrdinanceCitation
   | IdCitation
   | SupraCitation
   | ShortFormCaseCitation
@@ -1271,6 +1290,7 @@ export type FullCitationType =
   | "sessionLaw"
   | "treaty"
   | "legislativeMaterial"
+  | "localOrdinance"
   | "constitutional"
   | "federalRule"
   | "stateRule"
@@ -1287,6 +1307,7 @@ export type FullCitation =
   | SessionLawCitation
   | TreatyCitation
   | LegislativeMaterialCitation
+  | LocalOrdinanceCitation
   | DocketCitation
   | StatuteCitation
   | JournalCitation
