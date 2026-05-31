@@ -29,6 +29,7 @@ import {
   extractNeutral,
   extractPublicLaw,
   extractRestatement,
+  extractSessionLaw,
   extractStatute,
   extractStatutesAtLarge,
   extractTreatise,
@@ -42,6 +43,7 @@ import {
   journalPatterns,
   neutralPatterns,
   secondaryAuthorityPatterns,
+  sessionLawPatterns,
   shortFormPatterns,
   stateRulePatterns,
   statutePatterns,
@@ -248,6 +250,7 @@ export function extractCitations(
   )
   const allPatterns = options?.patterns || [
     ...neutralPatterns, // Most specific (year-based format)
+    ...sessionLawPatterns, // State session laws — anchored by "Stats." / "Nev. Stat." (#350, #779)
     ...docketPatterns, // Docket-number citations (anchored by "No. ")
     ...shortFormPatterns, // Short-form (requires " at " keyword)
     ...federalRulePatterns, // Fed. R. Civ. P. etc. — before casePatterns (#576, #582)
@@ -445,6 +448,9 @@ export function extractCitations(
         break
       case "statutesAtLarge":
         citation = extractStatutesAtLarge(token, transformationMap, cleaned)
+        break
+      case "sessionLaw":
+        citation = extractSessionLaw(token, transformationMap)
         break
       case "constitutional":
         citation = extractConstitutional(token, transformationMap)

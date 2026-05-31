@@ -11,6 +11,7 @@ import type {
   NeutralCitation,
   PublicLawCitation,
   RestatementCitation,
+  SessionLawCitation,
   ShortFormCaseCitation,
   StatuteCitation,
   StatutesAtLargeCitation,
@@ -330,6 +331,90 @@ describe("toBluebook", () => {
         page: 1234,
       }
       expect(toBluebook(cite)).toBe("120 Stat. 1234")
+    })
+  })
+
+  describe("SessionLawCitation (#350, #779)", () => {
+    it("formats California single section + page (Stats. leads)", () => {
+      const cite: SessionLawCitation = {
+        ...BASE,
+        type: "sessionLaw",
+        jurisdiction: "CA",
+        code: "Stats.",
+        year: 1992,
+        chapter: "726",
+        section: "2",
+        page: "3523",
+      }
+      expect(toBluebook(cite)).toBe("Stats. 1992, ch. 726, § 2, p. 3523")
+    })
+
+    it("formats California section list + page range", () => {
+      const cite: SessionLawCitation = {
+        ...BASE,
+        type: "sessionLaw",
+        jurisdiction: "CA",
+        code: "Stats.",
+        year: 2002,
+        chapter: "40",
+        sections: ["6", "7", "8"],
+        pageRange: { start: "460", end: "462" },
+      }
+      expect(toBluebook(cite)).toBe("Stats. 2002, ch. 40, §§ 6, 7, 8, pp. 460-462")
+    })
+
+    it("formats California single section + page range", () => {
+      const cite: SessionLawCitation = {
+        ...BASE,
+        type: "sessionLaw",
+        jurisdiction: "CA",
+        code: "Stats.",
+        year: 1963,
+        chapter: "1471",
+        section: "1",
+        pageRange: { start: "3038", end: "3039" },
+      }
+      expect(toBluebook(cite)).toBe("Stats. 1963, ch. 1471, § 1, pp. 3038-3039")
+    })
+
+    it("formats Nevada section range + page range (year leads, 'at')", () => {
+      const cite: SessionLawCitation = {
+        ...BASE,
+        type: "sessionLaw",
+        jurisdiction: "NV",
+        code: "Nev. Stat.",
+        year: 2003,
+        chapter: "427",
+        sectionRange: { start: "25", end: "26" },
+        pageRange: { start: "2590", end: "95" },
+      }
+      expect(toBluebook(cite)).toBe("2003 Nev. Stat., ch. 427, §§ 25-26, at 2590-95")
+    })
+
+    it("formats Nevada single section + single page ('at')", () => {
+      const cite: SessionLawCitation = {
+        ...BASE,
+        type: "sessionLaw",
+        jurisdiction: "NV",
+        code: "Nev. Stat.",
+        year: 1981,
+        chapter: "418",
+        section: "5",
+        page: "100",
+      }
+      expect(toBluebook(cite)).toBe("1981 Nev. Stat., ch. 418, § 5, at 100")
+    })
+
+    it("formats Nevada chapter-only (no section or page)", () => {
+      const cite: SessionLawCitation = {
+        ...BASE,
+        type: "sessionLaw",
+        jurisdiction: "NV",
+        code: "Nev. Stat.",
+        year: 1977,
+        chapter: "598",
+      }
+      expect(toBluebook(cite)).toBe("1977 Nev. Stat., ch. 598")
     })
   })
 

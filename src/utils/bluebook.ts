@@ -136,6 +136,31 @@ export function toBluebook(citation: Citation): string {
     case "statutesAtLarge":
       return `${citation.volume} Stat. ${citation.page}`
 
+    case "sessionLaw": {
+      // California leads with the compilation ("Stats. 1992, ch. 726"); Nevada
+      // leads with the year ("2003 Nev. Stat., ch. 427").
+      const head =
+        citation.jurisdiction === "NV"
+          ? `${citation.year} ${citation.code}`
+          : `${citation.code} ${citation.year}`
+      let sectionText = ""
+      if (citation.sections) {
+        sectionText = `, §§ ${citation.sections.join(", ")}`
+      } else if (citation.sectionRange) {
+        sectionText = `, §§ ${citation.sectionRange.start}-${citation.sectionRange.end}`
+      } else if (citation.section) {
+        sectionText = `, § ${citation.section}`
+      }
+      let pageText = ""
+      const pageLabel = citation.jurisdiction === "NV" ? "at " : "pp. "
+      if (citation.pageRange) {
+        pageText = `, ${pageLabel}${citation.pageRange.start}-${citation.pageRange.end}`
+      } else if (citation.page) {
+        pageText = `, ${citation.jurisdiction === "NV" ? "at " : "p. "}${citation.page}`
+      }
+      return `${head}, ch. ${citation.chapter}${sectionText}${pageText}`
+    }
+
     case "id":
       return citation.pincite !== undefined ? `Id. at ${citation.pincite}` : "Id."
 
