@@ -24,14 +24,18 @@ import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from 
  */
 const RULE_SET_MAP: ReadonlyMap<string, FederalRuleCitation["ruleSet"]> = new Map([
   ["civp", "civil"],
+  ["civproc", "civil"],
   ["civilprocedure", "civil"],
   ["crimp", "criminal"],
+  ["crimproc", "criminal"],
   ["criminalprocedure", "criminal"],
   ["evid", "evidence"],
   ["evidence", "evidence"],
   ["appp", "appellate"],
+  ["appproc", "appellate"],
   ["appellateprocedure", "appellate"],
   ["bankrp", "bankruptcy"],
+  ["bankrproc", "bankruptcy"],
   ["bankruptcyprocedure", "bankruptcy"],
   // Acronym forms (#696). Both bare (`FRCP`) and dotted (`F.R.C.P.`)
   // normalize via the period-and-space strip to the same lowercase key.
@@ -90,7 +94,7 @@ export function extractFederalRule(
   // Try the abbreviated form first (more common), then spelled-out,
   // then acronym (#696).
   const abbreviatedRegex =
-    /\bFed\.\s?R\.\s?(Civ\.\s?P\.|Crim\.\s?P\.|Evid\.|App\.\s?P\.|Bankr\.\s?P\.)\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/d
+    /\bFed\.\s?(?:R\.|Rules?)\s?(Civ\.\s?(?:P\.|Proc\.)|Crim\.\s?(?:P\.|Proc\.)|Evid\.|App\.\s?(?:P\.|Proc\.)|Bankr\.\s?(?:P\.|Proc\.))\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/d
   const spelledRegex =
     /\bFederal\s+Rules?\s+of\s+(?:the\s+)?(Civil\s+Procedure|Criminal\s+Procedure|Evidence|Appellate\s+Procedure|Bankruptcy\s+Procedure)\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/di
   const acronymRegex =

@@ -32,11 +32,15 @@ export const federalRulePatterns: Pattern[] = [
     //
     // Subsection chain `(a)(1)(B)(i)` is captured greedily after the rule
     // number; the extractor splits it from the bare rule.
+    // The `R.` token also accepts the older long-form `Rule`/`Rules`, and
+    // each `P.`-suffixed set also accepts the long-form `Proc.`, so
+    // `Fed. Rule Bankr. P. 3001` and `Fed. Rule Crim. Proc. 46(b)` tokenize
+    // alongside the canonical abbreviations (#295).
     id: "fed-rule-abbreviated",
     regex:
-      /\bFed\.\s?R\.\s?(Civ\.\s?P\.|Crim\.\s?P\.|Evid\.|App\.\s?P\.|Bankr\.\s?P\.)\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/g,
+      /\bFed\.\s?(?:R\.|Rules?)\s?(Civ\.\s?(?:P\.|Proc\.)|Crim\.\s?(?:P\.|Proc\.)|Evid\.|App\.\s?(?:P\.|Proc\.)|Bankr\.\s?(?:P\.|Proc\.))\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/g,
     description:
-      'Abbreviated federal rules: "Fed. R. Civ. P. 56", "Fed. R. Evid. 401", "Fed.R.Bankr.P. 7001" — #576',
+      'Abbreviated federal rules: "Fed. R. Civ. P. 56", "Fed. Rule Crim. Proc. 46(b)", "Fed.R.Bankr.P. 7001" — #576, #295',
     type: "federalRule",
   },
   {
