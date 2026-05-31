@@ -15,6 +15,7 @@
  */
 
 export * from "./extractAnnotation"
+export * from "./extractCanon"
 export * from "./extractCase"
 export * from "./extractCitations"
 export * from "./extractConstitutional"

@@ -184,6 +184,9 @@ export function toBluebook(citation: Citation): string {
     case "localOrdinance":
       return `${citation.code} § ${citation.section}`
 
+    case "canon":
+      return `Canon ${citation.canon}${citation.subsection ?? ""}`
+
     case "id":
       return citation.pincite !== undefined ? `Id. at ${citation.pincite}` : "Id."
 
