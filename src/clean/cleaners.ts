@@ -137,6 +137,26 @@ export function rejoinHyphenatedWords(text: string): string {
 }
 
 /**
+ * Strip PDF page-break marker lines — a number fenced by dashes on its own
+ * line (`\n— 14 —\n`) — that PDF-to-text conversion inserts mid-citation,
+ * splitting a citation across the artifact (`100\n— 14 —\nF.2d 123`). The
+ * marker plus its surrounding line breaks collapse to a single space so the
+ * citation text on either side rejoins. (#676)
+ *
+ * Conservative: the number must be fenced by dashes (em/en/hyphen) AND
+ * bounded by line breaks on both sides, so ordinary dashed prose and
+ * horizontal rules without a number are untouched. Must run before
+ * replaceWhitespace, which would otherwise erase the line-break anchors.
+ *
+ * @example
+ * stripPageBreakMarkers("Smith, 100\n— 14 —\nF.2d 123")
+ * // => "Smith, 100 F.2d 123"
+ */
+export function stripPageBreakMarkers(text: string): string {
+  return text.replace(/[\r\n]+[^\S\r\n]*[—–-]+[^\S\r\n]*\d+[^\S\r\n]*[—–-]+[^\S\r\n]*[\r\n]+/g, " ")
+}
+
+/**
  * Replace each whitespace character (tab, newline, etc.) with a regular space.
  * Does NOT collapse consecutive spaces — that's a separate step so the position
  * mapper can handle each transformation type correctly (same-length replacement
@@ -196,6 +216,10 @@ export function normalizeUnicode(text: string): string {
   // cleaned text length is never increased by the normalize() call.
   const stripped = text
     .replace(/[™®℠©]/g, "")
+    // Soft hyphen (U+00AD): a zero-width discretionary hyphen PDFs insert at
+    // line breaks. Strip it (don't replace with "-") so a reporter split
+    // across a line break (`F.2d` split by the hyphen) extracts cleanly. (#676)
+    .replace(/\u00AD/g, "")
     // Vulgar fractions (½ ⅓ ¼ ¾ ⅕ ⅖ ⅗ ⅘ ⅙ ⅚ ⅛ ⅜ ⅝ ⅞ ⅐ ⅑ ⅒ ⅔)
     .replace(/[¼-¾⅐-⅞]/g, "")
     // Numero sign (№) — common in older dockets; the surrounding "Docket"

@@ -12,6 +12,7 @@ import {
   rejoinHyphenatedWords,
   replaceWhitespace,
   stripHtmlTags,
+  stripPageBreakMarkers,
 } from "./cleaners"
 
 /**
@@ -50,6 +51,7 @@ export function cleanText(
     stripHtmlTags,
     decodeHtmlEntities,
     rejoinHyphenatedWords,
+    stripPageBreakMarkers,
     replaceWhitespace,
     collapseSpaces,
     normalizeUnicode,

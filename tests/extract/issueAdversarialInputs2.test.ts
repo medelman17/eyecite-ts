@@ -9,14 +9,14 @@ const caseOf = (text: string) => extractCitations(text).filter((c) => c.type ===
 
 describe("adversarial input regression — round 2", () => {
   describe("PDF / OCR artifacts", () => {
-    it.todo("soft hyphen `­` (U+00AD) inside reporter should normalize", () => {
+    it("soft hyphen `­` (U+00AD) inside reporter should normalize", () => {
       // PDFs often insert U+00AD as a discretionary hyphen at line breaks.
       // `100 F.­2d 123` should normalize to `100 F.2d 123` and extract.
       const cs = caseOf("100 F.­2d 123")
       expect(cs).toHaveLength(1)
     })
 
-    it.todo("page-number artifact `100\\n— 14 —\\nF.2d 123` (PDF page break)", () => {
+    it("page-number artifact `100\\n— 14 —\\nF.2d 123` (PDF page break)", () => {
       // PDF-to-text conversion inserts page numbers mid-citation: the
       // volume `100` and the rest of the citation `F.2d 123` are
       // separated by a `— 14 —` page marker. A robust cleaner should
@@ -39,12 +39,14 @@ describe("adversarial input regression — round 2", () => {
   })
 
   describe("paragraph pincites (¶)", () => {
-    it.todo("`Smith, 100 F.2d 100, ¶ 12` captures ¶12 as pincite", () => {
+    it("`Smith, 100 F.2d 100, ¶ 12` captures ¶12 as pincite", () => {
       const cs = caseOf("Smith, 100 F.2d 100, ¶ 12")
       expect(cs).toHaveLength(1)
-      // Verify pincite is captured — paragraph mark + number
-      const c = cs[0] as Record<string, unknown>
-      expect(c.pincite).toBeDefined()
+      // Paragraph pincites are captured in `pinciteInfo.paragraph` (#204), not
+      // the numeric `pincite` field — by design `page` and `paragraph` are
+      // mutually exclusive, so the page-only `pincite` stays undefined here.
+      const c = cs[0] as { pincite?: number; pinciteInfo?: { paragraph?: number } }
+      expect(c.pinciteInfo?.paragraph).toBe(12)
     })
 
     it("`Smith, 100 F.2d 100` (no pincite) still extracts", () => {
@@ -172,7 +174,7 @@ describe("adversarial input regression — round 2", () => {
   })
 
   describe("citation in URL — should NOT extract", () => {
-    it.todo("`https://example.com/100/U.S./123` does not extract a phantom case", () => {
+    it("`https://example.com/100/U.S./123` does not extract a phantom case", () => {
       // URLs containing what looks like a citation should be rejected.
       // Currently the slash separators stop the regex from matching,
       // but document the invariant.
