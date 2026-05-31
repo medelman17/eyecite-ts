@@ -169,6 +169,18 @@ export function toBluebook(citation: Citation): string {
       return `${citation.series} No. ${citation.seriesNumber}`
     }
 
+    case "legislativeMaterial": {
+      if (citation.kind === "congressionalRecord") {
+        return `${citation.volume} Cong. Rec. ${citation.page}`
+      }
+      const abbrev = citation.chamber === "House" ? "H.R." : "S."
+      const cong = citation.congress !== undefined ? `, ${citation.congress}th Cong.` : ""
+      const sess = citation.session ? `, ${citation.session} Sess.` : ""
+      const page = citation.page !== undefined ? `, p. ${citation.page}` : ""
+      const year = citation.year !== undefined ? ` (${citation.year})` : ""
+      return `${abbrev} Rep. No. ${citation.reportNumber}${cong}${sess}${page}${year}`
+    }
+
     case "id":
       return citation.pincite !== undefined ? `Id. at ${citation.pincite}` : "Id."
 

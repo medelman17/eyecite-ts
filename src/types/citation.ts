@@ -30,6 +30,7 @@ export type CitationType =
   | "statutesAtLarge"
   | "sessionLaw"
   | "treaty"
+  | "legislativeMaterial"
   | "constitutional"
   | "federalRule"
   | "restatement"
@@ -814,6 +815,34 @@ export interface TreatyCitation extends CitationBase {
 }
 
 /**
+ * Legislative-material citation (#308).
+ *
+ * House/Senate committee reports (`H.R. Rep. No. 94-1487, p. 16 (1976)`) and the
+ * Congressional Record (`112 Cong. Rec. 1234`), unified via the `kind`
+ * discriminator. The "U.S. Code Cong. & Admin. News" form is reserved for a
+ * follow-up.
+ */
+export interface LegislativeMaterialCitation extends CitationBase {
+  type: "legislativeMaterial"
+  /** Distinguishes a committee/conference report from a Congressional Record cite */
+  kind: "report" | "congressionalRecord"
+  /** Chamber for reports */
+  chamber?: "House" | "Senate"
+  /** Report number, e.g. "94-1487" or "595" */
+  reportNumber?: string
+  /** Congress number when stated, e.g. 95 */
+  congress?: number
+  /** Session ordinal when stated, e.g. "1st", "2d" */
+  session?: string
+  /** Volume for Congressional Record cites */
+  volume?: number
+  /** Page (report page or Congressional Record page) */
+  page?: number
+  /** Year, from a trailing `(YYYY)` parenthetical */
+  year?: number
+}
+
+/**
  * Federal Rules of Procedure citation (#576).
  *
  * Covers the four primary federal rule sets (civil, criminal, evidence,
@@ -1222,6 +1251,7 @@ export type Citation =
   | AnnotationCitation
   | SessionLawCitation
   | TreatyCitation
+  | LegislativeMaterialCitation
   | IdCitation
   | SupraCitation
   | ShortFormCaseCitation
@@ -1240,6 +1270,7 @@ export type FullCitationType =
   | "statutesAtLarge"
   | "sessionLaw"
   | "treaty"
+  | "legislativeMaterial"
   | "constitutional"
   | "federalRule"
   | "stateRule"
@@ -1255,6 +1286,7 @@ export type FullCitation =
   | FullCaseCitation
   | SessionLawCitation
   | TreatyCitation
+  | LegislativeMaterialCitation
   | DocketCitation
   | StatuteCitation
   | JournalCitation
