@@ -127,6 +127,29 @@ export const constitutionalPatterns: Pattern[] = [
     type: "constitutional",
   },
   {
+    // #321 — Spelled-out bare `Article N, Section N` prose with no `Const.`
+    // anchor and no `of the <State> Constitution` trailer:
+    // `Article I, Section 8`, `Article 1, Section 10`, `Art. 1, Section 6`.
+    // The `bare-article` pattern above only accepts the abbreviated `Art.`
+    // token plus a `§` section symbol, so the spelled-out forms attorneys
+    // use most in argument prose fell through entirely. The tight
+    // `Article <num>, Section <num>` adjacency (comma/semicolon separator)
+    // is the false-positive guard; "Article"/"Art." is case-sensitive so
+    // lowercase contract/bylaw prose ("article 7, section 3") does not
+    // match. Confidence set to 0.5 in the extractor (same as `bare-article`).
+    // The `(?<!Const\.?,?\s)` lookbehind (mirroring `bare-article`) keeps
+    // this from also matching the `Art. I, §7` core inside a full
+    // `U.S. Const., Art. I, §7` citation already captured upstream.
+    id: "bare-article-section",
+    regex: new RegExp(
+      String.raw`(?<!Const\.?,?\s)\b(?:Article|Art\.?)\s+([IVX]+|\d+)\s*[,;]\s*(?:Section|§)\s*([\w()-]+)`,
+      "g",
+    ),
+    description:
+      'Bare spelled-out article+section prose: "Article I, Section 8", "Art. 1, Section 6" — #321',
+    type: "constitutional",
+  },
+  {
     // #534 — Bare word-form amendment references without `Const.` prefix:
     // `the Fifth Amendment`, `the Fourteenth Amendment`. Use a leading
     // word-boundary plus negative-lookbehind for `Const.?,?\s` so this
