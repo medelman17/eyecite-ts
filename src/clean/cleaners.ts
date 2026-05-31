@@ -94,6 +94,10 @@ export function stripHtmlTags(text: string): string {
     const before = offset > 0 ? stripped[offset - 1] : ""
     const afterIdx = offset + match.length
     const after = afterIdx < stripped.length ? stripped[afterIdx] : ""
+    // A `<br>` line break is a visual separation, so it collapses to a space
+    // even when flanked by non-word chars (`v.<br>Jones` → `v. Jones`),
+    // unlike inline tags which only space two fused word chars. (#693)
+    if (/<br\b/i.test(match)) return " "
     return /\w/.test(before) && /\w/.test(after) ? " " : ""
   })
 }
@@ -167,7 +171,7 @@ export function stripPageBreakMarkers(text: string): string {
  * // => "Smith v. Doe"
  */
 export function replaceWhitespace(text: string): string {
-  return text.replace(/[\t\n\r\u00A0\u2000-\u200A\u202F\u205F\u3000]/g, " ")
+  return text.replace(/[\t\n\r\u00A0\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g, " ")
 }
 
 /**
@@ -190,7 +194,7 @@ export function collapseSpaces(text: string): string {
  * // => "Smith v. Doe, 500 F.2d 123"
  */
 export function normalizeWhitespace(text: string): string {
-  return text.replace(/[\t\n\r\u00A0\u2000-\u200A\u202F\u205F\u3000]+/g, " ").replace(/ {2,}/g, " ")
+  return text.replace(/[\t\n\r\u00A0\u2000-\u200B\u202F\u205F\u3000\uFEFF]+/g, " ").replace(/ {2,}/g, " ")
 }
 
 /**
