@@ -28,6 +28,7 @@ export type CitationType =
   | "publicLaw"
   | "federalRegister"
   | "statutesAtLarge"
+  | "sessionLaw"
   | "constitutional"
   | "federalRule"
   | "restatement"
@@ -754,6 +755,36 @@ export interface StatutesAtLargeCitation extends CitationBase {
 }
 
 /**
+ * Session-law citation (#350, #779).
+ *
+ * State session laws — chronological compilations cited by year + chapter:
+ * California Statutes (`Stats. 1992, ch. 726, § 2, p. 3523`) and Nevada session
+ * laws (`2003 Nev. Stat., ch. 427, §§ 25-26, at 2590-95`). The federal analogue
+ * is `statutesAtLarge`; this jurisdiction-general type covers the state forms.
+ */
+export interface SessionLawCitation extends CitationBase {
+  type: "sessionLaw"
+  /** Two-letter jurisdiction code (e.g. "CA", "NV") */
+  jurisdiction: string
+  /** Session-law compilation label (e.g. "Stats." for CA, "Nev. Stat." for NV) */
+  code: string
+  /** Session year */
+  year: number
+  /** Chapter / bill number within that session */
+  chapter: string
+  /** Single cited section, or the first of a list/range */
+  section?: string
+  /** Multiple cited sections (`§§ 6, 7, 8` → `["6","7","8"]`) */
+  sections?: string[]
+  /** Section range (`§§ 25-26` → `{ start: "25", end: "26" }`) */
+  sectionRange?: { start: string; end: string }
+  /** Single cited page, or the first of a range */
+  page?: string
+  /** Page range (`pp. 3038-3039`, `at 2590-95`) */
+  pageRange?: { start: string; end: string }
+}
+
+/**
  * Federal Rules of Procedure citation (#576).
  *
  * Covers the four primary federal rule sets (civil, criminal, evidence,
@@ -1160,6 +1191,7 @@ export type Citation =
   | RestatementCitation
   | TreatiseCitation
   | AnnotationCitation
+  | SessionLawCitation
   | IdCitation
   | SupraCitation
   | ShortFormCaseCitation
@@ -1176,6 +1208,7 @@ export type FullCitationType =
   | "publicLaw"
   | "federalRegister"
   | "statutesAtLarge"
+  | "sessionLaw"
   | "constitutional"
   | "federalRule"
   | "stateRule"
@@ -1189,6 +1222,7 @@ export type ShortFormCitationType = "id" | "supra" | "shortFormCase"
  */
 export type FullCitation =
   | FullCaseCitation
+  | SessionLawCitation
   | DocketCitation
   | StatuteCitation
   | JournalCitation

@@ -22,6 +22,7 @@ export function isFullCitation(citation: Citation): citation is FullCitation {
     citation.type === "publicLaw" ||
     citation.type === "federalRegister" ||
     citation.type === "statutesAtLarge" ||
+    citation.type === "sessionLaw" ||
     citation.type === "constitutional" ||
     citation.type === "federalRule" ||
     citation.type === "restatement" ||
