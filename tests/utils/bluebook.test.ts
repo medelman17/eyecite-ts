@@ -9,6 +9,7 @@ import type {
   IdCitation,
   JournalCitation,
   LegislativeMaterialCitation,
+  LocalOrdinanceCitation,
   NeutralCitation,
   PublicLawCitation,
   RestatementCitation,
@@ -480,6 +481,19 @@ describe("toBluebook", () => {
         page: 1234,
       }
       expect(toBluebook(cite)).toBe("112 Cong. Rec. 1234")
+    })
+  })
+
+  describe("LocalOrdinanceCitation (#778)", () => {
+    it("formats a Clark County ordinance", () => {
+      const cite: LocalOrdinanceCitation = {
+        ...BASE,
+        type: "localOrdinance",
+        code: "CCCO",
+        locality: "Clark County, NV",
+        section: "2.12.010(1)",
+      }
+      expect(toBluebook(cite)).toBe("CCCO § 2.12.010(1)")
     })
   })
 
