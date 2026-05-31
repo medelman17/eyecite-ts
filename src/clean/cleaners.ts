@@ -64,6 +64,15 @@
  * stripHtmlTags("<![CDATA[500 F.2d 123]]>")
  * // => "500 F.2d 123"          // CDATA markers stripped, body kept (#561)
  */
+/** Block-level / sectioning HTML tags whose boundaries separate logical text
+ *  units (heading vs paragraph, list items, table cells). When stripped, these
+ *  must leave a sentence boundary — not a bare space — so the case-name
+ *  backscan stops there instead of fusing across the boundary (#701). `<br>`
+ *  is intentionally excluded: it is an in-flow line break that should stay a
+ *  space so a caption split across it is preserved (#693). */
+const BLOCK_TAG_RE =
+  /<\/?(?:p|div|h[1-6]|li|ul|ol|dl|dd|dt|table|thead|tbody|tfoot|tr|td|th|caption|section|article|aside|header|footer|nav|main|blockquote|figure|figcaption|hr|pre|address|form|fieldset)\b/i
+
 export function stripHtmlTags(text: string): string {
   // Pre-pass 1+2: delete script/style bodies (tag + body + close tag).
   // Body matching is non-greedy across any character (including newlines)
@@ -94,6 +103,19 @@ export function stripHtmlTags(text: string): string {
     const before = offset > 0 ? stripped[offset - 1] : ""
     const afterIdx = offset + match.length
     const after = afterIdx < stripped.length ? stripped[afterIdx] : ""
+    // Block-level boundaries separate logical units → leave a sentence
+    // boundary so the case-name backscan stops here instead of fusing the
+    // heading/cell into the following caption (`<h2>Case</h2><p>Smith...` →
+    // `Case. Smith...`). If the preceding char already ends a sentence (or
+    // there is none), a plain space suffices — avoids a doubled terminator
+    // (`First para.` + `</p><p>` → `First para. Brown`, not `para.. Brown`). (#701)
+    if (BLOCK_TAG_RE.test(match)) {
+      // No separator at the document edges — nothing to separate from.
+      if (before === "" || after === "") return ""
+      // A plain space suffices when a sentence terminator already precedes
+      // (avoids `para.. Brown`); otherwise insert one so the backscan stops.
+      return /[.!?]/.test(before) ? " " : ". "
+    }
     // A `<br>` line break is a visual separation, so it collapses to a space
     // even when flanked by non-word chars (`v.<br>Jones` → `v. Jones`),
     // unlike inline tags which only space two fused word chars. (#693)

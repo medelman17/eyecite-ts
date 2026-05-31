@@ -29,13 +29,16 @@ describe("#558 — block-element fusion phantom citations", () => {
     expect(cites).toHaveLength(2)
   })
 
-  it("preserves the cleaned text (block-element separator stays a single space)", () => {
-    // The fix is at the dedup layer — cleaned text shape is unchanged.
-    // Pinning this so a future cleaner change doesn't silently regress
-    // the position map.
+  it("preserves the cleaned text (block-element separator is a sentence boundary)", () => {
+    // #701 changed block-element boundaries from a bare space to a sentence
+    // boundary (". ") so the case-name backscan stops at the boundary instead
+    // of fusing the two paragraphs. This also strengthens #558: the period
+    // prevents the phantom journal token (`123 Then citing 600`) at the
+    // source, not only at the dedup layer (the no-phantom + span-position
+    // tests above still pass).
     const input = "<p>500 F.2d 123</p><p>Then citing 600 F.2d 234</p>"
     const { cleaned } = cleanText(input)
-    expect(cleaned).toBe("500 F.2d 123 Then citing 600 F.2d 234")
+    expect(cleaned).toBe("500 F.2d 123. Then citing 600 F.2d 234")
   })
 
   it("end-to-end span positions of the two real cites are not disturbed", () => {
