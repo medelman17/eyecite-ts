@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { toBluebook } from "../../src/utils"
 import type {
   AnnotationCitation,
+  CanonCitation,
   ConstitutionalCitation,
   FederalRegisterCitation,
   FederalRuleCitation,
@@ -494,6 +495,23 @@ describe("toBluebook", () => {
         section: "2.12.010(1)",
       }
       expect(toBluebook(cite)).toBe("CCCO § 2.12.010(1)")
+    })
+  })
+
+  describe("CanonCitation (#310)", () => {
+    it("formats a judicial-conduct canon with subsection", () => {
+      const cite: CanonCitation = {
+        ...BASE,
+        type: "canon",
+        canon: "7",
+        subsection: "(B)(1)",
+      }
+      expect(toBluebook(cite)).toBe("Canon 7(B)(1)")
+    })
+
+    it("formats a bare canon", () => {
+      const cite: CanonCitation = { ...BASE, type: "canon", canon: "1" }
+      expect(toBluebook(cite)).toBe("Canon 1")
     })
   })
 

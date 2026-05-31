@@ -6,6 +6,7 @@
  * - Importing all patterns: `import { casePatterns, statutePatterns, ... } from '@/patterns'`
  */
 
+export * from "./canonPatterns"
 export * from "./casePatterns"
 export * from "./constitutionalPatterns"
 export * from "./docketPatterns"

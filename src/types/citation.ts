@@ -32,6 +32,7 @@ export type CitationType =
   | "treaty"
   | "legislativeMaterial"
   | "localOrdinance"
+  | "canon"
   | "constitutional"
   | "federalRule"
   | "restatement"
@@ -861,6 +862,23 @@ export interface LocalOrdinanceCitation extends CitationBase {
 }
 
 /**
+ * Judicial-conduct canon citation (#310).
+ *
+ * Code of Judicial Conduct canons: `Canon 7(B)(1)`, `Canon 2(A) of the Code of
+ * Judicial Conduct`. Distinct from attorney disciplinary/model rules (#295) —
+ * this is judicial conduct.
+ */
+export interface CanonCitation extends CitationBase {
+  type: "canon"
+  /** Canon number, e.g. "7", "2" */
+  canon: string
+  /** Subsection chain, e.g. "(B)(1)", "(A)" */
+  subsection?: string
+  /** Rule set when stated explicitly, e.g. "Code of Judicial Conduct" */
+  ruleSet?: string
+}
+
+/**
  * Federal Rules of Procedure citation (#576).
  *
  * Covers the four primary federal rule sets (civil, criminal, evidence,
@@ -1271,6 +1289,7 @@ export type Citation =
   | TreatyCitation
   | LegislativeMaterialCitation
   | LocalOrdinanceCitation
+  | CanonCitation
   | IdCitation
   | SupraCitation
   | ShortFormCaseCitation
@@ -1291,6 +1310,7 @@ export type FullCitationType =
   | "treaty"
   | "legislativeMaterial"
   | "localOrdinance"
+  | "canon"
   | "constitutional"
   | "federalRule"
   | "stateRule"
@@ -1308,6 +1328,7 @@ export type FullCitation =
   | TreatyCitation
   | LegislativeMaterialCitation
   | LocalOrdinanceCitation
+  | CanonCitation
   | DocketCitation
   | StatuteCitation
   | JournalCitation

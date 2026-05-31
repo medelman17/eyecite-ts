@@ -26,6 +26,7 @@ export function isFullCitation(citation: Citation): citation is FullCitation {
     citation.type === "treaty" ||
     citation.type === "legislativeMaterial" ||
     citation.type === "localOrdinance" ||
+    citation.type === "canon" ||
     citation.type === "constitutional" ||
     citation.type === "federalRule" ||
     citation.type === "restatement" ||
