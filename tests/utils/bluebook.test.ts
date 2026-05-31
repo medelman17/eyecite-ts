@@ -8,6 +8,7 @@ import type {
   FullCaseCitation,
   IdCitation,
   JournalCitation,
+  LegislativeMaterialCitation,
   NeutralCitation,
   PublicLawCitation,
   RestatementCitation,
@@ -439,6 +440,46 @@ describe("toBluebook", () => {
         page: 331,
       }
       expect(toBluebook(cite)).toBe("1155 U.N.T.S. 331")
+    })
+  })
+
+  describe("LegislativeMaterialCitation (#308)", () => {
+    it("formats a House committee report", () => {
+      const cite: LegislativeMaterialCitation = {
+        ...BASE,
+        type: "legislativeMaterial",
+        kind: "report",
+        chamber: "House",
+        reportNumber: "94-1487",
+        page: 16,
+        year: 1976,
+      }
+      expect(toBluebook(cite)).toBe("H.R. Rep. No. 94-1487, p. 16 (1976)")
+    })
+
+    it("formats a Senate report with congress + session", () => {
+      const cite: LegislativeMaterialCitation = {
+        ...BASE,
+        type: "legislativeMaterial",
+        kind: "report",
+        chamber: "Senate",
+        reportNumber: "989",
+        congress: 95,
+        session: "2d",
+        page: 86,
+      }
+      expect(toBluebook(cite)).toBe("S. Rep. No. 989, 95th Cong., 2d Sess., p. 86")
+    })
+
+    it("formats a Congressional Record citation", () => {
+      const cite: LegislativeMaterialCitation = {
+        ...BASE,
+        type: "legislativeMaterial",
+        kind: "congressionalRecord",
+        volume: 112,
+        page: 1234,
+      }
+      expect(toBluebook(cite)).toBe("112 Cong. Rec. 1234")
     })
   })
 

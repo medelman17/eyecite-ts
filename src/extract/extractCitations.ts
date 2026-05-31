@@ -26,6 +26,7 @@ import {
   extractFederalRule,
   extractStateRule,
   extractJournal,
+  extractLegislativeMaterial,
   extractNeutral,
   extractPublicLaw,
   extractRestatement,
@@ -42,6 +43,7 @@ import {
   docketPatterns,
   federalRulePatterns,
   journalPatterns,
+  legislativeMaterialPatterns,
   neutralPatterns,
   secondaryAuthorityPatterns,
   sessionLawPatterns,
@@ -254,6 +256,7 @@ export function extractCitations(
     ...neutralPatterns, // Most specific (year-based format)
     ...sessionLawPatterns, // State session laws — anchored by "Stats." / "Nev. Stat." (#350, #779)
     ...treatyPatterns, // Treaty series — anchored by "T.I.A.S."/"U.N.T.S."/"U.S.T." (#309)
+    ...legislativeMaterialPatterns, // Committee reports + Cong. Rec. — anchored by "Rep. No."/"Cong. Rec." (#308)
     ...docketPatterns, // Docket-number citations (anchored by "No. ")
     ...shortFormPatterns, // Short-form (requires " at " keyword)
     ...federalRulePatterns, // Fed. R. Civ. P. etc. — before casePatterns (#576, #582)
@@ -457,6 +460,9 @@ export function extractCitations(
         break
       case "treaty":
         citation = extractTreaty(token, transformationMap)
+        break
+      case "legislativeMaterial":
+        citation = extractLegislativeMaterial(token, transformationMap)
         break
       case "constitutional":
         citation = extractConstitutional(token, transformationMap)
