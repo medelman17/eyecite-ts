@@ -552,8 +552,15 @@ const PAREN_REGEX = /\(([^)]+)\)/
 // opinions sometimes use semicolon between page and pincite
 // (`256 F.Supp. 572; 573-574 (court year)`); the existing comma-only
 // alternation blocked year+court extraction entirely.
+// OCR stray-number tolerance (#525): a single bare ` N` may sit between the
+// page/pincite and the year paren — a pincite with a missing comma
+// (`645 648 (4th Cir. 1942)`) or a space-separated OCR'd range
+// (`347 351 (1937)`, from `347-351`). The optional `(?:\s+\d+)?` skips it so
+// the `(court year)` paren is reachable. The mandatory trailing `(` is the
+// false-positive guard: a stray number followed by a reporter (a new
+// citation, `200 F.3d 2`) has no paren and still won't match.
 const LOOKAHEAD_PAREN_REGEX =
-  /^(?:(?:[,;]\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?|\s+at\s+(?:(?:pp?\.|pages?)\s*)?)\*?\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d+)?\s*\(([^)]+)\)/
+  /^(?:(?:[,;]\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?|\s+at\s+(?:(?:pp?\.|pages?)\s*)?)\*?\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d+)?(?:\s+\d+)?\s*\(([^)]+)\)/
 
 /** Extracts pincite from look-ahead text.
  *  Accepts five prefix forms:
