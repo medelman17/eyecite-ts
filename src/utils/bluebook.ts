@@ -161,6 +161,14 @@ export function toBluebook(citation: Citation): string {
       return `${head}, ch. ${citation.chapter}${sectionText}${pageText}`
     }
 
+    case "treaty": {
+      // Volume-series-page (1155 U.N.T.S. 331) vs "No."-style series (T.I.A.S. No. 1502).
+      if (citation.volume !== undefined && citation.page !== undefined) {
+        return `${citation.volume} ${citation.series} ${citation.page}`
+      }
+      return `${citation.series} No. ${citation.seriesNumber}`
+    }
+
     case "id":
       return citation.pincite !== undefined ? `Id. at ${citation.pincite}` : "Id."
 

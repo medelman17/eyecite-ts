@@ -29,6 +29,7 @@ export type CitationType =
   | "federalRegister"
   | "statutesAtLarge"
   | "sessionLaw"
+  | "treaty"
   | "constitutional"
   | "federalRule"
   | "restatement"
@@ -785,6 +786,34 @@ export interface SessionLawCitation extends CitationBase {
 }
 
 /**
+ * Treaty citation (#309).
+ *
+ * Treaty-series citations: "No."-style series (`T.I.A.S. No. 1502`, spacing-
+ * tolerant) and volume-series-page forms (`1155 U.N.T.S. 331`, `123 U.S.T. 456`).
+ * Named-treaty metadata (`treatyName` / `article` / `paragraph`) is reserved for
+ * a follow-up and not yet populated.
+ */
+export interface TreatyCitation extends CitationBase {
+  type: "treaty"
+  /** Treaty series identifier (e.g. "T.I.A.S.", "U.N.T.S.", "U.S.T.") */
+  series?: string
+  /** Series number for "No."-style series (e.g. `T.I.A.S. No. 1502` → "1502") */
+  seriesNumber?: string
+  /** Volume for volume-series-page forms (e.g. `1155 U.N.T.S. 331` → 1155) */
+  volume?: number
+  /** Page for volume-series-page forms */
+  page?: number
+  /** Named treaty title (reserved; not yet populated) */
+  treatyName?: string
+  /** Cited article (reserved) */
+  article?: string
+  /** Cited paragraph (reserved) */
+  paragraph?: string
+  /** Publication year (reserved) */
+  year?: number
+}
+
+/**
  * Federal Rules of Procedure citation (#576).
  *
  * Covers the four primary federal rule sets (civil, criminal, evidence,
@@ -1192,6 +1221,7 @@ export type Citation =
   | TreatiseCitation
   | AnnotationCitation
   | SessionLawCitation
+  | TreatyCitation
   | IdCitation
   | SupraCitation
   | ShortFormCaseCitation
@@ -1209,6 +1239,7 @@ export type FullCitationType =
   | "federalRegister"
   | "statutesAtLarge"
   | "sessionLaw"
+  | "treaty"
   | "constitutional"
   | "federalRule"
   | "stateRule"
@@ -1223,6 +1254,7 @@ export type ShortFormCitationType = "id" | "supra" | "shortFormCase"
 export type FullCitation =
   | FullCaseCitation
   | SessionLawCitation
+  | TreatyCitation
   | DocketCitation
   | StatuteCitation
   | JournalCitation

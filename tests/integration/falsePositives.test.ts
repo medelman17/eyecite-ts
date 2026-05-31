@@ -42,10 +42,13 @@ describe("false positive filtering (integration)", () => {
       expect(citations).toHaveLength(0)
     })
 
-    it("removes U.N.T.S. citation entirely", () => {
+    it("keeps U.N.T.S. as a treaty citation (#309)", () => {
+      // Previously unrecognized (removed as noise); now a real treaty citation,
+      // so the false-positive filter must keep it.
       const text = "1155 U.N.T.S. 331"
       const citations = extractCitations(text, { filterFalsePositives: true })
-      expect(citations).toHaveLength(0)
+      expect(citations).toHaveLength(1)
+      expect(citations[0].type).toBe("treaty")
     })
 
     it("removes historical citation entirely", () => {

@@ -33,6 +33,7 @@ import {
   extractStatute,
   extractStatutesAtLarge,
   extractTreatise,
+  extractTreaty,
 } from "@/extract"
 import type { Pattern } from "@/patterns"
 import {
@@ -47,6 +48,7 @@ import {
   shortFormPatterns,
   stateRulePatterns,
   statutePatterns,
+  treatyPatterns,
 } from "@/patterns"
 import { parseBody } from "./statutes/parseBody"
 import { tokenize } from "@/tokenize"
@@ -251,6 +253,7 @@ export function extractCitations(
   const allPatterns = options?.patterns || [
     ...neutralPatterns, // Most specific (year-based format)
     ...sessionLawPatterns, // State session laws — anchored by "Stats." / "Nev. Stat." (#350, #779)
+    ...treatyPatterns, // Treaty series — anchored by "T.I.A.S."/"U.N.T.S."/"U.S.T." (#309)
     ...docketPatterns, // Docket-number citations (anchored by "No. ")
     ...shortFormPatterns, // Short-form (requires " at " keyword)
     ...federalRulePatterns, // Fed. R. Civ. P. etc. — before casePatterns (#576, #582)
@@ -451,6 +454,9 @@ export function extractCitations(
         break
       case "sessionLaw":
         citation = extractSessionLaw(token, transformationMap)
+        break
+      case "treaty":
+        citation = extractTreaty(token, transformationMap)
         break
       case "constitutional":
         citation = extractConstitutional(token, transformationMap)
