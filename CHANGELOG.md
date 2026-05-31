@@ -1,5 +1,124 @@
 # eyecite-ts
 
+## 0.28.0
+
+### Minor Changes
+
+- [#786](https://github.com/medelman17/eyecite-ts/pull/786) [`7a368f5`](https://github.com/medelman17/eyecite-ts/commit/7a368f50f2ac4c8776ce0b4525956d7ba0912bf1) Thanks [@medelman17](https://github.com/medelman17)! - Add `canon` citation type for Code of Judicial Conduct canons (#310)
+
+  `Canon 7(B)(1)`, `Canon 2(A) of the Code of Judicial Conduct`, and bare `Canon 1` now extract as `type: "canon"` with `canon`, optional `subsection`, and (when stated) `ruleSet`. Distinct from attorney disciplinary/model rules (#295). Requires a capital `Canon` + number so lowercase "canon of …" prose is not matched.
+
+- [#784](https://github.com/medelman17/eyecite-ts/pull/784) [`a63976e`](https://github.com/medelman17/eyecite-ts/commit/a63976e9af60841b2c593fef96a761455f09343c) Thanks [@medelman17](https://github.com/medelman17)! - Add `legislativeMaterial` citation type (#308)
+
+  House/Senate committee reports (`H.R. Rep. No. 94-1487, p. 16 (1976)`, spacing-tolerant `H. R.`, with optional `Nth Cong.` / `Nth Sess.` / page / year) and the Congressional Record (`112 Cong. Rec. 1234`) now extract as `type: "legislativeMaterial"` with a `kind: "report" | "congressionalRecord"` discriminator — carrying `chamber`, `reportNumber`, `congress`, `session`, `volume`, `page`, and `year`. The "U.S. Code Cong. & Admin. News" form is a follow-up.
+
+- [#785](https://github.com/medelman17/eyecite-ts/pull/785) [`60481c0`](https://github.com/medelman17/eyecite-ts/commit/60481c068bc80e646bbc8720d31a81dbcc17221b) Thanks [@medelman17](https://github.com/medelman17)! - Add `localOrdinance` citation type for municipal ordinances (#778)
+
+  Clark County Code/Ordinance references (`CCCO § 2.12.010(1)`, including parenthetical subsections) now extract as `type: "localOrdinance"` with `code` (`"CCCO"`), `locality` (`"Clark County, NV"`), and `section`. The type is jurisdiction-general — designed to also fit Cook County, L.A. County, and Miami-Dade municipal codes.
+
+- [#782](https://github.com/medelman17/eyecite-ts/pull/782) [`06d5e95`](https://github.com/medelman17/eyecite-ts/commit/06d5e9552c3af64ca1e41f5519e893c2e11bfa1a) Thanks [@medelman17](https://github.com/medelman17)! - Add `sessionLaw` citation type for state session laws (#350, #779)
+
+  California Statutes (`Stats. 1992, ch. 726, § 2, p. 3523`) and Nevada session laws (`2003 Nev. Stat., ch. 427, §§ 25-26, at 2590-95`) now extract as `type: "sessionLaw"`, carrying `jurisdiction` (`CA`/`NV`), `code` (`Stats.`/`Nev. Stat.`), `year`, `chapter`, and section/page fields — single (`§ 2`), list (`§§ 6, 7, 8` → `sections`), and range (`§§ 25-26` → `sectionRange`; `pp. 3038-3039` / `at 2590-95` → `pageRange`) forms. The federal `statutesAtLarge` form (`100 Stat. 2085`) and Nevada `NRS`/`NAC` statutes are unchanged.
+
+- [#783](https://github.com/medelman17/eyecite-ts/pull/783) [`2572b0e`](https://github.com/medelman17/eyecite-ts/commit/2572b0e2c819d16bbce39308d762290a60b0d85c) Thanks [@medelman17](https://github.com/medelman17)! - Add `treaty` citation type for treaty-series citations (#309)
+
+  Treaty-series citations now extract as `type: "treaty"`: "No."-style series (`T.I.A.S. No. 1502`, spacing-tolerant `T. I. A. S.`) and volume-series-page forms (`1155 U.N.T.S. 331`, `123 U.S.T. 456`), carrying `series` + `seriesNumber`, or `series` + `volume` + `page`. Named-treaty metadata (`treatyName` / `article` / `paragraph`) is reserved for a follow-up — the series cite inside a named-treaty string still extracts. Federal `statutesAtLarge` (`Stat.`) is unaffected.
+
+### Patch Changes
+
+- [#791](https://github.com/medelman17/eyecite-ts/pull/791) [`6fc9505`](https://github.com/medelman17/eyecite-ts/commit/6fc9505940a24b86ea1f1d9602d7f80550afe76f) Thanks [@medelman17](https://github.com/medelman17)! - Fix case-name backscan for zero-width-space and `<br>` artifacts (#693)
+
+  Two PDF/HTML artifacts that dropped or fragmented case captions are now handled
+  in the cleaner:
+
+  - Zero-width space (U+200B) standing in for a separator (`Smith‹ZWSP›v. Jones`)
+    was stripped (joining `Smithv.`) and lost the plaintiff; it now normalizes to
+    a space.
+  - `<br>` line breaks (`Smith<br>v.<br>Jones`) only became a space when word
+    chars flanked both sides, so `v.<br>Jones` fused to `v.Jones`; `<br>` now
+    always collapses to a space.
+
+  Trademark/registered symbols were already handled (#744). Em-dash and ellipsis
+  separators remain documented limitations — the punctuation marks an
+  interruption/omission, not a continuous case name.
+
+- [#787](https://github.com/medelman17/eyecite-ts/pull/787) [`cc0fb6b`](https://github.com/medelman17/eyecite-ts/commit/cc0fb6bb62c073d12cca7738ad30b6967b2dc433) Thanks [@medelman17](https://github.com/medelman17)! - Recognize spelled-out bare `Article N, Section N` constitutional prose (#321)
+
+  `Article I, Section 8`, `Article 1, Section 10`, and the abbreviated-article +
+  word-section mix `Art. 1, Section 6` now extract as `type: "constitutional"`
+  (article + section). Previously only the `§`-symbol form (`Art. I, § 10`) and
+  the `of the <State> Constitution` prose trailer matched, so the spelled-out
+  form attorneys use most in argument prose fell through.
+
+  The tight comma-separated `Article <num>, Section <num>` adjacency plus a
+  case-sensitive `Article`/`Art.` token keep ordinary contract/bylaw prose from
+  matching; confidence is 0.5 (no `Const.` anchor), matching the existing bare
+  form. A `(?<!Const\.?,?\s)` lookbehind avoids duplicating the core of a full
+  `U.S. Const., Art. I, §7` citation.
+
+- [#794](https://github.com/medelman17/eyecite-ts/pull/794) [`4d950c7`](https://github.com/medelman17/eyecite-ts/commit/4d950c7f0bea98261e4527ecb168e7b59dc50f23) Thanks [@medelman17](https://github.com/medelman17)! - Extract long-form federal rule citations (#295)
+
+  `Fed. Rule Bankr. P. 3001` and `Fed. Rule Crim. Proc. 46(b)` — the older
+  long-form spellings that use `Rule` for `R.` and `Proc.` for `P.` — now extract
+  as `federalRule` alongside the canonical abbreviations (`Fed. R. Crim. Proc. 46`
+  also works). Bare `Rule N`, state procedural rules, and disciplinary rules
+  remain other slices of #295.
+
+- [#793](https://github.com/medelman17/eyecite-ts/pull/793) [`5c029d3`](https://github.com/medelman17/eyecite-ts/commit/5c029d340c9d779ccec3e65dcda7c5507fd986a9) Thanks [@medelman17](https://github.com/medelman17)! - Stop HTML block boundaries from fusing into case names (#701)
+
+  `stripHtmlTags` turned a tag run between two block elements into a single space
+  (or nothing, after a period), so a heading or table cell merged into the
+  following paragraph's caption — `<h2>Case</h2><p>Smith v. Jones` extracted
+  caseName `"Case Smith v. Jones"`. Block-level boundaries (`p`, `div`, `h1`-`h6`,
+  `li`, `tr`/`td`, `section`, …) now collapse to a sentence boundary so the
+  case-name backscan stops there. `<br>` stays a space (an in-flow line break,
+  #693) and inline tags (`<b>`, `<a>`) keep their word-fusion-only behavior.
+
+- [#780](https://github.com/medelman17/eyecite-ts/pull/780) [`437120b`](https://github.com/medelman17/eyecite-ts/commit/437120b0673150c93be04cde0506ffdfac8a4f3d) Thanks [@medelman17](https://github.com/medelman17)! - Recognize NY Slip Op citations as neutral, not case (#692)
+
+  `2024 NY Slip Op 51234` — and the `(U)`/`(UV)`/`[U]` unpublished and `N.Y. Slip Op.` period variants — now extract as `type: "neutral"` with `database: "NY Slip Op"` and a `documentNumber`, instead of being mis-typed as `case` (with `reporter`/`page`). The `(U)`/`[U]` marker sets `unpublished: true`, and a trailing `(court year)` parenthetical still populates `court`/`year`. Case-name attachment is preserved.
+
+  Also fixes neutral case-name extraction to keep the `In re` / `In the Matter of` prefix instead of stripping the leading `In` as a signal word.
+
+- [#792](https://github.com/medelman17/eyecite-ts/pull/792) [`4fc9600`](https://github.com/medelman17/eyecite-ts/commit/4fc96003a5e24b1d88d33c1101a37a629714dc26) Thanks [@medelman17](https://github.com/medelman17)! - Tolerate OCR stray pincite numbers before the year paren (#525)
+
+  Year/court extraction no longer breaks when an OCR'd citation has a stray bare
+  number between the page and the `(court year)` parenthetical:
+
+  - a pincite with a missing comma (`128 F.2d 645 648 (4th Cir. 1942)`), and
+  - a space-separated pincite range (`300 U.S. 342, 347 351 (1937)`, OCR'd from
+    `347-351`).
+
+  The parenthetical lookahead now skips one stray ` N` before the paren. The
+  required trailing `(` is the false-positive guard — a stray number followed by
+  a reporter (a new citation) still won't match, so string and parallel cites are
+  unaffected.
+
+- [#790](https://github.com/medelman17/eyecite-ts/pull/790) [`fef45aa`](https://github.com/medelman17/eyecite-ts/commit/fef45aab1ec5e3b4a99b89f573525de451020200) Thanks [@medelman17](https://github.com/medelman17)! - Handle PDF/OCR artifacts: soft hyphens and page-break markers (#676)
+
+  - Soft hyphen (U+00AD) is now stripped during Unicode normalization, so a
+    reporter split across a PDF line break (`100 F.­2d 123`) extracts cleanly.
+  - Page-break marker lines — a number fenced by dashes on its own line
+    (`100\n— 14 —\nF.2d 123`) — are removed by a new `stripPageBreakMarkers`
+    cleaner so the citation rejoins across the artifact. Conservative: the
+    number must be dash-fenced AND line-bounded, so ordinary dashed prose is
+    untouched.
+
+  Paragraph pincites (`¶ 12`) were already captured in `pinciteInfo.paragraph`
+  (#204); a URL-safety invariant (`https://…/100/U.S./123` extracts nothing) now
+  has explicit regression coverage.
+
+- [#788](https://github.com/medelman17/eyecite-ts/pull/788) [`588518d`](https://github.com/medelman17/eyecite-ts/commit/588518d3096a70ec8636fb1f33c3311c08e835ad) Thanks [@medelman17](https://github.com/medelman17)! - Extract plural-section constitutional prose (#321)
+
+  `Sections 5 and 10 of Article I of the Ohio Constitution` (and Oxford-comma
+  lists like `Sections 5, 7, and 10 of …`) now emit one `constitutional`
+  citation per section, each sharing the article and jurisdiction. Previously
+  the section-first prose pattern matched a single `Section N` only, so the
+  coordinated plural form dropped every section. Mirrors the plural-section
+  statute expansion (#453); the plural `Sections` keyword + `of Article`
+  connector + closed `of the <State> Constitution` trailer keep false
+  positives out.
+
 ## 0.27.0
 
 ### Minor Changes
@@ -2890,7 +3009,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-                275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+                  275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -2916,7 +3035,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-                People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+                  People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
