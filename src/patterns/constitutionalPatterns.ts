@@ -216,6 +216,27 @@ export const constitutionalPatterns: Pattern[] = [
     type: "constitutional",
   },
   {
+    // #321 — Plural-section prose: `Sections 5 and 10 of Article I of the
+    // Ohio Constitution`. The singular `state-const-prose-section-article`
+    // pattern matches one `Section N` only; this coordinated form emits one
+    // constitutional cite per section — the head (first section) here, the
+    // remaining siblings in `expandPluralSectionConstitutional` — all
+    // sharing the article + jurisdiction. The plural `Sections` keyword,
+    // the `of Article` connector (vs the singular `, Article`), and the
+    // closed `of the <State> Constitution` trailer keep false positives out
+    // (e.g. "Sections 5 and 10 of the lease" does not match).
+    //
+    // Group layout: (1) section-number list, (2) article numeral, (3) state.
+    id: "state-const-prose-plural-section",
+    regex: new RegExp(
+      String.raw`\bSections\s+(\d+(?:[\s,]+(?:and\s+)?\d+)+)\s+of\s+Article\s+([IVX]+|\d+)\s+of\s+the\s+(Massachusetts|Pennsylvania|Vermont|New\s+Hampshire|Maryland|North\s+Carolina|Delaware|New\s+Jersey|Ohio|California|Texas|Florida|Illinois|Michigan|New\s+York|Georgia|Virginia|Washington|Arizona|Colorado|Wisconsin|Minnesota|Indiana|Louisiana|Oregon|Tennessee|South\s+Carolina|Alabama|Missouri|Kentucky|Connecticut|Iowa|Mississippi|Arkansas|Kansas|Nevada|Utah|Hawaii|Alaska|Idaho|Maine|Montana|Nebraska|New\s+Mexico|North\s+Dakota|Oklahoma|Rhode\s+Island|South\s+Dakota|West\s+Virginia|Wyoming)\s+Constitution\b`,
+      "g",
+    ),
+    description:
+      'Plural-section prose: "Sections 5 and 10 of Article I of the Ohio Constitution" — #321',
+    type: "constitutional",
+  },
+  {
     id: "bare-amendment-word",
     regex: new RegExp(
       `(?<!Const\\.?,?\\s)\\b(${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})\\s+(?:[Aa]mend(?:ment)?\\.?|[Aa]mdt\\.?)`,

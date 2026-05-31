@@ -547,6 +547,11 @@ export function extractCitations(
   // share an implied jurisdiction with the preceding cite. (#707)
   expandChainedConstitutional(citations, cleaned, transformationMap)
 
+  // Step 4.32: Expand plural-section constitutional prose (`Sections 5 and
+  // 10 of Article I of the Ohio Constitution`) into one cite per section,
+  // sharing the head's article + jurisdiction. (#321)
+  expandPluralSectionConstitutional(citations, transformationMap)
+
   // Step 4.35: Detect bare-prefix `§§ N, N` lists that lack any code
   // identifier in front of the §§ marker. These never produce a head cite
   // through normal tokenization, so seed a head before expansion. (#563)
@@ -1487,6 +1492,69 @@ function expandPluralSectionList(
 
   if (newCitations.length === 0) return
   citations.push(...newCitations)
+  citations.sort((a, b) => a.span.cleanStart - b.span.cleanStart)
+}
+
+/**
+ * Issue #321 — Expand plural-section constitutional prose (`Sections 5 and
+ * 10 of Article I of the Ohio Constitution`) into one constitutional cite
+ * per section. The `state-const-prose-plural-section` pattern produces a
+ * head cite for the FIRST section; this pass parses the remaining section
+ * numbers out of the head's own text and emits a sibling for each, sharing
+ * the head's article + jurisdiction. Mirrors expandPluralSectionList (#453).
+ */
+function expandPluralSectionConstitutional(
+  citations: Citation[],
+  transformationMap: TransformationMap,
+): void {
+  const HEAD_RE = /^Sections\s+(\d+(?:[\s,]+(?:and\s+)?\d+)+)\s+of\s+Article\b/i
+  const added: Citation[] = []
+
+  for (const c of citations) {
+    if (c.type !== "constitutional") continue
+    const headMatch = HEAD_RE.exec(c.text)
+    if (!headMatch) continue
+
+    const listText = headMatch[1]
+    const listOffset = c.text.indexOf(listText)
+    if (listOffset < 0) continue
+
+    const article = (c as { article?: number }).article
+    const jurisdiction = (c as { jurisdiction?: string }).jurisdiction
+
+    // Collect every section number with its offset inside the list text.
+    const numRe = /\d+/g
+    let nm: RegExpExecArray | null
+    let first = true
+    while ((nm = numRe.exec(listText)) !== null) {
+      // The first number is the head cite — already emitted by the extractor.
+      if (first) {
+        first = false
+        continue
+      }
+      const cleanStart = c.span.cleanStart + listOffset + nm.index
+      const cleanEnd = cleanStart + nm[0].length
+      const { originalStart, originalEnd } = resolveOriginalSpan(
+        { cleanStart, cleanEnd },
+        transformationMap,
+      )
+      added.push({
+        type: "constitutional",
+        text: nm[0],
+        span: { cleanStart, cleanEnd, originalStart, originalEnd },
+        confidence: c.confidence,
+        matchedText: nm[0],
+        processTimeMs: 0,
+        patternsChecked: 1,
+        section: nm[0],
+        ...(article !== undefined ? { article } : {}),
+        ...(jurisdiction ? { jurisdiction } : {}),
+      } as Citation)
+    }
+  }
+
+  if (added.length === 0) return
+  citations.push(...added)
   citations.sort((a, b) => a.span.cleanStart - b.span.cleanStart)
 }
 
