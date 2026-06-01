@@ -1,5 +1,31 @@
 # eyecite-ts
 
+## 0.28.1
+
+### Patch Changes
+
+- [#796](https://github.com/medelman17/eyecite-ts/pull/796) [`a191501`](https://github.com/medelman17/eyecite-ts/commit/a1915012fc5962259cf46103b5df64bd153dc501) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): supra/shortFormCase `antecedentIndex` agrees with `resolvedTo` on success path (#795)
+
+  #508 established that a resolved short-form's `antecedentIndex` mirrors
+  `resolvedTo` on the success path so consumers have one source of truth, but
+  applied the fix only to the `Id.` resolver. The supra and short-form-case
+  success paths still computed `antecedentIndex` from a position-only
+  `findImmediatePredecessor` walk, so when an intervening citation of a
+  different case sat between the resolved antecedent and the short form, the
+  two pointers disagreed: `resolvedTo` pointed at the resolved antecedent
+  while `antecedentIndex` pointed at the intervening cite.
+
+  The three success paths now mirror `resolvedTo`:
+  `createSupraSuccess`, the short-form-case party-name match, and the
+  short-form-case recency fallback. `findImmediatePredecessor` remains the
+  fallback only for the unresolved/positional path, where `resolvedTo` is
+  undefined (e.g. the case name appears only in prose) and a subsequent `Id.`
+  still needs to cluster with the short form.
+
+  Example: `Brown ... Mapp ... Brown, supra` now reports
+  `antecedentIndex = resolvedTo` (Brown) instead of pointing at the
+  intervening Mapp.
+
 ## 0.28.0
 
 ### Minor Changes
@@ -3009,7 +3035,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-                  275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+                    275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -3035,7 +3061,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-                  People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+                    People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
