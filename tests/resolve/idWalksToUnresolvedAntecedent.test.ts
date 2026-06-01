@@ -73,21 +73,23 @@ describe("antecedentIndex — Id. clusters with unresolved short-form (Bluebook 
   })
 })
 
-describe("supra success path also populates antecedentIndex", () => {
-  it("Smith → Brown → Smith, supra — supra resolves AND records antecedentIndex one step back", () => {
+describe("supra success path: antecedentIndex agrees with resolvedTo (#795)", () => {
+  it("Smith → Brown → Smith, supra — both pointers are the resolved case (Smith)", () => {
+    // Pre-#795 the supra success path used `findImmediatePredecessor` for
+    // `antecedentIndex`, which returned the intervening Brown (idx 1) while
+    // `resolvedTo` correctly pointed at Smith (idx 0). #795 mirrors
+    // `resolvedTo` on the success path so the two agree — matching the #508
+    // `Id.` invariant.
     const text =
       "Smith v. Jones, 100 F.2d 50 (1990). Brown v. Doe, 200 F.3d 100 (2000). Smith, supra."
     const cites = extractCitations(text, { resolve: true })
     expect(cites).toHaveLength(3)
     const supra = cites[2]
     expect(supra.type).toBe("supra")
-    expect(
-      (supra as { resolution?: { resolvedTo?: number; antecedentIndex?: number } }).resolution
-        ?.resolvedTo,
-    ).toBe(0) // resolves to Smith
-    expect(
-      (supra as { resolution?: { resolvedTo?: number; antecedentIndex?: number } }).resolution
-        ?.antecedentIndex,
-    ).toBe(1) // immediate predecessor is Brown (one step back)
+    const resolution = (
+      supra as { resolution?: { resolvedTo?: number; antecedentIndex?: number } }
+    ).resolution
+    expect(resolution?.resolvedTo).toBe(0) // resolves to Smith
+    expect(resolution?.antecedentIndex).toBe(0) // #795: mirrors resolvedTo (was 1, the intervening Brown)
   })
 })

@@ -671,7 +671,7 @@ export class DocumentResolver {
         currentIndex,
       )
       if (captionMatch) {
-        return this.createSupraSuccess(citation, captionMatch)
+        return this.createSupraSuccess(captionMatch)
       }
     }
 
@@ -707,22 +707,26 @@ export class DocumentResolver {
       )
     }
 
-    return this.createSupraSuccess(citation, bestMatch)
+    return this.createSupraSuccess(bestMatch)
   }
 
-  private createSupraSuccess(
-    citation: SupraCitation,
-    match: { index: number; similarity: number },
-  ): ResolutionResult {
+  private createSupraSuccess(match: { index: number; similarity: number }): ResolutionResult {
     // Return successful resolution with confidence based on similarity
     const warnings: string[] = []
     if (match.similarity < 1.0) {
       warnings.push(`Fuzzy match: similarity ${match.similarity.toFixed(2)}`)
     }
 
+    // #795: `antecedentIndex` mirrors `resolvedTo` on the success path so
+    // consumers see one source of truth, matching the #508 `Id.` fix. The
+    // pre-fix code called `findImmediatePredecessor` here, which walks the
+    // array by position and returns an intervening citation of a different
+    // case when one sits between the party-name antecedent and the supra.
+    // `findImmediatePredecessor` remains the fallback only for the
+    // unresolved/positional path where no `resolvedTo` is available.
     return {
       resolvedTo: match.index,
-      antecedentIndex: this.findImmediatePredecessor(citation),
+      antecedentIndex: match.index,
       confidence: match.similarity,
       warnings: warnings.length > 0 ? warnings : undefined,
     }
@@ -940,7 +944,8 @@ export class DocumentResolver {
       if (namedMatch !== undefined) {
         return {
           resolvedTo: namedMatch,
-          antecedentIndex: this.findImmediatePredecessor(citation),
+          // #795: mirror `resolvedTo` on the success path (see createSupraSuccess).
+          antecedentIndex: namedMatch,
           confidence: 0.98, // Higher than bare vol+reporter — party-name disambiguation tightens.
         }
       }
@@ -949,7 +954,8 @@ export class DocumentResolver {
     // No party name (or no name match): pick most recent candidate.
     return {
       resolvedTo: candidates[0],
-      antecedentIndex: this.findImmediatePredecessor(citation),
+      // #795: mirror `resolvedTo` on the success path (see createSupraSuccess).
+      antecedentIndex: candidates[0],
       confidence: 0.95,
     }
   }

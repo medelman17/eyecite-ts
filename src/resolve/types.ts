@@ -77,15 +77,18 @@ export interface ResolutionResult {
   resolvedTo?: number
 
   /**
-   * Index of the immediately preceding cited authority in document order,
-   * regardless of whether *that* citation itself resolved to a full cite.
-   * Bluebook Rule 4.1 / Indigo Book R6.2.2: `Id.` anchors here.
+   * Index of this short-form's antecedent.
    *
-   * - When the predecessor is a full citation or successfully-resolved
-   *   short-form, this points one step back (may equal `resolvedTo`).
-   * - When the predecessor is an unresolved short-form (e.g. because the
-   *   case name appears only in prose), this still points at it; the
-   *   `resolvedTo` field stays undefined.
+   * - SUCCESS path (`resolvedTo` defined): mirrors `resolvedTo`, so consumers
+   *   have one source of truth for what the short-form points at — even when
+   *   an intervening citation of a different authority sits between the
+   *   resolved antecedent and the short-form (#508 for `Id.`, #795 for supra
+   *   and shortFormCase).
+   * - UNRESOLVED/fallback path (`resolvedTo` undefined, e.g. the case name
+   *   appears only in prose): points at the immediately preceding cited
+   *   authority in document order per Bluebook Rule 4.1 / Indigo Book
+   *   R6.2.2, so a subsequent `Id.` (or a consumer walking the chain) can
+   *   still cluster with the short-form.
    * - Records the immediate predecessor only; follow transitively via
    *   `resolutions[antecedentIndex].antecedentIndex` for the originator.
    *   Same idiom as `ShortFormCaseCitation.pinciteInheritedFrom`.
