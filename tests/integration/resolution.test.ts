@@ -78,19 +78,21 @@ describe("Resolution Integration Tests", () => {
       expect(id.resolution?.resolvedTo).not.toBe(citations.indexOf(gall))
     })
 
-    it("supra still resolves to a parenthetical-internal citation", () => {
-      // Even though Gall doesn't become Id.'s default antecedent, it must
-      // still be tracked for supra/short-form lookups.
+    it("supra does NOT resolve to a parenthetical-internal citation (#799)", () => {
+      // #799 supersedes the prior #214 behavior: a case cited only inside
+      // another cite's `(citing …)` aside is not a valid supra antecedent,
+      // matching `resolveId`'s exclusion. The resolver abstains rather than
+      // committing to the quoted-within Gall. (Gall is still indexed in the
+      // BK-tree; it is excluded as an aside at resolution time.)
       const text =
         "Bd. v. FirstService, 193 A.D.3d 672 (2d Dep't 2021) " +
         "(citing Gall v. Colon-Sylvain, 151 A.D.3d 698 (2d Dep't 2016)). " +
         "Gall, supra, at 700."
 
       const citations = extractCitations(text, { resolve: true }) as ResolvedCitation[]
-      const gall = citations.find((c) => c.type === "case" && c.volume === 151)!
       const supra = citations.find((c) => c.type === "supra")!
 
-      expect(supra.resolution?.resolvedTo).toBe(citations.indexOf(gall))
+      expect(supra.resolution?.resolvedTo).toBeUndefined()
     })
 
     it("short-form case still resolves to a parenthetical-internal citation", () => {

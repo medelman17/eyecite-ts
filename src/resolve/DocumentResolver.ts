@@ -531,15 +531,31 @@ export class DocumentResolver {
   }
 
   /**
-   * `(citing X)` / `(quoting Y)` detection (#214). Two strategies in OR:
-   *   - paren depth > 0 at the citation's start (works for any prior
-   *     citation type — statute, journal, etc.);
+   * The precise "explanatory aside" signal: the citation sits inside a
+   * `(quoting X)` / `(citing Y)` parenthetical. Currently paren depth > 0 at
+   * the citation's start (works for any container type — case, statute,
+   * journal, etc.). Used directly by supra (#799), which must not anchor to a
+   * quoted-within authority but also must NOT be fooled by the fullSpan
+   * fallback below (which matches parallel-cite siblings). #798 extends this
+   * with trigger-word anchoring so dropped/unbalanced parentheses still count.
+   */
+  private isParentheticalAside(index: number): boolean {
+    return this.parenDepths[index] > 0
+  }
+
+  /**
+   * `(citing X)` / `(quoting Y)` detection for `Id.` antecedent selection
+   * (#214). Two strategies in OR:
+   *   - the precise aside signal (`isParentheticalAside` — paren depth);
    *   - the citation's clean-span is wholly inside a previously-resolved
    *     citation's `fullSpan` (case-name-prefixed citations sometimes have
    *     `(...)` ranges that close before the paren-depth scan catches up).
+   * Strategy 2 is intentionally NOT used by supra (#799): it also matches
+   * parallel-cite siblings, which share a caption `fullSpan` yet are valid
+   * supra antecedents.
    */
   private isParentheticalChild(index: number): boolean {
-    if (this.parenDepths[index] > 0) return true
+    if (this.isParentheticalAside(index)) return true
     const cit = this.citations[index]
     for (let i = 0; i < this.resolvedSoFar.length; i++) {
       if (i === index) continue // a citation cannot be a paren child of itself
@@ -769,6 +785,11 @@ export class DocumentResolver {
       const candidate = this.citations[i]
       if (candidate.type !== "case") continue
       if (!this.isWithinScope(i, currentIndex, true)) continue
+      // #799: a case cited only inside another cite's `(quoting …)` aside is
+      // not a valid supra antecedent, matching `resolveId`'s #214 exclusion.
+      // Uses the precise aside signal so parallel-cite siblings (which share a
+      // caption fullSpan) are NOT excluded.
+      if (this.isParentheticalAside(i)) continue
 
       const plaintiffSimilarity = this.partyNameSimilarity(
         plaintiffQuery,
@@ -816,6 +837,10 @@ export class DocumentResolver {
 
       // Check scope boundary (supra allows cross-zone: footnote -> body)
       if (!this.isWithinScope(citationIndex, currentIndex, true)) continue
+      // #799: skip antecedents cited only inside another cite's `(quoting …)`
+      // aside, matching `resolveId`'s #214 parenthetical-child exclusion. Uses
+      // the precise aside signal so parallel-cite siblings are not excluded.
+      if (this.isParentheticalAside(citationIndex)) continue
 
       // Convert distance to normalized similarity
       const maxLen = Math.max(queryLen, candidate.key.length)
