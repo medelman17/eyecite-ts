@@ -69,3 +69,57 @@ export function triggerAnchoredAsideOwner(
   if (!TRIGGER_AT_END_RE.test(region)) return undefined
   return index - 1
 }
+
+/**
+ * Whether a sentence terminator separates citation `index` from the citation
+ * before it. Used to bound an aside to its clause so a dropped *closing* paren
+ * cannot leak `in-parenthetical-of` membership onto a following top-level cite.
+ * Checks only the prose gap between consecutive citations, so cite-internal
+ * periods (`v.`, `U.S.`) are never mistaken for sentence boundaries.
+ */
+function hasSentenceBoundaryBefore(text: string, citations: Citation[], index: number): boolean {
+  if (index <= 0) return false
+  const from = citations[index - 1].span.cleanEnd
+  const to = leadStart(citations[index])
+  if (to <= from) return false
+  return SENTENCE_TERMINATOR_RE.test(text.slice(from, to))
+}
+
+/**
+ * For each citation, the index of the citation whose explanatory parenthetical
+ * it sits inside (its "aside owner"), or `undefined` if it stands on its own.
+ *
+ * Balance-tolerant (#801): combines the `(`/`)` depth signal with trigger-word
+ * anchoring (recovers a dropped *opening* paren) and a sentence-boundary guard
+ * (rejects a dropped *closing* paren that would otherwise leak onto a following
+ * top-level cite). When `text` is omitted, falls back to the raw depth signal
+ * only — the pre-#801 behavior.
+ */
+export function computeInParentheticalOwners(
+  citations: Citation[],
+  parenDepths: number[],
+  text?: string,
+): (number | undefined)[] {
+  const owners: (number | undefined)[] = new Array(citations.length).fill(undefined)
+  for (let i = 0; i < citations.length; i++) {
+    // Trigger-anchored first: handles a dropped opening paren (depth would be 0).
+    if (text !== undefined) {
+      const triggered = triggerAnchoredAsideOwner(text, citations, i)
+      if (triggered !== undefined) {
+        owners[i] = triggered
+        continue
+      }
+    }
+    if (parenDepths[i] <= 0) continue
+    // Depth says nested. With text available, reject a dropped-closing-paren
+    // leak: an aside does not continue across a sentence boundary.
+    if (text !== undefined && hasSentenceBoundaryBefore(text, citations, i)) continue
+    for (let j = i - 1; j >= 0; j--) {
+      if (parenDepths[j] < parenDepths[i]) {
+        owners[i] = j
+        break
+      }
+    }
+  }
+  return owners
+}
