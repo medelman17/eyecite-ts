@@ -3,6 +3,7 @@ import { extractCitations } from "@/extract/extractCitations"
 import type { Citation } from "@/types/citation"
 import { computeParenDepths } from "@/utils/parenDepths"
 import {
+  computeBracketScopes,
   computeInParentheticalOwners,
   PARENTHETICAL_TRIGGER_WORDS,
   triggerAnchoredAsideOwner,
@@ -73,5 +74,38 @@ describe("computeInParentheticalOwners", () => {
 
   it("without text, falls back to the raw depth signal (legacy)", () => {
     expect(owners("Foo, 1 U.S. 1 (quoting Bar v. Baz, 2 U.S. 2).", false)).toEqual([undefined, 0])
+  })
+})
+
+describe("computeBracketScopes (#809)", () => {
+  const scopes = (t: string) => computeBracketScopes(t, cites(t))
+
+  it("balanced aside: nested cite has depth 1, balanceOk true", () => {
+    const s = scopes("Foo, 2020 IL 12345 (quoting Bar v. Baz, 100 N.E.3d 200). Id.")
+    expect(s[0].depth).toBe(0)
+    expect(s[1].depth).toBe(1) // Bar inside the (quoting …)
+    expect(s.every((x) => x.balanceOk)).toBe(true)
+  })
+
+  it("a stray unclosed ( does not desync depth for a later-clause cite", () => {
+    const s = scopes("Foo v. Goo, 1 U.S. 1 (see generally the discussion. Smith v. Jones, 2 U.S. 2.")
+    expect(s[1].depth).toBe(0) // Smith is top-level despite the earlier stray `(`
+    expect(s[1].balanceOk).toBe(false) // …and the broken structure is flagged
+  })
+
+  it("an unmatched ) flags balanceOk false without going negative", () => {
+    const s = scopes("Foo, 1 U.S. 1) Bar v. Baz, 2 U.S. 2.")
+    expect(s[1].depth).toBe(0)
+    expect(s[1].balanceOk).toBe(false)
+  })
+
+  it("parallel-cite siblings inside a balanced aside both read depth 1", () => {
+    const s = scopes("Foo, 1 U.S. 1 (quoting Bar v. Baz, 2 U.S. 2, 5 S. Ct. 3).")
+    expect(s[1].depth).toBe(1)
+    expect(s[2].depth).toBe(1)
+  })
+
+  it("empty input returns an empty array", () => {
+    expect(computeBracketScopes("", [])).toEqual([])
   })
 })

@@ -123,3 +123,65 @@ export function computeInParentheticalOwners(
   }
   return owners
 }
+
+/** Result of the bounded-depth bracket scan for one citation (#809). */
+export interface BracketScope {
+  /** Bracket-nesting depth at the citation's start (0 = top-level). */
+  depth: number
+  /** False when a bracket-balance anomaly occurred in this citation's lead-in clause. */
+  balanceOk: boolean
+}
+
+const OPENER_FOR: Record<string, string> = { ")": "(", "]": "[", "}": "{" }
+
+/**
+ * Bounded-depth, sentence-reset bracket scan over the prose gaps between
+ * citations (#809). Replaces the global linear paren counter: brackets are
+ * tracked on a stack that resets at clause boundaries, so a single unbalanced
+ * bracket cannot desync scope for citations in *later* clauses. Only the prose
+ * gaps between citations are scanned (each citation's own lead + core is
+ * skipped), so cite-internal periods (`v.`, `U.S.`) never trip the clause reset
+ * and balanced year parens never inflate depth.
+ *
+ * Returns, per citation: the bracket `depth` at its start, and a `balanceOk`
+ * flag — false when an unmatched closing bracket, or an unclosed opening bracket
+ * carried into a clause boundary, was seen in its lead-in. `balanceOk` is the
+ * structure-trust signal an abstain gate (#800/#810) can read.
+ *
+ * Citations must be sorted by `span.cleanStart`.
+ */
+export function computeBracketScopes(text: string, citations: Citation[]): BracketScope[] {
+  const scopes: BracketScope[] = citations.map(() => ({ depth: 0, balanceOk: true }))
+  if (citations.length === 0) return scopes
+
+  const stack: string[] = []
+  let prevEnd = 0
+  for (let i = 0; i < citations.length; i++) {
+    const to = leadStart(citations[i])
+    let balanceOk = true
+    for (let pos = prevEnd; pos < to && pos < text.length; pos++) {
+      const ch = text[pos]
+      if (ch === "(" || ch === "[" || ch === "{") {
+        stack.push(ch)
+      } else if (ch === ")" || ch === "]" || ch === "}") {
+        if (stack.length > 0 && stack[stack.length - 1] === OPENER_FOR[ch]) {
+          stack.pop()
+        } else {
+          balanceOk = false // unmatched close
+        }
+      } else if (
+        ch === "\n" ||
+        ch === "\r" ||
+        ((ch === "." || ch === ";") && /\s/.test(text[pos + 1] ?? " "))
+      ) {
+        // Clause boundary: an aside cannot continue across it. A still-open
+        // bracket here is an unclosed-open anomaly; reset the bounded scope.
+        if (stack.length > 0) balanceOk = false
+        stack.length = 0
+      }
+    }
+    scopes[i] = { depth: stack.length, balanceOk }
+    prevEnd = Math.max(prevEnd, citations[i].span.cleanEnd)
+  }
+  return scopes
+}
