@@ -12,7 +12,10 @@
  * @module extract/extractConstitutional
  */
 
-import { CONSTITUTIONAL_BODY_RE } from "@/patterns/constitutionalPatterns"
+import {
+  CONSTITUTIONAL_BODY_RE,
+  CONSTITUTIONAL_HISTORICAL_REFORM_RE,
+} from "@/patterns/constitutionalPatterns"
 import type { Token } from "@/tokenize"
 import type { ConstitutionalCitation } from "@/types/citation"
 import type { ConstitutionalComponentSpans } from "@/types/componentSpans"
@@ -271,6 +274,65 @@ export function extractConstitutional(
   transformationMap: TransformationMap,
 ): ConstitutionalCitation {
   const { text, span } = token
+
+  // #789 — Historical-reform: `[<anchor>] former <loc> (now <loc>)`. The primary
+  // fields hold the FORMER location (what the opinion cites); `currentLocation`
+  // holds the location parsed from the `(now …)` parenthetical.
+  if (token.patternId === "constitutional-historical-reform") {
+    const m = CONSTITUTIONAL_HISTORICAL_REFORM_RE.exec(text)
+    const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
+    let jurisdiction: string | undefined
+    let article: number | undefined
+    let amendment: number | undefined
+    let section: string | undefined
+    let clause: number | undefined
+    let currentLocation: ConstitutionalCitation["currentLocation"]
+    if (m) {
+      // Group 1: optional jurisdiction anchor (`U.S. Const.` / `Cal. Const.`).
+      if (m[1]) {
+        jurisdiction = /^\s*U\.?\s*S\.?/i.test(m[1]) ? "US" : resolveStateJurisdiction(m[1])
+      }
+      // Groups 2–5: former location → primary fields.
+      const formerNumeral = parseNumeral(m[3])
+      if (IS_AMENDMENT_RE.test(m[2])) amendment = formerNumeral
+      else article = formerNumeral
+      section = m[4] || undefined
+      clause = m[5] ? Number.parseInt(m[5], 10) : undefined
+      // Groups 6–9: "now" location → currentLocation.
+      const nowNumeral = parseNumeral(m[7])
+      currentLocation = {
+        ...(IS_AMENDMENT_RE.test(m[6]) ? { amendment: nowNumeral } : { article: nowNumeral }),
+        ...(m[8] ? { section: m[8] } : {}),
+        ...(m[9] ? { clause: Number.parseInt(m[9], 10) } : {}),
+      }
+    }
+    // componentSpans: cover the `(now …)` parenthetical.
+    const spans: ConstitutionalComponentSpans = {}
+    const nowMatch = /\(\s*now\b[^)]*\)/i.exec(text)
+    if (nowMatch) {
+      spans.currentLocation = spanFromGroupIndex(
+        span.cleanStart,
+        [nowMatch.index, nowMatch.index + nowMatch[0].length],
+        transformationMap,
+      )
+    }
+    return {
+      type: "constitutional",
+      text,
+      span: { cleanStart: span.cleanStart, cleanEnd: span.cleanEnd, originalStart, originalEnd },
+      confidence: 0.85,
+      matchedText: text,
+      processTimeMs: 0,
+      patternsChecked: 1,
+      jurisdiction,
+      article,
+      amendment,
+      section,
+      clause,
+      currentLocation,
+      ...(spans.currentLocation ? { spans } : {}),
+    }
+  }
 
   // #656 — Prose state-constitutional citations: `art. 14 of the
   // Massachusetts Declaration of Rights` and `Section 5(B), Article IV

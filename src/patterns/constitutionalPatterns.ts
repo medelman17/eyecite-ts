@@ -71,7 +71,41 @@ const BODY_TAIL = `(?:(?:${ARTICLE_OR_AMENDMENT}|${ORDINAL_PREFIX_AMENDMENT})${O
 /** Compiled body regex shared with the extractor to avoid duplicate definitions. */
 export const CONSTITUTIONAL_BODY_RE: RegExp = new RegExp(BODY_TAIL, "id")
 
+// #789 — Historical-reform citations: `former <loc> (now <loc>)`. State
+// constitutions get renumbered; opinions cite the old location and note the
+// current one parenthetically. The distinctive `(now …)` reform parenthetical
+// is the trigger, so this extracts with OR without a `Const.` anchor, while the
+// `former` + `(now …)` adjacency keeps false positives out of ordinary prose.
+//
+// A location is an article/amendment token + numeral + optional section
+// (`§ N` or `section N`) + optional clause. Per-location group layout:
+// (token, numeral, section, clause).
+const REFORM_LOC = String.raw`(art(?:icle)?\.?|amend(?:ment)?\.?|amdt\.?)\s+([IVXLC]+|\d+)(?:[,;]?\s*(?:§|section)\s*([\w-]+))?(?:[,;]?\s*cl\.?\s*(\d+))?`
+// Optional leading jurisdiction anchor (`U.S. Const.` / `Cal. Const.`). The
+// state-abbrev branch is length-bounded ({0,15}) and the `.` lives only inside
+// the char class (no overlapping `\.?`) so a long non-matching run can't drive
+// O(n²) backtracking against the following `\s+Const` (ReDoS guard, #789).
+const REFORM_ANCHOR = String.raw`(?:(U\.?\s*S\.?\s+Const\.?|[A-Za-z][A-Za-z.]{0,15}\s+Const\.?),?\s+)?`
+const HISTORICAL_REFORM = `${REFORM_ANCHOR}former\\s+${REFORM_LOC}\\s*\\(\\s*now\\s+${REFORM_LOC}\\s*\\)`
+
+/**
+ * Compiled historical-reform regex shared with the extractor (#789). Group
+ * layout: 1 = jurisdiction anchor (optional); 2–5 = former location
+ * (token, numeral, section, clause); 6–9 = "now" location (same shape).
+ */
+export const CONSTITUTIONAL_HISTORICAL_REFORM_RE: RegExp = new RegExp(HISTORICAL_REFORM, "i")
+
 export const constitutionalPatterns: Pattern[] = [
+  {
+    // #789 — placed first so its full span wins over any sub-matches inside it.
+    // `gi`: lowercase prose forms (`former article …`) must match; the
+    // `former` + `(now …)` adjacency is the false-positive guard.
+    id: "constitutional-historical-reform",
+    regex: new RegExp(HISTORICAL_REFORM, "gi"),
+    description:
+      'Historical-reform constitutional citations: "former art. XX, § 21 (now art. XIV, § 4)" — #789',
+    type: "constitutional",
+  },
   {
     id: "us-constitution",
     regex: new RegExp(

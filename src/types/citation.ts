@@ -1089,6 +1089,20 @@ export interface ConstitutionalCitation extends CitationBase {
   /** Clause number (always numeric) */
   clause?: number
 
+  /**
+   * Post-reform ("now …") location for historical-reform citations such as
+   * `former art. XX, § 21 (now art. XIV, § 4)` (#789). The citation's primary
+   * fields hold the *former* location (what the opinion cites); this holds the
+   * *current* location parsed from the `(now …)` parenthetical. Undefined for
+   * ordinary constitutional citations.
+   */
+  currentLocation?: {
+    article?: number
+    amendment?: number
+    section?: string
+    clause?: number
+  }
+
   /** Precise text positions for each parsed component of this citation. */
   spans?: ConstitutionalComponentSpans
 }
