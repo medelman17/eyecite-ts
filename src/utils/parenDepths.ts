@@ -1,30 +1,21 @@
 import type { Citation } from "../types/citation"
+import { computeBracketScopes } from "./parentheticalScope"
 
 /**
- * Compute parenthesis depth at the start position of each citation.
- * Walks the raw text once, counting `(` and `)` and recording the
- * running depth at every citation's `span.cleanStart`. Depth > 0
- * indicates the citation is nested inside an open parenthetical
- * block (typically an explanatory `(quoting X)` / `(citing Y)`
- * following an earlier citation).
+ * Bracket-nesting depth at the start of each citation. Depth > 0 indicates the
+ * citation is nested inside an open parenthetical block (typically an
+ * explanatory `(quoting X)` / `(citing Y)` following an earlier citation).
+ *
+ * Delegates to {@link computeBracketScopes} (#809): a bounded-depth, clause-reset
+ * bracket-stack scan over the prose gaps between citations. This replaced the
+ * earlier global `(`/`)` counter, which desynced for *every* subsequent citation
+ * on a single dropped/garbled bracket (common in OCR/PDF). For balanced input the
+ * depths are identical; for unbalanced input corruption is now bounded to the
+ * offending clause. Use `computeBracketScopes` directly when you also need the
+ * per-citation `balanceOk` structure-trust signal.
  *
  * Citations must be sorted by `span.cleanStart`.
  */
 export function computeParenDepths(text: string, citations: Citation[]): number[] {
-  const depths: number[] = new Array(citations.length).fill(0)
-  if (citations.length === 0) return depths
-
-  let depth = 0
-  let pos = 0
-  for (let i = 0; i < citations.length; i++) {
-    const start = citations[i].span.cleanStart
-    while (pos < start && pos < text.length) {
-      const ch = text[pos]
-      if (ch === "(") depth++
-      else if (ch === ")" && depth > 0) depth--
-      pos++
-    }
-    depths[i] = depth
-  }
-  return depths
+  return computeBracketScopes(text, citations).map((s) => s.depth)
 }
