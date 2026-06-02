@@ -1,5 +1,31 @@
 # eyecite-ts
 
+## 0.29.0
+
+### Minor Changes
+
+- [#806](https://github.com/medelman17/eyecite-ts/pull/806) [`42957d5`](https://github.com/medelman17/eyecite-ts/commit/42957d5fa050200859a5bbdaacc5b25618893dd8) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): historical-reform constitutional citations `former … (now …)` (#789)
+
+  `former art. XX, § 21 (now art. XIV, § 4)` (and the spelled-out `former article XX, section 21 (now art. XIV, § 4)`) now extract as a single `constitutional` citation: the primary fields hold the _former_ location, and a new `currentLocation` field holds the _current_ location parsed from the `(now …)` parenthetical. The distinctive `(now …)` reform parenthetical is the trigger, so the form extracts with or without a `U.S./State Const.` anchor; requiring both `former` and a `(now <location>)` keeps ordinary prose ("the former article of the treaty") from matching. `toBluebook`, component spans (`currentLocation`), and the `ConstitutionalCitation` type are updated; ordinary constitutional citations are unaffected (`currentLocation` undefined).
+
+- [#805](https://github.com/medelman17/eyecite-ts/pull/805) [`a1ea39f`](https://github.com/medelman17/eyecite-ts/commit/a1ea39fb9c2e5f3fe2ea186dbb0c8f45e8276119) Thanks [@medelman17](https://github.com/medelman17)! - feat(resolve): opt-in `idConfidenceFloor` abstention threshold for `Id.` (#800)
+
+  `resolveId` downgrades confidence and warns when the prose before `Id.` names a different case than the chosen antecedent, but always commits — unlike `resolveSupra`, which abstains below `partyMatchThreshold`. New resolution option `idConfidenceFloor` lets callers make `Id.` fail closed: when set and the computed confidence falls below it, `Id.` returns an unresolved result (carrying the existing ambiguity warning and a `failureReason`) instead of committing. Default is unset — behavior is unchanged and non-breaking.
+
+### Patch Changes
+
+- [#804](https://github.com/medelman17/eyecite-ts/pull/804) [`4f53d9a`](https://github.com/medelman17/eyecite-ts/commit/4f53d9a99290204e5eb8d4c5e7261f4d5d0ba5b1) Thanks [@medelman17](https://github.com/medelman17)! - fix(document): `in-parenthetical-of` citation-graph edges tolerate unbalanced parentheses (#801)
+
+  `buildCitationGraph` derived `in-parenthetical-of` edges from the raw `computeParenDepths` counter, so dropped/unbalanced parentheses (OCR/PDF) corrupted them — a dropped opening paren lost the aside edge, and a dropped closing paren leaked a spurious edge onto every following top-level citation. Edges are now computed via a balance-tolerant owner (`computeInParentheticalOwners`) that reuses #798's trigger-anchored signal for dropped opening parens and a sentence-boundary guard for dropped closing parens. Balanced input (including parallel-cite siblings inside an aside) is unchanged.
+
+- [#808](https://github.com/medelman17/eyecite-ts/pull/808) [`ef348e4`](https://github.com/medelman17/eyecite-ts/commit/ef348e402c59fe36047f52ad0a370da9ced765cb) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): recognise `(quoting …)` / `(citing …)` asides even when the opening parenthesis is dropped (#798)
+
+  The `Id.` parenthetical-child guard (#214) relied solely on a running `(`/`)` depth counter, so OCR/PDF text with an unbalanced or dropped opening paren caused `Id.` to resolve to the quoted-within authority instead of the citing one. A new shared, trigger-anchored signal (`triggerAnchoredAsideOwner`, with a named `PARENTHETICAL_TRIGGER_WORDS` vocabulary) now recognises the aside from its trigger word, bounded to the same clause, so the relationship survives a missing paren. The signal feeds both `Id.` and `supra` (via `isParentheticalAside`) and is exported for reuse by the citation graph (#801).
+
+- [#802](https://github.com/medelman17/eyecite-ts/pull/802) [`32d7d42`](https://github.com/medelman17/eyecite-ts/commit/32d7d425ad11133912bb7e12ed5559cb596ea382) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): `supra` no longer resolves to a case cited only inside another citation's parenthetical (#799)
+
+  `resolveSupra` now excludes parenthetical-internal asides (`(quoting X)` / `(citing Y)`) as antecedents, matching `resolveId`'s #214 exclusion — so `X v. Y, supra` no longer attaches to a case named only inside another cite's aside. The exclusion uses a precise depth-based aside signal (`isParentheticalAside`) that, unlike the fullSpan-containment fallback, does **not** drop parallel-cite siblings (e.g. `Roe v. Wade, 410 U.S. 113, 93 S. Ct. 705`), which remain valid supra antecedents.
+
 ## 0.28.1
 
 ### Patch Changes
@@ -3035,7 +3061,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-                    275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+                      275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -3061,7 +3087,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-                    People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+                      People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
