@@ -88,8 +88,11 @@ function isInZone(
 export class DocumentResolver {
   private readonly citations: Citation[]
   private readonly text: string
-  private readonly options: Required<Omit<ResolutionOptions, "footnoteMap">> & {
+  private readonly options: Required<
+    Omit<ResolutionOptions, "footnoteMap" | "idConfidenceFloor">
+  > & {
     footnoteMap: ResolutionOptions["footnoteMap"]
+    idConfidenceFloor: ResolutionOptions["idConfidenceFloor"]
   }
   private readonly context: ResolutionContext
   private readonly partyNameTree: BKTree
@@ -122,6 +125,7 @@ export class DocumentResolver {
       partyMatchThreshold: options.partyMatchThreshold ?? 0.8,
       reportUnresolved: options.reportUnresolved ?? true,
       footnoteMap: options.footnoteMap,
+      idConfidenceFloor: options.idConfidenceFloor,
     }
 
     this.partyNameTree = new BKTree(levenshteinDistance)
@@ -477,6 +481,21 @@ export class DocumentResolver {
     // case that doesn't match the picked antecedent, downgrade confidence and
     // flag ambiguity (without refusing to commit).
     const { confidence, warnings } = this.applyCaseNameWindowCheck(best.index, citation)
+
+    // #800: opt-in abstention. When `idConfidenceFloor` is set and the computed
+    // confidence falls below it, decline to commit (mirroring resolveSupra's
+    // `partyMatchThreshold`) while preserving the ambiguity warning. Default
+    // (unset) keeps the always-commit behavior.
+    const idFloor = this.options.idConfidenceFloor
+    if (idFloor !== undefined && confidence < idFloor) {
+      if (!this.options.reportUnresolved) return undefined
+      return {
+        resolvedTo: undefined,
+        failureReason: `Id. confidence ${confidence.toFixed(2)} below idConfidenceFloor ${idFloor}`,
+        warnings,
+        confidence,
+      }
+    }
 
     // #508: `antecedentIndex` mirrors `resolvedTo` on the success path so
     // consumers see one source of truth. The pre-fix code called
