@@ -81,8 +81,11 @@ export const CONSTITUTIONAL_BODY_RE: RegExp = new RegExp(BODY_TAIL, "id")
 // (`§ N` or `section N`) + optional clause. Per-location group layout:
 // (token, numeral, section, clause).
 const REFORM_LOC = String.raw`(art(?:icle)?\.?|amend(?:ment)?\.?|amdt\.?)\s+([IVXLC]+|\d+)(?:[,;]?\s*(?:§|section)\s*([\w-]+))?(?:[,;]?\s*cl\.?\s*(\d+))?`
-// Optional leading jurisdiction anchor (`U.S. Const.` / `Cal. Const.`).
-const REFORM_ANCHOR = String.raw`(?:(U\.?\s*S\.?\s+Const\.?|[A-Za-z][A-Za-z.]*\.?\s+Const\.?),?\s+)?`
+// Optional leading jurisdiction anchor (`U.S. Const.` / `Cal. Const.`). The
+// state-abbrev branch is length-bounded ({0,15}) and the `.` lives only inside
+// the char class (no overlapping `\.?`) so a long non-matching run can't drive
+// O(n²) backtracking against the following `\s+Const` (ReDoS guard, #789).
+const REFORM_ANCHOR = String.raw`(?:(U\.?\s*S\.?\s+Const\.?|[A-Za-z][A-Za-z.]{0,15}\s+Const\.?),?\s+)?`
 const HISTORICAL_REFORM = `${REFORM_ANCHOR}former\\s+${REFORM_LOC}\\s*\\(\\s*now\\s+${REFORM_LOC}\\s*\\)`
 
 /**
