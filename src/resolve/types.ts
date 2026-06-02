@@ -53,6 +53,16 @@ export interface ResolutionOptions {
   partyMatchThreshold?: number
 
   /**
+   * Optional confidence floor for `Id.` resolution (default: unset — always
+   * commit). When set, an `Id.` whose computed confidence falls below the floor
+   * abstains (returns an unresolved result that still carries the ambiguity
+   * warning) instead of committing — mirroring `resolveSupra`'s
+   * `partyMatchThreshold`. Range 0–1. Leave unset to preserve the default
+   * always-commit behavior (non-breaking).
+   */
+  idConfidenceFloor?: number
+
+  /**
    * Report unresolved citations with failure reasons (default: true)
    * If false: resolution field will be undefined for unresolved citations
    */
