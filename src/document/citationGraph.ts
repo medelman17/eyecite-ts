@@ -1,4 +1,5 @@
 import type { Citation, HistorySignal } from "../types/citation"
+import { computeInParentheticalOwners } from "../utils/parentheticalScope"
 import type { CitationGraph, Edge } from "./types"
 
 /**
@@ -12,7 +13,7 @@ import type { CitationGraph, Edge } from "./types"
  *   - citation.subsequentHistoryOf           → "history-of" edge
  *   - citation.pinciteInheritedFrom          → "pincite-inherit" edge
  *   - citation.stringCitationGroupId         → "string-cite" edges
- *   - parenDepths (from computeParenDepths)  → "in-parenthetical-of" edge
+ *   - parenDepths + text (balance-tolerant)  → "in-parenthetical-of" edge
  *
  * Invariants:
  *   - nodes.length === citations.length (isolated nodes included)
@@ -20,7 +21,11 @@ import type { CitationGraph, Edge } from "./types"
  *   - No duplicates of the same (type, from, to)
  *   - Edges sorted by (from, type, to) for deterministic iteration
  */
-export function buildCitationGraph(citations: Citation[], parenDepths: number[]): CitationGraph {
+export function buildCitationGraph(
+  citations: Citation[],
+  parenDepths: number[],
+  text?: string,
+): CitationGraph {
   const nodes = citations.map((_, i) => i)
   const edges: Edge[] = []
   const seen = new Set<string>()
@@ -120,15 +125,16 @@ export function buildCitationGraph(citations: Citation[], parenDepths: number[])
     }
   }
 
-  // in-parenthetical-of edges — for each citation with parenDepth > 0, find
-  // the most recent earlier citation with a lower depth.
+  // in-parenthetical-of edges — balance-tolerant owner per citation (#801):
+  // the `(`/`)` depth signal plus trigger-word anchoring (recovers a dropped
+  // opening paren) and a sentence-boundary guard (rejects a dropped closing
+  // paren leaking onto a following top-level cite). Falls back to raw depth
+  // when `text` is not supplied (pre-#801 behavior).
+  const parentheticalOwners = computeInParentheticalOwners(citations, parenDepths, text)
   for (let i = 0; i < citations.length; i++) {
-    if (parenDepths[i] <= 0) continue
-    for (let j = i - 1; j >= 0; j--) {
-      if (parenDepths[j] < parenDepths[i]) {
-        addEdge({ type: "in-parenthetical-of", from: i, to: j })
-        break
-      }
+    const owner = parentheticalOwners[i]
+    if (owner !== undefined) {
+      addEdge({ type: "in-parenthetical-of", from: i, to: owner })
     }
   }
 

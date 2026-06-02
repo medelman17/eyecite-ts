@@ -27,7 +27,7 @@ export function analyzeDocument(
   const quoteZones = detectQuoteZones(text)
 
   const prose = computeProseOffsets(text, citations, opts?.transformationMap)
-  const citationGraph = buildCitationGraph(citations, parenDepths)
+  const citationGraph = buildCitationGraph(citations, parenDepths, text)
   const quoteAttributions = attributeQuotes(text, quoteZones, citations)
   const footnoteZones = extractFootnoteZones(citations)
 
