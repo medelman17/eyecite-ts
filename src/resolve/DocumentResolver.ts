@@ -22,6 +22,7 @@ import { isFullCitation } from "../types/guards"
 import type { Span } from "../types/span"
 import { detectQuoteZones } from "../utils/detectQuoteZones"
 import { computeParenDepths } from "../utils/parenDepths"
+import { triggerAnchoredAsideOwner } from "../utils/parentheticalScope"
 import { BKTree } from "./bkTree"
 import { levenshteinDistance } from "./levenshtein"
 import { buildFootnoteScopes, detectParagraphBoundaries, isWithinBoundary } from "./scopeBoundary"
@@ -540,7 +541,10 @@ export class DocumentResolver {
    * with trigger-word anchoring so dropped/unbalanced parentheses still count.
    */
   private isParentheticalAside(index: number): boolean {
-    return this.parenDepths[index] > 0
+    if (this.parenDepths[index] > 0) return true
+    // #798: trigger-anchored — recognise a `quoting`/`citing` aside even when
+    // the opening `(` was dropped (OCR/PDF), where the depth scan misses it.
+    return triggerAnchoredAsideOwner(this.text, this.citations, index) !== undefined
   }
 
   /**
