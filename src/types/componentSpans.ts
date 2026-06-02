@@ -48,6 +48,8 @@ export interface ConstitutionalComponentSpans {
   section?: Span
   clause?: Span
   signal?: Span
+  /** Span of the `(now …)` post-reform parenthetical, when present (#789). */
+  currentLocation?: Span
 }
 
 /**

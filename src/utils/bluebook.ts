@@ -98,6 +98,16 @@ export function toBluebook(citation: Citation): string {
       if (citation.clause !== undefined) {
         body += `, cl. ${citation.clause}`
       }
+      // #789 — append the post-reform location for `former … (now …)` cites.
+      if (citation.currentLocation) {
+        const now = citation.currentLocation
+        let nowBody = ""
+        if (now.article !== undefined) nowBody += `art. ${toRoman(now.article)}`
+        if (now.amendment !== undefined) nowBody += `amend. ${toRoman(now.amendment)}`
+        if (now.section !== undefined) nowBody += `, § ${now.section}`
+        if (now.clause !== undefined) nowBody += `, cl. ${now.clause}`
+        if (nowBody) body += ` (now ${nowBody})`
+      }
       return `${prefix}${body}`
     }
 
