@@ -38,7 +38,7 @@ export async function upsertDocumentPayload(
   await sql.begin(async (tx) => {
     await tx`insert into documents (id, source, court, year, text)
       values (${p.id}, ${p.source}, ${p.court}, ${p.year}, ${p.text})
-      on conflict (id) do update set source = excluded.source, text = excluded.text`
+      on conflict (id) do update set source = excluded.source, court = excluded.court, year = excluded.year, text = excluded.text`
     await tx`delete from citations where document_id = ${p.id}`
     await tx`delete from backrefs where document_id = ${p.id}`
     for (const c of p.citations) {
