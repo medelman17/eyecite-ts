@@ -797,14 +797,15 @@ export class DocumentResolver {
     const fullPartyName = this.normalizePartyName(citation.partyName)
     const vSplit = fullPartyName.split(/\s+vs?\.\s+/)
 
+    // A full caption (`Plaintiff v. Defendant, supra`) is self-disambiguating, so
+    // it takes precedence and never falls through to the looser per-name queries
+    // (which would falsely flag a shared surname as ambiguous). #818: the caption
+    // can still be non-unique (two identical `Smith v. Jones`), so route its match
+    // set through the cardinality policy.
     if (vSplit.length === 2) {
-      const captionMatch = this.queryFullCaptionSupra(
-        vSplit[0].trim(),
-        vSplit[1].trim(),
-        currentIndex,
-      )
-      if (captionMatch) {
-        return this.createSupraSuccess(captionMatch)
+      const caption = this.queryFullCaptionSupra(vSplit[0].trim(), vSplit[1].trim(), currentIndex)
+      if (caption) {
+        return this.selectSupraAntecedent([...new Set(caption.indices)], caption.similarity)
       }
     }
 
@@ -821,26 +822,91 @@ export class DocumentResolver {
       }
     }
 
-    let bestMatch: { index: number; similarity: number } | undefined
+    // Aggregate all distinct in-scope authorities at the best similarity tier
+    // across the queries (#818: cardinality must survive to the policy step).
+    let bestSim = -1
+    const bestIndices: number[] = []
     for (const query of queries) {
       const match = this.queryPartyNameTree(query, currentIndex)
       if (!match) continue
-      if (!bestMatch || match.similarity > bestMatch.similarity) {
-        bestMatch = match
+      if (match.similarity > bestSim) {
+        bestSim = match.similarity
+        bestIndices.length = 0
+        bestIndices.push(...match.indices)
+      } else if (match.similarity === bestSim) {
+        for (const i of match.indices) if (!bestIndices.includes(i)) bestIndices.push(i)
       }
     }
 
-    if (!bestMatch) {
+    if (bestIndices.length === 0) {
       return this.createFailureResult("No full citation found in scope")
     }
-
-    if (bestMatch.similarity < this.options.partyMatchThreshold) {
+    if (bestSim < this.options.partyMatchThreshold) {
       return this.createFailureResult(
-        `Party name similarity ${bestMatch.similarity.toFixed(2)} below threshold ${this.options.partyMatchThreshold}`,
+        `Party name similarity ${bestSim.toFixed(2)} below threshold ${this.options.partyMatchThreshold}`,
       )
     }
 
-    return this.createSupraSuccess(bestMatch)
+    return this.selectSupraAntecedent([...new Set(bestIndices)], bestSim)
+  }
+
+  /**
+   * Apply the #818 hybrid policy to the in-scope authorities a `supra` name key
+   * resolved to. Exactly one → commit at the matched similarity. More than one is
+   * a non-unique key: a *true tie* (same name + same year, indistinguishable by
+   * the key alone) abstains; otherwise pick the most-recent-within-name but cap
+   * confidence and warn, with `idConfidenceFloor` able to fail it closed. Mirrors
+   * the `Id.` path's downgrade-warn-then-floor-abstain shape (#800/#820).
+   */
+  private selectSupraAntecedent(
+    indices: number[],
+    similarity: number,
+  ): ResolutionResult | undefined {
+    // Collapse parallel-cite siblings / re-citations of the SAME authority into
+    // one: parallel cites share a `groupId`, and a re-cited reporter shares
+    // volume-reporter-page. #818 must only fire on genuinely *different*
+    // same-name authorities, not on a parallel-cite group. Representative = the
+    // group's primary (earliest-cited) index.
+    const primaryByAuthority = new Map<string, number>()
+    for (const i of indices) {
+      const c = this.citations[i] as {
+        groupId?: string
+        volume?: number | string
+        reporter?: string
+        page?: number | string
+      }
+      const key = c.groupId ?? `${c.volume}-${c.reporter}-${c.page}`
+      const prev = primaryByAuthority.get(key)
+      if (prev === undefined || i < prev) primaryByAuthority.set(key, i)
+    }
+    const reps = [...primaryByAuthority.values()]
+
+    if (reps.length === 1) {
+      return this.createSupraSuccess({ index: reps[0], similarity })
+    }
+    const years = new Set(reps.map((i) => (this.citations[i] as { year?: number }).year))
+    if (years.size === 1) {
+      return this.createFailureResult(
+        `Ambiguous supra: ${reps.length} in-scope authorities share this name key and year — indistinguishable (#818)`,
+      )
+    }
+    // Distinguishable: recency-within-name (most-recent authority), degraded.
+    const chosen = Math.max(...reps)
+    const confidence = Math.min(similarity, 0.5)
+    const warnings = [
+      `Ambiguous supra: ${reps.length} in-scope authorities match this name key; resolved to the most recent by recency — verify (#818)`,
+    ]
+    const idFloor = this.options.idConfidenceFloor
+    if (idFloor !== undefined && confidence < idFloor) {
+      if (!this.options.reportUnresolved) return undefined
+      return {
+        resolvedTo: undefined,
+        failureReason: `Ambiguous supra confidence ${confidence.toFixed(2)} below idConfidenceFloor ${idFloor}`,
+        warnings,
+        confidence,
+      }
+    }
+    return { resolvedTo: chosen, antecedentIndex: chosen, confidence, warnings }
   }
 
   private createSupraSuccess(match: { index: number; similarity: number }): ResolutionResult {
@@ -875,10 +941,11 @@ export class DocumentResolver {
     plaintiffQuery: string,
     defendantQuery: string,
     currentIndex: number,
-  ): { index: number; similarity: number } | undefined {
+  ): { indices: number[]; similarity: number } | undefined {
     if (!plaintiffQuery || !defendantQuery) return undefined
 
-    let best: { index: number; similarity: number } | undefined
+    let bestSim = -1
+    const bestIndices: number[] = []
     for (let i = currentIndex - 1; i >= 0; i--) {
       const candidate = this.citations[i]
       if (candidate.type !== "case") continue
@@ -900,13 +967,19 @@ export class DocumentResolver {
       if (plaintiffSimilarity < this.options.partyMatchThreshold) continue
       if (defendantSimilarity < this.options.partyMatchThreshold) continue
 
+      // #818: collect ALL authorities at the top similarity tier so the caller
+      // can detect a non-unique caption (e.g. two identical `Smith v. Jones`).
       const similarity = Math.min(plaintiffSimilarity, defendantSimilarity)
-      if (!best || similarity > best.similarity) {
-        best = { index: i, similarity }
+      if (similarity > bestSim) {
+        bestSim = similarity
+        bestIndices.length = 0
+        bestIndices.push(i)
+      } else if (similarity === bestSim) {
+        bestIndices.push(i)
       }
     }
 
-    return best
+    return bestIndices.length > 0 ? { indices: bestIndices, similarity: bestSim } : undefined
   }
 
   /**
@@ -918,7 +991,7 @@ export class DocumentResolver {
   private queryPartyNameTree(
     query: string,
     currentIndex: number,
-  ): { index: number; similarity: number } | undefined {
+  ): { indices: number[]; similarity: number } | undefined {
     const queryLen = query.length
     const threshold = this.options.partyMatchThreshold
     // Safe upper bound: guarantees no match with similarity >= threshold is missed
@@ -928,28 +1001,35 @@ export class DocumentResolver {
     // Sort by insertion order to match Map iteration behavior (first-inserted wins on ties)
     candidates.sort((a, b) => a.insertionOrder - b.insertionOrder)
 
-    let best: { index: number; similarity: number } | undefined
+    let bestSim = -1
+    const bestIndices: number[] = []
     for (const candidate of candidates) {
-      const citationIndex = this.context.fullCitationHistory.get(candidate.key)
-      if (citationIndex === undefined) continue
+      const indices = this.context.fullCitationHistory.get(candidate.key)
+      if (indices === undefined) continue
 
-      // Check scope boundary (supra allows cross-zone: footnote -> body)
-      if (!this.isWithinScope(citationIndex, currentIndex, true)) continue
-      // #799: skip antecedents cited only inside another cite's `(quoting …)`
-      // aside, matching `resolveId`'s #214 parenthetical-child exclusion. Uses
-      // the precise aside signal so parallel-cite siblings are not excluded.
-      if (this.isParentheticalAside(citationIndex)) continue
-
-      // Convert distance to normalized similarity
+      // Convert distance to normalized similarity (one per key, shared by its cites)
       const maxLen = Math.max(queryLen, candidate.key.length)
       const similarity = maxLen === 0 ? 1.0 : 1 - candidate.distance / maxLen
 
-      // Update best match if this is better (strict > preserves first-wins tie-breaking)
-      if (!best || similarity > best.similarity) {
-        best = { index: citationIndex, similarity }
+      for (const citationIndex of indices) {
+        // Check scope boundary (supra allows cross-zone: footnote -> body)
+        if (!this.isWithinScope(citationIndex, currentIndex, true)) continue
+        // #799: skip antecedents cited only inside another cite's `(quoting …)`
+        // aside, matching `resolveId`'s #214 parenthetical-child exclusion.
+        if (this.isParentheticalAside(citationIndex)) continue
+
+        // #818: keep ALL distinct authorities at the top similarity tier so a
+        // non-unique name key (e.g. two `Smith`s) is visible to the caller.
+        if (similarity > bestSim) {
+          bestSim = similarity
+          bestIndices.length = 0
+          bestIndices.push(citationIndex)
+        } else if (similarity === bestSim && !bestIndices.includes(citationIndex)) {
+          bestIndices.push(citationIndex)
+        }
       }
     }
-    return best
+    return bestIndices.length > 0 ? { indices: bestIndices, similarity: bestSim } : undefined
   }
 
   private partyNameSimilarity(query: string, candidate: string | undefined): number {
@@ -1231,25 +1311,27 @@ export class DocumentResolver {
   private trackFullCitation(citation: Citation, index: number): void {
     // Only case citations have party names for supra resolution
     if (citation.type === "case") {
+      // #818: append `index` to the name's history list — a single normalized
+      // name can map to several distinct authorities (e.g. two `Smith` cases).
+      const track = (name: string) => {
+        const existing = this.context.fullCitationHistory.get(name)
+        if (existing) {
+          if (!existing.includes(index)) existing.push(index)
+        } else {
+          this.context.fullCitationHistory.set(name, [index])
+        }
+        this.partyNameTree.insert(name)
+      }
+
       // Phase 7: Use extracted party names when available
       // Defendant name stored first (preferred for Bluebook-style supra matching)
-      if (citation.defendantNormalized) {
-        this.context.fullCitationHistory.set(citation.defendantNormalized, index)
-        this.partyNameTree.insert(citation.defendantNormalized)
-      }
-      if (citation.plaintiffNormalized) {
-        this.context.fullCitationHistory.set(citation.plaintiffNormalized, index)
-        this.partyNameTree.insert(citation.plaintiffNormalized)
-      }
+      if (citation.defendantNormalized) track(citation.defendantNormalized)
+      if (citation.plaintiffNormalized) track(citation.plaintiffNormalized)
 
       // Fallback: backward search from text (pre-Phase 7 compatibility)
       if (!citation.plaintiffNormalized && !citation.defendantNormalized) {
         const partyName = this.extractPartyName(citation)
-        if (partyName) {
-          const normalized = this.normalizePartyName(partyName)
-          this.context.fullCitationHistory.set(normalized, index)
-          this.partyNameTree.insert(normalized)
-        }
+        if (partyName) track(this.normalizePartyName(partyName))
       }
     }
   }
