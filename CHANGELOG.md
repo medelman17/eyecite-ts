@@ -1,5 +1,17 @@
 # eyecite-ts
 
+## 0.29.1
+
+### Patch Changes
+
+- [#814](https://github.com/medelman17/eyecite-ts/pull/814) [`3a43214`](https://github.com/medelman17/eyecite-ts/commit/3a4321469e07b68144b9376a017268c52601eacc) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): bounded-depth bracket scan replaces the global paren-depth counter (#809)
+
+  `computeParenDepths` was a single running `(`/`)` counter over the whole document, so one dropped or garbled bracket (common in OCR/PDF) desynced the depth for **every** subsequent citation — silently mis-scoping antecedents. It now delegates to a new `computeBracketScopes`: a bounded-depth bracket stack scanned over the prose gaps between citations, reset at clause boundaries, so corruption is confined to the offending clause. Because only prose gaps are scanned, cite-internal periods (`v.`, `U.S.`) never trip the reset and balanced year parens never inflate depth. This fixes the resolver path (where `isParentheticalAside` reads the raw depth — a stray `(` previously excluded a perfectly good top-level antecedent in a later sentence) at the root, generalizing the tactical #798/#801 workarounds. `computeBracketScopes` also exposes a per-citation `balanceOk` structure-trust signal for future abstain gates (#800/#810). Balanced input is unchanged.
+
+- [#816](https://github.com/medelman17/eyecite-ts/pull/816) [`28594b8`](https://github.com/medelman17/eyecite-ts/commit/28594b8c3638aa0eaed52d9f0b3e97c3e959c5c8) Thanks [@medelman17](https://github.com/medelman17)! - refactor(resolve): route `Id.` antecedent selection through a candidate-list scorer seam (#811)
+
+  `resolveId`'s inline `preferred ?? candidates[0]` (family-preference + recency) pick is now expressed as an explicit `scoreAntecedentCandidates` / `selectAntecedent` step — the deterministic seam for a future feature-based learning-to-rank model, swappable without changing callers. **No behavior change**: the scorer reproduces the prior selection exactly (all existing resolutions identical). `supra` (similarity-ranked) and short-form-case (party-name overlap) selection route through the same seam in a follow-up, since they weight different features.
+
 ## 0.29.0
 
 ### Minor Changes
@@ -3061,7 +3073,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-                      275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+                        275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -3087,7 +3099,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-                      People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+                        People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
