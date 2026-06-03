@@ -157,10 +157,11 @@ export interface ResolutionContext {
 
   /**
    * History of all full citations by party name.
-   * Maps normalized party name to citation index.
-   * Used for supra resolution.
+   * Maps a normalized party name to ALL citation indices that share it (in
+   * document order), so the supra resolver can detect a non-unique name key
+   * (#818). Used for supra resolution.
    */
-  fullCitationHistory: Map<string, number>
+  fullCitationHistory: Map<string, number[]>
 
   /**
    * Map of citation index to paragraph number.
