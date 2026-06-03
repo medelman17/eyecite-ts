@@ -259,6 +259,8 @@ export interface DocViewerProps {
   labels:          Map<string, Label>  // keyed by composite "${docId}:${backrefId}"
   docId:           string
   onPickCitation:  (citationId: string) => void
+  /** Optional adjudicator tint map: citationId → "a" | "b" | "gold" */
+  tintMap?:        Record<string, string>
 }
 
 export function DocViewer({
@@ -272,6 +274,7 @@ export function DocViewer({
   labels,
   docId,
   onPickCitation,
+  tintMap,
 }: DocViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const currentRef = useRef<HTMLSpanElement>(null)
@@ -338,6 +341,7 @@ export function DocViewer({
 
   const candSet = useMemo(() => new Set(candidateIds), [candidateIds])
   const ambig   = useMemo(() => new Set(ambigSet ?? []), [ambigSet])
+  const tint    = tintMap ?? {}
 
   function renderPara(p: { text: string; start: number; end: number }, pIdx: number) {
     const inPara = marks.filter((m) => m.start >= p.start && m.start < p.end)
@@ -352,6 +356,7 @@ export function DocViewer({
         if (m.buried)             classes.push("mk-cite--buried")
         if (candSet.has(m.id))    classes.push("mk-cite--candidate")
         if (ambig.has(m.id))      classes.push("mk-cite--ambig")
+        if (tint[m.id])            classes.push("mk-cite--tint-" + tint[m.id])
         if (m.id === activeCitationId) classes.push("mk-cite--active")
         nodes.push(
           <span

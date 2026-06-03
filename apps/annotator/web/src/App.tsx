@@ -1,5 +1,7 @@
 import { useState } from "react"
 import { ReviewerWorkbench } from "./reviewer"
+import { AdjudicatorWorkbench } from "./adjudicator"
+import { MaintainerDashboard } from "./dashboard"
 import { LegendBar, LEGEND, ADJ_LEGEND, KeyCap } from "./components"
 
 type Tab = "review" | "adjudicate" | "dash"
@@ -56,31 +58,14 @@ export default function App() {
       )}
 
       {tab === "adjudicate" && (
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--ink-3)",
-          }}
-        >
-          <div style={{ fontSize: 16 }}>Coming next: Adjudicate</div>
-        </div>
+        <AdjudicatorWorkbench />
       )}
 
       {tab === "dash" && (
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--ink-3)",
-          }}
-        >
-          <div style={{ fontSize: 16 }}>Coming next: Corpus</div>
-        </div>
+        <MaintainerDashboard
+          onOpenBatch={() => setTab("review")}
+          onAdjudicate={() => setTab("adjudicate")}
+        />
       )}
 
       {tab === "review" && <LegendBar items={LEGEND} />}

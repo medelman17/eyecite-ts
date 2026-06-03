@@ -127,7 +127,11 @@ export const api = {
   postGold(body: {
     documentId: string
     backrefId: string
-    decision: GoldDecision
+    type: GoldDecision["type"]
+    citationId?: string
+    citationIds?: string[]
+    rationale?: string
+    by: string
   }): Promise<GoldDecision> {
     return request("/gold", {
       method: "POST",
