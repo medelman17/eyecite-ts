@@ -21,10 +21,29 @@ import type { Citation } from "../types/citation"
  * vocabulary. (End-of-parenthetical markers like "emphasis added" are not here:
  * they do not introduce a citation.)
  */
-export const PARENTHETICAL_TRIGGER_WORDS = ["quoting", "citing", "quoted in", "cited in"] as const
+export const PARENTHETICAL_TRIGGER_WORDS = [
+  "quoting",
+  "citing",
+  "quoted in",
+  "cited in",
+  // #821: prior-/subsequent-history subordinators — the cite they introduce is a
+  // subordinate aside of the previous authority, not a new antecedent. Only
+  // changes resolution under a dropped/garbled paren (balanced asides are caught
+  // by bracket depth); a soft signal layered on the hard bracket-scope filter.
+  "overruled by",
+  "abrogated by",
+  "superseded by",
+  "cited with approval in",
+  "as recognized in",
+] as const
 
-/** Matches a trigger word at the very end of a region (optionally `… from`/`… to`). */
-const TRIGGER_AT_END_RE = /\b(?:quoting|citing|quoted in|cited in)(?:\s+(?:from|to))?[\s,]*$/i
+/**
+ * Matches a trigger word at the very end of a region (optionally `… from`/`… to`).
+ * Multi-word triggers use `\s+` to tolerate OCR spacing; the flat alternation
+ * (no nested quantifiers) keeps it ReDoS-safe.
+ */
+const TRIGGER_AT_END_RE =
+  /\b(?:quoting|citing|quoted in|cited in|overruled\s+by|abrogated\s+by|superseded\s+by|cited\s+with\s+approval\s+in|as\s+recognized\s+in)(?:\s+(?:from|to))?[\s,]*$/i
 
 /** A sentence terminator (`. ` / `; ` / newline) — bounds an aside to its clause. */
 const SENTENCE_TERMINATOR_RE = /[.;]\s|[\n\r]/
