@@ -24,8 +24,14 @@ export async function migrate(sql = makeSql()): Promise<string[]> {
 const isCli = fileURLToPath(import.meta.url) === process.argv[1]
 if (isCli) {
   const sql = makeSql()
-  migrate(sql).then((r) => {
-    console.log(`applied: ${r.length ? r.join(", ") : "(none — up to date)"}`)
-    return sql.end()
-  })
+  migrate(sql)
+    .then((r) => {
+      console.log(`applied: ${r.length ? r.join(", ") : "(none — up to date)"}`)
+      return sql.end()
+    })
+    .catch(async (err) => {
+      console.error("migrate failed:", err instanceof Error ? err.message : err)
+      await sql.end({ timeout: 5 })
+      process.exit(1)
+    })
 }
