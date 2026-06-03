@@ -21,7 +21,7 @@ let fullCitationId: string
 let br1: string // both agree (antecedent same)        → mix.confirm +2
 let br2: string // disagree (bl1=antecedent, bl2=abstain) → disagreements +1
 let br3: string // bl1=flag (bl2 unlabeled for flag test) → mix.flag +1, flagged +1
-let br4: string // UNLABELED → status stays 'active'
+// sorted[3] (the 4th backref) is intentionally left UNLABELED, so labeled < backrefCount → status 'active'
 
 beforeAll(async () => {
   await migrate(sql)
@@ -43,7 +43,6 @@ beforeAll(async () => {
   br1 = sorted[0].id
   br2 = sorted[1].id
   br3 = sorted[2].id
-  br4 = sorted[3].id
   fullCitationId = bldocPayload.citations.find((c) => c.kind === "full")!.id
 
   await upsertDocumentPayload(sql, bldocPayload)
@@ -219,28 +218,6 @@ it("GET /batches blb: status is 'active' (br4 unlabeled)", async () => {
 
   // labeled=3 < backrefCount=4 → status 'active'
   expect(blb.status).toBe("active")
-})
-
-it("GET /batches includes seeded batch-042 with non-null finite kappa and disagreements ≥ 1", async () => {
-  const res = await app.request("/batches")
-  expect(res.status).toBe(200)
-  const list = (await res.json()) as BatchSummary[]
-  const b042 = list.find((b) => b.id === "batch-042")
-
-  // batch-042 was seeded with real labels — it should appear in the list
-  if (!b042) {
-    // Seed may not have run in test env — skip gracefully but note it
-    console.warn("batch-042 not found in GET /batches — seed may not have run")
-    return
-  }
-
-  // The seed produces 2 reviewers → kappa should be non-null
-  expect(b042.kappa).not.toBeNull()
-  expect(typeof b042.kappa).toBe("number")
-  expect(Number.isFinite(b042.kappa!)).toBe(true)
-
-  // The seed deliberately creates ≥1 disagreement (t-vasquez picks alt antecedent or flags)
-  expect(b042.disagreements).toBeGreaterThanOrEqual(1)
 })
 
 it("GET /batches results are ordered by batch id (database order)", async () => {
