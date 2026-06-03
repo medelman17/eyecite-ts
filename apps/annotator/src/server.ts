@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url"
 import type postgres from "postgres"
 import { makeSql } from "./db.js"
 import { getDocumentPayload } from "./persist.js"
+import { registerBatchRoutes } from "./routes/batches.js"
 
 interface DocListRow {
   id: string
@@ -26,6 +27,7 @@ export function makeApp(sql: postgres.Sql) {
     const payload = await getDocumentPayload(sql, c.req.param("id"))
     return payload ? c.json(payload) : c.json({ error: "not found" }, 404)
   })
+  registerBatchRoutes(app, sql)
   return app
 }
 
