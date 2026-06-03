@@ -21,8 +21,7 @@ import type {
 import { isFullCitation } from "../types/guards"
 import type { Span } from "../types/span"
 import { detectQuoteZones } from "../utils/detectQuoteZones"
-import { computeParenDepths } from "../utils/parenDepths"
-import { triggerAnchoredAsideOwner } from "../utils/parentheticalScope"
+import { computeBracketScopes, triggerAnchoredAsideOwner } from "../utils/parentheticalScope"
 import { BKTree } from "./bkTree"
 import { levenshteinDistance } from "./levenshtein"
 import { buildFootnoteScopes, detectParagraphBoundaries, isWithinBoundary } from "./scopeBoundary"
@@ -100,6 +99,8 @@ export class DocumentResolver {
   private readonly quoteZones: ReadonlyArray<{ start: number; end: number }>
   /** Parenthesis depth at each citation's start (filled lazily by resolve()). */
   private parenDepths: number[] = []
+  /** Per-citation bracket-balance trust (#809/#820); false = structure unreliable. */
+  private balanceOks: boolean[] = []
   /** Resolution results accumulated during the in-flight resolve() pass. */
   private resolutions: Array<ResolutionResult | undefined> = []
   /** Resolved citations accumulated during the in-flight resolve() pass; used
@@ -167,7 +168,9 @@ export class DocumentResolver {
     // Reset per-call state so a single DocumentResolver can be reused (the
     // public API currently constructs a fresh one per document, but the
     // per-instance fields make the algorithm easier to follow).
-    this.parenDepths = computeParenDepths(this.text, this.citations)
+    const scopes = computeBracketScopes(this.text, this.citations)
+    this.parenDepths = scopes.map((s) => s.depth)
+    this.balanceOks = scopes.map((s) => s.balanceOk)
     this.resolutions = new Array(this.citations.length).fill(undefined)
     this.resolvedSoFar = resolved
 
@@ -387,6 +390,9 @@ export class DocumentResolver {
     interface Candidate {
       index: number
       family: CitationFamily
+      /** #820: kept despite a paren-child match because the depth-based exclusion
+       *  was untrusted (balanceOk=false) — its confidence is degraded. */
+      soft?: boolean
     }
     const candidates: Candidate[] = []
     const seen = new Set<number>()
@@ -425,7 +431,15 @@ export class DocumentResolver {
 
       const cit = this.citations[primaryIdx]
       if (!isFullCitation(cit)) continue
-      if (this.isParentheticalChild(primaryIdx)) continue
+      // #820: a depth-only paren-child exclusion in a balance-failed clause is
+      // untrustworthy — keep the candidate but mark it `soft` (confidence is
+      // degraded below) rather than silently dropping a possibly-correct
+      // antecedent. Trigger- and fullSpan-based exclusions stay hard.
+      let soft = false
+      if (this.isParentheticalChild(primaryIdx)) {
+        if (!this.isUntrustworthyDepthAside(primaryIdx)) continue
+        soft = true
+      }
       if (!this.isWithinScope(primaryIdx, currentIndex)) continue
 
       // Quote-boundary respect: a citation inside a quote zone is not eligible
@@ -436,6 +450,7 @@ export class DocumentResolver {
       candidates.push({
         index: primaryIdx,
         family: citationFamily(cit),
+        soft,
       })
     }
 
@@ -480,7 +495,19 @@ export class DocumentResolver {
     // Case-name window check: if the prose immediately before Id. names a
     // case that doesn't match the picked antecedent, downgrade confidence and
     // flag ambiguity (without refusing to commit).
-    const { confidence, warnings } = this.applyCaseNameWindowCheck(best.index, citation)
+    const base = this.applyCaseNameWindowCheck(best.index, citation)
+    // #820: when the chosen antecedent survived only because its depth-based
+    // paren-child exclusion was untrusted (balanceOk=false), degrade to soft —
+    // cap confidence and warn so the structural uncertainty is visible (and
+    // `idConfidenceFloor` can abstain).
+    const SOFT_SCOPE_CAP = 0.5
+    const confidence = best.soft ? Math.min(base.confidence, SOFT_SCOPE_CAP) : base.confidence
+    const warnings = best.soft
+      ? [
+          ...(base.warnings ?? []),
+          "Id. antecedent scope unreliable: bracket balance failed near the antecedent; depth-based paren-child exclusion degraded to soft (#820)",
+        ]
+      : base.warnings
 
     // #800: opt-in abstention. When `idConfidenceFloor` is set and the computed
     // confidence falls below it, decline to commit (mirroring resolveSupra's
@@ -603,12 +630,20 @@ export class DocumentResolver {
    * supra antecedents.
    */
   private isParentheticalChild(index: number): boolean {
-    if (this.isParentheticalAside(index)) return true
+    return this.isParentheticalAside(index) || this.isFullSpanContained(index)
+  }
+
+  /**
+   * Whether the citation's clean span is wholly inside a previously-resolved
+   * citation's `fullSpan` (the #214 strategy-2 signal). Independent of the
+   * fragile bracket-depth count, so it stays a *hard* exclusion even when
+   * balance fails (#820).
+   */
+  private isFullSpanContained(index: number): boolean {
     const cit = this.citations[index]
     for (let i = 0; i < this.resolvedSoFar.length; i++) {
       if (i === index) continue // a citation cannot be a paren child of itself
-      const prior = this.resolvedSoFar[i]
-      const priorFullSpan = getFullSpan(prior)
+      const priorFullSpan = getFullSpan(this.resolvedSoFar[i])
       if (!priorFullSpan) continue
       if (
         priorFullSpan.cleanStart <= cit.span.cleanStart &&
@@ -618,6 +653,21 @@ export class DocumentResolver {
       }
     }
     return false
+  }
+
+  /**
+   * #820: the citation's paren-child status rests ONLY on the (possibly
+   * desynced) bracket depth, in a clause whose brackets did not balance — so the
+   * "nested" verdict is untrustworthy. Trigger-anchored asides and
+   * fullSpan-contained cites are reliable (independent of the depth count) and
+   * stay hard exclusions; only the depth-only case under balance failure is
+   * soft, which `resolveId` keeps as a degraded-confidence candidate.
+   */
+  private isUntrustworthyDepthAside(index: number): boolean {
+    if (this.balanceOks[index] !== false) return false
+    if (this.parenDepths[index] <= 0) return false
+    if (triggerAnchoredAsideOwner(this.text, this.citations, index) !== undefined) return false
+    return !this.isFullSpanContained(index)
   }
 
   /**
