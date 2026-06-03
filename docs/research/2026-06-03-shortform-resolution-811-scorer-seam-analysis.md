@@ -78,30 +78,32 @@ Then #810/#817 closed the loop: the measurement found recovery is already 100% o
 
 ## The honest gaps (what "no behavior change" quietly leaves on the floor)
 
-These are not defects — PR #816 did exactly what it advertised — but they are the real state of play for anyone picking this up:
+> **Update (2026-06-03):** these were the gaps right after #811. The do-now slate has since shipped — gap 3 (`balanceOk` unconsumed) is **resolved by #820**; supra cardinality/abstain landed in **#818**; history-subordinator triggers in **#821**. Each gap is annotated with its current status.
 
-1. **The seam is 1/3 wired.** Only `resolveId` routes through `selectAntecedent` (it is the sole call site). `resolveSupra` still ranks by BK-tree Levenshtein similarity (`src/resolve/DocumentResolver.ts:868`), and `resolveShortFormCase` still does its own party-overlap + recency loop (`src/resolve/DocumentResolver.ts:1009`). The PR acknowledges this ("supra/short-form route through the seam in a follow-up"), but note *why* it is non-trivial: those paths weight **different features** (similarity, party overlap) than family+recency, so unifying them means generalizing the feature vector, not just moving code.
+These were not defects — PR #816 did exactly what it advertised — but they were the real state of play right after the seam:
 
-2. **The literature's "dummy/null candidate" abstain mechanism isn't actually realized.** Docs #05/#08 lean hard on Lee et al.'s null candidate (scored 0) as the *native* abstain signal. In code, `selectAntecedent` returns `undefined` only on an **empty list** — but the sole caller already pre-guards emptiness at `src/resolve/DocumentResolver.ts:442` (returns before reaching line 478). So `selectAntecedent`'s `undefined` return and the `?? candidates[0]` fallback are **both dead from the only caller today**. Abstention is done entirely downstream by `idConfidenceFloor` (#800) at `src/resolve/DocumentResolver.ts:489`, not by a scored null candidate inside the scorer. The seam is forward-compatible with that mechanism; it just doesn't implement it yet.
+1. **The seam is 1/3 wired.** Only `resolveId` routes through `selectAntecedent` (it is the sole call site). `resolveSupra` still ranks by BK-tree Levenshtein similarity (`src/resolve/DocumentResolver.ts:868`), and `resolveShortFormCase` still does its own party-overlap + recency loop (`src/resolve/DocumentResolver.ts:1009`). The PR acknowledges this ("supra/short-form route through the seam in a follow-up"), but note *why* it is non-trivial: those paths weight **different features** (similarity, party overlap) than family+recency, so unifying them means generalizing the feature vector, not just moving code. **(Still open as of 2026-06-03):** #818 added supra cardinality / tie-abstain, but on its own path — `resolveSupra` still does not route through the `selectAntecedent` scorer.
 
-3. **`balanceOk` is produced but consumed nowhere.** #809's stack emits the per-clause structure-trust signal (`src/utils/parentheticalScope.ts:183`), but `src/utils/parenDepths.ts:20` maps it straight to `.depth` and **drops `balanceOk` on the floor** — there are zero consumers in `src/`. So #817's headline recommendation — *degrade scope to soft when `balanceOk = false`* — is a recommendation **awaiting implementation**, not shipped behavior. The signal is dangling, ready for a consumer.
+2. **The literature's "dummy/null candidate" abstain mechanism isn't actually realized.** Docs #05/#08 lean hard on Lee et al.'s null candidate (scored 0) as the *native* abstain signal. In code, `selectAntecedent` returns `undefined` only on an **empty list** — but the sole caller already pre-guards emptiness at `src/resolve/DocumentResolver.ts:442` (returns before reaching line 478). So `selectAntecedent`'s `undefined` return and the `?? candidates[0]` fallback are **both dead from the only caller today**. Abstention is done entirely downstream by `idConfidenceFloor` (#800) at `src/resolve/DocumentResolver.ts:489`, not by a scored null candidate inside the scorer (and, on the supra path, by the #818 tie-abstain). The seam is forward-compatible with a scored null candidate; it just doesn't implement one yet.
 
-4. **The "silent recency fallback" the synthesis wanted *removed* is still there.** `findImmediatePredecessor` (the confidence-0.7 "chained by position only" guess) still fires at `src/resolve/DocumentResolver.ts:448` (`Id.`) and `:992` (shortForm). `…-08-synthesis.md` §6 stage 4 calls for replacing it with an explicit abstain; what shipped instead is the *opt-in* `idConfidenceFloor` (#800), leaving the recency guess as the default.
+3. **`balanceOk` is produced but consumed nowhere.** → **✅ Resolved (#820).** At the time of #811, #809's `balanceOk` was dropped at `parenDepths` and read by no resolver path. #820 now threads it into `resolveId` (degrade-to-soft on balance failure), and #819 first de-polluted it (the string-cite reset had made it fire on ~32% of citations in clean text). The signal is now load-bearing, not dangling.
+
+4. **The "silent recency fallback" the synthesis wanted *removed* is still there.** `findImmediatePredecessor` (the confidence-0.7 "chained by position only" guess) still fires at `src/resolve/DocumentResolver.ts:448` (`Id.`) and `:992` (shortForm). `…-08-synthesis.md` §6 stage 4 calls for replacing it with an explicit abstain; what shipped instead is the *opt-in* `idConfidenceFloor` (#800), leaving the recency guess as the default. **(Narrowed by #820):** the depth-based-exclusion case now degrades to soft, but `findImmediatePredecessor` remains the default for the *no-candidate* case.
 
 ## Roadmap status (5-stage pipeline)
 
 | Stage | Target | Reality |
 |---|---|---|
-| 1 PARSE (stack) | replace linear counter | ✅ **shipped** (#809) — but `balanceOk` not yet consumed |
-| 2 SCOPE (hard, fullSpan-independent) | delete paren-internal cites | 🟡 **partial** — #798 trigger-anchoring in; `isParentheticalChild` still uses the `fullSpan` strategy (`:605`) |
+| 1 PARSE (stack) | replace linear counter | ✅ #809; `balanceOk` now **consumed** (#820) |
+| 2 SCOPE (hard, fullSpan-independent) | delete paren-internal cites | ✅ #798 + #821 (history triggers) + #819 (string-cite fix); neutral-cite `fullSpan` hole remains (low priority) |
 | 3 SALIENCE (scorer) | candidate-list scorer | ✅ **seam shipped** (#811), `Id.`-only, deterministic |
-| 4 ABSTAIN | fail closed, no silent recency | 🟡 **opt-in only** (#800 floor); default still guesses via `findImmediatePredecessor` |
+| 4 ABSTAIN | fail closed, no silent recency | ✅ #800 floor + #818 supra tie-abstain + #820 degrade-to-soft; `findImmediatePredecessor` remains the no-candidate fallback |
 | 5 PROVENANCE | quoting-chain edges | ⏸️ out of core, deferred |
 | — Learned ranker | LambdaMART drop-in | ⏸️ **deferred by measurement** (#817) — correct call |
 
 ## Bottom line
 
-#811 is a clean, mathematically-faithful seam, and the surrounding research is unusually rigorous (45 years of anaphora resolution → "scope dominates ranking" → build the frame, defer the ML, then measure to confirm the deferral). The genuinely *open* threads aren't in #811 itself — they are the dangling `balanceOk` consumer (#817's degrade-to-soft) and the still-default silent recency fallback (#800/#812 stage 4).
+#811 is a clean, mathematically-faithful seam, and the surrounding research is unusually rigorous (45 years of anaphora resolution → "scope dominates ranking" → build the frame, defer the ML, then measure to confirm the deferral). As of 2026-06-03 the do-now slate around it has shipped (#818–#821): `balanceOk` is wired (#820), `supra` fails closed on ambiguity (#818), and the trigger lexicon is broadened (#821). What remains is correctly deferred — the learned ranker (pending a labeled corpus) and provenance (out of core).
 
 ## Natural next steps
 
