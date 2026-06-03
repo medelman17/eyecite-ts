@@ -5,7 +5,7 @@ services:
       POSTGRES_USER: annotator
       POSTGRES_PASSWORD: annotator
       POSTGRES_DB: annotator
-    ports: ["5433:5432"]
+    ports: ["5434:5432"] # host 5434 (5433/5432 commonly taken by other local projects)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U annotator"]
       interval: 2s
