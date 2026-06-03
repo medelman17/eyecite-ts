@@ -2,7 +2,8 @@
 // Endpoints: adjudication queue, gold decisions, NDJSON gold export.
 import { Hono } from "hono"
 import type postgres from "postgres"
-import type { AdjudicationItem, GoldDecision, Label, ReviewerLabelRef } from "../contract.js"
+import type { AdjudicationItem, GoldDecision, ReviewerLabelRef } from "../contract.js"
+import { decisionFromColumns } from "../decision.js"
 import { canonicalCategory } from "../kappa.js"
 
 // ── Row types ──────────────────────────────────────────────────────────────────
@@ -59,24 +60,6 @@ interface ExportBackrefRow {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Reconstruct a Label["decision"] from DB columns (mirrors agreement.ts rowToDecision). */
-function decisionFromRow(row: {
-  decision_type: "antecedent" | "abstain" | "ambiguous" | "flag"
-  citation_id: string | null
-  ambiguous_citation_ids: string[] | null
-}): Label["decision"] {
-  switch (row.decision_type) {
-    case "antecedent":
-      return { type: "antecedent", citationId: row.citation_id ?? "" }
-    case "ambiguous":
-      return { type: "ambiguous", citationIds: row.ambiguous_citation_ids ?? [] }
-    case "abstain":
-      return { type: "abstain" }
-    case "flag":
-      return { type: "flag" }
-  }
-}
-
 /** Map a GoldRow to a GoldDecision. */
 function goldRowToDecision(row: GoldRow): GoldDecision {
   const gold: GoldDecision = {
@@ -107,7 +90,19 @@ export function registerAdjudicationRoutes(app: Hono, sql: postgres.Sql): void {
       return c.json({ error: "not found" }, 404)
     }
 
-    // Fetch all label rows for backrefs in this batch's documents, ordered for grouping
+    // Get this batch's assigned reviewers (mirrors agreement.ts)
+    interface BatchReviewerRow {
+      annotator_id: string
+    }
+    const reviewerRows = (await sql`
+      select annotator_id
+      from batch_reviewers
+      where batch_id = ${batchId}
+      order by annotator_id
+    `) as unknown as BatchReviewerRow[]
+    const reviewers = reviewerRows.map((r) => r.annotator_id)
+
+    // Fetch label rows restricted to the batch's assigned reviewers
     const labelRows = (await sql`
       select
         br.document_id,
@@ -125,6 +120,7 @@ export function registerAdjudicationRoutes(app: Hono, sql: postgres.Sql): void {
       join labels   l  on l.document_id  = br.document_id
                        and l.backref_id  = br.id
       where bi.batch_id = ${batchId}
+        and l.annotator_id = any(${reviewers as string[]})
       order by br.document_id, br.span_start, l.annotator_id
     `) as unknown as BackrefQueueRow[]
 
@@ -166,7 +162,7 @@ export function registerAdjudicationRoutes(app: Hono, sql: postgres.Sql): void {
       const group = groups.get(key)!
       const ref: ReviewerLabelRef = {
         annotatorId: row.annotator_id,
-        decision: decisionFromRow(row),
+        decision: decisionFromColumns(row),
         agreedWithEngine: row.agreed_with_engine,
       }
       if (row.note !== null) ref.note = row.note

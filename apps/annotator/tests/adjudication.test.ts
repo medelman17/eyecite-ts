@@ -89,11 +89,11 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  await sql`delete from gold where document_id = 'adoc'`
-  await sql`delete from labels where annotator_id in ('j1', 'j2')`
-  await sql`delete from batches where id = 'jb'`
-  await sql`delete from annotators where id in ('j1', 'j2')`
-  await sql`delete from documents where id = 'adoc'`
+  await sql`delete from gold where document_id in ('adoc', 'adoc-empty')`
+  await sql`delete from labels where annotator_id in ('j1', 'j2', 'j3')`
+  await sql`delete from batches where id in ('jb', 'jb-empty')`
+  await sql`delete from annotators where id in ('j1', 'j2', 'j3')`
+  await sql`delete from documents where id in ('adoc', 'adoc-empty')`
   await sql.end()
 })
 
@@ -279,4 +279,92 @@ it("GET /batches/jb/export → 200 ndjson, exactly 1 line (br2 gold)", async () 
 it("GET /batches/unknown-batch/export → 404", async () => {
   const res = await app.request("/batches/unknown-batch/export")
   expect(res.status).toBe(404)
+})
+
+// ── Fix 1: adjudication filters labels to batch reviewers only ────────────────
+
+it("Fix1 — outside annotator j3 label on br1 is ignored in adjudication (j3 not in batch_reviewers)", async () => {
+  // Create j3 (NOT a reviewer of batch jb)
+  await app.request("/annotators", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: "j3", name: "Outside Judge" }),
+  })
+  // j1 + j2 both labelled br1 as antecedent:fullCitationId → they AGREE → br1 is NOT in queue
+  // j3 labels br1 with a DIFFERENT decision (abstain) — j3 is outside the batch
+  const resLabel = await app.request("/labels", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      documentId: "adoc",
+      backrefId: br1,
+      annotatorId: "j3",
+      decision: { type: "abstain" },
+      agreedWithEngine: false,
+    }),
+  })
+  expect(resLabel.status).toBe(200)
+
+  // With the fix, j3's label is ignored (j3 is not a reviewer of jb)
+  // → br1 should still NOT appear in the adjudication queue
+  const res = await app.request("/batches/jb/adjudication")
+  expect(res.status).toBe(200)
+  const items = (await res.json()) as AdjudicationItem[]
+  expect(items.find((i) => i.backrefId === br1)).toBeUndefined()
+})
+
+// ── Fix 2: gold.citation_id FK violation → 400 ────────────────────────────────
+
+it("Fix2 — POST /gold with fabricated citationId → 400 (FK violation)", async () => {
+  // br1 is a real backref on adoc; "c999" is a fabricated, non-existent citation_id
+  const res = await app.request("/gold", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      documentId: "adoc",
+      backrefId: br1,
+      type: "antecedent",
+      citationId: "c999",
+      by: "lead",
+    }),
+  })
+  expect(res.status).toBe(400)
+})
+
+// ── Fix 4: empty-batch export → 200 with empty body ──────────────────────────
+
+it("Fix4 — export batch with no gold rows → 200 and empty body", async () => {
+  // Create a fresh document with backrefs but NO gold rows
+  const { buildDocumentPayload } = await import("../src/prefill.js")
+  const { upsertDocumentPayload } = await import("../src/persist.js")
+
+  const emptyPayload = buildDocumentPayload("Wilson v. Smith, 2 U.S. 2 (1991). Id. at 6.", {
+    id: "adoc-empty",
+    source: "native",
+    court: "scotus",
+    year: 1991,
+  })
+  await upsertDocumentPayload(sql, emptyPayload)
+
+  // Create a batch with adoc-empty
+  const batchRes = await app.request("/batches", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: "jb-empty",
+      name: "Empty Export Batch",
+      mode: "single",
+      documentIds: ["adoc-empty"],
+      reviewers: ["j1"],
+    }),
+  })
+  expect(batchRes.status).toBe(201)
+
+  // Export the batch — no gold rows exist → should return 200 with empty body
+  const res = await app.request("/batches/jb-empty/export")
+  expect(res.status).toBe(200)
+  const ct = res.headers.get("content-type") ?? ""
+  expect(ct).toContain("ndjson")
+  const body = await res.text()
+  expect(body).toBe("")
 })

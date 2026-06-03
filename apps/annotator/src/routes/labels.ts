@@ -1,9 +1,9 @@
 // apps/annotator/src/routes/labels.ts
 import { Hono } from "hono"
 import type postgres from "postgres"
-import type { Label } from "../contract.js"
+import type { Label, DocumentPayload, NextItem } from "../contract.js"
+import { decisionFromColumns } from "../decision.js"
 import { getDocumentPayload } from "../persist.js"
-import type { DocumentPayload, NextItem } from "../contract.js"
 
 // ── Row types ─────────────────────────────────────────────────────────────────
 
@@ -34,21 +34,7 @@ interface BackrefNextRow {
 
 /** Reconstruct a Label from a DB row. */
 function rowToLabel(row: LabelRow): Label {
-  let decision: Label["decision"]
-  switch (row.decision_type) {
-    case "antecedent":
-      decision = { type: "antecedent", citationId: row.citation_id ?? "" }
-      break
-    case "ambiguous":
-      decision = { type: "ambiguous", citationIds: row.ambiguous_citation_ids ?? [] }
-      break
-    case "abstain":
-      decision = { type: "abstain" }
-      break
-    case "flag":
-      decision = { type: "flag" }
-      break
-  }
+  const decision = decisionFromColumns(row)
   const label: Label = {
     documentId: row.document_id,
     backrefId: row.backref_id,

@@ -7,7 +7,7 @@
 import { Hono } from "hono"
 import type postgres from "postgres"
 import { canonicalCategory, cohenKappa } from "../kappa.js"
-import type { Label } from "../contract.js"
+import { decisionFromColumns } from "../decision.js"
 
 // ── Row types ─────────────────────────────────────────────────────────────────
 
@@ -25,22 +25,6 @@ interface LabelRow {
   decision_type: "antecedent" | "abstain" | "ambiguous" | "flag"
   citation_id: string | null
   ambiguous_citation_ids: string[] | null
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Reconstruct a Label decision from a DB row (mirrors rowToLabel in labels.ts). */
-function rowToDecision(row: LabelRow): Label["decision"] {
-  switch (row.decision_type) {
-    case "antecedent":
-      return { type: "antecedent", citationId: row.citation_id ?? "" }
-    case "ambiguous":
-      return { type: "ambiguous", citationIds: row.ambiguous_citation_ids ?? [] }
-    case "abstain":
-      return { type: "abstain" }
-    case "flag":
-      return { type: "flag" }
-  }
 }
 
 // ── Route registration ────────────────────────────────────────────────────────
@@ -117,7 +101,7 @@ export function registerAgreementRoutes(app: Hono, sql: postgres.Sql): void {
     const bCategories = new Map<string, string>()
 
     for (const row of labelRows) {
-      const cat = canonicalCategory(rowToDecision(row))
+      const cat = canonicalCategory(decisionFromColumns(row))
       if (row.annotator_id === revA) {
         aCategories.set(row.backref_id, cat)
       } else if (row.annotator_id === revB) {
