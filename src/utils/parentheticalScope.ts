@@ -174,10 +174,16 @@ export function computeBracketScopes(text: string, citations: Citation[]): Brack
         ch === "\r" ||
         ((ch === "." || ch === ";") && /\s/.test(text[pos + 1] ?? " "))
       ) {
-        // Clause boundary: an aside cannot continue across it. A still-open
-        // bracket here is an unclosed-open anomaly; reset the bounded scope.
-        if (stack.length > 0) balanceOk = false
-        stack.length = 0
+        // A `;` inside an open paren is a string-cite separator
+        // (`(citing A; B; C)`), not a clause boundary — keep the bounded scope
+        // so every member reads the paren depth, not just the first (#819).
+        // Otherwise a `.`/`;`/newline bounds the aside to its clause; a still-open
+        // bracket here is an unclosed-open anomaly (#809), so flag it and reset.
+        const stringCiteSeparator = ch === ";" && stack[stack.length - 1] === "("
+        if (!stringCiteSeparator) {
+          if (stack.length > 0) balanceOk = false
+          stack.length = 0
+        }
       }
     }
     scopes[i] = { depth: stack.length, balanceOk }
