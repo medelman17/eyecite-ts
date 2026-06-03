@@ -6,6 +6,7 @@ import type postgres from "postgres"
 import { makeSql } from "./db.js"
 import { getDocumentPayload } from "./persist.js"
 import { registerBatchRoutes } from "./routes/batches.js"
+import { registerLabelRoutes } from "./routes/labels.js"
 
 interface DocListRow {
   id: string
@@ -28,6 +29,7 @@ export function makeApp(sql: postgres.Sql) {
     return payload ? c.json(payload) : c.json({ error: "not found" }, 404)
   })
   registerBatchRoutes(app, sql)
+  registerLabelRoutes(app, sql)
   return app
 }
 
