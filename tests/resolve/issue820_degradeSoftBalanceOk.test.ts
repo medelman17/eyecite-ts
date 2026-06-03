@@ -49,4 +49,16 @@ describe("Issue #820: degrade-to-soft on balanceOk failure (Id. path)", () => {
     expect(r?.confidence).toBe(1)
     expect(r?.warnings ?? []).toHaveLength(0)
   })
+
+  it("a fullSpan-contained cite stays HARD-excluded even when balanceOk=false", () => {
+    // Bar sits inside Foo's `fullSpan` AND its clause failed balance (`(see ] Bar…`),
+    // with no trigger word. fullSpan-containment is independent of the fragile
+    // depth count, so it stays a HARD exclusion — Id. resolves to Foo at full
+    // confidence with no #820 warning. Without the fullSpan guard, Bar would be
+    // soft-kept (balanceOk=false + depth, no trigger) and win on recency.
+    const r = idResolution("Foo v. Goo, 1 U.S. 1 (see ] Bar v. Baz, 2 U.S. 2). Id. at 5.")
+    expect(r?.resolvedTo).toBe(0) // Foo — not the fullSpan-contained Bar (idx 1)
+    expect(r?.confidence).toBe(1)
+    expect(r?.warnings ?? []).toHaveLength(0)
+  })
 })
