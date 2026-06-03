@@ -180,6 +180,129 @@ export function AdjudicatorWorkbench() {
     try { localStorage.setItem(ADJ_LS_KEY, JSON.stringify({ idx: currentIndex })) } catch (_) { /* ignore */ }
   }, [currentIndex])
 
+  // ---- keyboard handler ------------------------------------------------------
+  // Placed above early returns to satisfy Rules of Hooks.
+  // Re-registered each render (no dep array) so closures stay fresh.
+  // Body guards on loadState.phase === "ready" so it is a no-op while loading.
+  useEffect(() => {
+    if (loadState.phase !== "ready") return
+    const { queue, docs: docsMap } = loadState
+    if (queue.length === 0) return
+    const item = queue[currentIndex]
+    if (!item) return
+    const doc = docsMap.get(item.documentId)
+    const backref = doc?.backrefs.find((b) => b.id === item.backrefId) ?? null
+    const [revA, revB] = item.reviewers
+
+    function showToastKb(msg: string, tone: string) {
+      setToast({ msg, tone, id: Date.now() })
+    }
+
+    function setGoldDraftKb(decision: GoldDraft) {
+      setDraft(decision)
+    }
+
+    function pickCandidateGoldKb(citationId: string) {
+      setDraft({ type: "antecedent", citationId })
+    }
+
+    async function recordGoldKb() {
+      if (!draft) { showToastKb("Choose a gold answer first", "neutral"); return }
+      const rat = rationale.trim() || undefined
+      try {
+        const stored = await api.postGold({
+          documentId:  item.documentId,
+          backrefId:   item.backrefId,
+          type:        draft.type,
+          citationId:  draft.type === "antecedent" ? draft.citationId : undefined,
+          citationIds: draft.type === "ambiguous" ? draft.citationIds : undefined,
+          rationale:   rat,
+          by:          "lead",
+        })
+        queue[currentIndex] = { ...item, gold: stored }
+        showToastKb("Gold recorded", "confirm")
+        // S2 — announce decision
+        announce("Gold recorded")
+        setTimeout(() => setCurrentIndex((i) => Math.min(queue.length - 1, i + 1)), 120)
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        showToastKb("Failed: " + msg, "flag")
+        // S2 — announce failure assertively
+        announce("Failed to record gold: " + msg, true)
+      }
+    }
+
+    function onKey(e: KeyboardEvent) {
+      const el = e.target as HTMLElement
+      const tag = (el.tagName ?? "").toLowerCase()
+      if (tag === "textarea" || tag === "input") {
+        if (e.key === "Escape") el.blur()
+        return
+      }
+      // S1 — don't double-fire Enter/Space on focused buttons
+      if ((e.key === "Enter" || e.key === " ") && el.closest("button, a, [role=button]")) return
+      const k = e.key.toLowerCase()
+      if (e.key === "Enter") {
+        e.preventDefault(); void recordGoldKb()
+      } else if (k === "a" && revA) {
+        e.preventDefault()
+        // Accept reviewer A's decision as gold
+        const dec = revA.decision
+        if (dec.type === "antecedent") setGoldDraftKb({ type: "antecedent", citationId: dec.citationId })
+        else if (dec.type === "abstain") setGoldDraftKb({ type: "abstain" })
+        else if (dec.type === "ambiguous") setGoldDraftKb({ type: "ambiguous", citationIds: dec.citationIds })
+        else setGoldDraftKb({ type: "none" })
+      } else if (k === "b" && revB) {
+        e.preventDefault()
+        const dec = revB.decision
+        if (dec.type === "antecedent") setGoldDraftKb({ type: "antecedent", citationId: dec.citationId })
+        else if (dec.type === "abstain") setGoldDraftKb({ type: "abstain" })
+        else if (dec.type === "ambiguous") setGoldDraftKb({ type: "ambiguous", citationIds: dec.citationIds })
+        else setGoldDraftKb({ type: "none" })
+      } else if (k === "g" && item.engineGuess) {
+        e.preventDefault()
+        pickCandidateGoldKb(item.engineGuess)
+      } else if (k === "x") {
+        e.preventDefault()
+        setGoldDraftKb({ type: "none" })
+      } else if (k === "r") {
+        e.preventDefault()
+        ratRef.current?.focus()
+      } else if (e.key >= "1" && e.key <= "9") {
+        const cand = backref?.candidates[parseInt(e.key, 10) - 1]
+        if (cand) { e.preventDefault(); pickCandidateGoldKb(cand.citationId) }
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault()
+        setCurrentIndex((i) => Math.min(queue.length - 1, i + 1))
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault()
+        setCurrentIndex((i) => Math.max(0, i - 1))
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  })
+
+  // ---- reset draft when item changes -----------------------------------------
+  // Placed above early returns to satisfy Rules of Hooks.
+  // Body guards on loadState.phase === "ready" so it is a no-op while loading.
+
+  useEffect(() => {
+    if (loadState.phase !== "ready") return
+    const g = loadState.queue[currentIndex]?.gold
+    if (!g) {
+      setDraft(null)
+      setRationale("")
+      return
+    }
+    setRationale(g.rationale ?? "")
+    // Convert GoldDecision → GoldDraft (strip at/by, keep type fields)
+    if (g.type === "antecedent" && g.citationId) setDraft({ type: "antecedent", citationId: g.citationId })
+    else if (g.type === "abstain") setDraft({ type: "abstain" })
+    else if (g.type === "ambiguous" && g.citationIds) setDraft({ type: "ambiguous", citationIds: g.citationIds })
+    else setDraft({ type: "none" })
+  }, [currentIndex, loadState]) // intentionally includes loadState to guard correctly
+
   // ---- guard: not ready ------------------------------------------------------
 
   if (loadState.phase === "loading") {
@@ -274,79 +397,6 @@ export function AdjudicatorWorkbench() {
   }
 
   function jump(idx: number) { setCurrentIndex(idx) }
-
-  // ---- keyboard handler ------------------------------------------------------
-
-  // We use a plain useEffect re-registered each render (same pattern as the prototype)
-  // so closures stay fresh.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const el = e.target as HTMLElement
-      const tag = (el.tagName ?? "").toLowerCase()
-      if (tag === "textarea" || tag === "input") {
-        if (e.key === "Escape") el.blur()
-        return
-      }
-      // S1 — don't double-fire Enter/Space on focused buttons
-      if ((e.key === "Enter" || e.key === " ") && el.closest("button, a, [role=button]")) return
-      const k = e.key.toLowerCase()
-      if (e.key === "Enter") {
-        e.preventDefault(); void recordGold()
-      } else if (k === "a" && revA) {
-        e.preventDefault()
-        // Accept reviewer A's decision as gold
-        const dec = revA.decision
-        if (dec.type === "antecedent") setGoldDraft({ type: "antecedent", citationId: dec.citationId })
-        else if (dec.type === "abstain") setGoldDraft({ type: "abstain" })
-        else if (dec.type === "ambiguous") setGoldDraft({ type: "ambiguous", citationIds: dec.citationIds })
-        else setGoldDraft({ type: "none" })
-      } else if (k === "b" && revB) {
-        e.preventDefault()
-        const dec = revB.decision
-        if (dec.type === "antecedent") setGoldDraft({ type: "antecedent", citationId: dec.citationId })
-        else if (dec.type === "abstain") setGoldDraft({ type: "abstain" })
-        else if (dec.type === "ambiguous") setGoldDraft({ type: "ambiguous", citationIds: dec.citationIds })
-        else setGoldDraft({ type: "none" })
-      } else if (k === "g" && item.engineGuess) {
-        e.preventDefault()
-        pickCandidateGold(item.engineGuess)
-      } else if (k === "x") {
-        e.preventDefault()
-        setGoldDraft({ type: "none" })
-      } else if (k === "r") {
-        e.preventDefault()
-        ratRef.current?.focus()
-      } else if (e.key >= "1" && e.key <= "9") {
-        const cand = backref?.candidates[parseInt(e.key, 10) - 1]
-        if (cand) { e.preventDefault(); pickCandidateGold(cand.citationId) }
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault()
-        setCurrentIndex((i) => Math.min(queue.length - 1, i + 1))
-      } else if (e.key === "ArrowLeft") {
-        e.preventDefault()
-        setCurrentIndex((i) => Math.max(0, i - 1))
-      }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  })
-
-  // ---- reset draft when item changes -----------------------------------------
-
-  useEffect(() => {
-    const g = queue[currentIndex]?.gold
-    if (!g) {
-      setDraft(null)
-      setRationale("")
-      return
-    }
-    setRationale(g.rationale ?? "")
-    // Convert GoldDecision → GoldDraft (strip at/by, keep type fields)
-    if (g.type === "antecedent" && g.citationId) setDraft({ type: "antecedent", citationId: g.citationId })
-    else if (g.type === "abstain") setDraft({ type: "abstain" })
-    else if (g.type === "ambiguous" && g.citationIds) setDraft({ type: "ambiguous", citationIds: g.citationIds })
-    else setDraft({ type: "none" })
-  }, [currentIndex]) // intentionally narrow — matches prototype
 
   // ---- tint map for DocViewer ------------------------------------------------
 

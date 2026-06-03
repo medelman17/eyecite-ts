@@ -335,6 +335,21 @@ export function MaintainerDashboard({ onOpenBatch, onAdjudicate }: MaintainerDas
 
   useEffect(() => { doLoad() }, [])
 
+  const totals = useMemo(() => {
+    if (loadState.phase !== "ready") return { labeled: 0, backrefCount: 0, disagreements: 0, flagged: 0, meanK: null }
+    let labeled = 0, backrefCount = 0, disagreements = 0, flagged = 0
+    const kappas: number[] = []
+    loadState.batches.forEach((b) => {
+      labeled += b.labeled
+      backrefCount += b.backrefCount
+      disagreements += b.disagreements
+      flagged += b.flagged
+      if (b.kappa != null) kappas.push(b.kappa)
+    })
+    const meanK = kappas.length ? kappas.reduce((a, c) => a + c, 0) / kappas.length : null
+    return { labeled, backrefCount, disagreements, flagged, meanK }
+  }, [loadState])
+
   if (loadState.phase === "loading") {
     return (
       <div className="dash" style={{ alignItems: "center", justifyContent: "center" }}>
@@ -352,20 +367,6 @@ export function MaintainerDashboard({ onOpenBatch, onAdjudicate }: MaintainerDas
   }
 
   const { batches, pool, annotators } = loadState
-
-  const totals = useMemo(() => {
-    let labeled = 0, backrefCount = 0, disagreements = 0, flagged = 0
-    const kappas: number[] = []
-    batches.forEach((b) => {
-      labeled += b.labeled
-      backrefCount += b.backrefCount
-      disagreements += b.disagreements
-      flagged += b.flagged
-      if (b.kappa != null) kappas.push(b.kappa)
-    })
-    const meanK = kappas.length ? kappas.reduce((a, c) => a + c, 0) / kappas.length : null
-    return { labeled, backrefCount, disagreements, flagged, meanK }
-  }, [batches])
 
   return (
     <div className="dash">

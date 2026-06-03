@@ -216,6 +216,208 @@ export function ReviewerWorkbench({ onGoAdjudicate }: ReviewerWorkbenchProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, loadState.phase])
 
+  // ---- keyboard handler (stable with useCallback) --------------------------
+  // Placed above early returns to satisfy Rules of Hooks.
+  // The body guards on loadState.phase === "ready" so it is a no-op while
+  // loading/erroring/empty.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const onKey = useCallback(
+    (e: KeyboardEvent) => {
+      if (loadState.phase !== "ready") return
+      const readyItems: WorkItem[] = items  // items is derived from loadState above
+      if (readyItems.length === 0) return
+      const readyItem = readyItems[currentIndex]
+      if (!readyItem) return
+      const readyBackref = readyItem.backref
+      const readyDoc = readyItem.doc
+      const readyCurKey = labelKey(readyDoc.id, readyBackref.id)
+      const readyLabeledCount = labels.size
+
+      function showToastLocal(msg: string, tone: string) {
+        setToast({ msg, tone, id: Date.now() })
+      }
+
+      function advanceLocal() {
+        setCurrentIndex((i) => Math.min(readyItems.length - 1, i + 1))
+      }
+
+      async function recordLocal(
+        key: string,
+        docId: string,
+        backrefId: string,
+        label: Label,
+        toastMsg: string,
+        tone: string
+      ) {
+        undoRef.current.push({ key, prev: labels.get(key), index: currentIndex })
+        setLabels((prev) => {
+          const next = new Map(prev)
+          next.set(key, label)
+          return next
+        })
+        showToastLocal(toastMsg, tone)
+        announce(toastMsg)
+        const willCount = labels.has(key) ? readyLabeledCount : readyLabeledCount + 1
+        if (willCount >= readyItems.length) setTimeout(() => setShowComplete(true), 350)
+        advanceLocal()
+        try {
+          await api.postLabel(label)
+        } catch (err: unknown) {
+          console.warn("postLabel failed", docId, backrefId, err)
+          announce("Save failed — check connection", true)
+        }
+      }
+
+      function doConfirmLocal() {
+        if (flagMode) { void saveFlagLocal(); return }
+        if (ambiguousMode) { void saveAmbiguousLocal(); return }
+        if (!selected) return
+        const agreed = selected === readyBackref.engineGuess
+        const label: Label = {
+          documentId:      readyDoc.id,
+          backrefId:       readyBackref.id,
+          annotatorId:     CURRENT_ANNOTATOR,
+          decision:        { type: "antecedent", citationId: selected },
+          agreedWithEngine: agreed,
+        }
+        void recordLocal(
+          readyCurKey, readyDoc.id, readyBackref.id, label,
+          agreed ? "Confirmed" : "Correction saved",
+          agreed ? "confirm" : "correct"
+        )
+      }
+
+      function doAbstainLocal() {
+        const label: Label = {
+          documentId:      readyDoc.id,
+          backrefId:       readyBackref.id,
+          annotatorId:     CURRENT_ANNOTATOR,
+          decision:        { type: "abstain" },
+          agreedWithEngine: readyBackref.engineGuess === null,
+        }
+        void recordLocal(readyCurKey, readyDoc.id, readyBackref.id, label, "No antecedent", "abstain")
+      }
+
+      async function saveAmbiguousLocal() {
+        if (ambigSet.length < 2) {
+          showToastLocal("Pick 2+ candidates first", "neutral")
+          return
+        }
+        const label: Label = {
+          documentId:      readyDoc.id,
+          backrefId:       readyBackref.id,
+          annotatorId:     CURRENT_ANNOTATOR,
+          decision:        { type: "ambiguous", citationIds: ambigSet.slice() },
+          agreedWithEngine: false,
+        }
+        await recordLocal(readyCurKey, readyDoc.id, readyBackref.id, label, "Marked ambiguous", "ambiguous")
+        setAmbiguousMode(false)
+      }
+
+      async function saveFlagLocal() {
+        const label: Label = {
+          documentId:      readyDoc.id,
+          backrefId:       readyBackref.id,
+          annotatorId:     CURRENT_ANNOTATOR,
+          decision:        { type: "flag" },
+          agreedWithEngine: false,
+          note:            note.trim() || undefined,
+        }
+        await recordLocal(readyCurKey, readyDoc.id, readyBackref.id, label, "Flagged for later", "flag")
+        setFlagMode(false)
+      }
+
+      function undoLocal() {
+        const last = undoRef.current.pop()
+        if (!last) { showToastLocal("Nothing to undo", "neutral"); return }
+        setLabels((prev) => {
+          const next = new Map(prev)
+          if (last.prev) {
+            next.set(last.key, last.prev)
+            void api.postLabel(last.prev).catch(() => undefined)
+          } else {
+            next.delete(last.key)
+          }
+          return next
+        })
+        setCurrentIndex(last.index)
+        showToastLocal("Undone", "neutral")
+      }
+
+      function toggleAmbiguousLocal() {
+        if (ambiguousMode) { setAmbiguousMode(false); return }
+        setFlagMode(false)
+        const seed = readyBackref.candidates.slice(0, 2).map((c) => c.citationId)
+        setAmbigSet(seed)
+        setAmbiguousMode(true)
+      }
+
+      function toggleFlagLocal() {
+        if (flagMode) { setFlagMode(false); return }
+        setAmbiguousMode(false)
+        setFlagMode(true)
+        setTimeout(() => noteRef.current?.focus(), 30)
+      }
+
+      function selectCandidateLocal(citationId: string) {
+        if (ambiguousMode) {
+          setAmbigSet((set) =>
+            set.includes(citationId) ? set.filter((x) => x !== citationId) : [...set, citationId]
+          )
+        } else {
+          setSelected(citationId)
+        }
+      }
+
+      function nextUnlabeledLocal() {
+        for (let k = 1; k <= readyItems.length; k++) {
+          const idx = (currentIndex + k) % readyItems.length
+          const it = readyItems[idx]
+          if (!labels.has(labelKey(it.doc.id, it.backref.id))) {
+            setCurrentIndex(idx)
+            return
+          }
+        }
+      }
+
+      const el = e.target as HTMLElement
+      const tag = (el.tagName ?? "").toLowerCase()
+      const typing = tag === "textarea" || tag === "input"
+      if (typing) {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void saveFlagLocal() }
+        else if (e.key === "Escape") { setFlagMode(false); el.blur() }
+        return
+      }
+      // S1 — don't double-fire on focused activatable controls
+      if ((e.key === "Enter" || e.key === " ") && el.closest("button, a, [role=button]")) return
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault(); undoLocal(); return
+      }
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); doConfirmLocal() }
+      else if (e.key >= "1" && e.key <= "9") {
+        const idx = parseInt(e.key, 10) - 1
+        if (readyBackref.candidates[idx]) { e.preventDefault(); selectCandidateLocal(readyBackref.candidates[idx].citationId) }
+      }
+      else if (e.key.toLowerCase() === "a") { e.preventDefault(); doAbstainLocal() }
+      else if (e.key.toLowerCase() === "m") { e.preventDefault(); toggleAmbiguousLocal() }
+      else if (e.key.toLowerCase() === "f") { e.preventDefault(); toggleFlagLocal() }
+      else if (e.key.toLowerCase() === "e") { e.preventDefault(); setExpanded((x) => !x) }
+      else if (e.key.toLowerCase() === "j") { e.preventDefault(); nextUnlabeledLocal() }
+      else if (e.key === "ArrowRight") { e.preventDefault(); setCurrentIndex((i) => Math.min(readyItems.length - 1, i + 1)) }
+      else if (e.key === "ArrowLeft")  { e.preventDefault(); setCurrentIndex((i) => Math.max(0, i - 1)) }
+      else if (e.key === "?") { e.preventDefault(); setShowHelp((x) => !x) }
+      else if (e.key === "Escape") { setShowHelp(false) }
+    },
+    // Re-attach whenever any of these change so closures stay fresh
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loadState, currentIndex, selected, ambiguousMode, ambigSet, flagMode, note, items, labels]
+  )
+
+  useEffect(() => {
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [onKey])
+
   // ---- guard: not yet ready -------------------------------------------------
 
   if (loadState.phase === "loading") {
@@ -359,26 +561,6 @@ export function ReviewerWorkbench({ onGoAdjudicate }: ReviewerWorkbenchProps) {
     setFlagMode(false)
   }
 
-  function undo() {
-    const last = undoRef.current.pop()
-    if (!last) { showToast("Nothing to undo", "neutral"); return }
-    setLabels((prev) => {
-      const next = new Map(prev)
-      if (last.prev) {
-        next.set(last.key, last.prev)
-        // Re-POST the previous label (fire-and-forget)
-        void api.postLabel(last.prev).catch(() => undefined)
-      } else {
-        next.delete(last.key)
-        // No API "delete" endpoint — a re-POST of the previous state is the revert.
-        // Nothing to send when there was no prior label.
-      }
-      return next
-    })
-    setCurrentIndex(last.index)
-    showToast("Undone", "neutral")
-  }
-
   function toggleAmbiguous() {
     if (ambiguousMode) { setAmbiguousMode(false); return }
     setFlagMode(false)
@@ -411,59 +593,6 @@ export function ReviewerWorkbench({ onGoAdjudicate }: ReviewerWorkbenchProps) {
     )
     if (idx !== -1) setCurrentIndex(idx)
   }
-
-  function nextUnlabeled() {
-    for (let k = 1; k <= items.length; k++) {
-      const idx = (currentIndex + k) % items.length
-      const it = items[idx]
-      if (!labels.has(labelKey(it.doc.id, it.backref.id))) {
-        setCurrentIndex(idx)
-        return
-      }
-    }
-  }
-
-  // ---- keyboard handler (stable with useCallback + no deps) -----------------
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const onKey = useCallback(
-    (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement
-      const tag = (el.tagName ?? "").toLowerCase()
-      const typing = tag === "textarea" || tag === "input"
-      if (typing) {
-        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void saveFlag() }
-        else if (e.key === "Escape") { setFlagMode(false); el.blur() }
-        return
-      }
-      // S1 — don't double-fire on focused activatable controls
-      if ((e.key === "Enter" || e.key === " ") && el.closest("button, a, [role=button]")) return
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
-        e.preventDefault(); undo(); return
-      }
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); doConfirm() }
-      else if (e.key >= "1" && e.key <= "9") {
-        const idx = parseInt(e.key, 10) - 1
-        if (backref.candidates[idx]) { e.preventDefault(); selectCandidate(backref.candidates[idx].citationId) }
-      }
-      else if (e.key.toLowerCase() === "a") { e.preventDefault(); doAbstain() }
-      else if (e.key.toLowerCase() === "m") { e.preventDefault(); toggleAmbiguous() }
-      else if (e.key.toLowerCase() === "f") { e.preventDefault(); toggleFlag() }
-      else if (e.key.toLowerCase() === "e") { e.preventDefault(); setExpanded((x) => !x) }
-      else if (e.key.toLowerCase() === "j") { e.preventDefault(); nextUnlabeled() }
-      else if (e.key === "ArrowRight") { e.preventDefault(); setCurrentIndex((i) => Math.min(items.length - 1, i + 1)) }
-      else if (e.key === "ArrowLeft")  { e.preventDefault(); setCurrentIndex((i) => Math.max(0, i - 1)) }
-      else if (e.key === "?") { e.preventDefault(); setShowHelp((x) => !x) }
-      else if (e.key === "Escape") { setShowHelp(false) }
-    },
-    // Re-attach whenever any of these change so closures stay fresh
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentIndex, selected, ambiguousMode, ambigSet, flagMode, note, items, backref, labels, labeledCount]
-  )
-
-  useEffect(() => {
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [onKey])
 
   // ---- backref display text -------------------------------------------------
   // "backref.find" in the prototype → use citeLookup for display text
