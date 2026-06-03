@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"
-import { api } from "./api"
-import type { BatchSummary } from "./types"
+import { useState } from "react"
+import { ReviewerWorkbench } from "./reviewer"
+import { LegendBar, LEGEND, ADJ_LEGEND, KeyCap } from "./components"
 
 type Tab = "review" | "adjudicate" | "dash"
 
@@ -27,62 +27,32 @@ function TopBar({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
         </button>
       </nav>
       <div className="topbar__spacer" />
-      <div className="topbar__who">Antecedent Annotator</div>
+      {(tab === "review" || tab === "adjudicate") && (
+        <button
+          className="topbar__help"
+          onClick={() =>
+            window.dispatchEvent(new KeyboardEvent("keydown", { key: "?" }))
+          }
+        >
+          <KeyCap>?</KeyCap> shortcuts
+        </button>
+      )}
+      <div className="topbar__who">
+        {tab === "adjudicate" ? "Lead · Adjudicator" : "R. Okafor · Reviewer"}
+      </div>
     </header>
   )
 }
 
-type BatchStatus =
-  | { state: "idle" }
-  | { state: "loading" }
-  | { state: "ok"; batches: BatchSummary[] }
-  | { state: "error"; message: string }
-
 export default function App() {
   const [tab, setTab] = useState<Tab>("review")
-  const [batchStatus, setBatchStatus] = useState<BatchStatus>({ state: "idle" })
-
-  useEffect(() => {
-    setBatchStatus({ state: "loading" })
-    api
-      .listBatches()
-      .then((batches) => setBatchStatus({ state: "ok", batches }))
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err)
-        setBatchStatus({ state: "error", message })
-      })
-  }, [])
-
-  const statusLine =
-    batchStatus.state === "loading"
-      ? "Loading batches…"
-      : batchStatus.state === "ok"
-        ? `${batchStatus.batches.length} batch${batchStatus.batches.length !== 1 ? "es" : ""} loaded`
-        : batchStatus.state === "error"
-          ? `Error: ${batchStatus.message}`
-          : ""
 
   return (
     <div className="app">
       <TopBar tab={tab} setTab={setTab} />
 
       {tab === "review" && (
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 12,
-            color: "var(--ink-3)",
-          }}
-        >
-          <div style={{ fontSize: 16 }}>Coming next: Review</div>
-          {statusLine && (
-            <div style={{ fontSize: 12, color: "var(--ink-4)" }}>{statusLine}</div>
-          )}
-        </div>
+        <ReviewerWorkbench onGoAdjudicate={() => setTab("adjudicate")} />
       )}
 
       {tab === "adjudicate" && (
@@ -112,6 +82,9 @@ export default function App() {
           <div style={{ fontSize: 16 }}>Coming next: Corpus</div>
         </div>
       )}
+
+      {tab === "review" && <LegendBar items={LEGEND} />}
+      {tab === "adjudicate" && <LegendBar items={ADJ_LEGEND} />}
     </div>
   )
 }
