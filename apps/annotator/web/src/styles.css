@@ -3,7 +3,8 @@
 :root {
   --bg: #15171c; --bg-2: #1a1d23; --bg-3: #20242b; --bg-4: #272c34;
   --line: rgba(255,255,255,.07); --line-2: rgba(255,255,255,.13);
-  --ink: #e9e7e2; --ink-2: #abb1ba; --ink-3: #7b828c; --ink-4: #545a63;
+  /* ink-3 bumped from #7b828c to #8e96a0 (~4.5:1 on --bg), ink-4 kept for non-text decoration only */
+  --ink: #e9e7e2; --ink-2: #abb1ba; --ink-3: #8e96a0; --ink-4: #545a63;
   --gold: #cda153; --gold-2: #e3c483; --gold-soft: rgba(205,161,83,.15);
   --c-confirm: #cda153; --c-correct: #5fb59a; --c-abstain: #7d93b0;
   --c-ambiguous: #b58cc9; --c-flag: #d98c5f; --c-none: #3b4048;
@@ -22,6 +23,20 @@ body {
   font-size: 14px; -webkit-font-smoothing: antialiased; overflow: hidden;
 }
 button { font-family: inherit; cursor: pointer; color: inherit; border: none; background: none; }
+
+/* ---- global focus-visible (C1) ---- */
+:focus-visible { outline: 2px solid var(--gold-2); outline-offset: 2px; border-radius: 4px; }
+
+/* ---- visually-hidden (sr-only) helper for S2/S4 ---- */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* ---- reduced-motion (M2) ---- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
 .app { height: 100vh; display: flex; flex-direction: column; }
 
 /* ---- top bar ---- */
@@ -94,22 +109,29 @@ button { font-family: inherit; cursor: pointer; color: inherit; border: none; ba
 .docmap { position: relative; width: 18px; flex: none; margin: 18px 0; }
 .docmap__spine { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: var(--line-2); transform: translateX(-50%); }
 .docmap__cite { position: absolute; left: 50%; width: 7px; height: 1.5px; background: var(--ink-4); transform: translate(-50%,-50%); }
-.docmap__ref { position: absolute; left: 50%; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%,-50%);
-  background: var(--c-none); border: 1.5px solid var(--ink-4); padding: 0; }
-.docmap__ref--confirm { background: var(--c-confirm); border-color: var(--c-confirm); }
-.docmap__ref--correct { background: var(--c-correct); border-color: var(--c-correct); }
-.docmap__ref--abstain { background: var(--c-abstain); border-color: var(--c-abstain); }
-.docmap__ref--ambiguous { background: var(--c-ambiguous); border-color: var(--c-ambiguous); }
-.docmap__ref--flag { background: var(--c-flag); border-color: var(--c-flag); }
-.docmap__ref--current { width: 13px; height: 13px; box-shadow: 0 0 0 3px var(--gold-soft); border-color: var(--gold-2); }
+/* S5 — doc-map dots: 24×24 transparent hit area, visible dot via ::before */
+.docmap__ref { position: absolute; left: 50%; width: 24px; height: 24px; border-radius: 50%;
+  transform: translate(-50%,-50%); background: transparent; border: none; padding: 0;
+  display: grid; place-items: center; }
+.docmap__ref::before { content: ""; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--c-none); border: 1.5px solid var(--ink-4); display: block; }
+.docmap__ref--confirm::before { background: var(--c-confirm); border-color: var(--c-confirm); }
+.docmap__ref--correct::before { background: var(--c-correct); border-color: var(--c-correct); }
+.docmap__ref--abstain::before { background: var(--c-abstain); border-color: var(--c-abstain); }
+.docmap__ref--ambiguous::before { background: var(--c-ambiguous); border-color: var(--c-ambiguous); }
+.docmap__ref--flag::before { background: var(--c-flag); border-color: var(--c-flag); }
+.docmap__ref--current::before { width: 13px; height: 13px; box-shadow: 0 0 0 3px var(--gold-soft); border-color: var(--gold-2); }
 
 .docview { flex: 1; min-width: 0; overflow-y: auto; padding: 18px 40px 40vh 16px; }
 .docview__inner { max-width: 680px; margin: 0 auto; }
 .doc-para { font-family: var(--serif); font-size: 18px; line-height: 1.92; color: var(--ink); margin: 0 0 1.5em;
   transition: opacity .25s ease; text-wrap: pretty; }
 .doc-para--dim { opacity: .34; }
-.mk-cite { cursor: pointer; border-bottom: 1px dotted var(--ink-4); transition: background .15s, border-color .15s; }
-.mk-cite:hover { border-bottom-color: var(--gold); }
+/* C2 — mk-cite as inline button: reset button defaults so it flows inline */
+.mk-cite { display: inline; cursor: pointer; border-bottom: 1px dotted var(--ink-4);
+  transition: background .15s, border-color .15s;
+  padding: 0; margin: 0; background: none; font: inherit; color: inherit; }
+.mk-cite:hover, .mk-cite:focus-visible { border-bottom-color: var(--gold); outline-offset: 1px; }
 .mk-cite--candidate { border-bottom: 1px solid rgba(205,161,83,.5); }
 .mk-cite--active { background: var(--gold-soft); border-bottom: 1.5px solid var(--gold); border-radius: 3px; box-shadow: 0 0 0 3px var(--gold-soft); }
 .mk-cite--buried { color: var(--ink-3); border-bottom: 1px dashed var(--ink-4); font-style: italic; }
@@ -146,9 +168,11 @@ button { font-family: inherit; cursor: pointer; color: inherit; border: none; ba
 
 .panel-scroll { flex: 1; overflow-y: auto; padding: 14px 16px; }
 .cand-list { display: flex; flex-direction: column; gap: 9px; }
+/* C3 — cand is now a <button>; keep grid layout + override button defaults */
 .cand { display: grid; grid-template-columns: 26px minmax(0,1fr) auto; gap: 10px; padding: 11px 12px;
-  background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--r); cursor: pointer; transition: border-color .15s, background .15s; }
-.cand:hover { background: var(--bg-4); border-color: var(--line-2); }
+  background: var(--bg-3); border: 1px solid var(--line); border-radius: var(--r); cursor: pointer;
+  transition: border-color .15s, background .15s; text-align: left; width: 100%; font: inherit; color: inherit; }
+.cand:hover, .cand:focus-visible { background: var(--bg-4); border-color: var(--line-2); }
 .cand--selected { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); background: var(--bg-4); }
 .cand--ambig { border-color: var(--c-ambiguous); box-shadow: 0 0 0 3px rgba(181,140,201,.16); }
 .cand--buried { opacity: .72; border-style: dashed; background: transparent; }
@@ -191,7 +215,7 @@ button { font-family: inherit; cursor: pointer; color: inherit; border: none; ba
 .dock__mode { font-size: 12px; color: var(--c-ambiguous); line-height: 1.6; }
 .dock__note { width: 100%; min-height: 56px; resize: vertical; background: var(--bg-3); border: 1px solid var(--line-2);
   border-radius: 8px; color: var(--ink); font-family: var(--sans); font-size: 13px; padding: 9px 11px; }
-.dock__note:focus { outline: none; border-color: var(--c-flag); }
+.dock__note:focus-visible { outline: 2px solid var(--gold-2); outline-offset: 1px; border-color: var(--c-flag); }
 .primary-btn { width: 100%; height: 44px; border-radius: 9px; font-size: 14px; font-weight: 600;
   display: flex; align-items: center; justify-content: center; gap: 10px; transition: filter .15s, transform .05s; }
 .primary-btn:active { transform: translateY(1px); }
@@ -376,9 +400,11 @@ button { font-family: inherit; cursor: pointer; color: inherit; border: none; ba
 .agree-tag--yes { color: var(--c-correct); background: rgba(95,181,154,.13); }
 .agree-tag--no { color: var(--c-flag); background: rgba(217,140,95,.13); }
 
+/* C3 — adj-src rows are now <button>; keep flex layout + override button defaults */
 .adj-src { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: var(--r); border: 1px solid var(--line);
-  background: var(--bg-3); cursor: pointer; margin-bottom: 8px; transition: border-color .15s, background .15s; }
-.adj-src:hover { background: var(--bg-4); }
+  background: var(--bg-3); cursor: pointer; margin-bottom: 8px; transition: border-color .15s, background .15s;
+  width: 100%; text-align: left; font: inherit; color: inherit; }
+.adj-src:hover, .adj-src:focus-visible { background: var(--bg-4); }
 .adj-src--chosen { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
 .adj-src--engine { justify-content: space-between; }
 .adj-src__txt { font-family: var(--serif); font-size: 14px; }

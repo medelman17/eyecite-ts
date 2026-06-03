@@ -17,6 +17,8 @@ import {
   labelStatus,
   formatParties,
 } from "./components"
+import { Modal } from "./Modal"
+import { useAnnounce } from "./announcer"
 
 // ---- constants --------------------------------------------------------------
 
@@ -81,7 +83,9 @@ export function ReviewerWorkbench({ onGoAdjudicate }: ReviewerWorkbenchProps) {
   const [toast, setToast] = useState<{ msg: string; tone: string; id: number } | null>(null)
   const [showComplete, setShowComplete] = useState(false)
   const noteRef = useRef<HTMLTextAreaElement>(null)
+  const panelHeadRef = useRef<HTMLElement>(null)
   const undoRef = useRef<Array<{ key: string; prev: Label | undefined; index: number }>>([])
+  const announce = useAnnounce()
 
   // ---- load -----------------------------------------------------------------
 
@@ -197,6 +201,21 @@ export function ReviewerWorkbench({ onGoAdjudicate }: ReviewerWorkbenchProps) {
     setNote(lab?.note ?? "")
   }, [currentIndex]) // intentionally omit labels/items — matches prototype behaviour
 
+  // ---- M3 / S2: focus panel head + announce item on navigation -------------
+
+  useEffect(() => {
+    if (loadState.phase !== "ready" || items.length === 0) return
+    const item = items[currentIndex]
+    if (!item) return
+    const kindLabel = KIND_LABEL[item.backref.kind] ?? item.backref.kind
+    const st = labelStatus(labels.get(labelKey(item.doc.id, item.backref.id)))
+    const statusLabel = DECISION_META[st]?.label ?? "unlabeled"
+    announce(`Item ${currentIndex + 1} of ${items.length}, ${kindLabel}, ${statusLabel}`)
+    // Move focus to panel head so Tab order resumes from there
+    panelHeadRef.current?.focus()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, loadState.phase])
+
   // ---- guard: not yet ready -------------------------------------------------
 
   if (loadState.phase === "loading") {
@@ -265,6 +284,8 @@ export function ReviewerWorkbench({ onGoAdjudicate }: ReviewerWorkbenchProps) {
       return next
     })
     showToast(toastMsg, tone)
+    // S2 — announce decision for screen readers (assertive for failures, polite for success)
+    announce(toastMsg)
     const willCount = labels.has(key) ? labeledCount : labeledCount + 1
     if (willCount >= items.length) setTimeout(() => setShowComplete(true), 350)
     advance()
@@ -274,6 +295,7 @@ export function ReviewerWorkbench({ onGoAdjudicate }: ReviewerWorkbenchProps) {
     } catch (err: unknown) {
       // Non-fatal: local state reflects the decision; surface lightly
       console.warn("postLabel failed", docId, backrefId, err)
+      announce("Save failed — check connection", true)
     }
   }
 
@@ -405,13 +427,16 @@ export function ReviewerWorkbench({ onGoAdjudicate }: ReviewerWorkbenchProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const onKey = useCallback(
     (e: KeyboardEvent) => {
-      const tag = ((e.target as HTMLElement).tagName ?? "").toLowerCase()
+      const el = e.target as HTMLElement
+      const tag = (el.tagName ?? "").toLowerCase()
       const typing = tag === "textarea" || tag === "input"
       if (typing) {
         if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void saveFlag() }
-        else if (e.key === "Escape") { setFlagMode(false); (e.target as HTMLElement).blur() }
+        else if (e.key === "Escape") { setFlagMode(false); el.blur() }
         return
       }
+      // S1 — don't double-fire on focused activatable controls
+      if ((e.key === "Enter" || e.key === " ") && el.closest("button, a, [role=button]")) return
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
         e.preventDefault(); undo(); return
       }
@@ -566,7 +591,13 @@ export function ReviewerWorkbench({ onGoAdjudicate }: ReviewerWorkbenchProps) {
 
       {/* RIGHT: candidates + decision */}
       <section className="rv-panel">
-        <header className="panel-head" key={"h" + backref.id}>
+        <header
+          className="panel-head"
+          key={"h" + backref.id}
+          ref={panelHeadRef}
+          tabIndex={-1}
+          style={{ outline: "none" }}
+        >
           <div className="panel-head__top">
             <span className={"kind-pill kind-pill--" + backref.kind}>
               {KIND_LABEL[backref.kind] ?? backref.kind}
@@ -792,35 +823,37 @@ function CompletionCard({ labels, items, onClose, onAdjudicate }: CompletionCard
   const total = items.length
   return (
     <div className="overlay" onClick={onClose}>
-      <div className="complete" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-        <div className="complete__mark">✓</div>
-        <h3>Batch complete</h3>
-        <p>
-          All {total} back-references labeled. The engine&#39;s guess was confirmed on{" "}
-          <strong>{agreed}</strong> of them ({Math.round((agreed / total) * 100)}%).
-        </p>
-        <div className="complete__mix">
-          {(["confirm", "correct", "abstain", "ambiguous", "flag"] as const).map(
-            (k) =>
-              counts[k] > 0 && (
-                <div key={k} className="complete__stat">
-                  <StatusDot status={k} /> <strong>{counts[k]}</strong>{" "}
-                  {DECISION_META[k].label}
-                </div>
-              )
-          )}
-        </div>
-        <div className="complete__btns">
-          <button className="ghost-btn" onClick={onClose}>
-            Keep reviewing
-          </button>
-          {onAdjudicate && (
-            <button className="primary-btn primary-btn--confirm" onClick={onAdjudicate}>
-              Go to adjudication →
+      <Modal onClose={onClose} labelledById="complete-heading">
+        <div className="complete" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+          <div className="complete__mark" aria-hidden="true">✓</div>
+          <h3 id="complete-heading">Batch complete</h3>
+          <p>
+            All {total} back-references labeled. The engine&#39;s guess was confirmed on{" "}
+            <strong>{agreed}</strong> of them ({Math.round((agreed / total) * 100)}%).
+          </p>
+          <div className="complete__mix">
+            {(["confirm", "correct", "abstain", "ambiguous", "flag"] as const).map(
+              (k) =>
+                counts[k] > 0 && (
+                  <div key={k} className="complete__stat">
+                    <StatusDot status={k} /> <strong>{counts[k]}</strong>{" "}
+                    {DECISION_META[k].label}
+                  </div>
+                )
+            )}
+          </div>
+          <div className="complete__btns">
+            <button className="ghost-btn" onClick={onClose}>
+              Keep reviewing
             </button>
-          )}
+            {onAdjudicate && (
+              <button className="primary-btn primary-btn--confirm" onClick={onAdjudicate}>
+                Go to adjudication →
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      </Modal>
     </div>
   )
 }
@@ -843,20 +876,22 @@ function HelpOverlay({ onClose }: HelpOverlayProps) {
   ]
   return (
     <div className="overlay" onClick={onClose}>
-      <div className="overlay__card" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-        <h3>Keyboard</h3>
-        <div className="overlay__grid">
-          {rows.map((r) => (
-            <div key={r[0]} className="overlay__row">
-              <KeyCap wide>{r[0]}</KeyCap>
-              <span>{r[1]}</span>
-            </div>
-          ))}
+      <Modal onClose={onClose} labelledById="help-heading">
+        <div className="overlay__card" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+          <h3 id="help-heading">Keyboard</h3>
+          <div className="overlay__grid">
+            {rows.map((r) => (
+              <div key={r[0]} className="overlay__row">
+                <KeyCap wide>{r[0]}</KeyCap>
+                <span>{r[1]}</span>
+              </div>
+            ))}
+          </div>
+          <button className="ghost-btn" onClick={onClose}>
+            Close
+          </button>
         </div>
-        <button className="ghost-btn" onClick={onClose}>
-          Close
-        </button>
-      </div>
+      </Modal>
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from "react"
 import type { BatchSummary, DocListItem, Annotator } from "./types"
 import { api } from "./api"
 import { DECISION_META } from "./components"
+import { Modal } from "./Modal"
 
 // ---- helpers -----------------------------------------------------------------
 
@@ -118,11 +119,12 @@ function NewBatchDrawer({ pool, annotators, onClose, onCreated }: NewBatchDrawer
 
   return (
     <div className="overlay" onClick={onClose}>
+      <Modal onClose={onClose} labelledById="new-batch-heading">
       <div className="drawer" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
         {created ? (
           <div className="drawer__done">
-            <div className="drawer__done-mark">✓</div>
-            <h3>Batch created</h3>
+            <div className="drawer__done-mark" aria-hidden="true">✓</div>
+            <h3 id="new-batch-heading">Batch created</h3>
             <p>
               {picked.length} documents · {totalRefs} back-references ·{" "}
               {mode === "double"
@@ -135,8 +137,8 @@ function NewBatchDrawer({ pool, annotators, onClose, onCreated }: NewBatchDrawer
         ) : (
           <>
             <header className="drawer__head">
-              <h3>New batch</h3>
-              <button className="x-btn" onClick={onClose}>×</button>
+              <h3 id="new-batch-heading">New batch</h3>
+              <button className="x-btn" onClick={onClose} aria-label="Close">×</button>
             </header>
             <div className="drawer__body">
               <div className="field">
@@ -226,6 +228,7 @@ function NewBatchDrawer({ pool, annotators, onClose, onCreated }: NewBatchDrawer
           </>
         )}
       </div>
+      </Modal>
     </div>
   )
 }
@@ -257,10 +260,11 @@ function ExportModal({ batch, onClose }: ExportModalProps) {
 
   return (
     <div className="overlay" onClick={onClose}>
+      <Modal onClose={onClose} labelledById="export-heading">
       <div className="drawer drawer--export" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
         <header className="drawer__head">
-          <h3>Export gold — {batch.name}</h3>
-          <button className="x-btn" onClick={onClose}>×</button>
+          <h3 id="export-heading">Export gold — {batch.name}</h3>
+          <button className="x-btn" onClick={onClose} aria-label="Close">×</button>
         </header>
         <div className="drawer__body">
           <p className="field__hint">
@@ -289,6 +293,7 @@ function ExportModal({ batch, onClose }: ExportModalProps) {
           </div>
         </footer>
       </div>
+      </Modal>
     </div>
   )
 }

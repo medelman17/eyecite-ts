@@ -87,11 +87,23 @@ interface StatusDotProps {
   size?: string | number
 }
 
+// Decision name for aria-label (S4)
+const DECISION_ARIA: Record<string, string> = {
+  confirm:   "Confirmed",
+  correct:   "Corrected",
+  abstain:   "No antecedent",
+  ambiguous: "Ambiguous",
+  flag:      "Flagged",
+  none:      "Unlabeled",
+}
+
 export function StatusDot({ status, size }: StatusDotProps) {
+  const label = DECISION_ARIA[status] ?? status
   return (
     <span
       className={"status-dot status-dot--" + status}
       style={size ? { width: size, height: size } : undefined}
+      aria-label={label}
     />
   )
 }
@@ -194,12 +206,18 @@ export function CandidateCard({
     .filter(Boolean)
     .join(" ")
 
+  const ariaPressed = inAmbigSet ? true : isSelected ? true : false
+
   return (
-    <div
+    <button
+      type="button"
       className={cls}
       onClick={() => onSelect(citation.id)}
       onMouseEnter={() => onHover(citation.id)}
       onMouseLeave={() => onHover(null)}
+      onFocus={() => onHover(citation.id)}
+      onBlur={() => onHover(null)}
+      aria-pressed={ariaPressed}
     >
       <div className="cand__key">
         <KeyCap>{indexKey}</KeyCap>
@@ -242,7 +260,7 @@ export function CandidateCard({
           <ConfidenceMeter value={cand.confidence} pick={isEnginePick} />
         </div>
       )}
-    </div>
+    </button>
   )
 }
 
@@ -330,13 +348,14 @@ export function DocViewer({
     ? paras.findIndex((p) => currentSpan[0] >= p.start && currentSpan[0] < p.end)
     : -1
 
-  // re-center the focused back-reference
+  // re-center the focused back-reference (M2 — respect prefers-reduced-motion)
   useEffect(() => {
     const cont = scrollRef.current
     const el = currentRef.current
     if (!cont || !el) return
     const target = el.offsetTop - cont.clientHeight / 2 + el.offsetHeight / 2
-    cont.scrollTo({ top: Math.max(0, target), behavior: "smooth" })
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    cont.scrollTo({ top: Math.max(0, target), behavior: reduced ? "auto" : "smooth" })
   }, [current?.id, expanded])
 
   const candSet = useMemo(() => new Set(candidateIds), [candidateIds])
@@ -358,17 +377,24 @@ export function DocViewer({
         if (ambig.has(m.id))      classes.push("mk-cite--ambig")
         if (tint[m.id])            classes.push("mk-cite--tint-" + tint[m.id])
         if (m.id === activeCitationId) classes.push("mk-cite--active")
+        // C2 — render as button so keyboard users can operate it;
+        // buried ones get an accessible note (S4)
+        const buriedNote = m.buried ? " (inside a parenthetical — usually not a valid antecedent)" : ""
         nodes.push(
-          <span
+          <button
             key={"m" + i}
+            type="button"
             className={classes.join(" ")}
+            aria-label={"Pick " + txt + " as antecedent" + buriedNote}
             onClick={(e: React.MouseEvent) => {
               e.stopPropagation()
               onPickCitation(m.id)
             }}
+            onFocus={() => onPickCitation(m.id)}
+            onBlur={() => { /* keep candidate highlight; user may Tab back */ }}
           >
             {txt}
-          </span>
+          </button>
         )
       } else {
         const isCur = current && m.id === current.id
@@ -455,6 +481,12 @@ export function DocMap({ doc, current, labels, docId, onJump }: DocMapProps) {
               (KIND_LABEL[b.kind] ?? b.kind) +
               " · " +
               (DECISION_META[st] ? DECISION_META[st].label : "unlabeled")
+            }
+            aria-label={
+              (KIND_LABEL[b.kind] ?? b.kind) +
+              " · " +
+              (DECISION_META[st] ? DECISION_META[st].label : "unlabeled") +
+              (isCur ? " (current)" : "")
             }
           />
         )

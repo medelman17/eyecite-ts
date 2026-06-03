@@ -22,6 +22,7 @@ type GoldDraft =
   | { type: "none" }
 import { api } from "./api"
 import { KIND_LABEL, KeyCap, StatusDot, ConfidenceMeter, DocViewer, DocMap } from "./components"
+import { useAnnounce } from "./announcer"
 
 // ---- constants ---------------------------------------------------------------
 
@@ -121,6 +122,7 @@ export function AdjudicatorWorkbench() {
   const [rationale, setRationale] = useState("")
   const [toast, setToast] = useState<{ msg: string; tone: string; id: number } | null>(null)
   const ratRef = useRef<HTMLTextAreaElement>(null)
+  const announce = useAnnounce()
 
   // ---- load ------------------------------------------------------------------
 
@@ -260,10 +262,14 @@ export function AdjudicatorWorkbench() {
       // Mutate the queue item locally so the checkmark appears
       queue[currentIndex] = { ...item, gold: stored }
       showToast("Gold recorded", "confirm")
+      // S2 — announce decision
+      announce("Gold recorded")
       setTimeout(() => setCurrentIndex((i) => Math.min(queue.length - 1, i + 1)), 120)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
       showToast("Failed: " + msg, "flag")
+      // S2 — announce failure assertively
+      announce("Failed to record gold: " + msg, true)
     }
   }
 
@@ -275,11 +281,14 @@ export function AdjudicatorWorkbench() {
   // so closures stay fresh.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      const tag = ((e.target as HTMLElement).tagName ?? "").toLowerCase()
+      const el = e.target as HTMLElement
+      const tag = (el.tagName ?? "").toLowerCase()
       if (tag === "textarea" || tag === "input") {
-        if (e.key === "Escape") (e.target as HTMLElement).blur()
+        if (e.key === "Escape") el.blur()
         return
       }
+      // S1 — don't double-fire Enter/Space on focused buttons
+      if ((e.key === "Enter" || e.key === " ") && el.closest("button, a, [role=button]")) return
       const k = e.key.toLowerCase()
       if (e.key === "Enter") {
         e.preventDefault(); void recordGold()
@@ -485,11 +494,15 @@ export function AdjudicatorWorkbench() {
           {/* engine */}
           <div className="adj-block">
             <div className="adj-block__label">Engine guess</div>
-            <div
-              className="adj-src adj-src--engine"
+            <button
+              type="button"
+              className={"adj-src adj-src--engine" + (draft?.type === "antecedent" && draft.citationId === item.engineGuess ? " adj-src--chosen" : "")}
               onClick={() => item.engineGuess && pickCandidateGold(item.engineGuess)}
               onMouseEnter={() => setActiveCite(item.engineGuess)}
               onMouseLeave={() => setActiveCite(null)}
+              onFocus={() => setActiveCite(item.engineGuess)}
+              onBlur={() => setActiveCite(null)}
+              aria-pressed={draft?.type === "antecedent" && draft.citationId === item.engineGuess}
             >
               <span className="adj-src__txt">
                 {item.engineGuess
@@ -497,7 +510,7 @@ export function AdjudicatorWorkbench() {
                   : "Declined (no guess)"}
               </span>
               <KeyCap>G</KeyCap>
-            </div>
+            </button>
           </div>
 
           {/* reviewers */}
@@ -514,8 +527,9 @@ export function AdjudicatorWorkbench() {
               const isGold = draft !== null && sameDecision(draft, r.decision)
               const typeLabel = TYPE_LABEL[r.decision.type] ?? r.decision.type
               return (
-                <div
+                <button
                   key={key}
+                  type="button"
                   className={"adj-src adj-src--" + tone + (isGold ? " adj-src--chosen" : "")}
                   onClick={() => {
                     const d = r.decision
@@ -526,6 +540,9 @@ export function AdjudicatorWorkbench() {
                   }}
                   onMouseEnter={() => setActiveCite(dec.cites[0] ?? null)}
                   onMouseLeave={() => setActiveCite(null)}
+                  onFocus={() => setActiveCite(dec.cites[0] ?? null)}
+                  onBlur={() => setActiveCite(null)}
+                  aria-pressed={isGold}
                 >
                   <span className={"swatch swatch--" + tone} />
                   <span className="adj-src__body">
@@ -541,7 +558,7 @@ export function AdjudicatorWorkbench() {
                     </span>
                   </span>
                   <KeyCap>{key}</KeyCap>
-                </div>
+                </button>
               )
             })}
           </div>
@@ -556,12 +573,16 @@ export function AdjudicatorWorkbench() {
                   const chosen = draft?.type === "antecedent" && draft.citationId === cand.citationId
                   const isBuried = buriedSet.has(cand.citationId)
                   return (
-                    <div
+                    <button
                       key={cand.citationId}
+                      type="button"
                       className={"cand" + (isBuried ? " cand--buried" : "") + (chosen ? " cand--selected" : "")}
                       onClick={() => pickCandidateGold(cand.citationId)}
                       onMouseEnter={() => setActiveCite(cand.citationId)}
                       onMouseLeave={() => setActiveCite(null)}
+                      onFocus={() => setActiveCite(cand.citationId)}
+                      onBlur={() => setActiveCite(null)}
+                      aria-pressed={chosen}
                     >
                       <div className="cand__key"><KeyCap>{i + 1}</KeyCap></div>
                       <div className="cand__body">
@@ -579,7 +600,7 @@ export function AdjudicatorWorkbench() {
                           <ConfidenceMeter value={cand.confidence} pick={cand.citationId === item.engineGuess} />
                         </div>
                       )}
-                    </div>
+                    </button>
                   )
                 })}
                 <button
