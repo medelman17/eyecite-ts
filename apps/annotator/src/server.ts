@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url"
 import type postgres from "postgres"
 import { makeSql } from "./db.js"
 import { getDocumentPayload } from "./persist.js"
+import { registerAdjudicationRoutes } from "./routes/adjudication.js"
 import { registerAgreementRoutes } from "./routes/agreement.js"
 import { registerBatchRoutes } from "./routes/batches.js"
 import { registerLabelRoutes } from "./routes/labels.js"
@@ -32,6 +33,7 @@ export function makeApp(sql: postgres.Sql) {
   registerBatchRoutes(app, sql)
   registerLabelRoutes(app, sql)
   registerAgreementRoutes(app, sql)
+  registerAdjudicationRoutes(app, sql)
   return app
 }
 
