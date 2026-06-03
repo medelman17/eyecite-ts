@@ -180,6 +180,23 @@ it("POST /batches with invalid mode → 400", async () => {
   expect(body.error).toBeTruthy()
 })
 
+it("POST /batches with a non-existent reviewer → 400", async () => {
+  const res = await app.request("/batches", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: "btest-bad-reviewer",
+      name: "Bad Reviewer Batch",
+      mode: "single",
+      documentIds: ["bdoc"],
+      reviewers: ["no-such-annotator"],
+    }),
+  })
+  expect(res.status).toBe(400)
+  const body = await res.json()
+  expect(body.error).toBeTruthy()
+})
+
 it("POST /batches with auto-generated id works", async () => {
   // Ensure reviewer exists
   await app.request("/annotators", {

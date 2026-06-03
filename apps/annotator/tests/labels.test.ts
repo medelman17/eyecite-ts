@@ -372,3 +372,117 @@ it("GET /documents/ldoc/labels (no annotator) → returns all labels for the doc
   const labels = (await res.json()) as Label[]
   expect(labels.length).toBeGreaterThanOrEqual(2)
 })
+
+// ── POST /labels — FK violation ───────────────────────────────────────────────
+
+it("POST /labels with non-existent annotatorId → 400", async () => {
+  const body = {
+    documentId: "ldoc",
+    backrefId: firstBackrefId,
+    annotatorId: "no-such-annotator",
+    decision: { type: "abstain" },
+    agreedWithEngine: false,
+  }
+  const res = await app.request("/labels", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  expect(res.status).toBe(400)
+  const err = (await res.json()) as { error: string }
+  expect(err.error).toBeTruthy()
+})
+
+// ── POST /labels — abstain response type ─────────────────────────────────────
+
+it("POST /labels abstain → 200, response decision.type is abstain", async () => {
+  const body: Omit<Label, "createdAt"> = {
+    documentId: "ldoc",
+    backrefId: firstBackrefId,
+    annotatorId: "aL",
+    decision: { type: "abstain" },
+    agreedWithEngine: false,
+  }
+  const res = await app.request("/labels", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  expect(res.status).toBe(200)
+  const label = (await res.json()) as Label
+  expect(label.decision.type).toBe("abstain")
+  expect(label.documentId).toBe("ldoc")
+  expect(label.backrefId).toBe(firstBackrefId)
+  expect(label.annotatorId).toBe("aL")
+})
+
+// ── POST /labels — flag response type ────────────────────────────────────────
+
+it("POST /labels flag → 200, response decision.type is flag", async () => {
+  const body: Omit<Label, "createdAt"> = {
+    documentId: "ldoc",
+    backrefId: firstBackrefId,
+    annotatorId: "aL",
+    decision: { type: "flag" },
+    agreedWithEngine: false,
+    note: "needs review",
+  }
+  const res = await app.request("/labels", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  expect(res.status).toBe(200)
+  const label = (await res.json()) as Label
+  expect(label.decision.type).toBe("flag")
+  expect(label.documentId).toBe("ldoc")
+  expect(label.backrefId).toBe(firstBackrefId)
+  expect(label.annotatorId).toBe("aL")
+})
+
+// ── createdAt preserved across upsert ────────────────────────────────────────
+
+it("POST /labels createdAt is preserved when re-labeling same (doc, backref, annotator)", async () => {
+  // Step 1: label secondBackrefId as antecedent, capture createdAt from GET
+  const body1: Omit<Label, "createdAt"> = {
+    documentId: "ldoc",
+    backrefId: secondBackrefId,
+    annotatorId: "aL",
+    decision: { type: "antecedent", citationId: fullCitationId },
+    agreedWithEngine: true,
+  }
+  const res1 = await app.request("/labels", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body1),
+  })
+  expect(res1.status).toBe(200)
+  const label1 = (await res1.json()) as Label
+  const originalCreatedAt = label1.createdAt
+  expect(typeof originalCreatedAt).toBe("string")
+  expect(originalCreatedAt!.length).toBeGreaterThan(0)
+
+  // Step 2: re-label the SAME (doc, backref, annotator) with a different decision
+  const body2: Omit<Label, "createdAt"> = {
+    documentId: "ldoc",
+    backrefId: secondBackrefId,
+    annotatorId: "aL",
+    decision: { type: "flag" },
+    agreedWithEngine: false,
+  }
+  const res2 = await app.request("/labels", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body2),
+  })
+  expect(res2.status).toBe(200)
+
+  // Step 3: GET labels and verify createdAt did not change
+  const getRes = await app.request("/documents/ldoc/labels?annotator=aL")
+  expect(getRes.status).toBe(200)
+  const allLabels = (await getRes.json()) as Label[]
+  const found = allLabels.find((l) => l.backrefId === secondBackrefId)
+  expect(found).toBeDefined()
+  expect(found!.decision.type).toBe("flag")
+  expect(found!.createdAt).toBe(originalCreatedAt)
+})
