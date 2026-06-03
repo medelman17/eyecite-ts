@@ -11,3 +11,25 @@ services:
       interval: 2s
       timeout: 3s
       retries: 20
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/annotator/Dockerfile
+    environment:
+      ANNOTATOR_DB_URL: postgres://annotator:annotator@db:5432/annotator
+      PORT: "8787"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8787:8787"
+
+  web:
+    build:
+      context: ../..
+      dockerfile: apps/annotator/web/Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
