@@ -10,7 +10,8 @@ beforeAll(async () => {
   await migrate(sql)
 })
 afterAll(async () => {
-  await sql`delete from documents where id in ('tdoc', 'tdoc-re', 'tdoc-null')`
+  await sql`delete from documents where id in ('tdoc','tdoc-re','tdoc-null','redoc','capdoc')`
+  await sql`delete from annotators where id = 'a-test'`
   await sql.end()
 })
 
@@ -73,4 +74,31 @@ it("round-trips null court and year", async () => {
   const got = await getDocumentPayload(sql, "tdoc-null")
   expect(got?.court).toBeNull()
   expect(got?.year).toBeNull()
+})
+
+it("round-trips caption and docket", async () => {
+  await upsertDocumentPayload(sql, buildDocumentPayload("Doe v. Roe, 3 U.S. 3 (1980). Id.", {
+    id: "capdoc", source: "native", court: "ca9", year: 1980, caption: "Doe v. Roe", docket: "No. 12-345",
+  }))
+  const got = await getDocumentPayload(sql, "capdoc")
+  expect(got?.caption).toBe("Doe v. Roe")
+  expect(got?.docket).toBe("No. 12-345")
+})
+
+it("preserves labels when the same document is re-ingested (no destructive cascade)", async () => {
+  const make = () => buildDocumentPayload("Smith v. Jones, 1 U.S. 1 (1990). Id. at 5.", {
+    id: "redoc", source: "native", court: null, year: 1990,
+  })
+  const payload = make()
+  await upsertDocumentPayload(sql, payload)
+  const backrefId = payload.backrefs[0].id
+  const citationId = payload.backrefs[0].engineGuess
+  await sql`insert into annotators (id, name) values ('a-test', 'Test') on conflict (id) do nothing`
+  await sql`insert into labels (document_id, backref_id, annotator_id, decision_type, citation_id, agreed_with_engine)
+            values ('redoc', ${backrefId}, 'a-test', 'antecedent', ${citationId}, true)
+            on conflict (document_id, backref_id, annotator_id) do nothing`
+  // re-ingest the SAME document — labels must survive
+  await upsertDocumentPayload(sql, make())
+  const [{ count }] = await sql`select count(*)::int as count from labels where document_id = 'redoc'`
+  expect(count).toBe(1)
 })

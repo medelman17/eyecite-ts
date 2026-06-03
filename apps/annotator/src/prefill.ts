@@ -37,7 +37,7 @@ function isBuried(cand: AnyCitation, all: AnyCitation[], candIdx: number): boole
 
 export function buildDocumentPayload(
   text: string,
-  meta: { id: string; source: "ocr" | "native"; court: string | null; year: number | null },
+  meta: { id: string; source: "ocr" | "native"; court: string | null; year: number | null; caption?: string; docket?: string },
 ): DocumentPayload {
   const cites = extractCitations(text, { resolve: true }) as unknown as AnyCitation[]
   const id = (i: number) => `c${i}`
