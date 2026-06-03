@@ -472,11 +472,10 @@ export class DocumentResolver {
     // When preferredFamily is null (bare Id. with no pincite — #721),
     // pick the most recent candidate regardless of family. Otherwise,
     // prefer family-match first, then fall back to recency.
-    const preferred =
-      preferredFamily === null
-        ? undefined
-        : candidates.find((c) => c.family === preferredFamily)
-    const best = preferred ?? candidates[0]
+    // #811: route the family-preference + recency pick through the candidate
+    // scorer (the seam for a future learning-to-rank model). `candidates` is
+    // non-empty here (empty was handled above) and in reverse document order.
+    const best = this.selectAntecedent(candidates, preferredFamily) ?? candidates[0]
 
     // Case-name window check: if the prose immediately before Id. names a
     // case that doesn't match the picked antecedent, downgrade confidence and
@@ -513,6 +512,51 @@ export class DocumentResolver {
       confidence,
       warnings,
     }
+  }
+
+  /**
+   * Score scope-filtered antecedent candidates (#811). Deterministic structural
+   * scorer — `FAMILY_PREFERENCE_WEIGHT · familyMatch + recency` — reproducing the
+   * Bluebook Rule 4.1 selection "the most-recent preferred-family match, else the
+   * most-recent candidate overall". Candidates arrive in reverse document order
+   * (index 0 = most recent), so the recency term decreases with index.
+   *
+   * Built as an explicit scorer so a feature-based learning-to-rank model (adding
+   * party-name overlap, scope-depth delta, reporter/jurisdiction match, …) is a
+   * later drop-in without changing callers. This is the *seam*, not a new accuracy
+   * lever — scope/candidate-set selection dominates ranking (#812).
+   */
+  private scoreAntecedentCandidates(
+    candidates: ReadonlyArray<{ index: number; family: CitationFamily }>,
+    preferredFamily: CitationFamily | null,
+  ): number[] {
+    // Any weight > 1 makes a family match dominate the recency term (∈ (0,1]);
+    // the exact magnitude does not affect the deterministic ordering.
+    const FAMILY_PREFERENCE_WEIGHT = 10
+    const n = candidates.length
+    return candidates.map((c, i) => {
+      const recency = (n - i) / n
+      const familyMatch = preferredFamily !== null && c.family === preferredFamily ? 1 : 0
+      return FAMILY_PREFERENCE_WEIGHT * familyMatch + recency
+    })
+  }
+
+  /**
+   * Select the highest-scoring antecedent from a scope-filtered candidate list,
+   * or `undefined` to abstain (the null-candidate signal — an empty list). Strict
+   * `>` preserves the recency-first tie-break (earliest index = most recent).
+   */
+  private selectAntecedent<T extends { index: number; family: CitationFamily }>(
+    candidates: ReadonlyArray<T>,
+    preferredFamily: CitationFamily | null,
+  ): T | undefined {
+    if (candidates.length === 0) return undefined
+    const scores = this.scoreAntecedentCandidates(candidates, preferredFamily)
+    let bestIndex = 0
+    for (let i = 1; i < scores.length; i++) {
+      if (scores[i] > scores[bestIndex]) bestIndex = i
+    }
+    return candidates[bestIndex]
   }
 
   /**
