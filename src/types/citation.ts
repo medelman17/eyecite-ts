@@ -1315,6 +1315,7 @@ export type FullCitationType =
   | "case"
   | "docket"
   | "statute"
+  | "regulation"
   | "journal"
   | "neutral"
   | "publicLaw"
@@ -1345,6 +1346,7 @@ export type FullCitation =
   | CanonCitation
   | DocketCitation
   | StatuteCitation
+  | RegulationCitation
   | JournalCitation
   | NeutralCitation
   | PublicLawCitation
