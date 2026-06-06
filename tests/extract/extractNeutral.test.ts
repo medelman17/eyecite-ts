@@ -101,28 +101,45 @@ Consequently, "injunctive relief is simply not available." Id. at 58–59.`
       expect(alpha).toBeDefined()
     })
 
-    it("does NOT promote Gamma (the parenthetical child) to a top-level citation", () => {
+    it("resolves `Id. at 58–59` to Alpha (the now-extracted container)", () => {
       const cits = extractCitations(DOC, { resolve: true })
-      const gammaTopLevel = cits.find(
-        (c) =>
-          c.type === "case" &&
-          (c as CaseCitation).caseName === "Gamma Industries Inc. v. Delta Partners LP",
-      )
-      expect(gammaTopLevel).toBeUndefined()
-    })
-
-    it("resolves `Id. at 58–59` to Alpha", () => {
-      const cits = extractCitations(DOC, { resolve: true })
-      const alpha = cits.find(
+      const alphaIdx = cits.findIndex(
         (c) =>
           c.type === "neutral" &&
           (c as NeutralCitation).caseName === "Alpha Holdings LLC v. Beta Realty Corp.",
-      ) as (NeutralCitation & { resolvedTo?: unknown }) | undefined
-      expect(alpha).toBeDefined()
-      const id = cits.find((c) => c.type === "id") as { resolvedTo?: unknown } | undefined
+      )
+      expect(alphaIdx).toBeGreaterThanOrEqual(0)
+      const id = cits.find((c) => c.type === "id") as
+        | { resolution?: { resolvedTo?: number; antecedentIndex?: number } }
+        | undefined
       expect(id).toBeDefined()
-      // The Id. must bind to the now-extracted Alpha container.
-      expect(id?.resolvedTo).toBe(alpha)
+      // Resolution is represented as an index into the result array (the
+      // canonical resolver API; see tests/resolve/*). Before this fix Alpha was
+      // dropped and the Id. resolved to nothing.
+      expect(id?.resolution?.resolvedTo).toBe(alphaIdx)
+    })
+
+    it("binds the `Id.` to Alpha, NOT to the quoted Gamma authority", () => {
+      // The dropped-container symptom included the trailing Id. attaching to
+      // the orphaned `(quoting Gamma …)` child instead of the real antecedent.
+      // Once Alpha is extracted the Id. binds to Alpha. (Whether Gamma itself
+      // is still surfaced as a top-level cite is governed by the separate
+      // parenthetical-scope work in #830 and is out of scope here.)
+      const cits = extractCitations(DOC, { resolve: true })
+      const gammaIdx = cits.findIndex(
+        (c) =>
+          (c.type === "case" || c.type === "neutral") &&
+          (c as CaseCitation | NeutralCitation).caseName ===
+            "Gamma Industries Inc. v. Delta Partners LP",
+      )
+      const id = cits.find((c) => c.type === "id") as
+        | { resolution?: { resolvedTo?: number } }
+        | undefined
+      expect(id?.resolution?.resolvedTo).toBeDefined()
+      // The Id. must not resolve to Gamma.
+      if (gammaIdx >= 0) {
+        expect(id?.resolution?.resolvedTo).not.toBe(gammaIdx)
+      }
     })
   })
 
