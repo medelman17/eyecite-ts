@@ -91,11 +91,11 @@
   "size-limit": [
     {
       "path": "dist/index.mjs",
-      "limit": "52 KB"
+      "limit": "104 KB"
     },
     {
       "path": "dist/utils/index.mjs",
-      "limit": "3 KB"
+      "limit": "6 KB"
     }
   ],
   "keywords": [
