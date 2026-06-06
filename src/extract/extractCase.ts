@@ -28,6 +28,7 @@ import { getReportersSync } from "@/data/reportersCache"
 import { inferCourtFromReporter } from "./courtInference"
 import { normalizeCourt } from "./courtNormalization"
 import { parseCaseCitationEnvelopeContext } from "./caseEnvelope"
+import { interpretCaseNameScan } from "./caseNameSemantics"
 import { parseCaseCitationPostfix } from "./casePostfix"
 import { interpretCaseCitationPostfix } from "./casePostfixSemantics"
 
@@ -2182,127 +2183,22 @@ export function extractCase(
       },
     )
     if (caseNameResult) {
-      caseName = caseNameResult.caseName
-
-      // Strip trailing year / court+year / parallel-cite tokens from
-      // caseName — the backward scan sometimes absorbs the CSM year paren
-      // or the start of a parallel citation. #436
-      //
-      // - Trailing `(YYYY)` or `(Court YYYY)` → strip whole paren.
-      // - Trailing `, NNNN <reporter token>` → strip the parallel-cite
-      //   start, e.g., `State v. Lane, 1998 MT 76` → `State v. Lane`.
-      // - Trailing `, COURT, MONTH DAY, YYYY` or bare `, YYYY` — the
-      //   old-style "name, date, citation" form (Picard v. United Aircraft,
-      //   2 Cir., May 28, 1942, 128 F.2d 632; Seymour v. Osborne, 1870, 11
-      //   Wall. 516) — strip and harvest the year (#511).
-      let oldStyleYear: number | undefined
-      if (caseName) {
-        // Trailing parenthetical (year or court+year)
-        caseName = caseName.replace(/\s*\((?:[^()]*\s)?\d{4}\)\s*$/, "").trim()
-        // Trailing comma + parallel-cite start (volume + reporter + page-like)
-        caseName = caseName
-          .replace(/,\s+\d+\s+[A-Z][A-Za-z.&'\d\s]*\d+\s*$/, "")
-          .trim()
-        // Trailing comma + neutral-cite shape (YYYY <state> NN)
-        caseName = caseName.replace(/,\s+\d{4}\s+[A-Z]+\s+\d+\s*$/, "").trim()
-        // Old-style `, COURT, MONTH DAY, YYYY` prefix (#511). Court is
-        // `[0-9]+\s+Cir.|App.|Ct.` or just `[A-Z][a-z]+.` shapes; we keep
-        // the match narrow so it doesn't strip legitimate trailing tokens.
-        const oldStyleCourtDate =
-          /,\s+\d{1,2}(?:st|nd|rd|th)?\s+(?:Cir|App|Ct|Dist|Cir\.\s+App)\.,\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},\s+(\d{4})\s*$/
-        const courtDateMatch = oldStyleCourtDate.exec(caseName)
-        if (courtDateMatch) {
-          oldStyleYear = Number.parseInt(courtDateMatch[1], 10)
-          caseName = caseName.replace(oldStyleCourtDate, "").trim()
-        } else {
-          // Bare `, YYYY` prefix (Seymour v. Osborne, 1870; MacPherson v.
-          // Buick Motor Co., 1916). Only when the year stands alone right
-          // before the citation core — restrict to 1700-2099 to keep the
-          // strip conservative.
-          const bareYear = /,\s+((?:17|18|19|20)\d{2})\s*$/
-          const bareMatch = bareYear.exec(caseName)
-          if (bareMatch) {
-            oldStyleYear = Number.parseInt(bareMatch[1], 10)
-            caseName = caseName.replace(bareYear, "").trim()
-          }
-        }
-      }
-      // Surface the harvested year on the citation when one wasn't already
-      // captured from a trailing parenthetical (#511).
-      if (oldStyleYear !== undefined && !year) {
-        year = oldStyleYear
-      }
-
-      // CSM year-first form puts the year *before* volume-reporter-page
-      // (`In re K.F. (2009) 173 Cal.App.4th 655` — #19). Pick it up here when
-      // there's no trailing court parenthetical to recover it from. Don't
-      // overwrite a year already parsed from a trailing paren — the trailing
-      // paren may also carry court information that the year-first paren lacks.
-      if (caseNameResult.year && !year) {
-        year = caseNameResult.year
-        if (
-          caseNameResult.yearStart !== undefined &&
-          caseNameResult.yearEnd !== undefined &&
-          !spans.year
-        ) {
-          const yearOrig = resolveOriginalSpan(
-            {
-              cleanStart: caseNameResult.yearStart,
-              cleanEnd: caseNameResult.yearEnd,
-            },
-            transformationMap,
-          )
-          spans.year = {
-            cleanStart: caseNameResult.yearStart,
-            cleanEnd: caseNameResult.yearEnd,
-            originalStart: yearOrig.originalStart,
-            originalEnd: yearOrig.originalEnd,
-          }
-        }
-      }
-
-      // Louisiana docket-prefix paren metadata transfer (#232). When a Louisiana
-      // citation places `NN-NNNN (La. ... M/D/YY)` between the caption and the
-      // reporter, the trailing reporter citation typically carries no court
-      // paren of its own — pull court/year/date from the docket paren so the
-      // citation surfaces structured metadata instead of dropping it.
-      if (caseNameResult.precedingDocketMeta) {
-        const meta = caseNameResult.precedingDocketMeta
-        if (!year) year = meta.year
-        if (!court) court = meta.court
-        if (!date) date = meta.date
-      }
-
-      // Calculate fullSpan: case name start through postfix parenthetical end.
-      const parenEnd = postfix.lastParenthetical?.span.end ?? span.cleanEnd
-      const fullCleanStart = caseNameResult.nameStart
-      const fullCleanEnd = parenEnd
-
-      // Translate to original positions
-      const fullOriginalStart =
-        transformationMap.cleanToOriginal.get(fullCleanStart) ?? fullCleanStart
-      const fullOriginalEnd = transformationMap.cleanToOriginal.get(fullCleanEnd) ?? fullCleanEnd
-
-      fullSpan = {
-        cleanStart: fullCleanStart,
-        cleanEnd: fullCleanEnd,
-        originalStart: fullOriginalStart,
-        originalEnd: fullOriginalEnd,
-      }
-
-      // Case name span — computed BEFORE signal stripping rebuilds caseName
-      const caseNameCleanStart = caseNameResult.nameStart
-      const caseNameCleanEnd = caseNameCleanStart + caseName!.length
-      const caseNameOrig = resolveOriginalSpan(
-        { cleanStart: caseNameCleanStart, cleanEnd: caseNameCleanEnd },
+      const caseNameSemantics = interpretCaseNameScan({
+        caseNameResult,
+        tokenSpan: span,
+        postfixLastParentheticalEnd: postfix.lastParenthetical?.span.end,
+        year,
+        court,
+        date,
+        hasExistingYearSpan: spans.year !== undefined,
         transformationMap,
-      )
-      spans.caseName = {
-        cleanStart: caseNameCleanStart,
-        cleanEnd: caseNameCleanEnd,
-        originalStart: caseNameOrig.originalStart,
-        originalEnd: caseNameOrig.originalEnd,
-      }
+      })
+      caseName = caseNameSemantics.caseName
+      year = caseNameSemantics.year
+      court = caseNameSemantics.court
+      date = caseNameSemantics.date
+      fullSpan = caseNameSemantics.fullSpan
+      Object.assign(spans, caseNameSemantics.spans)
     }
   }
 
