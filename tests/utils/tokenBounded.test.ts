@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { tokenBoundedIndexes } from "@/utils/tokenBounded"
+import { tokenBounded, tokenBoundedIndexes } from "@/utils/tokenBounded"
 
 describe("tokenBoundedIndexes", () => {
   it("finds a standalone occurrence", () => {
@@ -23,5 +23,15 @@ describe("tokenBoundedIndexes", () => {
 
   it("returns empty for an empty needle", () => {
     expect(tokenBoundedIndexes("anything", "")).toEqual([])
+  })
+
+  it("rejects a needle glued on its trailing word character", () => {
+    // "supra" ends with 'a' (word char) glued to the following 'x' — exercises
+    // the right-edge boundary branch that needles ending in "." never hit.
+    expect(tokenBoundedIndexes("see suprax note", "supra")).toEqual([])
+  })
+
+  it("tokenBounded returns false for an empty needle", () => {
+    expect(tokenBounded("abc", 0, "")).toBe(false)
   })
 })

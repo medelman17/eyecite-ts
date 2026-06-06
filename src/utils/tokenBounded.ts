@@ -9,6 +9,7 @@ function isWord(c: string | undefined): boolean {
  * never requires a boundary on that side.
  */
 export function tokenBounded(haystack: string, at: number, needle: string): boolean {
+  if (!needle) return false
   const leftOk = !isWord(needle[0]) || at === 0 || !isWord(haystack[at - 1])
   const end = at + needle.length
   const rightOk =
