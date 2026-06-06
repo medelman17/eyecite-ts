@@ -4,7 +4,7 @@
 
 Port of Python [eyecite](https://github.com/freelawproject/eyecite) by Free Law Project. This TypeScript implementation adds 23 citation types, parallel citation linking, party-name extraction, full-span tracking, structured date parsing, a document-understanding layer (quote attribution + a typed citation graph), and short-form resolution with confidence/abstention controls.
 
-- Version: 0.29.1
+- Version: 0.29.2
 - License: MIT
 - Node.js: >=18.0.0
 - Runtime dependencies: 0
