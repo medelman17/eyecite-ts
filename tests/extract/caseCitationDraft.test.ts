@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest"
 import { loadReporters } from "@/data/reporters"
 import {
+  applyCaseNameSemantics,
   applyCasePostfixSemantics,
   createCaseCitationDraftFromCore,
   finalizeCaseCitationDraft,
@@ -177,6 +178,48 @@ describe("case citation draft finalization", () => {
       spans: {
         volume: volumeSpan,
         pincite: pinciteSpan,
+        year: yearSpan,
+      },
+    })
+  })
+
+  it("applies case-name semantics to a draft and merges component spans", () => {
+    const volumeSpan = { cleanStart: 12, cleanEnd: 15, originalStart: 12, originalEnd: 15 }
+    const caseNameSpan = { cleanStart: 0, cleanEnd: 9, originalStart: 0, originalEnd: 9 }
+    const yearSpan = { cleanStart: 29, cleanEnd: 33, originalStart: 29, originalEnd: 33 }
+    const fullSpan = { cleanStart: 0, cleanEnd: 34, originalStart: 0, originalEnd: 34 }
+    const draft: CaseCitationDraft = {
+      text: "500 F.2d 123",
+      tokenSpan: { cleanStart: 12, cleanEnd: 24 },
+      volume: 500,
+      reporter: "F.2d",
+      page: 123,
+      court: "2d Cir.",
+      spans: { volume: volumeSpan },
+    }
+
+    const next = applyCaseNameSemantics(draft, {
+      caseName: "Smith v. Jones",
+      year: 2020,
+      court: "2d Cir.",
+      date: { iso: "2020", parsed: { year: 2020 } },
+      fullSpan,
+      spans: {
+        caseName: caseNameSpan,
+        year: yearSpan,
+      },
+    })
+
+    expect(next).toEqual({
+      ...draft,
+      caseName: "Smith v. Jones",
+      year: 2020,
+      court: "2d Cir.",
+      date: { iso: "2020", parsed: { year: 2020 } },
+      fullSpan,
+      spans: {
+        volume: volumeSpan,
+        caseName: caseNameSpan,
         year: yearSpan,
       },
     })

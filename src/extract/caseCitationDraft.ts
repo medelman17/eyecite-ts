@@ -3,6 +3,7 @@ import type { CaseComponentSpans } from "@/types/componentSpans"
 import type { FullCaseCitation } from "@/types/citation"
 import { resolveOriginalSpan, type Span, type TransformationMap } from "@/types/span"
 import type { CaseCitationCoreSyntax } from "./caseCore"
+import type { CaseNameSemantics } from "./caseNameSemantics"
 import type { CasePostfixSemantics } from "./casePostfixSemantics"
 import type { StructuredDate } from "./dates"
 import { interpretCaseReporterSemantics } from "./caseReporterSemantics"
@@ -86,6 +87,24 @@ export function applyCasePostfixSemantics(
     ...(semantics.subsequentHistoryEntries !== undefined
       ? { subsequentHistoryEntries: semantics.subsequentHistoryEntries }
       : {}),
+    spans: {
+      ...draft.spans,
+      ...semantics.spans,
+    },
+  }
+}
+
+export function applyCaseNameSemantics(
+  draft: CaseCitationDraft,
+  semantics: CaseNameSemantics,
+): CaseCitationDraft {
+  return {
+    ...draft,
+    caseName: semantics.caseName,
+    ...(semantics.year !== undefined ? { year: semantics.year } : {}),
+    ...(semantics.court !== undefined ? { court: semantics.court } : {}),
+    ...(semantics.date !== undefined ? { date: semantics.date } : {}),
+    fullSpan: semantics.fullSpan,
     spans: {
       ...draft.spans,
       ...semantics.spans,

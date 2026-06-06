@@ -19,6 +19,7 @@ import type { FullCaseCitation } from "@/types/citation"
 import type { Span, TransformationMap } from "@/types/span"
 import type { StructuredDate } from "./dates"
 import {
+  applyCaseNameSemantics,
   applyCasePostfixSemantics,
   createCaseCitationDraftFromCore,
   finalizeCaseCitationDraft,
@@ -165,12 +166,12 @@ export function extractCase(
         hasExistingYearSpan: draft.spans.year !== undefined,
         transformationMap,
       })
-      caseName = caseNameSemantics.caseName
-      year = caseNameSemantics.year
-      court = caseNameSemantics.court
-      date = caseNameSemantics.date
-      fullSpan = caseNameSemantics.fullSpan
-      Object.assign(draft.spans, caseNameSemantics.spans)
+      draft = applyCaseNameSemantics(draft, caseNameSemantics)
+      caseName = draft.caseName
+      year = draft.year
+      court = draft.court
+      date = draft.date
+      fullSpan = draft.fullSpan
     }
   }
 
