@@ -1,0 +1,1297 @@
+/**
+ * Case-name backward scanner.
+ *
+ * This module recognizes the caption island immediately preceding a case
+ * citation core. Semantic cleanup and span interpretation stay in
+ * caseNameSemantics.ts.
+ */
+
+import type { TransformationMap } from "@/types/span"
+import { isPlausibleYear, parseDate, type StructuredDate } from "./dates"
+import { SIGNAL_STRIP_REGEX } from "./casePartySemantics"
+
+/** Citation boundary pattern (digit-period-space) */
+const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
+
+/** Standard "v." or "vs." case name format.
+ *
+ *  The trailing alternation accepts either a comma (Bluebook form:
+ *  `Smith v. Jones, 50 Cal.3d 100 (Cal. 1990)`) or a year paren (California
+ *  Style Manual year-first form: `Smith v. Jones (2d Cir. 2005) 396 F.3d 96`
+ *  / `Smith v. Jones (1990) 50 Cal.3d 100`). The CSM paren may carry an
+ *  optional court abbreviation before the year — `(2d Cir. 2005)`,
+ *  `(N.Y. 1991)` — which the caller routes to `precedingDocketMeta.court`.
+ *  The court text must contain a period so loose forms like `(March 1991)`
+ *  don't get misread as courts (Bluebook T7 court abbreviations all contain
+ *  at least one period). Capture group 3 = court (optional), 4 = year.
+ *  The `d` flag enables `match.indices` so the caller can compute a year
+ *  span. See #19, #293. */
+// Latin-1 Supplement (À-ÿ) and Latin Extended-A (Ā-ſ)
+// cover the bulk of accented characters that appear in real case names
+// (Müller, Société, Pérez, González, Çelik, etc.). Uppercase initial
+// accepts both ASCII A-Z and uppercase Latin-1 (À-Þ), so
+// plaintiffs whose name begins with `Ç`, `Ö`, `É` etc. still anchor the
+// backscan.
+//
+// Numeric prefix accepts both bare numbers (`12 Lincoln Square`) and
+// ordinal forms (`21st Century Fox`, `1st National Bank`, `100th
+// Anniversary`). Without the `(?:st|nd|rd|th)?` suffix the regex
+// stripped the ordinal prefix entirely.
+//
+// Defendant char class includes `:` so case-name subtitles like
+// `Smith v. Jones: A Sequel` extract correctly. Plaintiff also accepts
+// `:` for the same reason.
+const V_CASE_NAME_REGEX =
+  /((?:\d[\d-]*(?:st|nd|rd|th)?\s+)?[A-ZÀ-Þ][A-Za-z0-9À-ſ\s.,:'&()/-]+?)\s+v(?:s)?\.?\s+([A-Za-z0-9À-ſ\s.,:'&()/-]+?)\s*(?:,|\((?:([^)]*?\.[^)]*?)\s+)?(\d{4})\))\s*$/d
+
+/** Procedural prefix case name format.
+ *  Longer prefixes listed first so the alternation prefers the longer match
+ *  (e.g., `In the Matter of the Liquidation of X` beats `In the Matter of X`,
+ *  `In re Marriage of X` beats `In re X`, `Commonwealth of Puerto Rico ex rel.`
+ *  beats `Commonwealth ex rel.`). See #193, #242, and the six 2026-05-11
+ *  procedural-prefix research dispatches in `docs/research/`.
+ *
+ *  The trailing alternation matches either `,` (Bluebook) or
+ *  `((<court>)? <year>)` (CSM year-first form, #19 / #293). Captures:
+ *    1: prefix word, 2: party body, 3: court (optional), 4: year.
+ *  The court text must contain a period so loose forms like `(March 1991)`
+ *  don't get misread as courts. The `d` flag enables `match.indices`. */
+const PROCEDURAL_PREFIX_REGEX =
+  /\b(In\s+the\s+Matter\s+of\s+the\s+Liquidation\s+of|In\s+the\s+Matter\s+of\s+the\s+Rehabilitation\s+of|In\s+the\s+Matter\s+of\s+the\s+Receivership\s+of|In\s+the\s+Matter\s+of\s+the\s+Extradition\s+of|In\s+the\s+Matter\s+of\s+the\s+Application\s+of|In\s+the\s+Matter\s+of\s+the\s+Welfare\s+of|In\s+the\s+Matter\s+of|In\s+re\s+Petition\s+for\s+Naturalization\s+of|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+as\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+to|In\s+re\s+Termination\s+of\s+Parental\s+Rights\s+of|In\s+re\s+Marriage\s+of|In\s+re\s+Liquidation\s+of|In\s+re\s+Rehabilitation\s+of|In\s+re\s+Receivership\s+of|In\s+re\s+Naturalization\s+of|In\s+re\s+Extradition\s+of|In\s+re\s+Application\s+of|In\s+re\s+Welfare\s+of|In\s+re\s+Dependency\s+of|In\s+re\s+Paternity\s+of|In\s+re\s+Parentage\s+of|In\s+re\s+Conservatorship\s+of|In\s+re\s+Guardianship\s+of|In\s+re\s+Adoption\s+of|In\s+the\s+Interest\s+of|Matter\s+of\s+Liquidation\s+of|Matter\s+of\s+Rehabilitation\s+of|Commonwealth\s+of\s+Puerto\s+Rico\s+ex\s+rel\.|Government\s+of\s+the\s+Virgin\s+Islands\s+ex\s+rel\.|Commonwealth\s+ex\s+rel\.|Petition\s+for\s+Naturalization\s+of|People\s+ex\s+rel\.|District\s+of\s+Columbia\s+ex\s+rel\.|Conservatorship\s+of\s+the\s+Person\s+and\s+Estate\s+of|Conservatorship\s+of\s+the\s+Person\s+of|Conservatorship\s+of\s+the\s+Estate\s+of|Inquiry\s+Concerning\s+Judge|Appeal\s+of|Care\s+and\s+Protection\s+of|Succession\s+of|In re|Ex parte|Matter of|Estate of|State ex rel\.|United States ex rel\.|Application of|On Petition of|Petition of|Adoption of|Conservatorship of|Guardianship of)\s+([A-Za-z0-9\s.,'&()/-]+?)\s*(?:,|\((?:([^)]*?\.[^)]*?)\s+)?(\d{4})\))\s*$/di
+
+/**
+ * Lowercase words that legitimately appear in legal party names.
+ * Articles, prepositions, and legal connectors (e.g., "of", "the", "ex", "rel").
+ * Used to distinguish real party names from sentence context captured by the regex.
+ *
+ * Note: "in" is intentionally NOT a connector. It's overwhelmingly a prose
+ * preposition ("the holding in", "the rule announced in") rather than a
+ * party-name internal token. Treating "in" as a connector lets lead-in
+ * clauses bleed into the captured plaintiff (#223). Procedural "In re"
+ * captions go through PROCEDURAL_PREFIX_REGEX instead.
+ */
+const PARTY_NAME_CONNECTORS = new Set([
+  "of",
+  "the",
+  "and",
+  "for",
+  "on",
+  "by",
+  "a",
+  "an",
+  "to",
+  "at",
+  "as",
+  "de",
+  "la",
+  "el",
+  "del",
+  "von",
+  "van",
+  "ex",
+  "rel",
+  "et",
+  "al",
+  "d",
+  "or",
+])
+
+/**
+ * Internal qualifier markers that appear inside legitimate party names
+ * (e.g., "Smith d/b/a Old Bob's Diner v. Jones", "Jones aka Johnson v. Smith").
+ * When such a marker is present, the plaintiff is correctly anchored at its
+ * first word — even if that word is followed by lowercase non-connector
+ * tokens. Without this signal, the firstWordIsProperName guard incorrectly
+ * preserves lead-in prose (#223).
+ */
+const INTERNAL_QUALIFIER_REGEX = /\b(?:d\/?b\/?a|a\/?k\/?a|f\/?k\/?a|n\/?k\/?a)\b/i
+
+/**
+ * Check whether a string looks like a legal party name vs. sentence context.
+ *
+ * Valid party names consist of capitalized words and legal connectors:
+ *   "Smith" ✓, "United States" ✓, "People of the State of New York" ✓
+ *
+ * Sentence context contains lowercase non-connector words (verbs, nouns):
+ *   "The court cited Smith" ✗ ("court", "cited" are not connectors)
+ */
+function isLikelyPartyName(name: string): boolean {
+  const words = name.split(/\s+/)
+  // Reject names whose first word is a sentence-initial transition word
+  // (`Invoking Younger`, `Citing Pederson`, `Under People`). These pass
+  // the all-capitalized-words check below because every word starts capital,
+  // but the first word is prose, not a party name. (#323)
+  const firstWord = words[0] ?? ""
+  const firstWordClean = firstWord.toLowerCase().replace(/[.,']+$/, "")
+  if (SENTENCE_INITIAL_WORDS.has(firstWordClean)) return false
+  for (const word of words) {
+    if (!word) continue
+    // Standalone ampersand is ubiquitous in corporate captions
+    // ("Smith & Jones", "Goldman, Sachs & Co.").
+    if (word === "&") continue
+    // Strip trailing punctuation for comparison (handles "Inc.", "Corp.,")
+    const clean = word.toLowerCase().replace(/[.,']+$/, "")
+    if (PARTY_NAME_CONNECTORS.has(clean)) continue
+    if (/^[A-Z]/.test(word)) continue
+    // Numeric words are valid in party names (e.g., "Doe No. 2", "Route 66")
+    if (/^\d/.test(word)) continue
+    // Lowercase non-connector word → not a party name
+    return false
+  }
+  return true
+}
+
+/**
+ * Capitalized words that are never proper names — only uppercase because they're
+ * sentence-initial. Prevents the firstWordIsProperName guard from treating
+ * "This landmark decision..." or "Those cases..." as party-name-anchored text.
+ *
+ * Includes citation-introducing transition words (#323): `Under`, `Invoking`,
+ * `Citing`, `Following`, `Unlike`, `Whereas`, `Pursuant`, `Applying`. These
+ * appear at the start of sentences that introduce a citation and get
+ * incorrectly captured as part of the plaintiff name by V_CASE_NAME_REGEX's
+ * greedy lookback.
+ */
+const SENTENCE_INITIAL_WORDS = new Set([
+  "this",
+  "that",
+  "these",
+  "those",
+  "here",
+  "there",
+  "such",
+  "its",
+  "his",
+  "her",
+  "their",
+  "our",
+  // Citation-introducing transition words (#323)
+  "under",
+  "invoking",
+  "citing",
+  "following",
+  "unlike",
+  "whereas",
+  "pursuant",
+  "applying",
+  // Sentence-internal connector adverbs (#670). These commonly precede
+  // a citation as `<Connector>, <Party> v. <Party>` and the trailing
+  // comma fools the trim-block check into thinking the connector is
+  // a multi-word party-name prefix. Real party names that start with
+  // these adverbs are vanishingly rare; the false-negative risk is
+  // dominated by the false-positive cost of absorbing prose context.
+  "rather",
+  "moreover",
+  "furthermore",
+  "however",
+  "nevertheless",
+  "accordingly",
+  "consequently",
+  "instead",
+  "meanwhile",
+  "indeed",
+  "thus",
+  "hence",
+])
+
+// ============================================================================
+// Case-name boundary detection: abbreviation set + heuristics
+// ============================================================================
+
+/**
+ * Comprehensive set of legal abbreviation stems (lowercase, without trailing period)
+ * used to distinguish abbreviation periods from sentence-ending periods during
+ * backward case-name scanning.
+ *
+ * Sources: Bluebook T6 (case name abbreviations), T7 (court abbreviations),
+ * T10 (geographic abbreviations), plus common titles and corporate suffixes.
+ */
+const CASE_NAME_ABBREVS: ReadonlySet<string> = new Set([
+  // ── Bluebook T6: Case name and institutional abbreviations ──
+  "acad",
+  "acct",
+  "accts",
+  "admin",
+  "adm",
+  "advert",
+  "advoc",
+  "aff",
+  "affs",
+  "afr",
+  "agric",
+  "all",
+  "alt",
+  "am",
+  "ann",
+  "app",
+  "arb",
+  "assoc",
+  "assocs",
+  "atl",
+  "auth",
+  "auto",
+  "ave",
+  "bankr",
+  "behav",
+  "bd",
+  "bor",
+  "brit",
+  "broad",
+  "bhd",
+  "bros",
+  "bldg",
+  "bull",
+  "bus",
+  "can",
+  "cap",
+  "cas",
+  "cath",
+  "ctr",
+  "ctrs",
+  "cent",
+  "chem",
+  "child",
+  "chron",
+  "coal",
+  "coll",
+  "com",
+  "comm",
+  "compar",
+  "comp",
+  "comput",
+  "condo",
+  "conf",
+  "cong",
+  "consol",
+  "const",
+  "constr",
+  "cont",
+  "coop",
+  "corp",
+  "corps",
+  "corr",
+  "cosm",
+  "couns",
+  "cntys",
+  "cnty",
+  "crim",
+  "def",
+  "delinq",
+  "det",
+  "dev",
+  "dig",
+  "dir",
+  "disc",
+  "disp",
+  "distrib",
+  "dist",
+  "div",
+  "econ",
+  "educ",
+  "elec",
+  "emp",
+  "eng",
+  "enter",
+  "enters", // Enters. (Enterprises, plural of Bluebook T6 "Enter.") — common in NY/4th Dep't captions ("Fields Enters. Inc."). #288 surfaced this gap.
+  "ent",
+  "equal",
+  "equip",
+  "est",
+  "eur",
+  "exam",
+  "exch",
+  "exec",
+  "expl",
+  "exp",
+  "fac",
+  "fam",
+  "fams",
+  "fed",
+  "fid",
+  "fin",
+  "found",
+  "gen",
+  "glob",
+  "grp",
+  "guar",
+  "hist",
+  "hosp",
+  "hous",
+  "hum",
+  "immigr",
+  "imp",
+  "inc",
+  "indem",
+  "indep",
+  "indus",
+  "info",
+  "inj",
+  "inst",
+  "ins",
+  "intell",
+  "intel",
+  "int",
+  "inv",
+  "invs",
+  "jurid",
+  "just",
+  "juv",
+  "lab",
+  "law",
+  "liab",
+  "ltd",
+  "loc",
+  "mach",
+  "mag",
+  "maint",
+  "mgmt",
+  "mgt",
+  "mfr",
+  "mfrs",
+  "mfg",
+  "mar",
+  "mkt",
+  "mktg",
+  "matrim",
+  "mech",
+  "med",
+  "merch",
+  "metro",
+  "min",
+  "misc",
+  "mod",
+  "mortg",
+  "mun",
+  "mut",
+  "nat",
+  "negl",
+  "negot",
+  "nw",
+  "no",
+  "nos",
+  "off",
+  "org",
+  "orgs",
+  "pac",
+  "pat",
+  "pers",
+  "pharm",
+  "phil",
+  "plan",
+  "pol",
+  "prac",
+  "pres",
+  "priv",
+  "prob",
+  "proc",
+  "prod",
+  "pro",
+  "prop",
+  "psych",
+  "pub",
+  "rec",
+  "reg",
+  "regul",
+  "rehab",
+  "rel",
+  "rels",
+  "rep",
+  "reprod",
+  "rsch",
+  "rsrv",
+  "resol",
+  "res",
+  "resp",
+  "rest",
+  "ret",
+  "rd",
+  "sav",
+  "sch",
+  "schs",
+  "sci",
+  "sec",
+  "serv",
+  "servs",
+  "sess",
+  "soc",
+  "solic",
+  "spec",
+  "stat",
+  "subcomm",
+  "sur",
+  "surv",
+  "sys",
+  "tchr",
+  "tech",
+  "telecomm",
+  "tel",
+  "temp",
+  "twp",
+  "transcon",
+  "transp",
+  "treas",
+  "tr",
+  "trs",
+  "tpk",
+  "unemplmt",
+  "unif",
+  "univ",
+  "urb",
+  "util",
+  "veh",
+  "vehs",
+  "vill",
+  "voc",
+  "whse",
+  "whol",
+  "litig",
+  // ── T6: Directional abbreviations ──
+  "n",
+  "s",
+  "e",
+  "w",
+  "m",
+  "ne",
+  "se",
+  "sw",
+  // ── T6/T10: Geographic features and street types ──
+  // Appear mid-party-name as "Long Is.", "Mt. Sinai", "Ft. Worth", "Stony Pt.",
+  // "Route 66" (Rt.), "St. Paul" / "Main St.", "Wilshire Blvd.", "Times Sq.",
+  // "Pacific Hwy.", "Grand Central Pkwy.", "Washington Hts.". Without these,
+  // the backward scanner treats "Is. R" / "Mt. S" as sentence boundaries and
+  // truncates the case name. See #188.
+  "is",
+  "mt",
+  "ft",
+  "pt",
+  "rt",
+  "st",
+  "blvd",
+  "sq",
+  "hwy",
+  "pkwy",
+  "hts",
+  // ── T7: Court abbreviations ──
+  "v",
+  "vs",
+  "ct",
+  "cir",
+  "supp",
+  "cl",
+  "jud",
+  "super",
+  "sup",
+  "magis",
+  "mil",
+  "terr",
+  // ── T10: US state abbreviations ──
+  "ala",
+  "ariz",
+  "ark",
+  "cal",
+  "colo",
+  "conn",
+  "del",
+  "fla",
+  "ga",
+  "haw",
+  "ida",
+  "ill",
+  "ind",
+  "kan",
+  "ky",
+  "la",
+  "me",
+  "md",
+  "mass",
+  "mich",
+  "minn",
+  "miss",
+  "mo",
+  "mont",
+  "neb",
+  "nev",
+  "okla",
+  "or",
+  "pa",
+  "tenn",
+  "tex",
+  "vt",
+  "va",
+  "wash",
+  "wis",
+  "wyo",
+  // ── Titles and honorifics ──
+  "mr",
+  "mrs",
+  "ms",
+  "dr",
+  "jr",
+  "sr",
+  "prof",
+  "rev",
+  "hon",
+  "sgt",
+  "capt",
+  "col",
+  "lt",
+  // ── Other common legal abbreviations ──
+  "ed",
+  "op",
+  "ad",
+  "dep",
+  "ass",
+  "ry",
+  // ── reporters-db alignment (Bluebook T6-derived, 19th ed) ──
+  // Period-form abbreviations. Source: freelawproject/reporters-db
+  // data/case_name_abbreviations.json. `co` (Co./Company) was the most
+  // impactful gap — "Smith & Co. United States Corp." was truncated to
+  // just "United States Corp." because the sentence-boundary scan fired
+  // on "Co. U".
+  "co",
+  "cmty",
+  "cty",
+  "envtl",
+  "gend",
+  "par",
+  "prot",
+  "ref",
+  "sol",
+  "adver",
+  // Apostrophe-form abbreviations. Stored as pure-letter stems because
+  // isLikelyAbbreviationPeriod now strips all apostrophes/periods before
+  // set lookup. These appear in nearly every NY appellate citation
+  // ("2d Dep't", "Nat'l", "Int'l", "Ass'n", "Gov't", etc.).
+  "admr",
+  "admx",
+  "assn",
+  "commcn",
+  "commn",
+  "commr",
+  "contl",
+  "dept",
+  "empr",
+  "empt",
+  "engg",
+  "engr",
+  "entmt",
+  "envt",
+  "examr",
+  "exr",
+  "exx",
+  "fedn",
+  "govt",
+  "intl",
+  "invr",
+  "meml",
+  "natl",
+  "profl",
+  "pship",
+  "publg",
+  "publn",
+  "regl",
+  "secy",
+  "sholder",
+  "socy",
+  // ── Cornell § 4-100 / state-practice gaps not in Bluebook T6 source ──
+  // Used in real case captions across multiple jurisdictions:
+  //   - "Tp." (NJ alternative to Bluebook "Twp." Township) —
+  //     "Parsippany-Troy Hills Tp. Council", "Bernards Tp. v. ..."
+  //   - "Vil." (NY single-L variant of Bluebook "Vill." Village) — #288
+  //     NY Reporter / Slip Opinion captions, esp. 4th Dep't:
+  //     "Bristol Harbour Vil. Assn., Inc.", "Smithtown Vil. Bd."
+  //   - "Tax'n" (Taxation) — "Dep't of Tax'n v. ..."
+  //   - "Enf't" (Enforcement) — "Drug Enf't Admin. v. ..."
+  //   - "Rts." (Rights) — "Human Rts. Watch v. ...", "Civ. Rts. Div."
+  "tp",
+  "vil",
+  "taxn",
+  "enft",
+  "rts",
+  // ── 2026-05-10 jurisdiction-survey additions ──
+  // Cross-agent research canvassing 15 jurisdictional clusters (NY/NJ, PA/DE/
+  // MD/DC/WV, New England, CA, TX/OK, Southeast, Deep South, Great Lakes,
+  // Western/Pacific, federal courts, federal specialty courts, govt agencies +
+  // corporate entity forms, ALWD + Bluebook 21st + reporters-db sweep, and
+  // foreign/tribal/territorial) plus a parser-quirks audit. Reports retained
+  // in docs/research/2026-05-10-citation-abbrevs-*.md.
+  //
+  // Universal apostrophe-form + Bluebook BT1.2 party designations:
+  "atty", //   Att'y / Att'y Gen. — 32k+ corpus matches; every state + federal AG case
+  "attys", //  Att'ys (plural)
+  "petr", //   Pet'r — Bluebook 21st BT1.2 (habeas, immigration, PTAB captions)
+  "respt", //  Resp't — Bluebook 21st BT1.2 counterpart to Pet'r
+  "commrs", // Comm'rs (plural of existing commr) — "Bd. of Cnty. Comm'rs"
+  // Plurals of existing singular stems (modern LLC-era captions):
+  "hldgs", //  Hldgs. (Holdings) — DE Chancery, NY 1st Dep't, GA LLC
+  "hldg", //   Hldg. (singular)
+  "props", //  Props. — Lanvale Props. LLC (NC), Ryan Jackson Props.
+  "prods", //  Prods. (Products plural) — product-liability captions nationwide
+  "ents", //   Ents. (Enterprises plural) — "NC Ents., L.L.C."
+  "invests", //Invests. — Ohio "A.A.A. Invests. v. Columbus"
+  "scis", //   Scis. (Sciences plural)
+  "emps", //   Emps. — "Okla. Pub. Emps. Ret. Sys.", "Pub. Emps. Rel. Comm'n"
+  "sols", //   Sols. (Solutions plural) — modern LLC captions "Med-Care Sols., LLC"
+  "corrs", //  Corrs. (Corrections plural) — "Ark. Bd. of Corrs."
+  "telecomms", //Telecomms. (plural) — "BellSouth Telecomms., Inc."
+  "examrs", // Exam'rs (Examiners plural) — "Med. Exam'rs Comm'n", "Bar Exam'rs"
+  "cmtys", //  Cmtys. (Communities plural) — "Fla. Cmtys. Tr."
+  "colls", //  Colls. (Colleges plural) — "State Bd. of Cmty. Colls."
+  "cts", //    Cts. (Courts plural) — "Off. of the St. Cts. Admin'r"
+  "amends", // Amends. (Amendments plural)
+  // Standard institutional / agency abbreviations:
+  "civ", //    Civ. (Civil) — Ala. Civ. App., Civ. Rts. Div., Civ. Liberties Union
+  "enf", //    Enf. (Enforcement, distinct from existing enft) — "Drug Enf. Admin."
+  "advis", //  Advis. (Advisory) — "Advis. Council/Comm."
+  "utils", //  Utils. — "Utils. Comm'n", "Pub. Utils. Comm'n"
+  "lic", //    Lic. (License) — "Bd. of License Comm'rs" (Tiverton, 469 U.S. 238)
+  "bur", //    Bur. (Bureau) — "Bur. of Driver Lic.", "Bur. of Land Mgmt."
+  "insp", //   Insp. (Inspection) — "Bd. of Lic. & Insp. Review"
+  "conserv", //Conserv. (Conservation) — Bluebook 21st; 1.5k corpus matches
+  "retire", // Retire. (Retirement) — "W. Va. Consol. Pub. Retire. Bd." (distinct from ret)
+  "discipl", //Discipl. (Disciplinary) — "Lawyer Disciplinary Bd."
+  "supers", // Supers. (Supervisors) — PA "Twp. Bd. of Supers." (hundreds of captions)
+  "edn", //    Edn. (Ohio variant of Educ.) — "Bd. of Edn."
+  "coun", //   Coun. (Council) — NLRB "Dist. Council 9", distinct from couns (Counsel)
+  "stds", //   Stds. (Standards) — "Crim. Just. Stds. & Training Comm'n"
+  "procs", //  Procs. (Procedures)
+  "quals", //  Quals. (Qualifications) — "Jud. Quals. Comm'n"
+  // Regional / state-specific:
+  "boro", //   NJ "Boro." — alternative long form to existing "Bor." (Borough)
+  "commw", //  Commw. — PA Commonwealth Court ("Pa. Commw. Ct.")
+  "adv", //    Adv. (Advance) — NV "Nev., Adv. Op." form
+  "comn", //   Com'n — Hawaii single-m variant of Comm'n
+  "irrig", //  Irrig. (Irrigation) — ID/WY/WA "Pioneer Irrig. Dist."
+  "reclam", // Reclam. (Reclamation) — federal-project captions
+  "rptr", //   Rptr. — CA "Cal.Rptr." nested in bracketed parallel cites
+  "vet", //    Vet. (Veterans) — "Vet. App.", "Sec'y of Vet. Aff."
+  "trib", //   Trib. — Tribune (Bluebook 21st T6) + Tribal Ct.
+  "adj", //    Adj. — Adjustment (VT/NH "Zoning Bd. of Adj.") + Adjudicatory (FL)
+  "vol", //    Vol. (Volunteer) — PA "Univ. Vol. Fire Dept."; volume cites are pre-digit
+  // Corporate entity forms:
+  "pty", //    Pty. — Australian "Pty. Ltd."
+  // Bluebook 21st ed. (2020) T6 / T13.2 merger additions:
+  "poly", //   Pol'y (Policy)
+  "stud", //   Stud. (Studies)
+  "libr", //   Libr. (Library)
+  "refin", //  Refin. (Refining) — distinct from existing ref (Referee/Reference)
+  "socio", //  Socio. (Sociology) — distinct from existing soc (Social)
+  "laby", //   Lab'y (Laboratory) — distinct from existing lab (Labor)
+  "naty", //   Nat'y (Nationality)
+  "wkly", //   Wkly. (Weekly)
+  "appx", //   App'x (Appendix) — "F. App'x" reporter
+  // Plains + Upper Midwest (re-dispatch agent, report retained):
+  "comr", //   Comr. — Nebraska apostrophe-dropping single-m variant of Comm'r
+  "comrs", //  Comrs. — NE plural variant; "Cherry Cty. Bd. of Comrs."
+  "reins", //  Reins. — Bluebook T6; "Grinnell Mut. Reins. Co." (ND insurance)
+])
+
+/**
+ * Detect whether a period at `dotIndex` in `text` is likely an abbreviation
+ * rather than a sentence boundary.
+ *
+ * Three-tier check:
+ *   1. Word stem is in the comprehensive CASE_NAME_ABBREVS set
+ *   2. Single uppercase letter (initial: A., B., J., N.)
+ *   3. Word contains internal periods (dotted initialism: N.Y., U.S., D.C.)
+ */
+function isLikelyAbbreviationPeriod(text: string, dotIndex: number): boolean {
+  // Walk backward from the period to find the word
+  let start = dotIndex
+  while (start > 0 && /[-A-Za-z.']/.test(text[start - 1])) {
+    start--
+  }
+  const word = text.substring(start, dotIndex)
+  if (!word) return false
+
+  // Strip ALL periods and apostrophes for set lookup. This normalizes
+  // apostrophe-form abbreviations ("Ass'n" → "assn", "Dep't" → "dept",
+  // "Nat'l" → "natl") so the set can store pure-letter stems.
+  const stem = word.replace(/['.]/g, "").toLowerCase()
+
+  // Tier 1: Known legal abbreviation
+  if (CASE_NAME_ABBREVS.has(stem)) return true
+
+  // Tier 2: Single uppercase letter (initial)
+  if (stem.length === 1 && /[a-z]/i.test(stem)) return true
+
+  // Tier 3: Contains internal periods (dotted initialism like N.Y, U.S, D.C)
+  if (/\.[A-Za-z]/.test(word)) return true
+
+  return false
+}
+
+/** Hard boundary: Id. citation marker — the scan must not cross this.
+ *  Case-sensitive: Bluebook convention is always capitalized "Id." */
+const ID_BOUNDARY_REGEX = /\bId\.\s+/g
+
+/** Hard boundary: parenthetical signal words that introduce nested citations.
+ *  Matches opening paren + optional space + signal word (+ optional ", e.g.,")
+ *  + whitespace.
+ *
+ *  E.g., "(quoting ", "(citing ", "(cited in ", "(quoted in ", "(accord ",
+ *  "(citing, e.g., ". The optional `, e.g.[,]` tail handles the common form
+ *  where a citing parenthetical introduces multiple authorities. See #187. */
+const PAREN_SIGNAL_BOUNDARY_REGEX =
+  /\(\s*(?:quoting|citing|cited\s+in|quoted\s+in|accord|discussing|noting|explaining|describing|recognizing|applying|rejecting|adopting|requiring|overruling|overruled\s+by|abrogated\s+by)(?:,\s*e\.g\.,?)?\s+/gi
+
+/** Sentence boundary: closing paren or period, followed by space + uppercase
+ *  letter or open-paren. The `(` lookahead handles parenthesized citations
+ *  inside running prose — `... discretion. (Burquet v. Brumbaugh, ...)` —
+ *  where the citation envelope opens with `(` immediately after the
+ *  sentence-ending period. Without it, the case-name backward walk crosses
+ *  the boundary and absorbs the entire preceding sentence into the
+ *  plaintiff field. #323 */
+const SENTENCE_BOUNDARY_REGEX = /[.)]\s+(?=[A-Z(])/g
+
+/** Prior-citation year-paren boundary: a closing paren preceded by a 4-digit
+ *  year, followed by an explicit citation-list connector word (`and`, `or`,
+ *  `see`, `but see`, `see also`, `e.g.`) or a semicolon. Catches the gap
+ *  left by SENTENCE_BOUNDARY_REGEX when the next caption's first word is
+ *  lowercase (e.g., `(Del. 1984), and Rales v. Blasband` — `and` is
+ *  lowercase so the sentence regex skips it).
+ *
+ *  The connector word is required (not optional) so we don't false-positive
+ *  on Montana / California year-first captions like `Holton v. Co. (1981),
+ *  195 Mont. 1` (the `, 195` is a parallel reporter, not a list connector). */
+const PRIOR_YEAR_PAREN_BOUNDARY_REGEX =
+  /\b\d{4}\)\s*(?:,\s*(?:and|or|see(?:\s+also)?|but\s+see|e\.g\.)|;)\s+/g
+
+/** Louisiana docket-prefix boundary (#232). Matches the Louisiana citation
+ *  shape `NN-NNNN (La. ... M/D/YY)` or `YYYY-K-NNNN (La. ... M/D/YY)` that
+ *  precedes the parallel `So. 2d` / `So. 3d` reporter citation. The capture
+ *  groups expose the court (group 2) and the date string (group 3) so the
+ *  trailing reporter citation can inherit the metadata. Includes an optional
+ *  `, p. N` pincite segment commonly present in LA practice.
+ *
+ *  The trailing `,` + whitespace is consumed so that everything BEFORE this
+ *  pattern is the caption. */
+const LA_DOCKET_BOUNDARY_REGEX =
+  /,?\s*(\d{2,4}-[A-Z\d-]+)(?:,\s*p\.\s*\d+)?\s*\((La\.[^)]*?)\s+(\d{1,2}\/\d{1,2}\/\d{2,4})\),\s*/g
+
+/**
+ * Find the rightmost `(` in `text` that wraps a caption + (eventually) the
+ * citation core — i.e., the open-paren of a `(Name v. Name, vol Reporter
+ * page)` envelope (#512). Returns the position immediately AFTER the `(`
+ * (so callers can `substring` from it), or `-1` when no such paren exists.
+ *
+ * Detection heuristic: scan right-to-left for `(`. The first one whose
+ * unbalanced suffix contains a `v.`-style anchor or a procedural prefix
+ * is the wrapping paren. We don't require the matching `)` to be present
+ * (the trailing `)` lives past the citation core).
+ *
+ * The matching is intentionally narrow:
+ * - Only `(` immediately followed (after optional whitespace) by a
+ *   capitalized word that participates in a v.-style or procedural
+ *   caption qualifies. Plain parens like `(sequestration)` or
+ *   `(entry of a money judgment)` are skipped.
+ * - The `v.` / procedural prefix must appear within the paren-suffix to
+ *   coreStart, ensuring we don't truncate when the paren wraps something
+ *   else (a date-paren, court-paren, explanatory paren, ...).
+ * - If a complete v.-style caption already exists BEFORE the candidate
+ *   `(`, that `(` is an inline admin parenthetical (`Spence v. Hintze
+ *   (In re Hintze), ...` — #241) and must NOT be used as a boundary;
+ *   stripping past it would destroy the real caption.
+ */
+function findCaptionWrapperParen(text: string): number {
+  // Quick reject: no `(` in text.
+  if (text.indexOf("(") === -1) return -1
+  // Scan right-to-left for `(`.
+  for (let i = text.length - 1; i >= 0; i--) {
+    if (text[i] !== "(") continue
+    const after = text.substring(i + 1)
+    // The content must START with optional whitespace + a capital letter
+    // — a paren around lowercase prose ("(sequestration)") is not a
+    // caption wrapper.
+    if (!/^\s*[A-Z]/.test(after)) continue
+    // Look for a v.-style anchor OR a procedural prefix within the paren
+    // body up to where the precedingText ends (which is the citation
+    // core position).
+    const looksLikeCaption =
+      /\s+vs?\.?\s+[A-Z]/.test(after) ||
+      /^\s*(?:In\s+re|Ex\s+parte|Matter\s+of|Estate\s+of|State\s+ex\s+rel\.|United\s+States\s+ex\s+rel\.|People\s+ex\s+rel\.)\b/.test(
+        after,
+      )
+    if (!looksLikeCaption) continue
+    // Admin-paren guard (#241): if a complete `Name v. Name` caption
+    // already lives BEFORE this `(`, the `(` introduces an inline
+    // explanatory clause (`Spence v. Hintze (In re Hintze)`) — it is not
+    // a wrapping caption boundary. Skip it.
+    const before = text.substring(0, i)
+    if (/[A-Z][A-Za-z0-9.'&\-/]+(?:\s+[A-Z][A-Za-z0-9.'&\-/]+)*\s+vs?\.?\s+[A-Z]/.test(before)) {
+      continue
+    }
+    return i + 1
+  }
+  return -1
+}
+
+/**
+ * Extract case name via backward search from citation core.
+ * Looks for "v." pattern or procedural prefixes (In re, Ex parte, Matter of).
+ *
+ * @param cleanedText - Full cleaned text
+ * @param coreStart - Position where citation core begins (volume start)
+ * @param maxLookback - Maximum characters to search backward (default 150)
+ * @param options - Optional original text + transformationMap to detect
+ *   paragraph-break boundaries that the cleaner has collapsed (#221).
+ * @returns Case name and start position, or undefined if not found
+ *
+ * @example
+ * ```typescript
+ * extractCaseName(text, 20, 150)
+ * // Returns: { caseName: "Smith v. Jones", nameStart: 0 }
+ * ```
+ */
+export function extractCaseName(
+  cleanedText: string,
+  coreStart: number,
+  maxLookback = 150,
+  options?: { originalText?: string; transformationMap?: TransformationMap },
+):
+  | {
+      caseName: string
+      nameStart: number
+      /** Year captured from CSM year-first form (`In re K.F. (2009)`). */
+      year?: number
+      /** Clean-coordinate position of the year digits (excluding parens). */
+      yearStart?: number
+      /** Clean-coordinate position after the year digits. */
+      yearEnd?: number
+      /** Metadata recovered from a Louisiana docket-prefix paren that sits
+       *  between the caption and the citation core (#232). Applied by the
+       *  caller as fallback for `year` / `court` / `date` when the citation's
+       *  own trailing paren is absent. */
+      precedingDocketMeta?: {
+        court: string
+        year: number
+        date: StructuredDate
+      }
+    }
+  | undefined {
+  const searchStart = Math.max(0, coreStart - maxLookback)
+  let precedingText = cleanedText.substring(searchStart, coreStart)
+  let adjustedSearchStart = searchStart
+
+  // Split at last boundary to avoid crossing citation/sentence boundaries.
+  // We check five boundary types:
+  //   1. Citation boundary: digit-period-space (e.g., "10. " from a previous cite's page number)
+  //   2. Id. boundary: "Id. " short-form citation marker (#182)
+  //   3. Parenthetical signal boundary: "(quoting ", "(citing ", "(cited in " (#182)
+  //   4. Sentence boundary: period/paren + space + uppercase, skipped when the
+  //      word before the period is a legal abbreviation (Bluebook T6/T10/T7)
+  //   5. Paragraph boundary: \n\s*\n in the original text, recovered via
+  //      transformationMap because the cleaner collapses newlines to spaces (#221)
+  let lastBoundaryIndex = -1
+  let match: RegExpExecArray | null
+
+  // Check paragraph boundaries via original text (#221).
+  // The default cleaner pipeline replaces \n with space, so paragraph breaks
+  // are invisible in cleanedText. Recover them from originalText by mapping
+  // the search window back to original coordinates.
+  if (options?.originalText && options.transformationMap) {
+    const { originalText, transformationMap } = options
+    const searchOriginalStart = transformationMap.cleanToOriginal.get(searchStart) ?? searchStart
+    const coreOriginalStart = transformationMap.cleanToOriginal.get(coreStart) ?? coreStart
+    if (coreOriginalStart > searchOriginalStart) {
+      const originalWindow = originalText.substring(searchOriginalStart, coreOriginalStart)
+      const paragraphBreakRegex = /\n[ \t\r]*\n/g
+      let pMatch: RegExpExecArray | null
+      while ((pMatch = paragraphBreakRegex.exec(originalWindow)) !== null) {
+        const breakOriginalEnd = searchOriginalStart + pMatch.index + pMatch[0].length
+        // Find the clean position immediately at/after the paragraph break.
+        // The break itself collapses to a space; the next non-whitespace char
+        // is the start of the new paragraph in cleanedText.
+        let cleanPos: number | undefined
+        for (let off = 0; off < 10; off++) {
+          cleanPos = transformationMap.originalToClean.get(breakOriginalEnd + off)
+          if (cleanPos !== undefined) break
+        }
+        if (cleanPos !== undefined && cleanPos >= searchStart && cleanPos <= coreStart) {
+          const relIndex = cleanPos - searchStart
+          if (relIndex > lastBoundaryIndex) {
+            lastBoundaryIndex = relIndex
+          }
+        }
+      }
+    }
+  }
+
+  // Check citation boundaries (digit-period-space)
+  CITATION_BOUNDARY_REGEX.lastIndex = 0
+  while ((match = CITATION_BOUNDARY_REGEX.exec(precedingText)) !== null) {
+    const boundaryEnd = match.index + match[0].length
+    if (boundaryEnd > lastBoundaryIndex) {
+      lastBoundaryIndex = boundaryEnd
+    }
+  }
+
+  // Check Id. boundaries (#182)
+  ID_BOUNDARY_REGEX.lastIndex = 0
+  while ((match = ID_BOUNDARY_REGEX.exec(precedingText)) !== null) {
+    const boundaryEnd = match.index + match[0].length
+    if (boundaryEnd > lastBoundaryIndex) {
+      lastBoundaryIndex = boundaryEnd
+    }
+  }
+
+  // Check parenthetical signal boundaries (#182)
+  PAREN_SIGNAL_BOUNDARY_REGEX.lastIndex = 0
+  while ((match = PAREN_SIGNAL_BOUNDARY_REGEX.exec(precedingText)) !== null) {
+    const boundaryEnd = match.index + match[0].length
+    if (boundaryEnd > lastBoundaryIndex) {
+      lastBoundaryIndex = boundaryEnd
+    }
+  }
+
+  // Check prior-citation year-paren boundaries: `(YYYY), ` followed by an
+  // optional list connector (`and`/`or`/`see`/`;`). Catches the gap left by
+  // SENTENCE_BOUNDARY_REGEX when the next caption's first word is lowercase
+  // (e.g., `(Del. 1984), and Rales v. Blasband` — `and` is lowercase so the
+  // sentence regex skips it).
+  PRIOR_YEAR_PAREN_BOUNDARY_REGEX.lastIndex = 0
+  while ((match = PRIOR_YEAR_PAREN_BOUNDARY_REGEX.exec(precedingText)) !== null) {
+    const boundaryEnd = match.index + match[0].length
+    if (boundaryEnd > lastBoundaryIndex) {
+      lastBoundaryIndex = boundaryEnd
+    }
+  }
+
+  // Louisiana docket-prefix segments (#232) sit *between* the caption and
+  // the trailing reporter citation: `Smith v. Jones, 07-393, p. 2 (La. App.
+  // 3d Cir. 10/3/07), 966 So. 2d 1127`. Unlike sentence / Id. / paren-signal
+  // boundaries, the segment is INTERIOR — stripping it from `precedingText`
+  // preserves the caption to its left. Capture the docket paren's court +
+  // date for metadata transfer onto the trailing reporter citation.
+  let precedingDocketMeta: { court: string; year: number; date: StructuredDate } | undefined
+  LA_DOCKET_BOUNDARY_REGEX.lastIndex = 0
+  const laDocketMatch = LA_DOCKET_BOUNDARY_REGEX.exec(precedingText)
+  if (laDocketMatch) {
+    const dateStr = laDocketMatch[3]
+    const date = parseDate(dateStr)
+    if (date) {
+      precedingDocketMeta = {
+        court: laDocketMatch[2].trim(),
+        year: date.parsed.year,
+        date,
+      }
+    }
+    // Excise the docket segment, leaving just the trailing ", " so the
+    // V_CASE_NAME_REGEX still sees a comma-terminated caption to its left.
+    precedingText =
+      precedingText.substring(0, laDocketMatch.index) +
+      ", " +
+      precedingText.substring(laDocketMatch.index + laDocketMatch[0].length)
+  }
+
+  // Check sentence boundaries: "). " or ". " followed by uppercase letter.
+  // Skip when the period belongs to a legal abbreviation (comprehensive T6/T10/T7 check).
+  SENTENCE_BOUNDARY_REGEX.lastIndex = 0
+  while ((match = SENTENCE_BOUNDARY_REGEX.exec(precedingText)) !== null) {
+    // Only check abbreviation for period boundaries, not close-paren boundaries
+    if (
+      precedingText[match.index] === "." &&
+      isLikelyAbbreviationPeriod(precedingText, match.index)
+    ) {
+      continue
+    }
+    const boundaryEnd = match.index + match[0].length
+    if (boundaryEnd > lastBoundaryIndex) {
+      lastBoundaryIndex = boundaryEnd
+    }
+  }
+
+  if (lastBoundaryIndex !== -1) {
+    precedingText = precedingText.substring(lastBoundaryIndex)
+    adjustedSearchStart = searchStart + lastBoundaryIndex
+  }
+
+  // Issue #509: When the citation core sits inside a sentence-internal
+  // parenthetical that does NOT also contain the caption — i.e.,
+  // `Name, (vol Reporter page)` — the precedingText ends with `, (` and the
+  // V_CASE_NAME_REGEX never matches because it anchors on a trailing comma
+  // or year-paren. Strip a trailing `(\s*$` so the caption (which lives
+  // outside the paren) is reachable.
+  //
+  // This is safe relative to #512 (`(Name v. Name, vol Reporter page)`)
+  // because the caption is INSIDE the wrapping paren in that case, so
+  // precedingText ends with `, ` not `(`.
+  precedingText = precedingText.replace(/\(\s*$/, "")
+
+  // Issue #512: When the caption sits INSIDE the wrapping parenthetical
+  // (`(Name v. Name, vol Reporter page)`), the backward scan must stop
+  // at the wrapping paren's open `(`. Otherwise the V_CASE_NAME_REGEX
+  // greedily absorbs the host sentence ahead of the `(` (which is allowed
+  // by the regex's `[A-Za-z0-9\s.,'&()/-]` character class for all-caps
+  // prose). This is the COMPLEMENT of the trailing-paren strip above.
+  //
+  // Detect the rightmost `(` whose contents contain a `v.`-style caption
+  // shape (or procedural prefix) — that's the wrapping paren. Truncate
+  // precedingText to start just after it so the regex sees only the
+  // caption.
+  const openParenStop = findCaptionWrapperParen(precedingText)
+  if (openParenStop !== -1) {
+    precedingText = precedingText.substring(openParenStop)
+    adjustedSearchStart += openParenStop
+  }
+
+  // Issue #691: Quoted case names — `"Smith v. Jones," 100 F.2d 1` and
+  // `"Smith v. Jones", 100 F.2d 1`. The V_CASE_NAME_REGEX anchors on a
+  // trailing comma and never matches when the closing quote sits between
+  // the defendant and the comma (or the leading quote sits before the
+  // plaintiff). Strip the envelope so the regex sees the bare caption.
+  // The quote chars are not legal-citation punctuation; nothing real
+  // depends on them being preserved at these positions.
+  precedingText = precedingText.replace(/^\s*["“”]/, "")
+  precedingText = precedingText.replace(/["“”](\s*,?\s*)$/, "$1")
+
+  // Priority 1: Standard "v." or "vs." format with comma before citation
+  // Match party names with letters, numbers (for "Doe No. 2"), periods, apostrophes, ampersands, hyphens, slashes
+  const vMatch = V_CASE_NAME_REGEX.exec(precedingText)
+  if (vMatch) {
+    // Check for semicolon in matched text (multi-citation separator)
+    if (!vMatch[0].includes(";")) {
+      let plaintiff = vMatch[1].trim()
+      let trimOffset = 0
+
+      // Validate plaintiff: real party names are capitalized words + legal connectors.
+      // If the plaintiff contains lowercase non-connector words (e.g., "The court cited Smith"),
+      // it captured sentence context. Trim from the left to the first valid party name start.
+      //
+      // The firstWordIsProperName guard preserves the original plaintiff when the
+      // first word is a real party name and the lowercase content is an internal
+      // qualifier ("Smith d/b/a Old Bob's Diner"). Without an internal-qualifier
+      // marker, a capitalized first word alone is NOT enough to suppress trimming —
+      // sentence-initial prepositions like "Under", "Pursuant", "Following" would
+      // otherwise be preserved as if they were proper nouns (#223).
+      if (!isLikelyPartyName(plaintiff)) {
+        const words = plaintiff.split(/\s+/)
+        const firstWord = words[0] ?? ""
+        const firstWordClean = firstWord.toLowerCase().replace(/[.,']+$/, "")
+        const firstWordIsProperName =
+          /^[A-Z]/.test(firstWord) &&
+          !PARTY_NAME_CONNECTORS.has(firstWordClean) &&
+          !SENTENCE_INITIAL_WORDS.has(firstWordClean) &&
+          INTERNAL_QUALIFIER_REGEX.test(plaintiff)
+        if (!firstWordIsProperName) {
+          // Check if the prefix starts with a signal word (See, See also, But see, etc.).
+          // If so, keep it — extractPartyNames handles signal stripping downstream.
+          const signalMatch = SIGNAL_STRIP_REGEX.exec(plaintiff)
+          if (!signalMatch) {
+            for (let i = 1; i < words.length; i++) {
+              const candidate = words.slice(i).join(" ")
+              if (/^[A-Z]/.test(candidate) && isLikelyPartyName(candidate)) {
+                // Compute offset from word positions rather than indexOf,
+                // which could match the wrong position if a word repeats.
+                const prefix = words.slice(0, i).join(" ")
+                trimOffset = prefix.length + 1
+                plaintiff = candidate
+                // Issue #710: when the trimmed plaintiff starts with
+                // `<single-letter>. ` (e.g., `X. Smith`) AND the
+                // immediately preceding context word (the one we just
+                // dropped, or its right neighbor) is a lowercase
+                // conjunction/verb like `that`/`because`, the single-
+                // letter token is a sentence-internal variable, not an
+                // initial. Strip the prefix.
+                const slMatch = /^([A-Z])\.\s+([A-Z][a-zA-Z'-]+)/.exec(plaintiff)
+                if (slMatch) {
+                  const lastDroppedWord = words[i - 1]?.toLowerCase().replace(/[.,]+$/, "")
+                  if (lastDroppedWord && /^[a-z]{4,}$/.test(lastDroppedWord)) {
+                    const slStrip = slMatch[0].length - slMatch[2].length
+                    plaintiff = `${slMatch[2]}${plaintiff.slice(slMatch[0].length)}`
+                    trimOffset += slStrip
+                  }
+                }
+                break
+              }
+            }
+          }
+        }
+      }
+
+      // Detect consolidated captions: vMatch[0] contains 2+ "v." anchors.
+      // The non-greedy regex defendant (group 2) is anchored at the trailing
+      // ",$" and so absorbs downstream comma-separated caption segments
+      // including their own "v." anchors (#222). Recovery has two stages:
+      //   1. Section-heading boundary first: if the defendant contains a
+      //      standalone to-be verb (`Is`/`Are`/`Was`/`Were`), the backward
+      //      search crossed a section heading. Real party names don't
+      //      contain these verbs — truncate there. This must run BEFORE
+      //      comma-trim because heading-boundary truncation preserves
+      //      entity-suffix commas like `Anthem, Inc.`.
+      //   2. Comma-trim: for consolidated captions without a heading verb,
+      //      truncate the defendant at its first comma — but only when the
+      //      text after the comma does NOT start with a corporate entity
+      //      suffix (`Inc.`, `LLC`, `Corp.`, etc.), which are part of the
+      //      defendant name itself.
+      const vAnchorMatches = vMatch[0].match(/\bv(?:s)?\.\s/g)
+      let defendantText = vMatch[2].trim()
+      if (vAnchorMatches && vAnchorMatches.length >= 2) {
+        // Heading-verb boundary first.
+        const headingVerbMatch = /\s(?:Is|Are|Was|Were)\s/.exec(defendantText)
+        if (headingVerbMatch) {
+          defendantText = defendantText.substring(0, headingVerbMatch.index).trim()
+        } else {
+          // Fall back to comma-trim, skipping entity-suffix commas.
+          let scanFrom = 0
+          while (scanFrom < vMatch[2].length) {
+            const commaIdx = vMatch[2].indexOf(",", scanFrom)
+            if (commaIdx === -1) break
+            const after = vMatch[2].substring(commaIdx + 1).trimStart()
+            if (
+              /^(?:Inc|LLC|Corp|Ltd|Co|LLP|LP|P\.?C|N\.?A|S\.?A|GmbH|S\.?p\.?A)\.?(?:\b|$)/.test(
+                after,
+              )
+            ) {
+              // Entity-suffix comma — skip and keep scanning.
+              scanFrom = commaIdx + 1
+              continue
+            }
+            defendantText = vMatch[2].substring(0, commaIdx).trim()
+            break
+          }
+        }
+      }
+
+      // Preserve the source's `v` punctuation form in `caseName`. New York
+      // courts use `v` (no period); federal/most state courts use `v.`. The
+      // existing V_CASE_NAME_REGEX accepts both via `v(?:s)?\.?` — extract
+      // whichever form actually appears in the matched text so the
+      // assembled caseName is faithful to the source. #326
+      const sepMatch = /\bvs?\.?(?=\s)/.exec(vMatch[0])
+      const sep = sepMatch?.[0] ?? "v."
+
+      const caseName = `${plaintiff} ${sep} ${defendantText}`
+      const nameStart = adjustedSearchStart + vMatch.index + trimOffset
+      // vMatch[3] = optional court text from the CSM year-first paren
+      // (`Smith v. Jones (2d Cir. 2005)` — #293); vMatch[4] = the year
+      // (`Smith v. Jones (1990)` — #19). Bluebook form leaves both undefined.
+      // vMatch.indices[4] (enabled by `d` flag) gives the year position;
+      // translate to cleanedText coordinates.
+      const courtFromCsm = vMatch[3]?.trim()
+      // Plausibility filter (#523): drop OCR-mangled or page-number years
+      // (e.g., `1372`, `3021`) before they propagate through CSM meta.
+      const rawYear = vMatch[4] ? Number.parseInt(vMatch[4], 10) : undefined
+      const year = rawYear !== undefined && isPlausibleYear(rawYear) ? rawYear : undefined
+      let yearStart: number | undefined
+      let yearEnd: number | undefined
+      if (year !== undefined && vMatch.indices?.[4]) {
+        yearStart = adjustedSearchStart + vMatch.indices[4][0]
+        yearEnd = adjustedSearchStart + vMatch.indices[4][1]
+      }
+      // CSM `(court year)` form (#293): synthesize a precedingDocketMeta so
+      // the case-name semantic interpreter can propagate court, year, and date
+      // onto the citation. Skip when only year is present
+      // (year-only handled by the dedicated `year`/`yearStart`/`yearEnd`
+      // fields above).
+      let csmDocketMeta = precedingDocketMeta
+      if (!csmDocketMeta && courtFromCsm && year !== undefined && vMatch[4]) {
+        csmDocketMeta = {
+          court: courtFromCsm,
+          year,
+          date: { iso: vMatch[4], parsed: { year } },
+        }
+      }
+      return {
+        caseName,
+        nameStart,
+        year,
+        yearStart,
+        yearEnd,
+        precedingDocketMeta: csmDocketMeta,
+      }
+    }
+  }
+
+  // Priority 2: Procedural prefixes (including Estate of, In the Matter of)
+  const procMatch = PROCEDURAL_PREFIX_REGEX.exec(precedingText)
+  if (procMatch) {
+    // Check for semicolon in matched text (multi-citation separator)
+    if (!procMatch[0].includes(";")) {
+      const caseName = `${procMatch[1]} ${procMatch[2].trim()}`
+      const nameStart = adjustedSearchStart + procMatch.index
+      // procMatch[3] = optional court text from the CSM year-first paren
+      // (`In re Cellphone (9th Cir. 2014)` — #293); procMatch[4] = the year
+      // (`In re K.F. (2009)` — #19). Bluebook form leaves both undefined.
+      const courtFromCsm = procMatch[3]?.trim()
+      // Plausibility filter (#523).
+      const rawYear = procMatch[4] ? Number.parseInt(procMatch[4], 10) : undefined
+      const year = rawYear !== undefined && isPlausibleYear(rawYear) ? rawYear : undefined
+      let yearStart: number | undefined
+      let yearEnd: number | undefined
+      if (year !== undefined && procMatch.indices?.[4]) {
+        yearStart = adjustedSearchStart + procMatch.indices[4][0]
+        yearEnd = adjustedSearchStart + procMatch.indices[4][1]
+      }
+      let csmDocketMeta = precedingDocketMeta
+      if (!csmDocketMeta && courtFromCsm && year !== undefined && procMatch[4]) {
+        csmDocketMeta = {
+          court: courtFromCsm,
+          year,
+          date: { iso: procMatch[4], parsed: { year } },
+        }
+      }
+      return {
+        caseName,
+        nameStart,
+        year,
+        yearStart,
+        yearEnd,
+        precedingDocketMeta: csmDocketMeta,
+      }
+    }
+  }
+
+  // Priority 3: Generic single-party caption (#193).
+  //
+  // V. and procedural-prefix scans failed. The precedingText is already
+  // bounded by sentence/citation/paren-signal boundaries, so whatever
+  // remains — typically a capitalized-words-only caption ending at ", " —
+  // is the caption candidate. Strip any leading signal word (See, cf., etc.)
+  // and validate via isLikelyPartyName to filter out sentence prose.
+  //
+  // Handles single-party corporate captions like "Board of Mgrs. of X",
+  // "Board of Directors of X", and unrecognized organizational prefixes
+  // that don't fit PROCEDURAL_PREFIX_REGEX.
+  const commaStrippedBody = precedingText.replace(/,\s*$/, "")
+  const leadingWsLen = commaStrippedBody.length - commaStrippedBody.trimStart().length
+  let captionBody = commaStrippedBody.substring(leadingWsLen)
+  let signalStripLen = 0
+  const sigStripMatch = SIGNAL_STRIP_REGEX.exec(captionBody)
+  if (sigStripMatch) {
+    signalStripLen = sigStripMatch[0].length
+    captionBody = captionBody.substring(signalStripLen)
+  }
+  const caption = captionBody.trim()
+
+  if (caption.length > 0 && isLikelyPartyName(caption)) {
+    const firstWord = caption.split(/\s+/)[0] ?? ""
+    const firstWordClean = firstWord.toLowerCase().replace(/[.,']+$/, "")
+    if (!SENTENCE_INITIAL_WORDS.has(firstWordClean)) {
+      // Skip multi-citation strings (joined by semicolons)
+      if (!caption.includes(";")) {
+        // Reject literal short-form citation markers as captions (#517).
+        // When the tokenizer can't match a token like `Id., 584 N.Y.S.2d 744`
+        // (older parallel-reporter Id. form not handled by ID_PATTERN), the
+        // backward scan picks up the bare `Id.` token as a single-party
+        // caption. `Id.` / `Ibid.` are never legitimate party names.
+        if (!isShortFormMarker(caption)) {
+          const nameStart = adjustedSearchStart + leadingWsLen + signalStripLen
+          return { caseName: caption, nameStart, precedingDocketMeta }
+        }
+      }
+    }
+  }
+
+  return undefined
+}
+
+/**
+ * Returns true when `caption` is a literal short-form citation marker
+ * (Id., Ibid., supra) rather than a real party name (#517). Comparison
+ * is case-insensitive and tolerates a trailing period.
+ */
+function isShortFormMarker(caption: string): boolean {
+  const normalized = caption.trim().toLowerCase().replace(/\.$/, "")
+  return normalized === "id" || normalized === "ibid" || normalized === "supra"
+}

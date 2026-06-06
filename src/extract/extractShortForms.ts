@@ -15,7 +15,7 @@ import type {
   SupraComponentSpans,
 } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
-import { COMMON_REPORTERS } from "./extractCase"
+import { COMMON_REPORTERS } from "./caseReporterSemantics"
 import { parsePincite, type PinciteInfo } from "./pincite"
 
 /**

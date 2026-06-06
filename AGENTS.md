@@ -29,7 +29,8 @@ Citations flow through a 4-stage pipeline: **clean → tokenize → extract → 
 1. **Clean** (`src/clean/`): Strip HTML, normalize whitespace/Unicode, fix smart quotes. Builds a `TransformationMap` to track position shifts.
 2. **Tokenize** (`src/tokenize/`): Apply regex patterns from `src/patterns/` to find citation candidates. Intentionally broad — captures potential matches without validation.
 3. **Extract** (`src/extract/`): Parse metadata from tokens (volume, reporter, page, court, year). Each citation type has its own extractor (`extractCase.ts`, `extractStatute.ts`, etc.). The main orchestrator is `extractCitations.ts`.
-   - `extractCase.ts` also handles case name backward search (`extractCaseName`), full span calculation (`findParentheticalEnd`), unified parenthetical parsing (`parseParenthetical`), and disposition extraction.
+   - Case extraction is split into parser/semantic modules (`caseCore`, `caseEnvelope`, `casePostfix`, `caseParentheticals`, `caseNameScanner`, `caseNameSemantics`, `casePartySemantics`, `caseReporterSemantics`, `caseCitationDraft`). `extractCase.ts` should stay an orchestrator:
+     parse syntax, interpret semantics, apply semantics to the draft, then finalize.
    - `dates.ts` provides date parsing utilities (`parseMonth`, `parseDate`, `toIsoDate`) for structured date extraction from parentheticals.
 4. **Resolve** (`src/resolve/`): Link short-form citations (Id., supra, short-form case) to their full antecedents. `DocumentResolver` uses scope boundaries and Levenshtein matching.
 
