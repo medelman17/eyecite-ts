@@ -3,7 +3,8 @@
  *
  * This module provides composable utility functions for downstream
  * consumption of extraction output: sentence context detection,
- * case grouping, reporter key formatting, and Bluebook formatting.
+ * case grouping, reporter key formatting, Bluebook formatting, and
+ * durable W3C-style citation locators.
  *
  * Imported via: `import { ... } from 'eyecite-ts/utils'`
  *

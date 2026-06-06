@@ -141,6 +141,19 @@ describe("toDurableLocator", () => {
     })
     expect(loc.occurrence).toBe(0)
   })
+
+  it("omits occurrence for a glued (non-token-bounded) span but still emits the locator", () => {
+    // Index 8 sits inside "gridId." (glued to the leading 'd'), so it is not a
+    // token-bounded hit: occurrence is omitted, but the locator is still produced.
+    const cite = fakeCitation(
+      { cleanStart: 8, cleanEnd: 11, originalStart: 8, originalEnd: 11 },
+      "Id.",
+    )
+    const loc = toDurableLocator(cite, "the gridId. value Id. end")
+    expect(loc.quote.exact).toBe("Id.")
+    expect(loc.occurrence).toBeUndefined()
+    expect(loc.position).toEqual({ start: 8, end: 11 })
+  })
 })
 
 describe("toDurableLocators", () => {

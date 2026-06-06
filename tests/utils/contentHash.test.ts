@@ -9,8 +9,9 @@ describe("contentHash", () => {
   })
 
   it("does not collide across field boundaries (NUL join)", () => {
-    // exact "a b" must differ from exact "a" + prefix "b".
-    expect(contentHash("a b")).not.toBe(contentHash("a", "b"))
+    // {exact:"a b", prefix:"c"} and {exact:"a", prefix:"b c"} would both join to
+    // "a b c " under a space separator — distinct hashes prove the NUL join works.
+    expect(contentHash("a b", "c")).not.toBe(contentHash("a", "b c"))
   })
 
   it("is stable across Unicode normalization forms", () => {
