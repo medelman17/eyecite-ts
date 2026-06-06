@@ -16,9 +16,10 @@
 
 import type { Token } from "@/tokenize"
 import type { FullCaseCitation } from "@/types/citation"
-import { resolveOriginalSpan, type Span, type TransformationMap } from "@/types/span"
+import type { Span, TransformationMap } from "@/types/span"
 import type { CaseComponentSpans } from "@/types/componentSpans"
 import type { StructuredDate } from "./dates"
+import { finalizeCaseCitationDraft } from "./caseCitationDraft"
 import { parseCaseCitationCore } from "./caseCore"
 import { parseCaseCitationEnvelopeContext } from "./caseEnvelope"
 import { extractCaseName } from "./caseNameScanner"
@@ -27,10 +28,7 @@ import { resolveParallelCaseFullSpan } from "./caseParallelSemantics"
 import { interpretCasePartySemantics } from "./casePartySemantics"
 import { parseCaseCitationPostfix } from "./casePostfix"
 import { interpretCaseCitationPostfix } from "./casePostfixSemantics"
-import {
-  interpretCaseReporterCourtSemantics,
-  interpretCaseReporterSemantics,
-} from "./caseReporterSemantics"
+import { interpretCaseReporterCourtSemantics } from "./caseReporterSemantics"
 
 export { parseParenthetical } from "./caseParentheticals"
 export { extractCaseName } from "./caseNameScanner"
@@ -154,7 +152,6 @@ export function extractCase(
 
   const initialReporterSemantics = interpretCaseReporterCourtSemantics(reporter, court)
   court = initialReporterSemantics.court
-  const inferredCourt = initialReporterSemantics.inferredCourt
 
   // Phase 6: Extract case name via backward search.
   let caseNameResult: ReturnType<typeof extractCaseName> | undefined
@@ -225,62 +222,38 @@ export function extractCase(
     Object.assign(spans, partySemantics.spans)
   }
 
-  // Translate positions from clean → original (citation core only - span unchanged)
-  const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
-
-  const reporterSemantics = interpretCaseReporterSemantics({
-    reporter,
-    year,
-    caseName,
-    court,
-    hasBlankPage: hasBlankPage ?? false,
-  })
-  court = reporterSemantics.court
-
-  return {
-    type: "case",
-    text,
-    span: {
-      cleanStart: span.cleanStart,
-      cleanEnd: span.cleanEnd,
-      originalStart,
-      originalEnd,
+  return finalizeCaseCitationDraft(
+    {
+      text,
+      tokenSpan: span,
+      volume,
+      reporter,
+      page,
+      nominativeVolume,
+      nominativeReporter,
+      pincite,
+      pinciteInfo,
+      court,
+      year,
+      hasBlankPage,
+      date,
+      fullSpan,
+      caseName,
+      disposition,
+      parentheticals,
+      subsequentHistoryEntries,
+      unpublished,
+      justices,
+      scope,
+      adminParenthetical,
+      plaintiff,
+      plaintiffNormalized,
+      defendant,
+      defendantNormalized,
+      proceduralPrefix,
+      signal,
+      spans,
     },
-    confidence: reporterSemantics.confidence,
-    matchedText: text,
-    processTimeMs: 0, // Placeholder - timing handled by orchestration layer
-    patternsChecked: 1, // Single token processed
-    volume,
-    reporter,
-    ...(reporterSemantics.normalizedReporter !== undefined
-      ? { normalizedReporter: reporterSemantics.normalizedReporter }
-      : {}),
-    page,
-    nominativeVolume,
-    nominativeReporter,
-    pincite,
-    pinciteInfo,
-    court,
-    normalizedCourt: reporterSemantics.normalizedCourt,
-    year,
-    hasBlankPage,
-    date,
-    fullSpan,
-    caseName,
-    disposition,
-    parentheticals,
-    subsequentHistoryEntries,
-    ...(unpublished ? { unpublished: true } : {}),
-    ...(justices ? { justices } : {}),
-    ...(scope ? { scope } : {}),
-    ...(adminParenthetical ? { adminParenthetical } : {}),
-    plaintiff,
-    plaintiffNormalized,
-    defendant,
-    defendantNormalized,
-    proceduralPrefix,
-    inferredCourt,
-    signal,
-    spans,
-  }
+    transformationMap,
+  )
 }
