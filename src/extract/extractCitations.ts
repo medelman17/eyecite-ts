@@ -641,7 +641,15 @@ export function extractCitations(
     const resolutionOpts = cleanFootnoteMap
       ? { ...options.resolutionOptions, footnoteMap: cleanFootnoteMap }
       : options.resolutionOptions
-    return resolveCitations(filtered, text, resolutionOpts)
+    // #830: hand the resolver BOTH texts. `text` (original) backs original-
+    // coordinate reads (quote zones, paragraph scope, party lookback); `cleaned`
+    // backs clean-coordinate reads (bracket scopes, trigger asides). Without
+    // this, clean-offset reads index the original text and desync once a
+    // length-changing cleaner shrinks it.
+    return resolveCitations(filtered, text, resolutionOpts, {
+      cleanedText: cleaned,
+      transformationMap,
+    })
   }
 
   return filtered

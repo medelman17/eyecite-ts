@@ -19,7 +19,7 @@ import type {
   SupraCitation,
 } from "../types/citation"
 import { isFullCitation } from "../types/guards"
-import type { Span } from "../types/span"
+import { resolveOriginalSpan, type Span, type TransformationMap } from "../types/span"
 import { detectQuoteZones } from "../utils/detectQuoteZones"
 import { computeBracketScopes, triggerAnchoredAsideOwner } from "../utils/parentheticalScope"
 import { BKTree } from "./bkTree"
@@ -87,7 +87,18 @@ function isInZone(
  */
 export class DocumentResolver {
   private readonly citations: Citation[]
+  /** Original document text — used for original-coordinate reads (quote zones,
+   *  paragraph boundaries, party-name lookback) that locate citations via
+   *  `span.originalStart`. */
   private readonly text: string
+  /** Cleaned document text — used for clean-coordinate reads (bracket scopes,
+   *  trigger-anchored asides, family/name windows) that index by
+   *  `span.cleanStart`/`cleanEnd`. Equals `text` when no length-changing cleaner
+   *  ran; diverges from it otherwise, which is the #830 desync this fixes. */
+  private readonly cleanedText: string
+  /** Maps clean→original offsets so derived output spans carry correct original
+   *  coordinates even when a cleaner transformed the text (#830). */
+  private readonly transformationMap?: TransformationMap
   private readonly options: Required<
     Omit<ResolutionOptions, "footnoteMap" | "idConfidenceFloor">
   > & {
@@ -111,12 +122,26 @@ export class DocumentResolver {
    * Creates a new DocumentResolver.
    *
    * @param citations - All citations in document (in order of appearance)
-   * @param text - Original document text
+   * @param text - Original document text (original-coordinate reads index into it)
    * @param options - Resolution options
+   * @param cleanContext - Cleaned text + transformation map for clean-coordinate
+   *   reads (#830). When omitted, `text` is treated as the cleaned text too,
+   *   preserving the historical clean==original behavior for callers that pass
+   *   only one text (e.g. text untouched by a length-changing cleaner).
    */
-  constructor(citations: Citation[], text: string, options: ResolutionOptions = {}) {
+  constructor(
+    citations: Citation[],
+    text: string,
+    options: ResolutionOptions = {},
+    cleanContext?: { cleanedText: string; transformationMap: TransformationMap },
+  ) {
     this.citations = citations
     this.text = text
+    // #830: clean-coordinate reads must index into the cleaned text that the
+    // citation `cleanStart`/`cleanEnd` offsets were computed against. Without a
+    // clean context, fall back to `text` (clean==original) — unchanged behavior.
+    this.cleanedText = cleanContext?.cleanedText ?? text
+    this.transformationMap = cleanContext?.transformationMap
 
     // Apply defaults to options
     this.options = {
@@ -168,7 +193,7 @@ export class DocumentResolver {
     // Reset per-call state so a single DocumentResolver can be reused (the
     // public API currently constructs a fresh one per document, but the
     // per-instance fields make the algorithm easier to follow).
-    const scopes = computeBracketScopes(this.text, this.citations)
+    const scopes = computeBracketScopes(this.cleanedText, this.citations)
     this.parenDepths = scopes.map((s) => s.depth)
     this.balanceOks = scopes.map((s) => s.balanceOk)
     this.resolutions = new Array(this.citations.length).fill(undefined)
@@ -378,9 +403,9 @@ export class DocumentResolver {
     const hasPincite =
       citation.pincite !== undefined || citation.pinciteInfo !== undefined
     const tailHasSection = /^\s*[,]?\s*§§?\s*\d/.test(
-      this.text.substring(
+      this.cleanedText.substring(
         citation.span.cleanEnd,
-        Math.min(this.text.length, citation.span.cleanEnd + 20),
+        Math.min(this.cleanedText.length, citation.span.cleanEnd + 20),
       ),
     )
     const preferredFamily =
@@ -596,8 +621,8 @@ export class DocumentResolver {
   private getIdPreferredFamily(citation: IdCitation): CitationFamily {
     // Look at up to 20 chars after Id.'s span end for a `§` token.
     const start = citation.span.cleanEnd
-    const end = Math.min(this.text.length, start + 20)
-    const tail = this.text.substring(start, end)
+    const end = Math.min(this.cleanedText.length, start + 20)
+    const tail = this.cleanedText.substring(start, end)
     if (/^\s*[,]?\s*§§?\s*\d/.test(tail)) return "statute"
     return "case"
   }
@@ -615,7 +640,7 @@ export class DocumentResolver {
     if (this.parenDepths[index] > 0) return true
     // #798: trigger-anchored — recognise a `quoting`/`citing` aside even when
     // the opening `(` was dropped (OCR/PDF), where the depth scan misses it.
-    return triggerAnchoredAsideOwner(this.text, this.citations, index) !== undefined
+    return triggerAnchoredAsideOwner(this.cleanedText, this.citations, index) !== undefined
   }
 
   /**
@@ -666,7 +691,8 @@ export class DocumentResolver {
   private isUntrustworthyDepthAside(index: number): boolean {
     if (this.balanceOks[index] !== false) return false
     if (this.parenDepths[index] <= 0) return false
-    if (triggerAnchoredAsideOwner(this.text, this.citations, index) !== undefined) return false
+    if (triggerAnchoredAsideOwner(this.cleanedText, this.citations, index) !== undefined)
+      return false
     return !this.isFullSpanContained(index)
   }
 
@@ -700,7 +726,7 @@ export class DocumentResolver {
     }
     if (windowStart >= idStart) return DEFAULT
 
-    const window = this.text.substring(windowStart, idStart)
+    const window = this.cleanedText.substring(windowStart, idStart)
 
     // Match capitalized words that are case-name-like. Filter out common
     // English/legal prose words that happen to be capitalized.
@@ -1220,7 +1246,7 @@ export class DocumentResolver {
     if (!citation.partyName) return undefined
 
     const start = Math.max(0, citation.span.cleanStart - LOOKBACK)
-    const window = this.text.substring(start, citation.span.cleanStart)
+    const window = this.cleanedText.substring(start, citation.span.cleanStart)
     if (window.length === 0) return undefined
 
     // Lightweight "Party v. Party" matcher. Allows capitalized words
@@ -1287,18 +1313,22 @@ export class DocumentResolver {
 
     if (!best) return undefined
 
+    // `best.start`/`best.end` are clean-text offsets (the window scans the
+    // cleaned text). Map them back to original coordinates so the emitted span
+    // carries correct original positions even when a cleaner transformed the
+    // source (#830). Without a transformation map, fall back to clean==original.
+    const { originalStart, originalEnd } = this.transformationMap
+      ? resolveOriginalSpan({ cleanStart: best.start, cleanEnd: best.end }, this.transformationMap)
+      : { originalStart: best.start, originalEnd: best.end }
     return {
       caseName: best.caseName,
       plaintiff: best.plaintiff,
       defendant: best.defendant,
-      // Clean coordinates; consumers should treat these as offsets in
-      // the resolver's input `text`. When the cleaner did not transform
-      // the source, clean == original.
       span: {
         cleanStart: best.start,
         cleanEnd: best.end,
-        originalStart: best.start,
-        originalEnd: best.end,
+        originalStart,
+        originalEnd,
       },
     }
   }
