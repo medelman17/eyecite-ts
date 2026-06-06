@@ -27,6 +27,7 @@ import { isPlausibleYear, parseDate, type StructuredDate } from "./dates"
 import { getReportersSync } from "@/data/reportersCache"
 import { inferCourtFromReporter } from "./courtInference"
 import { normalizeCourt } from "./courtNormalization"
+import { parseCaseCitationEnvelopeContext } from "./caseEnvelope"
 import { parseCaseCitationPostfix } from "./casePostfix"
 import { interpretCaseCitationPostfix } from "./casePostfixSemantics"
 
@@ -2131,41 +2132,18 @@ export function extractCase(
   let caseName: string | undefined
   let fullSpan: Span | undefined
 
-  // Parallel-cite chain skip: when this cite is followed by another citation
-  // separated only by parallel-chain junk (commas, whitespace, digit/dash
-  // runs for intervening pincites), the shared trailing parenthetical sits
-  // AFTER the last cite in the chain — e.g., `329 Pa. 256, 198 A. 154 (1938)`
-  // or `410 U.S. 113, 117, 93 S. Ct. 705 (1973)` where the `, 117,` is the
-  // first cite's pincite. Compute the post-chain start position once and
-  // share it between the look-ahead paren scan and parenthetical-chain parse
-  // so the trailing year paren is found AND fullSpan extends through it.
-  let postChainStart = span.cleanEnd
-  if (cleanedText && siblings && siblings.length > 0) {
-    // Semicolons (#551) are accepted as parallel-chain separators alongside
-    // commas — Michigan-style citations write `390 Mich 355, 359; 212 NW2d
-    // 190 (1973)` where the `; ` separates the two parallel members. Without
-    // semicolons in the bridge class, the first cite's post-chain scan would
-    // stop at the semicolon and the trailing `(1973)` would not propagate.
-    const CHAIN_BRIDGE_REGEX = /^[\s,;\d\-–—]*$/
-    while (true) {
-      const next = siblings.find(
-        (s) =>
-          s.cleanStart > postChainStart &&
-          CHAIN_BRIDGE_REGEX.test(
-            cleanedText.substring(postChainStart, s.cleanStart),
-          ),
-      )
-      if (!next) break
-      postChainStart = next.cleanEnd
-    }
-  }
+  const envelopeContext = parseCaseCitationEnvelopeContext({
+    cleanedText,
+    tokenSpan: span,
+    siblings,
+  })
 
   const postfix = parseCaseCitationPostfix({
     text: cleanedText,
     tokenText: text,
     tokenStart: span.cleanStart,
     tokenEnd: span.cleanEnd,
-    postChainStart,
+    postChainStart: envelopeContext.postChainStart,
     hasNominativeReporter: nominativeVolume !== undefined,
   })
   const postfixSemantics = interpretCaseCitationPostfix(postfix, transformationMap)
@@ -2192,29 +2170,12 @@ export function extractCase(
   }
 
   // Phase 6: Extract case name via backward search.
-  // Bound the lookback by the previous sibling token's end (if any) so the
-  // backward walk for a parallel cite (e.g., the `198 A. 154` half of
-  // `Nixon v. Nixon, 329 Pa. 256, 198 A. 154`) does not absorb the earlier
-  // reporter cite into the case name.
-  let caseNameLookback: number | undefined
-  if (siblings && siblings.length > 0) {
-    const prev = siblings
-      .filter((s) => s.cleanEnd <= span.cleanStart)
-      .reduce<{ cleanEnd: number } | undefined>(
-        (best, s) =>
-          !best || s.cleanEnd > best.cleanEnd ? s : best,
-        undefined,
-      )
-    if (prev) {
-      caseNameLookback = span.cleanStart - prev.cleanEnd
-    }
-  }
   let caseNameResult: ReturnType<typeof extractCaseName> | undefined
   if (cleanedText) {
     caseNameResult = extractCaseName(
       cleanedText,
       span.cleanStart,
-      caseNameLookback,
+      envelopeContext.caseNameLookback,
       {
         originalText,
         transformationMap,
@@ -2354,8 +2315,7 @@ export function extractCase(
   // Cites without a preceding sibling (e.g., a standalone `500 F.2d 123 (2020)`
   // with no caption) intentionally do not get a fullSpan — that's existing
   // contract: "no case name → no fullSpan".
-  const hasCloseParallelPrev = caseNameLookback !== undefined && caseNameLookback < 30
-  if (!fullSpan && hasCloseParallelPrev && postfix.lastParenthetical) {
+  if (!fullSpan && envelopeContext.hasCloseParallelPrev && postfix.lastParenthetical) {
     const lastParen = postfix.lastParenthetical
     if (lastParen.span.end > span.cleanEnd) {
       const fullCleanStart = span.cleanStart
