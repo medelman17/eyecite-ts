@@ -34,7 +34,7 @@
  * Run via `pnpm llms:generate` (also runs in `prebuild`, so a release
  * regenerates it).
  */
-import { readFileSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import ts from "typescript"
@@ -1103,6 +1103,14 @@ function build(): string {
 const content = build()
 let wrote = 0
 for (const outPath of OUTPUTS) {
+  // The skill-mirror target only exists on a machine with the skill installed;
+  // in CI and fresh clones its parent dir is absent. Skip it (best-effort mirror)
+  // rather than ENOENT-crashing the build — the canonical root llms.txt, whose
+  // dir always exists, is still written.
+  if (!existsSync(dirname(outPath))) {
+    console.log(`skipped (target dir absent): ${outPath}`)
+    continue
+  }
   let existing = ""
   try {
     existing = readFileSync(outPath, "utf8")
