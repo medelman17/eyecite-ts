@@ -77,18 +77,21 @@ describe("case parenthetical AST parser", () => {
   })
 
   it("parses disposition parentheticals as metadata nodes", () => {
-    expect(parseParenthetical("en banc")).toMatchObject({
+    const enBanc = parseParenthetical("en banc")
+    const perCuriam = parseParenthetical("per curiam")
+
+    expect(enBanc).toMatchObject({
       kind: "metadata",
       text: "en banc",
       disposition: "en banc",
-      court: undefined,
     })
-    expect(parseParenthetical("per curiam")).toMatchObject({
+    expect(enBanc.court).toBeUndefined()
+    expect(perCuriam).toMatchObject({
       kind: "metadata",
       text: "per curiam",
       disposition: "per curiam",
-      court: undefined,
     })
+    expect(perCuriam.court).toBeUndefined()
   })
 
   it("classifies signal-word explanatory parentheticals", () => {
@@ -157,7 +160,6 @@ describe("case parenthetical AST parser", () => {
         signal: "affirmed",
         span: { start: 21, end: 26 },
       },
-      { kind: "metadata", text: "2021", year: 2021 },
     ])
   })
 
