@@ -26,6 +26,7 @@ import { parseCaseCitationCore } from "./caseCore"
 import { parseCaseCitationEnvelopeContext } from "./caseEnvelope"
 import { extractCaseName } from "./caseNameScanner"
 import { interpretCaseNameScan } from "./caseNameSemantics"
+import { resolveParallelCaseFullSpan } from "./caseParallelSemantics"
 import { interpretCasePartySemantics } from "./casePartySemantics"
 import { parseCaseCitationPostfix } from "./casePostfix"
 import { interpretCaseCitationPostfix } from "./casePostfixSemantics"
@@ -492,28 +493,13 @@ export function extractCase(
     }
   }
 
-  // Parallel-cite fullSpan fallback: when this cite is a secondary parallel
-  // (no case-name extracted because the bounded lookback hits the prior
-  // cite's end) AND there is a close preceding sibling indicating a parallel
-  // chain, still extend fullSpan through the shared trailing paren so
-  // string-citation grouping and downstream span consumers see the full
-  // citation extent. The bare cite's own cleanStart anchors the lower bound.
-  // Cites without a preceding sibling (e.g., a standalone `500 F.2d 123 (2020)`
-  // with no caption) intentionally do not get a fullSpan — that's existing
-  // contract: "no case name → no fullSpan".
-  if (!fullSpan && envelopeContext.hasCloseParallelPrev && postfix.lastParenthetical) {
-    const lastParen = postfix.lastParenthetical
-    if (lastParen.span.end > span.cleanEnd) {
-      const fullCleanStart = span.cleanStart
-      const fullCleanEnd = lastParen.span.end
-      fullSpan = {
-        cleanStart: fullCleanStart,
-        cleanEnd: fullCleanEnd,
-        originalStart: transformationMap.cleanToOriginal.get(fullCleanStart) ?? fullCleanStart,
-        originalEnd: transformationMap.cleanToOriginal.get(fullCleanEnd) ?? fullCleanEnd,
-      }
-    }
-  }
+  fullSpan = resolveParallelCaseFullSpan({
+    existingFullSpan: fullSpan,
+    tokenSpan: span,
+    envelopeContext,
+    lastParenthetical: postfix.lastParenthetical,
+    transformationMap,
+  })
 
   // Phase 7: Extract party names from case name
   let plaintiff: string | undefined
