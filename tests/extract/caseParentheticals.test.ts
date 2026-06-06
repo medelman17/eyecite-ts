@@ -80,7 +80,7 @@ describe("case parenthetical AST parser", () => {
 
   it("keeps nested explanatory parenthetical text intact", () => {
     const text = "500 F.2d 123 (2020) (holding that (a) X and (b) Y)"
-    const nodes = parseCaseParentheticalChain(text, "500 F.2d 123".length)
+    const { nodes } = parseCaseParentheticalChain(text, "500 F.2d 123".length)
 
     expect(nodes).toMatchObject([
       { kind: "metadata", text: "2020", span: { start: 13, end: 19 }, year: 2020 },
@@ -93,9 +93,29 @@ describe("case parenthetical AST parser", () => {
     ])
   })
 
+  it("returns aggregate views for parentheticals and history signals", () => {
+    const text = "500 F.2d 123 (2020) (holding that X), aff'd"
+    const chain = parseCaseParentheticalChain(text, "500 F.2d 123".length)
+
+    expect(chain.nodes).toMatchObject([
+      { kind: "metadata", text: "2020" },
+      { kind: "explanatory", text: "holding that X" },
+      { kind: "historySignal", rawSignal: "aff'd" },
+    ])
+    expect(chain.parentheticals).toMatchObject([
+      { kind: "metadata", text: "2020" },
+      { kind: "explanatory", text: "holding that X" },
+    ])
+    expect(chain.historySignals).toMatchObject([{ kind: "historySignal", rawSignal: "aff'd" }])
+    expect(chain.lastParenthetical).toMatchObject({
+      kind: "explanatory",
+      text: "holding that X",
+    })
+  })
+
   it("parses chained metadata and explanatory parentheticals", () => {
     const text = "500 F.2d 123 (en banc) (9th Cir. 2021) (holding that X)"
-    const nodes = parseCaseParentheticalChain(text, "500 F.2d 123".length)
+    const { nodes } = parseCaseParentheticalChain(text, "500 F.2d 123".length)
 
     expect(nodes).toMatchObject([
       { kind: "metadata", text: "en banc", disposition: "en banc" },
@@ -106,7 +126,7 @@ describe("case parenthetical AST parser", () => {
 
   it("emits history signal nodes between parentheticals", () => {
     const text = "500 F.2d 123 (2020), aff'd, 501 U.S. 1 (2021)"
-    const nodes = parseCaseParentheticalChain(text, "500 F.2d 123".length)
+    const { nodes } = parseCaseParentheticalChain(text, "500 F.2d 123".length)
 
     expect(nodes).toMatchObject([
       { kind: "metadata", text: "2020", year: 2020 },

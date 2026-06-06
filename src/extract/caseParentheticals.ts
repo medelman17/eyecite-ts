@@ -42,6 +42,16 @@ export interface ExplanatoryParentheticalNode {
 export type ParentheticalNode = MetadataParentheticalNode | ExplanatoryParentheticalNode
 export type CaseParentheticalNode = ParentheticalNode | HistorySignalNode
 
+export interface CaseParentheticalChain {
+  nodes: CaseParentheticalNode[]
+  parentheticals: ParentheticalNode[]
+  metadataParentheticals: MetadataParentheticalNode[]
+  explanatoryParentheticals: ExplanatoryParentheticalNode[]
+  historySignals: HistorySignalNode[]
+  firstParenthetical?: ParentheticalNode
+  lastParenthetical?: ParentheticalNode
+}
+
 interface RawParenthetical {
   text: string
   start: number
@@ -581,7 +591,7 @@ export function parseCaseParentheticalChain(
   text: string,
   startPos: number,
   maxLookahead = 2000,
-): CaseParentheticalNode[] {
+): CaseParentheticalChain {
   const collected = collectParentheticals(text, startPos, maxLookahead)
   const nodes: CaseParentheticalNode[] = collected.parens.map((raw) =>
     classifyCaseParenthetical({
@@ -600,5 +610,28 @@ export function parseCaseParentheticalChain(
     })
   }
 
-  return nodes.sort((a, b) => a.span.start - b.span.start)
+  nodes.sort((a, b) => a.span.start - b.span.start)
+  const parentheticals = nodes.filter(
+    (node): node is ParentheticalNode =>
+      node.kind === "metadata" || node.kind === "explanatory",
+  )
+  const metadataParentheticals = parentheticals.filter(
+    (node): node is MetadataParentheticalNode => node.kind === "metadata",
+  )
+  const explanatoryParentheticals = parentheticals.filter(
+    (node): node is ExplanatoryParentheticalNode => node.kind === "explanatory",
+  )
+  const historySignals = nodes.filter(
+    (node): node is HistorySignalNode => node.kind === "historySignal",
+  )
+
+  return {
+    nodes,
+    parentheticals,
+    metadataParentheticals,
+    explanatoryParentheticals,
+    historySignals,
+    firstParenthetical: parentheticals[0],
+    lastParenthetical: parentheticals[parentheticals.length - 1],
+  }
 }

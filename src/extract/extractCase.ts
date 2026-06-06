@@ -37,10 +37,7 @@ import {
   isNonMetadataParenContent,
   parseCaseParentheticalChain,
   parseParenthetical,
-  type CaseParentheticalNode,
-  type ExplanatoryParentheticalNode,
-  type HistorySignalNode,
-  type MetadataParentheticalNode,
+  type CaseParentheticalChain,
 } from "./caseParentheticals"
 
 export { parseParenthetical } from "./caseParentheticals"
@@ -2422,20 +2419,11 @@ export function extractCase(
 
   // Classify chained parentheticals: extract disposition and explanatory content
   let parentheticals: Parenthetical[] | undefined
-  let parentheticalNodes: CaseParentheticalNode[] | undefined
-  let allParentheticalNodes:
-    | Array<MetadataParentheticalNode | ExplanatoryParentheticalNode>
-    | undefined
+  let parentheticalChain: CaseParentheticalChain | undefined
   if (cleanedText) {
     // Use postChainStart so fullSpan / chained-paren classification can see
     // the shared trailing paren that sits past a parallel-cite chain.
-    parentheticalNodes = parseCaseParentheticalChain(cleanedText, postChainStart)
-    allParentheticalNodes = parentheticalNodes.filter(
-      (
-        node,
-      ): node is MetadataParentheticalNode | ExplanatoryParentheticalNode =>
-        node.kind === "metadata" || node.kind === "explanatory",
-    )
+    parentheticalChain = parseCaseParentheticalChain(cleanedText, postChainStart)
     // Skip first paren only if it yielded actual metadata (year/court/
     // disposition/justices/scope). When the first paren is an explanatory
     // parenthetical (`holding that...`, `emphasis added`), no metadata is
@@ -2449,8 +2437,8 @@ export function extractCase(
         justices !== undefined ||
         scope !== undefined)
     const remaining = firstParenIsMetadata
-      ? allParentheticalNodes.slice(1)
-      : allParentheticalNodes
+      ? parentheticalChain.parentheticals.slice(1)
+      : parentheticalChain.parentheticals
     for (const node of remaining) {
       if (node.kind === "metadata") {
         // Accept court from later metadata parens if we don't have a real one.
@@ -2493,11 +2481,10 @@ export function extractCase(
   }
 
   // Metadata parenthetical span (the first paren that yielded court/year)
-  if (allParentheticalNodes && allParentheticalNodes.length > 0 && (court || year)) {
+  if (parentheticalChain && (court || year)) {
     const metaParen = parentheticalContent
-      ? allParentheticalNodes.find(
-          (node): node is MetadataParentheticalNode =>
-            node.kind === "metadata" && node.text === parentheticalContent,
+      ? parentheticalChain.metadataParentheticals.find(
+          (node) => node.text === parentheticalContent,
         )
       : undefined
     if (metaParen) {
@@ -2555,11 +2542,10 @@ export function extractCase(
   // it first so it appears at order=0 in the chain — it semantically precedes
   // any later signals between separate parens.
   let subsequentHistoryEntries: SubsequentHistoryEntry[] | undefined
-  if (cleanedText && metaParenResult?.internalHistory && allParentheticalNodes) {
+  if (cleanedText && metaParenResult?.internalHistory && parentheticalChain) {
     const metaParen = parentheticalContent
-      ? allParentheticalNodes.find(
-          (node): node is MetadataParentheticalNode =>
-            node.kind === "metadata" && node.text === parentheticalContent,
+      ? parentheticalChain.metadataParentheticals.find(
+          (node) => node.text === parentheticalContent,
         )
       : undefined
     if (metaParen) {
@@ -2586,10 +2572,7 @@ export function extractCase(
       })
     }
   }
-  const historyNodes =
-    parentheticalNodes?.filter(
-      (node): node is HistorySignalNode => node.kind === "historySignal",
-    ) ?? []
+  const historyNodes = parentheticalChain?.historySignals ?? []
   if (cleanedText && historyNodes.length > 0) {
     for (const node of historyNodes) {
       subsequentHistoryEntries ??= []
@@ -2741,11 +2724,8 @@ export function extractCase(
       }
 
       // Calculate fullSpan: case name start through parenthetical end
-      // Reuse allParentheticalNodes from classify loop to avoid scanning twice
-      const parenEnd =
-        allParentheticalNodes && allParentheticalNodes.length > 0
-          ? allParentheticalNodes[allParentheticalNodes.length - 1].span.end
-          : span.cleanEnd
+      // Reuse parentheticalChain from classify loop to avoid scanning twice
+      const parenEnd = parentheticalChain?.lastParenthetical?.span.end ?? span.cleanEnd
       const fullCleanStart = caseNameResult.nameStart
       const fullCleanEnd = parenEnd
 
@@ -2791,10 +2771,9 @@ export function extractCase(
   if (
     !fullSpan &&
     hasCloseParallelPrev &&
-    allParentheticalNodes &&
-    allParentheticalNodes.length > 0
+    parentheticalChain?.lastParenthetical
   ) {
-    const lastParen = allParentheticalNodes[allParentheticalNodes.length - 1]
+    const lastParen = parentheticalChain.lastParenthetical
     if (lastParen.span.end > span.cleanEnd) {
       const fullCleanStart = span.cleanStart
       const fullCleanEnd = lastParen.span.end
