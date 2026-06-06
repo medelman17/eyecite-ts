@@ -18,7 +18,6 @@ import type { Token } from "@/tokenize"
 import type { FullCaseCitation } from "@/types/citation"
 import {
   resolveOriginalSpan,
-  spanFromGroupIndex,
   type Span,
   type TransformationMap,
 } from "@/types/span"
@@ -27,6 +26,7 @@ import { isPlausibleYear, parseDate, type StructuredDate } from "./dates"
 import { getReportersSync } from "@/data/reportersCache"
 import { inferCourtFromReporter } from "./courtInference"
 import { normalizeCourt } from "./courtNormalization"
+import { parseCaseCitationCore } from "./caseCore"
 import { parseCaseCitationEnvelopeContext } from "./caseEnvelope"
 import { interpretCaseNameScan } from "./caseNameSemantics"
 import {
@@ -38,19 +38,6 @@ import { interpretCaseCitationPostfix } from "./casePostfixSemantics"
 
 export { parseParenthetical } from "./caseParentheticals"
 export { extractPartyNames } from "./casePartySemantics"
-
-/** Parse a volume string as number when purely numeric, string when hyphenated.
- *
- * Leading zeros are stripped so `"01"` parses to `1` (not `"01"` as a string)
- * for consistency with the no-leading-zero `"1"` form. Hyphenated forms
- * like `"1984-1"` stay as strings. #703.
- */
-function parseVolume(raw: string): number | string {
-  if (/^\d+$/.test(raw)) {
-    return Number.parseInt(raw, 10)
-  }
-  return raw
-}
 
 // ============================================================================
 // Compiled regex patterns for performance (hoisted to module level)
@@ -361,43 +348,6 @@ export function computeCaseConfidence(opts: {
 
   return confidence
 }
-
-/** Matches volume-reporter-page format in citation core, with optional nominative reporter parenthetical.
- *  Reporter character class includes `&` so the BIA `I&N Dec.` / `I. & N. Dec.`
- *  variants parse correctly (#244).
- *
- *  Trailing lookahead `(?=$|[\s.;,)\]])` ensures the page capture is
- *  bounded by a real terminator. Without it, greedy reporter backtracking
- *  can produce wrong splits on inputs like `33 Ill. App. 2d, 100` (the
- *  reporter character class includes digits, so the greedy match would
- *  back off to reporter=`Ill. App.`, page=`2`, leaving `d, 100`
- *  unparsed). With the lookahead the canonical match fails on the
- *  comma-form input and the caller falls through to
- *  `VOLUME_REPORTER_PAGE_REGEX_COMMA` instead — see #570. */
-const VOLUME_REPORTER_PAGE_REGEX =
-  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+-\d+|\d+|_{3,}|-{3,})(?=$|[\s.;,)\]])/d
-
-/** Comma-form variant of VOLUME_REPORTER_PAGE_REGEX (#570) for the old
- *  typesetting shape `<vol> <Reporter>, <page>` (`3 Den., 594`,
- *  `252 S. W., 20`, `26 N. Y., 279`, `217 Ill. App., 427`). Used as a
- *  fallback ONLY when the canonical-spacing pattern above fails to match
- *  — running this regex first would let the greedy reporter capture
- *  swallow a trailing pincite (`500 F.2d 123, 125` would mis-parse as
- *  `reporter="F.2d 123"`, `page=125`).
- *
- *  Reporter capture is lazy (`+?`) so the backtracking prefers
- *  multi-word reporters with embedded ordinals (`Ill. App. 2d`) over
- *  collapsing to the prefix. The trailing `(?=$|[.;)\]])` lookahead is
- *  critical: it rejects phantom matches like
- *  `10 Corp., 2025 NY Slip Op 00784` where the supposed "page" 2025 is
- *  the start of the next (neutral) citation. The corresponding
- *  tokenizer pattern in `src/patterns/casePatterns.ts` uses the same
- *  terminator constraint. */
-const VOLUME_REPORTER_PAGE_REGEX_COMMA =
-  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+?)\s*,\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+-\d+|\d+|_{3,}|-{3,})(?=$|[.;)\]])/d
-
-/** Detects blank page placeholders (3+ underscores or dashes) */
-const BLANK_PAGE_REGEX = /^[_-]{3,}$/
 
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
@@ -1755,63 +1705,14 @@ export function extractCase(
 ): FullCaseCitation {
   const { text, span } = token
 
-  // Parse volume-reporter-page using regex.
-  // Pattern: volume (digits) + reporter (letters/periods/spaces/numbers) + page (digits or blank placeholder)
-  // Use greedy matching for reporter to capture full abbreviation including spaces.
-  //
-  // Tries the canonical `<vol> <Reporter> <page>` shape first, then falls
-  // back to the comma-form `<vol> <Reporter>, <page>` shape (#570). The
-  // ordering is load-bearing: running the comma-form regex first would
-  // let the greedy reporter capture swallow a trailing pincite when a
-  // caller hands `extractCase` a token whose text already contains
-  // `<core>, <pincite>` (legacy synthetic-token tests do this).
-  const match =
-    VOLUME_REPORTER_PAGE_REGEX.exec(text) ??
-    VOLUME_REPORTER_PAGE_REGEX_COMMA.exec(text)
-
-  if (!match) {
-    // Fallback if pattern doesn't match (shouldn't happen if tokenizer is correct)
-    throw new Error(`Failed to parse case citation: ${text}`)
-  }
-
-  const volume = parseVolume(match[1])
-  const reporter = match[2].trim()
-
-  // Extract nominative reporter if present (e.g., "1 Cranch" from "5 U.S. (1 Cranch) 137")
-  const nominativeVolume = match[3] ? Number.parseInt(match[3], 10) : undefined
-  const nominativeReporter = match[4] || undefined
-
-  // Check if page is a blank placeholder (group 5 after nominative groups)
-  const pageStr = match[5]
-  const isBlankPage = BLANK_PAGE_REGEX.test(pageStr)
-  const page = isBlankPage ? undefined : Number.parseInt(pageStr, 10)
-  const hasBlankPage = isBlankPage ? true : undefined
-
-  // Initialize component spans for core regex-extracted fields
-  const spans: CaseComponentSpans = {}
-
-  if (match.indices) {
-    // Group 1 = volume, Group 2 = reporter, Group 5 = page
-    // Groups 3, 4 are optional nominative reporter (not tracked here)
-    if (match.indices[1]) {
-      spans.volume = spanFromGroupIndex(span.cleanStart, match.indices[1], transformationMap)
-    }
-    if (match.indices[2]) {
-      // Trim whitespace from reporter span to match the trimmed reporter value
-      const [rStart, rEnd] = match.indices[2]
-      const rawReporter = text.substring(rStart, rEnd)
-      const leadTrim = rawReporter.length - rawReporter.trimStart().length
-      const trailTrim = rawReporter.length - rawReporter.trimEnd().length
-      spans.reporter = spanFromGroupIndex(
-        span.cleanStart,
-        [rStart + leadTrim, rEnd - trailTrim],
-        transformationMap,
-      )
-    }
-    if (match.indices[5]) {
-      spans.page = spanFromGroupIndex(span.cleanStart, match.indices[5], transformationMap)
-    }
-  }
+  const core = parseCaseCitationCore({ token, transformationMap })
+  const volume = core.volume
+  const reporter = core.reporter
+  const page = core.page
+  const nominativeVolume = core.nominativeVolume
+  const nominativeReporter = core.nominativeReporter
+  const hasBlankPage = core.hasBlankPage
+  const spans: CaseComponentSpans = { ...core.spans }
 
   // Initialize Phase 6 fields
   let year: number | undefined
