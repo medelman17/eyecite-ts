@@ -15,7 +15,7 @@
  */
 
 import type { Token } from "@/tokenize"
-import type { CitationSignal, FullCaseCitation } from "@/types/citation"
+import type { FullCaseCitation } from "@/types/citation"
 import {
   resolveOriginalSpan,
   spanFromGroupIndex,
@@ -29,70 +29,15 @@ import { inferCourtFromReporter } from "./courtInference"
 import { normalizeCourt } from "./courtNormalization"
 import { parseCaseCitationEnvelopeContext } from "./caseEnvelope"
 import { interpretCaseNameScan } from "./caseNameSemantics"
+import {
+  interpretCasePartySemantics,
+  SIGNAL_STRIP_REGEX,
+} from "./casePartySemantics"
 import { parseCaseCitationPostfix } from "./casePostfix"
 import { interpretCaseCitationPostfix } from "./casePostfixSemantics"
 
 export { parseParenthetical } from "./caseParentheticals"
-
-/** Valid CitationSignal values for safe validation after regex capture + normalization. */
-const VALID_SIGNALS = new Set([
-  "see",
-  "see also",
-  "see generally",
-  "cf",
-  "but see",
-  "but cf",
-  "compare",
-  "accord",
-  "contra",
-  // Combined `, e.g.` forms (Bluebook Rule 1.3) — must be matched by SIGNAL_PATTERNS
-  // in detectStringCites.ts before the bare-signal forms (#239).
-  "e.g.",
-  "see, e.g.",
-  "see also, e.g.",
-  "but see, e.g.",
-  "cf., e.g.",
-  "but cf., e.g.",
-])
-
-/**
- * Regex matching any VALID_SIGNALS entry at the start of a string, followed by whitespace.
- * Derived from VALID_SIGNALS to ensure a single source of truth.
- * Multi-word signals are listed first so "See also" matches before "See".
- * The trailing `,?` accommodates combined `, e.g.` signals (Bluebook Rule 1.3)
- * whose source-text form has a trailing comma between the signal and citation.
- *
- * Each whitespace gap inside a multi-word signal is permitted as `\s*,?\s+` so
- * older typesetting variants like `See, also,` (extra inter-word comma) and
- * `See e.g.,` (spaced `e.g.`) are stripped alongside the canonical Bluebook
- * forms. This mirrors PR #503's relaxation for signal *detection* in
- * detectStringCites.ts (#506).
- *
- * Additionally, a small set of prose connectors that commonly follow a signal
- * are stripped here (`the case of`, `the opinion (filed at this term )?in`).
- * Without this, captions like `See also the case of the King v. ...` carry
- * `See also the case of` into the captured caseName.
- */
-const SIGNAL_STRIP_REGEX = (() => {
-  const sorted = [...VALID_SIGNALS].sort((a, b) => b.length - a.length)
-  const alternatives = sorted.map((s) =>
-    // Whitespace between signal words tolerates an extra `, ` separator
-    // (e.g., `See, also,` for `See also`, `See, generally,` for `See generally`).
-    // Internal literal commas (from canonical forms like `see, e.g.`) are
-    // made optional so the bare typesetting variant `See e.g.,` also matches.
-    // Periods in `e.g.` / `cf.` tolerate an extra space (e.g., `See e. g.,`).
-    s
-      .replace(/\s+/g, "\\s*,?\\s+")
-      .replace(/,\s*/g, ",?\\s*")
-      .replace(/\./g, "\\.\\s*"),
-  )
-  // Optional prose connector after the signal: `the case of`, `the opinion
-  // (filed at this term )?in`. The connector is consumed lazily — only when
-  // present — and is followed by mandatory whitespace before the party name.
-  const proseConnector =
-    "(?:the\\s+(?:case\\s+of(?:\\s+the)?|opinion(?:\\s+filed\\s+at\\s+this\\s+term)?\\s+in)\\s+)?"
-  return new RegExp(`^(${alternatives.join("|")}),?\\s+${proseConnector}`, "i")
-})()
+export { extractPartyNames } from "./casePartySemantics"
 
 /** Parse a volume string as number when purely numeric, string when hyphenated.
  *
@@ -1745,264 +1690,6 @@ function isShortFormMarker(caption: string): boolean {
 }
 
 /**
- * Normalize party name for matching by removing legal noise.
- * Normalization pipeline:
- * 1. Strip "et al." (case-insensitive)
- * 2. Strip slash-aliases "d/b/a", "f/k/a", "n/k/a", "a/k/a" and everything after
- * 3. Strip "aka" and everything after (case-insensitive, word boundary)
- * 4. Strip trailing corporate suffixes (Inc., LLC, Corp., Ltd., Co., LLP, LP, P.C.) - iterative
- * 5. Strip leading articles (The, A, An)
- * 6. Normalize whitespace
- * 7. Trim and lowercase
- *
- * @param name - Raw party name
- * @returns Normalized party name
- *
- * @example
- * ```typescript
- * normalizePartyName("The Smith Corp., Inc.") // "smith"
- * normalizePartyName("Doe et al.") // "doe"
- * normalizePartyName("United States") // "united states" (not stripped)
- * ```
- */
-function normalizePartyName(name: string): string {
-  let normalized = name
-
-  // Strip "et al." (with or without period, case-insensitive)
-  normalized = normalized.replace(/\bet\s+al\.?/gi, "")
-
-  // Strip slash-alias variants ("d/b/a", "f/k/a", "n/k/a", "a/k/a") and
-  // everything after them. Matches the slash forms produced by Bluebook-style
-  // captions; the non-slash "aka" form is handled below (#240).
-  normalized = normalized.replace(/\s+(?:d\/b\/a|[fna]\/k\/a)\b.*/gi, "")
-
-  // Strip "aka" and everything after it (case-insensitive, word boundary)
-  normalized = normalized.replace(/\s+aka\b.*/gi, "")
-
-  // Strip trailing corporate suffixes (with or without trailing period, handle comma)
-  // Repeat to handle multiple suffixes like "Corp., Inc."
-  let prev = ""
-  while (prev !== normalized) {
-    prev = normalized
-    normalized = normalized.replace(/,?\s*(Inc|LLC|Corp|Ltd|Co|LLP|LP|P\.C)\.?$/gi, "")
-  }
-
-  // Strip leading articles (only at start)
-  normalized = normalized.replace(/^(The|A|An)\s+/i, "")
-
-  // Normalize whitespace (collapse multiple spaces)
-  normalized = normalized.replace(/\s+/g, " ")
-
-  // Trim and lowercase
-  return normalized.trim().toLowerCase()
-}
-
-/**
- * Extract plaintiff and defendant party names from case name.
- * Handles adversarial cases (v.) and procedural prefixes (In re, Ex parte, etc.).
- *
- * @param caseName - Case name string
- * @returns Party name data with raw and normalized fields
- *
- * @example
- * ```typescript
- * extractPartyNames("Smith v. Jones")
- * // Returns: { plaintiff: "Smith", plaintiffNormalized: "smith", defendant: "Jones", defendantNormalized: "jones" }
- *
- * extractPartyNames("In re Smith")
- * // Returns: { plaintiff: "In re Smith", plaintiffNormalized: "smith", proceduralPrefix: "In re" }
- *
- * extractPartyNames("People v. Smith")
- * // Returns: { plaintiff: "People", plaintiffNormalized: "people", defendant: "Smith", defendantNormalized: "smith" }
- * ```
- */
-export function extractPartyNames(caseName: string): {
-  plaintiff?: string
-  plaintiffNormalized?: string
-  defendant?: string
-  defendantNormalized?: string
-  proceduralPrefix?: string
-  signal?: CitationSignal
-  /** Bankruptcy adversary admin parenthetical (#241), e.g., "In re Hintze". */
-  adminParenthetical?: string
-} {
-  let signal: CitationSignal | undefined
-  // Procedural prefix patterns (anchored to start, case-insensitive).
-  // Longer prefixes first so the for-loop's `prefixRegex.exec(caseName)` finds
-  // the most specific match. Six 2026-05-11 cross-domain research dispatches
-  // (family, probate, bankruptcy, immigration, criminal/habeas, ex rel./qui tam)
-  // identified the additions; corpus-sourced examples live in
-  // `docs/research/2026-05-11-procedural-prefixes-*.md`.
-  const proceduralPrefixes = [
-    // "In the Matter of the X of" cluster — must precede "In the Matter of"
-    "In the Matter of the Liquidation of",
-    "In the Matter of the Rehabilitation of",
-    "In the Matter of the Receivership of",
-    "In the Matter of the Extradition of",
-    "In the Matter of the Application of",
-    "In the Matter of the Welfare of",
-    "In the Matter of",
-    // "In re X of" cluster — must precede "In re"
-    "In re Petition for Naturalization of",
-    "In re Termination of Parental Rights as to",
-    "In re Termination of Parental Rights to",
-    "In re Termination of Parental Rights of",
-    "In re Marriage of",
-    "In re Liquidation of",
-    "In re Rehabilitation of",
-    "In re Receivership of",
-    "In re Naturalization of",
-    "In re Extradition of",
-    "In re Application of",
-    "In re Welfare of",
-    "In re Dependency of",
-    "In re Paternity of",
-    "In re Parentage of",
-    // CA Tier 1 — In re precision upgrades for conservatorship/guardianship/adoption
-    "In re Conservatorship of",
-    "In re Guardianship of",
-    "In re Adoption of",
-    "In the Interest of",
-    "In re",
-    "Ex parte",
-    // "Matter of X of" cluster — must precede "Matter of"
-    "Matter of Liquidation of",
-    "Matter of Rehabilitation of",
-    "Matter of",
-    // Sovereign ex rel. — long forms precede short forms
-    "Commonwealth of Puerto Rico ex rel.",
-    "Government of the Virgin Islands ex rel.",
-    "Commonwealth ex rel.",
-    "State ex rel.",
-    "United States ex rel.",
-    "People ex rel.",
-    "District of Columbia ex rel.",
-    // Petition variants — "Petition for Naturalization of" precedes "Petition of"
-    "Petition for Naturalization of",
-    "Application of",
-    "On Petition of",
-    "Petition of",
-    // Other "X of" forms
-    "Adoption of",
-    // CA Tier 1 — Conservatorship extended forms must precede bare "Conservatorship of"
-    "Conservatorship of the Person and Estate of",
-    "Conservatorship of the Person of",
-    "Conservatorship of the Estate of",
-    "Conservatorship of",
-    "Guardianship of",
-    "Estate of",
-    // Bare forms with no "In re" prefix (no alternation-ordering collisions)
-    "Care and Protection of",
-    "Succession of",
-    // CA Tier 1 — agency / discipline procedural prefixes (2026-05-11)
-    "Inquiry Concerning Judge",
-    "Appeal of",
-  ]
-
-  // Check for procedural prefix first
-  for (const prefix of proceduralPrefixes) {
-    const prefixRegex = new RegExp(`^(${prefix})\\s+(.+)$`, "i")
-    const match = prefixRegex.exec(caseName)
-    if (match) {
-      const matchedPrefix = match[1]
-      const subject = match[2]
-
-      // Check if there's a "v." after the prefix (adversarial case)
-      if (/\s+vs?\.?\s+/i.test(subject)) {
-        // Adversarial case with procedural-looking plaintiff (e.g., "Estate of X v. Y")
-        // Split on "v."
-        const vMatch = /^(.+?)\s+vs?\.?\s+(.+)$/i.exec(caseName)
-        if (vMatch) {
-          const plaintiff = vMatch[1].trim()
-          const defendant = vMatch[2].trim()
-          return {
-            plaintiff,
-            plaintiffNormalized: normalizePartyName(plaintiff),
-            defendant,
-            defendantNormalized: normalizePartyName(defendant),
-          }
-        }
-      } else {
-        // Pure procedural (no "v.")
-        return {
-          plaintiff: caseName,
-          plaintiffNormalized: normalizePartyName(subject),
-          proceduralPrefix: matchedPrefix,
-        }
-      }
-    }
-  }
-
-  // Split on "v." for adversarial cases
-  const vRegex = /^(.+?)\s+vs?\.?\s+(.+)$/i
-  const vMatch = vRegex.exec(caseName)
-  if (vMatch) {
-    let plaintiff = vMatch[1].trim()
-    let defendant = vMatch[2].trim()
-
-    // Bankruptcy adversary admin parenthetical (#241): trailing
-    // `(In re <Debtor>)` immediately after the defendant identifies the
-    // underlying bankruptcy debtor. Strip from defendant; expose separately
-    // via `adminParenthetical`. The leading "In re" anchor distinguishes the
-    // adversary admin form from explanatory parens which appear *after* the
-    // citation core, not inside the case name.
-    let adminParenthetical: string | undefined
-    const adminMatch = /\s*\(\s*(In\s+re\s+[^)]+?)\s*\)\s*$/i.exec(defendant)
-    if (adminMatch) {
-      adminParenthetical = adminMatch[1]
-      defendant = defendant.substring(0, adminMatch.index).trim()
-    }
-
-    // Strip signal words from plaintiff (e.g., "See Jones" → "Jones")
-    // Uses SIGNAL_STRIP_REGEX derived from VALID_SIGNALS for single source of truth.
-    // Also strips "Also" and "In" (not valid signals) that can precede party names.
-    const signalMatch =
-      plaintiff.match(SIGNAL_STRIP_REGEX) ?? plaintiff.match(/^(Also|In(?!\s+re\b))\s+/i)
-    if (signalMatch) {
-      // Guard against false-positive signal capture from over-greedy
-      // case-name extraction (#304). When the V_CASE_NAME_REGEX captures
-      // sentence prose like `Contra plaintiff's argument, Bolling v. Sharpe`,
-      // the leading `Contra` looks like a Bluebook signal — but the next
-      // token is lowercase prose, not a capitalized party name. Only strip
-      // the signal when the remainder after stripping starts with a capital
-      // letter (real case-name context) so we don't manufacture phantom
-      // signals from sentence-internal English.
-      const remainderAfterStrip = plaintiff.substring(signalMatch[0].length).trimStart()
-      const firstChar = remainderAfterStrip[0] ?? ""
-      const remainderIsCaseNameLike = firstChar >= "A" && firstChar <= "Z"
-      if (remainderIsCaseNameLike) {
-        const lowered = signalMatch[1].toLowerCase()
-        // Combined `, e.g.` signals end with a period that is part of the canonical
-        // form (e.g., "see, e.g."); strip the trailing period only if the lowered
-        // form isn't itself a valid signal (handles "Cf." → "cf" without breaking
-        // "see, e.g." → "see, e.g.").
-        if (VALID_SIGNALS.has(lowered)) {
-          signal = lowered as CitationSignal
-        } else {
-          const stripped = lowered.replace(/\.$/, "")
-          if (VALID_SIGNALS.has(stripped)) {
-            signal = stripped as CitationSignal
-          }
-        }
-        plaintiff = plaintiff.substring(signalMatch[0].length).trim()
-      }
-    }
-
-    return {
-      plaintiff: plaintiff || vMatch[1].trim(), // Fallback to original if strip leaves nothing
-      plaintiffNormalized: normalizePartyName(plaintiff || vMatch[1].trim()),
-      defendant,
-      defendantNormalized: normalizePartyName(defendant),
-      signal,
-      ...(adminParenthetical ? { adminParenthetical } : {}),
-    }
-  }
-
-  // No "v." and no procedural prefix - no parties extracted
-  return {}
-}
-
-/**
  * Extracts case citation metadata from a tokenized citation.
  *
  * Parses token text to extract:
@@ -2232,153 +1919,26 @@ export function extractCase(
   let defendantNormalized: string | undefined
   let proceduralPrefix: string | undefined
   let adminParenthetical: string | undefined
-
-  let signal: CitationSignal | undefined
+  let signal: FullCaseCitation["signal"] | undefined
   if (caseName) {
-    const partyResult = extractPartyNames(caseName)
-    plaintiff = partyResult.plaintiff
-    plaintiffNormalized = partyResult.plaintiffNormalized
-    defendant = partyResult.defendant
-    defendantNormalized = partyResult.defendantNormalized
-    proceduralPrefix = partyResult.proceduralPrefix
-    signal = partyResult.signal
-    adminParenthetical = partyResult.adminParenthetical
-
-    // Rebuild caseName when extractPartyNames modified the plaintiff (signal stripped,
-    // "In"/"Also" prefix removed, etc.). Find the plaintiff's actual position in the
-    // cleaned text to update fullSpan and caseName span. Bankruptcy admin
-    // parenthetical is preserved as part of the rebuilt caseName so it remains
-    // visible to consumers even though it's stripped off the `defendant` field.
-    if (plaintiff && defendant) {
-      const adminSuffix = adminParenthetical ? ` (${adminParenthetical})` : ""
-      // Preserve the source's `v` punctuation form when rebuilding (#326).
-      // The existing caseName already carries the right separator (set by
-      // extractCaseName / V_CASE_NAME_REGEX); detect it and reuse.
-      const existingSepMatch = caseName ? /\s+(vs?\.?)\s+/.exec(caseName) : null
-      const rebuildSep = existingSepMatch?.[1] ?? "v."
-      const rebuiltName = `${plaintiff} ${rebuildSep} ${defendant}${adminSuffix}`
-      if (rebuiltName !== caseName && fullSpan && cleanedText) {
-        caseName = rebuiltName
-
-        // Advance fullSpan.cleanStart to where the plaintiff actually starts
-        const prefixRegion = cleanedText.substring(fullSpan.cleanStart, span.cleanStart)
-        const vSep = /\s+vs?\.?\s+/i.exec(prefixRegion)
-        if (vSep) {
-          const beforeV = prefixRegion.substring(0, vSep.index)
-          const pIdx = beforeV.lastIndexOf(plaintiff)
-          if (pIdx !== -1) {
-            const newCleanStart = fullSpan.cleanStart + pIdx
-            const newOriginalStart =
-              transformationMap.cleanToOriginal.get(newCleanStart) ?? newCleanStart
-            fullSpan = { ...fullSpan, cleanStart: newCleanStart, originalStart: newOriginalStart }
-          }
-        }
-
-        // Update caseName span to reflect the cleaned name
-        if (caseNameResult) {
-          const strippedCleanStart = fullSpan.cleanStart
-          const strippedCleanEnd = strippedCleanStart + caseName.length
-          const strippedOrig = resolveOriginalSpan(
-            { cleanStart: strippedCleanStart, cleanEnd: strippedCleanEnd },
-            transformationMap,
-          )
-          spans.caseName = {
-            cleanStart: strippedCleanStart,
-            cleanEnd: strippedCleanEnd,
-            originalStart: strippedOrig.originalStart,
-            originalEnd: strippedOrig.originalEnd,
-          }
-        }
-      }
-    }
-
-    // Plaintiff and defendant spans — split the search region at the "v." separator
-    // so each name is only matched on the correct side, avoiding indexOf collisions
-    // when a name substring appears in both halves (e.g., "Smith v. Smith").
-    if (plaintiff && caseNameResult && cleanedText) {
-      const nameAnchor = fullSpan?.cleanStart ?? caseNameResult.nameStart
-      const searchRegion = cleanedText.substring(nameAnchor, span.cleanStart)
-      const vSepMatch = /\s+vs?\.?\s+/i.exec(searchRegion)
-      if (vSepMatch) {
-        // Plaintiff: search only in the region before "v."
-        const plaintiffRegion = searchRegion.substring(0, vSepMatch.index)
-        const pIdx = plaintiffRegion.lastIndexOf(plaintiff)
-        if (pIdx !== -1) {
-          const pCleanStart = nameAnchor + pIdx
-          const pCleanEnd = pCleanStart + plaintiff.length
-          const pOrig = resolveOriginalSpan(
-            { cleanStart: pCleanStart, cleanEnd: pCleanEnd },
-            transformationMap,
-          )
-          spans.plaintiff = {
-            cleanStart: pCleanStart,
-            cleanEnd: pCleanEnd,
-            originalStart: pOrig.originalStart,
-            originalEnd: pOrig.originalEnd,
-          }
-        }
-        // Defendant: search only in the region after "v."
-        if (defendant) {
-          const defRegionStart = vSepMatch.index + vSepMatch[0].length
-          const defendantRegion = searchRegion.substring(defRegionStart)
-          const dIdx = defendantRegion.indexOf(defendant)
-          if (dIdx !== -1) {
-            const dCleanStart = nameAnchor + defRegionStart + dIdx
-            const dCleanEnd = dCleanStart + defendant.length
-            const dOrig = resolveOriginalSpan(
-              { cleanStart: dCleanStart, cleanEnd: dCleanEnd },
-              transformationMap,
-            )
-            spans.defendant = {
-              cleanStart: dCleanStart,
-              cleanEnd: dCleanEnd,
-              originalStart: dOrig.originalStart,
-              originalEnd: dOrig.originalEnd,
-            }
-          }
-        }
-      } else {
-        // No "v." separator — procedural prefix case (e.g., "In re X").
-        // Plaintiff is the full case name; no defendant to locate.
-        const pIdx = searchRegion.indexOf(plaintiff)
-        if (pIdx !== -1) {
-          const pCleanStart = nameAnchor + pIdx
-          const pCleanEnd = pCleanStart + plaintiff.length
-          const pOrig = resolveOriginalSpan(
-            { cleanStart: pCleanStart, cleanEnd: pCleanEnd },
-            transformationMap,
-          )
-          spans.plaintiff = {
-            cleanStart: pCleanStart,
-            cleanEnd: pCleanEnd,
-            originalStart: pOrig.originalStart,
-            originalEnd: pOrig.originalEnd,
-          }
-        }
-      }
-    }
-
-    // Signal span — the signal word was part of the original case name, found
-    // at caseNameResult.nameStart. After signal stripping, fullSpan.cleanStart
-    // was advanced past it, so the signal occupies [nameStart, fullSpan.cleanStart).
-    if (signal && fullSpan && cleanedText && caseNameResult) {
-      const sigRegion = cleanedText.substring(caseNameResult.nameStart, span.cleanStart)
-      const sigMatch = SIGNAL_STRIP_REGEX.exec(sigRegion)
-      if (sigMatch) {
-        const sigCleanStart = caseNameResult.nameStart
-        const sigCleanEnd = sigCleanStart + sigMatch[1].length
-        const sigOrig = resolveOriginalSpan(
-          { cleanStart: sigCleanStart, cleanEnd: sigCleanEnd },
-          transformationMap,
-        )
-        spans.signal = {
-          cleanStart: sigCleanStart,
-          cleanEnd: sigCleanEnd,
-          originalStart: sigOrig.originalStart,
-          originalEnd: sigOrig.originalEnd,
-        }
-      }
-    }
+    const partySemantics = interpretCasePartySemantics({
+      caseName,
+      caseNameStart: caseNameResult?.nameStart,
+      citationCoreStart: span.cleanStart,
+      fullSpan,
+      cleanedText,
+      transformationMap,
+    })
+    caseName = partySemantics.caseName
+    fullSpan = partySemantics.fullSpan
+    plaintiff = partySemantics.plaintiff
+    plaintiffNormalized = partySemantics.plaintiffNormalized
+    defendant = partySemantics.defendant
+    defendantNormalized = partySemantics.defendantNormalized
+    proceduralPrefix = partySemantics.proceduralPrefix
+    signal = partySemantics.signal
+    adminParenthetical = partySemantics.adminParenthetical
+    Object.assign(spans, partySemantics.spans)
   }
 
   // Translate positions from clean → original (citation core only - span unchanged)
