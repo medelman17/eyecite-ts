@@ -36,6 +36,13 @@ import { inferCourtFromReporter } from "./courtInference"
 import { parsePincite, type PinciteInfo } from "./pincite"
 import { normalizeCourt } from "./courtNormalization"
 import { levenshteinDistance } from "@/resolve/levenshtein"
+import {
+  parseCaseParentheticalChain,
+  type CaseParentheticalNode,
+  type ExplanatoryParentheticalNode,
+  type HistorySignalNode,
+  type MetadataParentheticalNode,
+} from "./caseParentheticals"
 
 /** Valid CitationSignal values for safe validation after regex capture + normalization. */
 const VALID_SIGNALS = new Set([
@@ -3316,13 +3323,20 @@ export function extractCase(
 
   // Classify chained parentheticals: extract disposition and explanatory content
   let parentheticals: Parenthetical[] | undefined
-  let allParens: RawParenthetical[] | undefined
-  let collected: CollectedParentheticals | undefined
+  let parentheticalNodes: CaseParentheticalNode[] | undefined
+  let allParentheticalNodes:
+    | Array<MetadataParentheticalNode | ExplanatoryParentheticalNode>
+    | undefined
   if (cleanedText) {
     // Use postChainStart so fullSpan / chained-paren classification can see
     // the shared trailing paren that sits past a parallel-cite chain.
-    collected = collectParentheticals(cleanedText, postChainStart)
-    allParens = collected.parens
+    parentheticalNodes = parseCaseParentheticalChain(cleanedText, postChainStart)
+    allParentheticalNodes = parentheticalNodes.filter(
+      (
+        node,
+      ): node is MetadataParentheticalNode | ExplanatoryParentheticalNode =>
+        node.kind === "metadata" || node.kind === "explanatory",
+    )
     // Skip first paren only if it yielded actual metadata (year/court/
     // disposition/justices/scope). When the first paren is an explanatory
     // parenthetical (`holding that...`, `emphasis added`), no metadata is
@@ -3335,41 +3349,42 @@ export function extractCase(
         disposition !== undefined ||
         justices !== undefined ||
         scope !== undefined)
-    const remaining = firstParenIsMetadata ? allParens.slice(1) : allParens
-    for (const raw of remaining) {
-      const classified = classifyParenthetical(raw.text)
-      if (classified.kind === "metadata") {
+    const remaining = firstParenIsMetadata
+      ? allParentheticalNodes.slice(1)
+      : allParentheticalNodes
+    for (const node of remaining) {
+      if (node.kind === "metadata") {
         // Accept court from later metadata parens if we don't have a real one.
         // The primary parse can set court to the disposition text (e.g., "en banc")
         // as a side effect of stripDateFromCourt, so treat that as unset.
-        if (classified.court && (!court || court === disposition)) {
-          court = classified.court
+        if (node.court && (!court || court === disposition)) {
+          court = node.court
         }
-        if (classified.year && !year) {
-          year = classified.year
-          date = classified.date
+        if (node.year && !year) {
+          year = node.year
+          date = node.date
         }
-        if (classified.disposition && !disposition) {
-          disposition = classified.disposition
+        if (node.disposition && !disposition) {
+          disposition = node.disposition
         }
-        if (classified.justices && !justices) {
-          justices = classified.justices
+        if (node.justices && !justices) {
+          justices = node.justices
         }
-        if (classified.scope && !scope) {
-          scope = classified.scope
+        if (node.scope && !scope) {
+          scope = node.scope
         }
       } else {
         parentheticals ??= []
         const parenOrig = resolveOriginalSpan(
-          { cleanStart: raw.start, cleanEnd: raw.end },
+          { cleanStart: node.span.start, cleanEnd: node.span.end },
           transformationMap,
         )
         parentheticals.push({
-          text: classified.text,
-          type: classified.type,
+          text: node.text,
+          type: node.type,
           span: {
-            cleanStart: raw.start,
-            cleanEnd: raw.end,
+            cleanStart: node.span.start,
+            cleanEnd: node.span.end,
             originalStart: parenOrig.originalStart,
             originalEnd: parenOrig.originalEnd,
           },
@@ -3379,16 +3394,21 @@ export function extractCase(
   }
 
   // Metadata parenthetical span (the first paren that yielded court/year)
-  if (allParens && allParens.length > 0 && (court || year)) {
-    const metaParen = parentheticalContent ? allParens[0] : undefined
+  if (allParentheticalNodes && allParentheticalNodes.length > 0 && (court || year)) {
+    const metaParen = parentheticalContent
+      ? allParentheticalNodes.find(
+          (node): node is MetadataParentheticalNode =>
+            node.kind === "metadata" && node.text === parentheticalContent,
+        )
+      : undefined
     if (metaParen) {
       const metaOrig = resolveOriginalSpan(
-        { cleanStart: metaParen.start, cleanEnd: metaParen.end },
+        { cleanStart: metaParen.span.start, cleanEnd: metaParen.span.end },
         transformationMap,
       )
       spans.metadataParenthetical = {
-        cleanStart: metaParen.start,
-        cleanEnd: metaParen.end,
+        cleanStart: metaParen.span.start,
+        cleanEnd: metaParen.span.end,
         originalStart: metaOrig.originalStart,
         originalEnd: metaOrig.originalEnd,
       }
@@ -3396,7 +3416,7 @@ export function extractCase(
       // Court and year spans from parseParenthetical content offsets.
       // The content starts at metaParen.start + 1 (past the opening "(").
       if (metaParenResult) {
-        const contentStart = metaParen.start + 1
+        const contentStart = metaParen.span.start + 1
         if (metaParenResult.courtStart !== undefined) {
           const courtCS = contentStart + metaParenResult.courtStart
           const courtCE = contentStart + metaParenResult.courtEnd!
@@ -3437,10 +3457,15 @@ export function extractCase(
   // it first so it appears at order=0 in the chain — it semantically precedes
   // any later signals between separate parens.
   let subsequentHistoryEntries: SubsequentHistoryEntry[] | undefined
-  if (cleanedText && metaParenResult?.internalHistory && allParens && allParens.length > 0) {
-    const metaParen = parentheticalContent ? allParens[0] : undefined
+  if (cleanedText && metaParenResult?.internalHistory && allParentheticalNodes) {
+    const metaParen = parentheticalContent
+      ? allParentheticalNodes.find(
+          (node): node is MetadataParentheticalNode =>
+            node.kind === "metadata" && node.text === parentheticalContent,
+        )
+      : undefined
     if (metaParen) {
-      const contentStart = metaParen.start + 1
+      const contentStart = metaParen.span.start + 1
       const ih = metaParenResult.internalHistory
       const sigCleanStart = contentStart + ih.start
       const sigCleanEnd = contentStart + ih.end
@@ -3463,20 +3488,23 @@ export function extractCase(
       })
     }
   }
-  if (cleanedText && collected && collected.signals.length > 0) {
-    for (let i = 0; i < collected.signals.length; i++) {
-      const { signal: rawSig } = collected.signals[i]
+  const historyNodes =
+    parentheticalNodes?.filter(
+      (node): node is HistorySignalNode => node.kind === "historySignal",
+    ) ?? []
+  if (cleanedText && historyNodes.length > 0) {
+    for (const node of historyNodes) {
       subsequentHistoryEntries ??= []
       const { originalStart: sigOrigStart, originalEnd: sigOrigEnd } = resolveOriginalSpan(
-        { cleanStart: rawSig.start, cleanEnd: rawSig.end },
+        { cleanStart: node.span.start, cleanEnd: node.span.end },
         transformationMap,
       )
       subsequentHistoryEntries.push({
-        signal: rawSig.normalized,
-        rawSignal: rawSig.text,
+        signal: node.signal,
+        rawSignal: node.rawSignal,
         signalSpan: {
-          cleanStart: rawSig.start,
-          cleanEnd: rawSig.end,
+          cleanStart: node.span.start,
+          cleanEnd: node.span.end,
           originalStart: sigOrigStart,
           originalEnd: sigOrigEnd,
         },
@@ -3615,9 +3643,11 @@ export function extractCase(
       }
 
       // Calculate fullSpan: case name start through parenthetical end
-      // Reuse allParens from classify loop to avoid scanning twice
+      // Reuse allParentheticalNodes from classify loop to avoid scanning twice
       const parenEnd =
-        allParens && allParens.length > 0 ? allParens[allParens.length - 1].end : span.cleanEnd
+        allParentheticalNodes && allParentheticalNodes.length > 0
+          ? allParentheticalNodes[allParentheticalNodes.length - 1].span.end
+          : span.cleanEnd
       const fullCleanStart = caseNameResult.nameStart
       const fullCleanEnd = parenEnd
 
@@ -3663,13 +3693,13 @@ export function extractCase(
   if (
     !fullSpan &&
     hasCloseParallelPrev &&
-    allParens &&
-    allParens.length > 0
+    allParentheticalNodes &&
+    allParentheticalNodes.length > 0
   ) {
-    const lastParen = allParens[allParens.length - 1]
-    if (lastParen.end > span.cleanEnd) {
+    const lastParen = allParentheticalNodes[allParentheticalNodes.length - 1]
+    if (lastParen.span.end > span.cleanEnd) {
       const fullCleanStart = span.cleanStart
-      const fullCleanEnd = lastParen.end
+      const fullCleanEnd = lastParen.span.end
       fullSpan = {
         cleanStart: fullCleanStart,
         cleanEnd: fullCleanEnd,
