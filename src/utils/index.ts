@@ -10,8 +10,15 @@
  * @module utils
  */
 
-export type { CaseGroup, ContextOptions, SurroundingContext } from "./types"
+export type {
+  CaseGroup,
+  ContextOptions,
+  DurableLocator,
+  DurableLocatorOptions,
+  SurroundingContext,
+} from "./types"
 export { toReporterKey, toReporterKeys } from "./reporterKey"
 export { toBluebook } from "./bluebook"
 export { groupByCase } from "./groupByCase"
 export { getSurroundingContext } from "./context"
+export { toDurableLocator, toDurableLocators } from "./durableLocator"
