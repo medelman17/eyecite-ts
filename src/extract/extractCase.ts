@@ -15,12 +15,7 @@
  */
 
 import type { Token } from "@/tokenize"
-import type {
-  CitationSignal,
-  FullCaseCitation,
-  Parenthetical,
-  SubsequentHistoryEntry,
-} from "@/types/citation"
+import type { CitationSignal, FullCaseCitation } from "@/types/citation"
 import {
   resolveOriginalSpan,
   spanFromGroupIndex,
@@ -33,6 +28,7 @@ import { getReportersSync } from "@/data/reportersCache"
 import { inferCourtFromReporter } from "./courtInference"
 import { normalizeCourt } from "./courtNormalization"
 import { parseCaseCitationPostfix } from "./casePostfix"
+import { interpretCaseCitationPostfix } from "./casePostfixSemantics"
 
 export { parseParenthetical } from "./caseParentheticals"
 
@@ -2132,9 +2128,6 @@ export function extractCase(
   let year: number | undefined
   let court: string | undefined
   let date: StructuredDate | undefined
-  let disposition: string | undefined
-  let justices: string[] | undefined
-  let scope: string | undefined
   let caseName: string | undefined
   let fullSpan: Span | undefined
 
@@ -2175,184 +2168,20 @@ export function extractCase(
     postChainStart,
     hasNominativeReporter: nominativeVolume !== undefined,
   })
-  const pinciteInfo = postfix.pinciteInfo
-  const pincite = pinciteInfo?.page
-  const unpublished = postfix.unpublished
-  const metadataParenthetical = postfix.metadataParenthetical
-  const parentheticalChain = postfix.parentheticalChain
+  const postfixSemantics = interpretCaseCitationPostfix(postfix, transformationMap)
+  Object.assign(spans, postfixSemantics.spans)
 
-  if (postfix.pinciteSpan) {
-    const pinciteOrig = resolveOriginalSpan(
-      {
-        cleanStart: postfix.pinciteSpan.start,
-        cleanEnd: postfix.pinciteSpan.end,
-      },
-      transformationMap,
-    )
-    spans.pincite = {
-      cleanStart: postfix.pinciteSpan.start,
-      cleanEnd: postfix.pinciteSpan.end,
-      originalStart: pinciteOrig.originalStart,
-      originalEnd: pinciteOrig.originalEnd,
-    }
-  }
-
-  if (metadataParenthetical) {
-    year = metadataParenthetical.year
-    court = metadataParenthetical.court
-    date = metadataParenthetical.date
-    disposition = metadataParenthetical.disposition
-    justices = metadataParenthetical.justices
-    scope = metadataParenthetical.scope
-  }
-
-  // Classify chained parentheticals: extract disposition and explanatory content
-  let parentheticals: Parenthetical[] | undefined
-  for (const node of postfix.parentheticalsAfterPrimaryMetadata) {
-    if (node.kind === "metadata") {
-      // Accept court from later metadata parens if we don't have a real one.
-      // The primary parse can set court to the disposition text (e.g., "en banc")
-      // as a side effect of stripDateFromCourt, so treat that as unset.
-      if (node.court && (!court || court === disposition)) {
-        court = node.court
-      }
-      if (node.year && !year) {
-        year = node.year
-        date = node.date
-      }
-      if (node.disposition && !disposition) {
-        disposition = node.disposition
-      }
-      if (node.justices && !justices) {
-        justices = node.justices
-      }
-      if (node.scope && !scope) {
-        scope = node.scope
-      }
-    } else {
-      parentheticals ??= []
-      const parenOrig = resolveOriginalSpan(
-        { cleanStart: node.span.start, cleanEnd: node.span.end },
-        transformationMap,
-      )
-      parentheticals.push({
-        text: node.text,
-        type: node.type,
-        span: {
-          cleanStart: node.span.start,
-          cleanEnd: node.span.end,
-          originalStart: parenOrig.originalStart,
-          originalEnd: parenOrig.originalEnd,
-        },
-      })
-    }
-  }
-
-  // Metadata parenthetical span (the first paren that yielded court/year)
-  if (metadataParenthetical && (court || year)) {
-    const metaOrig = resolveOriginalSpan(
-      {
-        cleanStart: metadataParenthetical.span.start,
-        cleanEnd: metadataParenthetical.span.end,
-      },
-      transformationMap,
-    )
-    spans.metadataParenthetical = {
-      cleanStart: metadataParenthetical.span.start,
-      cleanEnd: metadataParenthetical.span.end,
-      originalStart: metaOrig.originalStart,
-      originalEnd: metaOrig.originalEnd,
-    }
-
-    // Court and year spans from parseParenthetical content offsets.
-    // The content starts at metaParen.start + 1 (past the opening "(").
-    const contentStart = metadataParenthetical.span.start + 1
-    if (
-      metadataParenthetical.courtStart !== undefined &&
-      metadataParenthetical.courtEnd !== undefined
-    ) {
-      const courtCS = contentStart + metadataParenthetical.courtStart
-      const courtCE = contentStart + metadataParenthetical.courtEnd
-      const courtOrig = resolveOriginalSpan(
-        { cleanStart: courtCS, cleanEnd: courtCE },
-        transformationMap,
-      )
-      spans.court = {
-        cleanStart: courtCS,
-        cleanEnd: courtCE,
-        originalStart: courtOrig.originalStart,
-        originalEnd: courtOrig.originalEnd,
-      }
-    }
-    if (
-      metadataParenthetical.yearStart !== undefined &&
-      metadataParenthetical.yearEnd !== undefined
-    ) {
-      const yearCS = contentStart + metadataParenthetical.yearStart
-      const yearCE = contentStart + metadataParenthetical.yearEnd
-      const yearOrig = resolveOriginalSpan(
-        { cleanStart: yearCS, cleanEnd: yearCE },
-        transformationMap,
-      )
-      spans.year = {
-        cleanStart: yearCS,
-        cleanEnd: yearCE,
-        originalStart: yearOrig.originalStart,
-        originalEnd: yearOrig.originalEnd,
-      }
-    }
-  }
-
-  // Build subsequentHistoryEntries from captured signals.
-  // Texas Greenbook writ/petition history (#229) lives *inside* the
-  // court-and-year parenthetical, so it's captured by parseParenthetical's
-  // `internalHistory` field rather than the between-parens collector. Emit
-  // it first so it appears at order=0 in the chain — it semantically precedes
-  // any later signals between separate parens.
-  let subsequentHistoryEntries: SubsequentHistoryEntry[] | undefined
-  if (metadataParenthetical?.internalHistory) {
-    const contentStart = metadataParenthetical.span.start + 1
-    const ih = metadataParenthetical.internalHistory
-    const sigCleanStart = contentStart + ih.span.start
-    const sigCleanEnd = contentStart + ih.span.end
-    const { originalStart: sigOrigStart, originalEnd: sigOrigEnd } = resolveOriginalSpan(
-      { cleanStart: sigCleanStart, cleanEnd: sigCleanEnd },
-      transformationMap,
-    )
-    subsequentHistoryEntries ??= []
-    subsequentHistoryEntries.push({
-      signal: ih.signal,
-      rawSignal: ih.rawSignal,
-      signalSpan: {
-        cleanStart: sigCleanStart,
-        cleanEnd: sigCleanEnd,
-        originalStart: sigOrigStart,
-        originalEnd: sigOrigEnd,
-      },
-      order: 0,
-    })
-  }
-  const historyNodes = parentheticalChain.historySignals
-  if (historyNodes.length > 0) {
-    for (const node of historyNodes) {
-      subsequentHistoryEntries ??= []
-      const { originalStart: sigOrigStart, originalEnd: sigOrigEnd } = resolveOriginalSpan(
-        { cleanStart: node.span.start, cleanEnd: node.span.end },
-        transformationMap,
-      )
-      subsequentHistoryEntries.push({
-        signal: node.signal,
-        rawSignal: node.rawSignal,
-        signalSpan: {
-          cleanStart: node.span.start,
-          cleanEnd: node.span.end,
-          originalStart: sigOrigStart,
-          originalEnd: sigOrigEnd,
-        },
-        order: subsequentHistoryEntries.length,
-      })
-    }
-  }
+  const pinciteInfo = postfixSemantics.pinciteInfo
+  const pincite = postfixSemantics.pincite
+  const unpublished = postfixSemantics.unpublished
+  year = postfixSemantics.year
+  court = postfixSemantics.court
+  date = postfixSemantics.date
+  const disposition = postfixSemantics.disposition
+  const justices = postfixSemantics.justices
+  const scope = postfixSemantics.scope
+  const parentheticals = postfixSemantics.parentheticals
+  const subsequentHistoryEntries = postfixSemantics.subsequentHistoryEntries
 
   // Infer court level/jurisdiction from reporter series
   const inferredCourt = inferCourtFromReporter(reporter)
@@ -2483,8 +2312,7 @@ export function extractCase(
         if (!date) date = meta.date
       }
 
-      // Calculate fullSpan: case name start through parenthetical end
-      // Reuse parentheticalChain from classify loop to avoid scanning twice
+      // Calculate fullSpan: case name start through postfix parenthetical end.
       const parenEnd = postfix.lastParenthetical?.span.end ?? span.cleanEnd
       const fullCleanStart = caseNameResult.nameStart
       const fullCleanEnd = parenEnd
