@@ -81,7 +81,7 @@ parenthetical?: string          // KEPT — flat text
 parentheticalNode?: Parenthetical  // NEW — structured, may carry nested citations
 ```
 
-**Top-level exclusion (approved):** nested child citations live as tree children with ids and are **excluded from the top-level resolvable `Citation[]`**. They are not extracted at all today, so this is additive to the top-level array (no count change). This exclusion is the mechanism that fixes **#830** (`Id.` mis-binding to a quoting-child) and **#831** (dropped Slip Op orphaning its quoting-child): the resolver no longer sees paren-children as candidates. Children remain reachable for `in-parenthetical-of` graph edges.
+**Top-level exclusion (approved):** nested child citations live as tree children with ids and are **excluded from the top-level resolvable `Citation[]`**. They are not extracted at all today, so this is additive to the top-level array (no count change). This exclusion structurally prevents the *class* of parenthetical-child confusion exemplified by #830 (`Id.` mis-binding to a quoting-child) and #831 (dropped Slip Op orphaning its quoting-child) — both already fixed tactically (#841, #842); the slice should confirm it subsumes those fixes without regressing them. The resolver no longer sees paren-children as candidates. Children remain reachable for `in-parenthetical-of` graph edges.
 
 ### 4d. StringCitationGroup — `See A; B; C`
 ```ts
@@ -128,7 +128,7 @@ Additive throughout; each slice keeps the full test suite green and adds dedicat
 1. **Foundation (NEW slice) — `CitationId`.** `Brand` + `CitationId` + `assignCitationIds` (orchestrator, after filter, before resolve) + `byId` helper + additive migration of positional refs (add id-based fields alongside the numeric ones; dual-emit). **Blocks all others.**
 2. **#849 HistoryChain** — §4b. Replace `linkSubsequentHistory` + fixed-point caption loop; `historyChain` canonical; `subsequentHistoryOf.priorId` added; flat fields projected. Blocked by foundation.
 3. **#850 ParallelGroup** — §4a. Replace `groupId`/`parallelCitations` build with `parallelGroup` canonical; flat fields projected; `inheritParallelCaseName` reduced to group construction. Blocked by foundation.
-4. **#851 recursive Parenthetical** — §4c, covering **both** full-case `parentheticals[]` **and** short-form `parentheticalNode`. Parse nested child citations; exclude from top-level array; verify it closes **#830** and **#831**. Blocked by foundation.
+4. **#851 recursive Parenthetical** — §4c, covering **both** full-case `parentheticals[]` **and** short-form `parentheticalNode`. Parse nested child citations; exclude from top-level array. (#830/#831 are already fixed tactically via #841/#842 — add their repro inputs as regression tests and confirm this structural model subsumes them.) Blocked by foundation.
 5. **StringCitationGroup (NEW slice)** — §4d. `stringCitationGroup` canonical; flat triplet projected. Blocked by foundation.
 
 (#845 is satisfied by this spec; close it once the spec lands and the foundation slice is filed.)
