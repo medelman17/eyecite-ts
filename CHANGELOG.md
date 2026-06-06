@@ -1,5 +1,58 @@
 # eyecite-ts
 
+## 0.29.2
+
+### Patch Changes
+
+- [#825](https://github.com/medelman17/eyecite-ts/pull/825) [`1c61809`](https://github.com/medelman17/eyecite-ts/commit/1c61809d75514fd31f0fa6e3496d97aa93b94389) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): degrade `Id.` parenthetical-child exclusion to soft on bracket-balance failure (#820)
+
+  `resolveId` hard-dropped a candidate antecedent whenever its bracket depth said
+  "nested", even when that depth came from a clause whose brackets did not balance
+  (`balanceOk=false` — e.g. a dropped/garbled paren from OCR/PDF) — silently
+  resolving to a farther cite at confidence 1.0. The #809 `balanceOk` signal is now
+  consumed: a depth-only paren-child exclusion in a balance-failed clause is
+  degraded to **soft** — the candidate is kept, confidence is capped, and a warning
+  is emitted, so `idConfidenceFloor` (#800) can abstain. Trigger-anchored asides and
+  `fullSpan`-contained cites stay hard exclusions (they don't depend on the fragile
+  depth count), and balanced clauses are unchanged.
+
+- [#826](https://github.com/medelman17/eyecite-ts/pull/826) [`fe29f46`](https://github.com/medelman17/eyecite-ts/commit/fe29f469d11759b8747afaea2031fa280dcbd2be) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): `supra` abstains / degrades on non-unique party-name keys (#818)
+
+  `resolveSupra` silently committed to one authority at confidence 1.0 when a
+  `supra`'s party-name key matched **>1 distinct in-scope authority** (the
+  name-keyed history collapsed them via last-write-wins, hiding the ambiguity).
+  `fullCitationHistory` is now a `Map<string, number[]>`, and `resolveSupra` applies
+  a hybrid policy: exactly one authority resolves as before; a **true tie** (same
+  name + same year, indistinguishable by the key) **abstains**; otherwise it picks
+  the most-recent-within-name but **caps confidence and warns**, with
+  `idConfidenceFloor` able to fail it closed — mirroring the `Id.` path (#800/#820).
+  Parallel-cite siblings and re-citations (shared `groupId`, or volume-reporter-page)
+  collapse to a single authority, so they never trigger false ambiguity.
+
+- [#823](https://github.com/medelman17/eyecite-ts/pull/823) [`8e89979`](https://github.com/medelman17/eyecite-ts/commit/8e89979f0e6a3f7c33be2edd83fd4e50bcb3d772) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): `supra` no longer leaks into string-cite parenthetical members (#819)
+
+  `computeBracketScopes` treated the `;` separator in a `(citing A; B; C)` string
+  cite as a clause boundary even while the outer `(` was still open, resetting its
+  bounded bracket stack so 2nd-and-later members read depth 0 (and
+  `balanceOk=false`) and escaped the #799 parenthetical-aside filter — `resolveSupra`
+  could then accept a string-cite-internal authority as a named antecedent. A `;`
+  inside an open paren is now treated as a string-cite separator, not a clause
+  boundary, so every member reads the enclosing paren depth and is excluded like the
+  first. The `.`/newline reset that confines genuinely-dangling parens (#809) is
+  unchanged. This also de-pollutes the `balanceOk` structure-trust signal.
+
+- [#827](https://github.com/medelman17/eyecite-ts/pull/827) [`e866472`](https://github.com/medelman17/eyecite-ts/commit/e866472c39fc11b365fa4eacd0bbf54acdd03ac8) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): recognize prior-/subsequent-history subordinators in the trigger lexicon (#821)
+
+  The resolver-shared parenthetical-aside detector recognized only `quoting` /
+  `citing` / `quoted in` / `cited in`. Under a dropped or garbled opening paren
+  (OCR/PDF), a citation introduced by a history subordinator (`overruled by`,
+  `abrogated by`, `superseded by`, `cited with approval in`, `as recognized in`) was
+  not seen as an aside, so the #214/#799 exclusion never fired and recency
+  mis-resolved `Id.`/`supra` to the subordinated cite. These tokens are now in the
+  lexicon. It is a **soft** signal: it only changes resolution on dropped/garbled-paren
+  input (balanced asides are already caught by bracket depth), and the regex stays
+  ReDoS-safe (flat alternation, `\s+`-joined multi-word tokens).
+
 ## 0.29.1
 
 ### Patch Changes
@@ -3073,7 +3126,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-                        275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+                          275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -3099,7 +3152,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-                        People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+                          People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
