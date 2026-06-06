@@ -155,7 +155,7 @@ describe("case parenthetical AST parser", () => {
         kind: "historySignal",
         rawSignal: "aff'd",
         signal: "affirmed",
-        span: { start: 22, end: 27 },
+        span: { start: 21, end: 26 },
       },
       { kind: "metadata", text: "2021", year: 2021 },
     ])
