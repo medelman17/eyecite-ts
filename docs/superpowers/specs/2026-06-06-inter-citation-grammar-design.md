@@ -135,6 +135,8 @@ Additive throughout; each slice keeps the full test suite green and adds dedicat
 
 ## 9. Open / deferred (not in scope here)
 
+Tracked in #858 (`deferred`).
+
 - Full removal of the positional fields and the `Edge`/`QuoteAttribution`/`AnalyzedFootnoteZone` migration to `CitationId` — deferred to a future major (this spec only adds id-based fields alongside).
 - `sameCitation(a, b)` value-equality helper — optional, file if consumers ask.
 - Whether `historyChain` / `parallelGroup` / `stringCitationGroup` should also be surfaced as sidecar collections on the result (vs attached per-member) — current decision is attached per-member (eager projection); revisit only if duplication cost becomes a measured problem.
