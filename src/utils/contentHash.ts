@@ -1,5 +1,5 @@
 /**
- * Stable FNV-1a-64 hex of the NFC-normalized, NUL-joined quote fields. A cheap,
+ * Stable FNV-1a-64 hex of the NFC-normalized, NUL-joined fields. A cheap,
  * synchronous, dependency-free identity for dedup/equality. Fields are joined on
  * a NUL byte (which cannot appear in citation text) so that, e.g., {exact:"a b"}
  * and {exact:"a", prefix:"b"} do not collide. Iterates UTF-16 code units so any
