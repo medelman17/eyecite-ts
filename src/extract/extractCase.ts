@@ -20,6 +20,7 @@ import type { Span, TransformationMap } from "@/types/span"
 import type { StructuredDate } from "./dates"
 import {
   applyCaseNameSemantics,
+  applyCasePartySemantics,
   applyCasePostfixSemantics,
   createCaseCitationDraftFromCore,
   finalizeCaseCitationDraft,
@@ -200,16 +201,16 @@ export function extractCase(
       cleanedText,
       transformationMap,
     })
-    caseName = partySemantics.caseName
-    fullSpan = partySemantics.fullSpan
-    plaintiff = partySemantics.plaintiff
-    plaintiffNormalized = partySemantics.plaintiffNormalized
-    defendant = partySemantics.defendant
-    defendantNormalized = partySemantics.defendantNormalized
-    proceduralPrefix = partySemantics.proceduralPrefix
-    signal = partySemantics.signal
-    adminParenthetical = partySemantics.adminParenthetical
-    Object.assign(draft.spans, partySemantics.spans)
+    draft = applyCasePartySemantics(draft, partySemantics)
+    caseName = draft.caseName
+    fullSpan = draft.fullSpan
+    plaintiff = draft.plaintiff
+    plaintiffNormalized = draft.plaintiffNormalized
+    defendant = draft.defendant
+    defendantNormalized = draft.defendantNormalized
+    proceduralPrefix = draft.proceduralPrefix
+    signal = draft.signal
+    adminParenthetical = draft.adminParenthetical
   }
 
   return finalizeCaseCitationDraft(

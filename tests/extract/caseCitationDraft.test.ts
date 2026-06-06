@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest"
 import { loadReporters } from "@/data/reporters"
 import {
   applyCaseNameSemantics,
+  applyCasePartySemantics,
   applyCasePostfixSemantics,
   createCaseCitationDraftFromCore,
   finalizeCaseCitationDraft,
@@ -221,6 +222,63 @@ describe("case citation draft finalization", () => {
         volume: volumeSpan,
         caseName: caseNameSpan,
         year: yearSpan,
+      },
+    })
+  })
+
+  it("applies party semantics to a draft and merges component spans", () => {
+    const volumeSpan = { cleanStart: 12, cleanEnd: 15, originalStart: 12, originalEnd: 15 }
+    const caseNameSpan = { cleanStart: 0, cleanEnd: 14, originalStart: 0, originalEnd: 14 }
+    const plaintiffSpan = { cleanStart: 4, cleanEnd: 9, originalStart: 4, originalEnd: 9 }
+    const defendantSpan = { cleanStart: 12, cleanEnd: 17, originalStart: 12, originalEnd: 17 }
+    const signalSpan = { cleanStart: 0, cleanEnd: 3, originalStart: 0, originalEnd: 3 }
+    const fullSpan = { cleanStart: 0, cleanEnd: 29, originalStart: 0, originalEnd: 29 }
+    const draft: CaseCitationDraft = {
+      text: "500 F.2d 123",
+      tokenSpan: { cleanStart: 18, cleanEnd: 30 },
+      volume: 500,
+      reporter: "F.2d",
+      page: 123,
+      caseName: "see Smith v. Jones",
+      fullSpan: { cleanStart: 4, cleanEnd: 29, originalStart: 4, originalEnd: 29 },
+      spans: { volume: volumeSpan },
+    }
+
+    const next = applyCasePartySemantics(draft, {
+      caseName: "Smith v. Jones",
+      fullSpan,
+      plaintiff: "Smith",
+      plaintiffNormalized: "smith",
+      defendant: "Jones",
+      defendantNormalized: "jones",
+      proceduralPrefix: "In re",
+      signal: "see",
+      adminParenthetical: "In re Hintze",
+      spans: {
+        caseName: caseNameSpan,
+        plaintiff: plaintiffSpan,
+        defendant: defendantSpan,
+        signal: signalSpan,
+      },
+    })
+
+    expect(next).toEqual({
+      ...draft,
+      caseName: "Smith v. Jones",
+      fullSpan,
+      plaintiff: "Smith",
+      plaintiffNormalized: "smith",
+      defendant: "Jones",
+      defendantNormalized: "jones",
+      proceduralPrefix: "In re",
+      signal: "see",
+      adminParenthetical: "In re Hintze",
+      spans: {
+        volume: volumeSpan,
+        caseName: caseNameSpan,
+        plaintiff: plaintiffSpan,
+        defendant: defendantSpan,
+        signal: signalSpan,
       },
     })
   })

@@ -4,6 +4,7 @@ import type { FullCaseCitation } from "@/types/citation"
 import { resolveOriginalSpan, type Span, type TransformationMap } from "@/types/span"
 import type { CaseCitationCoreSyntax } from "./caseCore"
 import type { CaseNameSemantics } from "./caseNameSemantics"
+import type { CasePartySemantics } from "./casePartySemantics"
 import type { CasePostfixSemantics } from "./casePostfixSemantics"
 import type { StructuredDate } from "./dates"
 import { interpretCaseReporterSemantics } from "./caseReporterSemantics"
@@ -105,6 +106,36 @@ export function applyCaseNameSemantics(
     ...(semantics.court !== undefined ? { court: semantics.court } : {}),
     ...(semantics.date !== undefined ? { date: semantics.date } : {}),
     fullSpan: semantics.fullSpan,
+    spans: {
+      ...draft.spans,
+      ...semantics.spans,
+    },
+  }
+}
+
+export function applyCasePartySemantics(
+  draft: CaseCitationDraft,
+  semantics: CasePartySemantics,
+): CaseCitationDraft {
+  return {
+    ...draft,
+    caseName: semantics.caseName,
+    fullSpan: semantics.fullSpan,
+    ...(semantics.plaintiff !== undefined ? { plaintiff: semantics.plaintiff } : {}),
+    ...(semantics.plaintiffNormalized !== undefined
+      ? { plaintiffNormalized: semantics.plaintiffNormalized }
+      : {}),
+    ...(semantics.defendant !== undefined ? { defendant: semantics.defendant } : {}),
+    ...(semantics.defendantNormalized !== undefined
+      ? { defendantNormalized: semantics.defendantNormalized }
+      : {}),
+    ...(semantics.proceduralPrefix !== undefined
+      ? { proceduralPrefix: semantics.proceduralPrefix }
+      : {}),
+    ...(semantics.signal !== undefined ? { signal: semantics.signal } : {}),
+    ...(semantics.adminParenthetical !== undefined
+      ? { adminParenthetical: semantics.adminParenthetical }
+      : {}),
     spans: {
       ...draft.spans,
       ...semantics.spans,
