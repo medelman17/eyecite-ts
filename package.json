@@ -59,7 +59,7 @@
   },
   "scripts": {
     "build": "tsdown",
-    "prebuild": "pnpm data:generate",
+    "prebuild": "pnpm data:generate && pnpm llms:generate",
     "data:generate": "tsx scripts/generate-reporters-data.ts",
     "prepare": "pnpm data:generate",
     "test": "vitest",
@@ -70,7 +70,8 @@
     "format": "biome format --write src tests",
     "size": "size-limit",
     "check:size": "npx tsx scripts/check-bundle-size.ts",
-    "bughunt": "tsx scripts/bughunt/index.ts"
+    "bughunt": "tsx scripts/bughunt/index.ts",
+    "llms:generate": "tsx scripts/generate-llms.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.0",
