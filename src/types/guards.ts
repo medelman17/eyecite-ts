@@ -1,45 +1,37 @@
-import type {
-  Citation,
-  CitationOfType,
-  CitationType,
-  FullCaseCitation,
-  FullCitation,
-  ShortFormCitation,
+import {
+  type Citation,
+  type CitationOfType,
+  type CitationType,
+  FULL_CITATION_TYPES,
+  type FullCaseCitation,
+  type FullCitation,
+  SHORT_FORM_CITATION_TYPES,
+  type ShortFormCitation,
 } from "./citation"
 
 /**
- * Type guard: narrows Citation to a full citation (case, statute, journal,
- * neutral, publicLaw, federalRegister, statutesAtLarge, constitutional,
- * federalRule, restatement, treatise, annotation).
+ * O(1) membership sets derived from the single-source type inventories
+ * (`FULL_CITATION_TYPES` / `SHORT_FORM_CITATION_TYPES`), so the guards below
+ * cannot drift from `FullCitationType` / `ShortFormCitationType` (#843).
+ */
+const FULL_CITATION_TYPE_SET: ReadonlySet<string> = new Set(FULL_CITATION_TYPES)
+const SHORT_FORM_CITATION_TYPE_SET: ReadonlySet<string> = new Set(SHORT_FORM_CITATION_TYPES)
+
+/**
+ * Type guard: narrows Citation to a full citation — any member of
+ * `FullCitationType`. Membership derives from `FULL_CITATION_TYPES` (the single
+ * source), so it can never silently omit a full type the way it once dropped
+ * `regulation` / `stateRule` (#843).
  */
 export function isFullCitation(citation: Citation): citation is FullCitation {
-  return (
-    citation.type === "case" ||
-    citation.type === "docket" ||
-    citation.type === "statute" ||
-    citation.type === "journal" ||
-    citation.type === "neutral" ||
-    citation.type === "publicLaw" ||
-    citation.type === "federalRegister" ||
-    citation.type === "statutesAtLarge" ||
-    citation.type === "sessionLaw" ||
-    citation.type === "treaty" ||
-    citation.type === "legislativeMaterial" ||
-    citation.type === "localOrdinance" ||
-    citation.type === "canon" ||
-    citation.type === "constitutional" ||
-    citation.type === "federalRule" ||
-    citation.type === "restatement" ||
-    citation.type === "treatise" ||
-    citation.type === "annotation"
-  )
+  return FULL_CITATION_TYPE_SET.has(citation.type)
 }
 
 /**
  * Type guard: narrows Citation to a short-form citation (id, supra, shortFormCase).
  */
 export function isShortFormCitation(citation: Citation): citation is ShortFormCitation {
-  return citation.type === "id" || citation.type === "supra" || citation.type === "shortFormCase"
+  return SHORT_FORM_CITATION_TYPE_SET.has(citation.type)
 }
 
 /**
