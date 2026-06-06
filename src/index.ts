@@ -96,7 +96,7 @@ export { applyFalsePositiveFilters } from "./extract/filterFalsePositives"
 // ============================================================================
 
 // Text Cleaning Layer
-export { cleanText } from "./clean"
+export { cleanText, stripMarkdownEmphasis } from "./clean"
 export type { CleanTextResult } from "./clean/cleanText"
 // Extraction Functions (for advanced use cases)
 export {

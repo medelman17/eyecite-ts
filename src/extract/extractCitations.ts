@@ -95,6 +95,22 @@ export interface ExtractOptions {
   cleaners?: Array<(text: string) => string>
 
   /**
+   * Extra cleaners appended AFTER the effective base chain (the defaults, or a
+   * custom `cleaners` array). Unlike `cleaners` — which REPLACES the defaults —
+   * `additionalCleaners` keeps them, so you can add e.g. `stripMarkdownEmphasis`
+   * without silently dropping HTML stripping, whitespace/Unicode normalization,
+   * smart-quote fixing, reporter spacing, etc. (#835)
+   *
+   * @example
+   * ```typescript
+   * import { extractCitations, stripMarkdownEmphasis } from "eyecite-ts"
+   * // markdown legal text: keep all defaults, also strip *emphasis*
+   * extractCitations(markdownText, { additionalCleaners: [stripMarkdownEmphasis] })
+   * ```
+   */
+  additionalCleaners?: Array<(text: string) => string>
+
+  /**
    * Custom regex patterns (overrides defaults).
    *
    * If provided, these patterns replace the default pattern set:
@@ -233,7 +249,11 @@ export function extractCitations(
   const startTime = performance.now()
 
   // Step 1: Clean text
-  const { cleaned, transformationMap, warnings } = cleanText(text, options?.cleaners)
+  const { cleaned, transformationMap, warnings } = cleanText(
+    text,
+    options?.cleaners,
+    options?.additionalCleaners,
+  )
 
   // Step 1.5: Detect footnote zones (opt-in)
   let cleanFootnoteMap: FootnoteMap | undefined

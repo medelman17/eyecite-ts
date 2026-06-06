@@ -502,3 +502,32 @@ export function normalizeTypography(text: string): string {
 export function stripDiacritics(text: string): string {
   return text.normalize("NFD").replace(/[\u0300-\u036F]/g, "")
 }
+
+/**
+ * Strip markdown emphasis markers (`*italic*`, `**bold**`, `***both***`) while
+ * keeping the emphasized text. For markdown legal text (e.g. LLM-drafted briefs
+ * where case names are emphasized: `*Leon v. Martinez*`), whose asterisks
+ * otherwise break case-name capture / `fullSpan`.
+ *
+ * Deliberately conservative so it never corrupts citations:
+ * - Star-pagination pincites are preserved (`at *3` \u2014 an asterisk followed by a
+ *   digit, or with no closing `*`, never matches).
+ * - Underscores are never touched (`_x_`, and blank locators like `[____]`).
+ * - Lone or space-flanked asterisks (`a * b`) and backslash-escaped pairs
+ *   (`\*x\*`) are left alone.
+ *
+ * NOT in the default pipeline \u2014 pass it via `additionalCleaners` (recommended;
+ * keeps the defaults) or `cleaners`. It changes length; position tracking is
+ * handled by `cleanText`'s TransformationMap. Each pattern uses a single bounded
+ * quantifier (ReDoS-safe). (#835)
+ *
+ * @example
+ * stripMarkdownEmphasis("see *Leon v. Martinez*, 84 N.Y.2d 83")
+ * // => "see Leon v. Martinez, 84 N.Y.2d 83"
+ */
+export function stripMarkdownEmphasis(text: string): string {
+  return text
+    .replace(/\*\*\*([^*\n]+?)\*\*\*/g, "$1")
+    .replace(/\*\*([^*\n]+?)\*\*/g, "$1")
+    .replace(/(?<![\\*])\*([^\s*][^*\n]*?[^\s*]|[^\s*])\*(?![*\d])/g, "$1")
+}
