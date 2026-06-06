@@ -31,14 +31,8 @@ import type { CaseComponentSpans } from "@/types/componentSpans"
 import { isPlausibleYear, parseDate, type StructuredDate } from "./dates"
 import { getReportersSync } from "@/data/reportersCache"
 import { inferCourtFromReporter } from "./courtInference"
-import { parsePincite, type PinciteInfo } from "./pincite"
 import { normalizeCourt } from "./courtNormalization"
-import {
-  isNonMetadataParenContent,
-  parseCaseParentheticalChain,
-  parseParenthetical,
-  type CaseParentheticalChain,
-} from "./caseParentheticals"
+import { parseCaseCitationPostfix } from "./casePostfix"
 
 export { parseParenthetical } from "./caseParentheticals"
 
@@ -462,113 +456,8 @@ const VOLUME_REPORTER_PAGE_REGEX_COMMA =
 /** Detects blank page placeholders (3+ underscores or dashes) */
 const BLANK_PAGE_REGEX = /^[_-]{3,}$/
 
-/** Extracts pincite (page reference after comma). Accepts optional "at "
- *  keyword, optional "*" prefix for star-pagination (NY Slip Op, Westlaw,
- *  Lexis, and other slip-opinion citations; see #191), and an optional
- *  trailing footnote suffix " n.14" / " nn.14-15" (see #202). */
-const PINCITE_REGEX =
-  /,\s*(?:at\s+)?(\*?\d+(?:\s*-\s*\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:\s*[-–—]\s*\d+)?)?)/d
-
-/** Matches parenthetical content */
-const PAREN_REGEX = /\(([^)]+)\)/
-
-/** Look-ahead pattern for parenthetical after token. Skips pincite text
- *  (including star-pagination) before the court/year parenthetical.
- *
- *  Pincite-skip prefix grammar mirrors the leading branch of
- *  LOOKAHEAD_PINCITE_REGEX so the same shapes are accepted:
- *    - `, [at] [pp.|pages] *N[-N]`  (comma form)
- *    - ` at [pp.|pages] *N[-N]`     (at form without comma; #552)
- *
- *  Before #552 only the comma form was accepted, so
- *  `491 S.W.2d 636 at 638 (1973)` lost the trailing `(1973)` paren —
- *  the leading ` at 638` could not be consumed and the regex failed.
- *  The at-form is repeatable too (rare in practice, but the comma form
- *  already was), so the entire prefix is wrapped in `(?:...)*`. */
-// Pincite separator admits `;` alongside `,` (#525). OCR'd older
-// opinions sometimes use semicolon between page and pincite
-// (`256 F.Supp. 572; 573-574 (court year)`); the existing comma-only
-// alternation blocked year+court extraction entirely.
-// OCR stray-number tolerance (#525): a single bare ` N` may sit between the
-// page/pincite and the year paren — a pincite with a missing comma
-// (`645 648 (4th Cir. 1942)`) or a space-separated OCR'd range
-// (`347 351 (1937)`, from `347-351`). The optional `(?:\s+\d+)?` skips it so
-// the `(court year)` paren is reachable. The mandatory trailing `(` is the
-// false-positive guard: a stray number followed by a reporter (a new
-// citation, `200 F.3d 2`) has no paren and still won't match.
-const LOOKAHEAD_PAREN_REGEX =
-  /^(?:(?:[,;]\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?|\s+at\s+(?:(?:pp?\.|pages?)\s*)?)\*?\d+(?:-\d+)?)*(?:\s+(?:n|note)\s*\.?\s*\d+)?(?:\s+\d+)?\s*\(([^)]+)\)/
-
-/** Extracts pincite from look-ahead text.
- *  Accepts five prefix forms:
- *    - ", 125"       (comma-separated, numeric)
- *    - ", at *1"     (comma + "at" keyword; common with star-pagination)
- *    - " at *2"      (whitespace + "at" keyword; NY Slip Op repeat form)
- *    - ", at p. 115" (CSM form with `p.` / `pp.` prefix; #236)
- *    - ", ¶ 12"      (paragraph-marker form; #204)
- *  The "*" prefix marks star-pagination (#191); a trailing " n.14" /
- *  " nn.14-15" footnote suffix is captured when present (#202). Paragraph
- *  forms (`¶ N` / `¶¶ N-M` / `para. N` / `paras. N-M`) are accepted in the
- *  capture; `parsePincite` routes them to the `paragraph` field (#204). */
-// Parallel-cite disambiguation: a real pincite is bounded by end-of-string,
-// sentence punctuation, a paren or bracket close, or whitespace NOT followed
-// by a capital letter (which would start a parallel cite's reporter token,
-// e.g., `, 198 A. 154` or `, 93 S. Ct. 705`). The anchored positive lookahead
-// prevents regex backtracking into shorter digit prefixes.
-//
-// Footnote suffix (#311): the suffix-bearing forms `n.3`, `note 3` accept
-// either `\s+` (the original `768 n.3` form) or `,\s+` (the California
-// `768, fn. 3` form). `fn` / `fns` are added to the alternation alongside
-// `n` / `nn` / `note`.
-//
-// Terminator class (#505): in addition to sentence punctuation and closing
-// brackets, accept `:` (block-quote intro), `[` (bracketed parallel cite),
-// `»` (OCR artifact), and the four common curly/straight quote characters
-// (`"`, `"`, `'`, `'`, `"`). Frequency ~6–10 per 1,000 cites in the wild.
-//
-// Page-prefix forms (#510): accept spelled-out `page` / `pages` in addition
-// to the abbreviated `p.` / `pp.` so full-case citations match the
-// short-form extractor's accepted prefixes (#344).
-//
-// Star-pagination range (#513): page body now allows `*` on BOTH ends of
-// the range (`*10-*11`), matching the short-form extractor (#201).
-//
-// Range separators (#516): tilde (`~`) is accepted as a range separator
-// alongside hyphen / en-dash / em-dash. Tilde shows up as an OCR artifact
-// in some scanned reporters and PDF dehyphenators.
-//
-// Footnote-only pincite (#515): a footnote reference without a preceding
-// page (`, n. 7` / `, note 7` / `, nn. 3-5` / `, fn. 4`) is accepted as
-// the trailing alternation. `parsePincite` surfaces this as
-// `pinciteInfo.footnote` with `page=undefined`. The leading `at` prefix is
-// allowed for symmetry with the page-bearing forms.
-// Leading separator accepts both comma and semicolon (#525). OCR'd
-// older opinions sometimes write `256 F.Supp. 572; 573-574 (court year)`
-// — the semicolon between page and pincite would otherwise block
-// pincite + year-paren extraction entirely.
-const LOOKAHEAD_PINCITE_REGEX =
-  /^(?:\s+at\s+(?:(?:pp?\.|pages?)\s*)?|[,;]\s*(?:at\s+(?:(?:pp?\.|pages?)\s*)?)?)(\*?\d+(?:\s*[-–—~]\s*\*?\d+)?(?:(?:\s+|,\s+)(?:nn?|fns?|note)\s*\.?\s*\d+(?:\s*[-–—~]\s*\d+)?)?|¶¶?\s*\d+(?:\s*[-–—~]\s*\d+)?|paras?\.?\s*\d+(?:\s*[-–—~]\s*\d+)?|(?:nn?|fns?|note)\s*\.?\s*\d+(?:\s*[-–—~]\s*\d+)?)(?=$|[.,:;)([\]»"'“”‘’†‡§¶©°]|\s(?![A-Z]))/d
-
 /** Citation boundary pattern (digit-period-space) */
 const CITATION_BOUNDARY_REGEX = /\d\.\s+/g
-
-/** Additional discrete pincite (`, NNN` continuation) after the primary
- *  pincite has been consumed (#247). Matches a comma + optional whitespace
- *  followed by a pincite body. Used in a loop after `LOOKAHEAD_PINCITE_REGEX`
- *  to collect `115, 153, 200` chains.
- *
- *  Excludes paragraph forms (`¶ 12` mixed with page numbers is exceedingly
- *  rare and would conflict with the citation core's lookahead boundary). */
-// Parallel-cite disambiguation: tighten the trailing whitespace branch to
-// reject `\s+[A-Z]` (a parallel-cite reporter token). Allow bracket close
-// `]` as a terminator so bracketed parallel pincites still capture.
-//
-// Terminator class mirrors LOOKAHEAD_PINCITE_REGEX (#505): accept `:`, `[`,
-// `»`, and curly/straight quotes as additional terminators.
-//
-// Range separators include tilde (#516).
-const ADDITIONAL_PINCITE_REGEX =
-  /^,\s*(\*?\d+(?:[-–—~]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—~]\d+)?)?)(?=$|[.,:;)([\]»"'“”‘’†‡§¶©°]|\s(?![A-Z]))/
 
 /** Standard "v." or "vs." case name format.
  *
@@ -2213,16 +2102,6 @@ export function extractCase(
   const page = isBlankPage ? undefined : Number.parseInt(pageStr, 10)
   const hasBlankPage = isBlankPage ? true : undefined
 
-  // Extract optional pincite (page reference after comma).
-  // Pattern: ", digits" (e.g., ", 125") or ", at *N" (star-pagination, #191).
-  // Route the numeric part through parsePincite so star-page rawText ("*2")
-  // doesn't blow up Number.parseInt.
-  const pinciteMatch = PINCITE_REGEX.exec(text)
-  let pinciteInfo: PinciteInfo | undefined = pinciteMatch
-    ? (parsePincite(pinciteMatch[1]) ?? undefined)
-    : undefined
-  let pincite = pinciteInfo?.page
-
   // Initialize component spans for core regex-extracted fields
   const spans: CaseComponentSpans = {}
 
@@ -2249,11 +2128,6 @@ export function extractCase(
     }
   }
 
-  // Pincite span (from the token-level pincite match)
-  if (pinciteMatch?.indices?.[1]) {
-    spans.pincite = spanFromGroupIndex(span.cleanStart, pinciteMatch.indices[1], transformationMap)
-  }
-
   // Initialize Phase 6 fields
   let year: number | undefined
   let court: string | undefined
@@ -2263,42 +2137,6 @@ export function extractCase(
   let scope: string | undefined
   let caseName: string | undefined
   let fullSpan: Span | undefined
-
-  // Extract parenthetical from token text
-  let parentheticalContent: string | undefined
-  // Shared parenResult for court/year span computation (used by both code paths)
-  let metaParenResult: ReturnType<typeof parseParenthetical> | undefined
-  // Whether the metadata paren was found in token text (vs lookahead)
-  let metaParenFromToken = false
-  // Match any parenthetical (with or without letters)
-  // When a nominative reporter is present, the first paren in token text is the
-  // nominative (e.g., "(2 Black)") — skip it so the year/court look-ahead runs.
-  const parenMatch = PAREN_REGEX.exec(text)
-  if (parenMatch && !nominativeVolume && !isNonMetadataParenContent(parenMatch[1])) {
-    parentheticalContent = parenMatch[1]
-    // Parse parenthetical using unified parser
-    metaParenResult = parseParenthetical(parentheticalContent)
-    metaParenFromToken = true
-    year = metaParenResult.year
-    court = metaParenResult.court
-    date = metaParenResult.date
-    disposition = metaParenResult.disposition
-    justices = metaParenResult.justices
-    scope = metaParenResult.scope
-  }
-
-  // NY Slip Op unpublished marker (#231): `(U)` (older) or `[U]` (newer)
-  // appears immediately after the page number and must be consumed *before*
-  // LOOKAHEAD_PAREN_REGEX runs, otherwise the regex captures `(U)` as the
-  // court parenthetical and produces `court = "U"`. Detected once and used
-  // both in the in-token paren path and the lookahead path.
-  let unpublished = false
-  if (cleanedText) {
-    const afterTokenForFlag = cleanedText.substring(span.cleanEnd)
-    if (/^\s*(?:\(U\)|\[U\])/.test(afterTokenForFlag)) {
-      unpublished = true
-    }
-  }
 
   // Parallel-cite chain skip: when this cite is followed by another citation
   // separated only by parallel-chain junk (commas, whitespace, digit/dash
@@ -2329,208 +2167,138 @@ export function extractCase(
     }
   }
 
-  // Look ahead in cleaned text for parenthetical after the token
-  // Tokenization patterns only capture volume-reporter-page, so parentheticals
-  // like "(1989)" or "(9th Cir. 2020)" are not in the token text.
-  if (cleanedText && !parentheticalContent) {
-    // The pincite scan below must still operate on the original afterToken
-    // (starting at span.cleanEnd) so `, 117` is parseable as this cite's
-    // pincite; the paren scan uses the post-chain window instead.
-    const afterToken = cleanedText.substring(span.cleanEnd)
-    let parenAfterToken =
-      postChainStart === span.cleanEnd
-        ? afterToken
-        : cleanedText.substring(postChainStart)
-    // Consume any leading (U)/[U] marker so the real court paren is found.
-    const unpubMatch = /^\s*(?:\(U\)|\[U\])/.exec(parenAfterToken)
-    if (unpubMatch) {
-      parenAfterToken = parenAfterToken.substring(unpubMatch[0].length)
-    }
-    // Georgia-style parenthesized parallel cite (#524): when this cite is the
-    // inside of a `( ... )` parallel wrapper, the chars immediately after the
-    // page are `) (year)`. Consume the single leading close-paren/bracket so
-    // the trailing year paren is reachable by LOOKAHEAD_PAREN_REGEX. Only
-    // strip ONE close-bracket — deeper nesting is too ambiguous to attribute
-    // safely. Repro: `275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)`.
-    const wrapperCloseMatch = /^\s*[)\]]/.exec(parenAfterToken)
-    if (wrapperCloseMatch) {
-      parenAfterToken = parenAfterToken.substring(wrapperCloseMatch[0].length)
-    }
-    const lookAheadMatch = LOOKAHEAD_PAREN_REGEX.exec(parenAfterToken)
-    if (lookAheadMatch && !isNonMetadataParenContent(lookAheadMatch[1])) {
-      parentheticalContent = lookAheadMatch[1]
-      // Parse parenthetical using unified parser
-      metaParenResult = parseParenthetical(parentheticalContent)
-      metaParenFromToken = false
-      year = metaParenResult.year
-      court = metaParenResult.court
-      date = metaParenResult.date
-      disposition = metaParenResult.disposition
-      justices = metaParenResult.justices
-      scope = metaParenResult.scope
-    }
+  const postfix = parseCaseCitationPostfix({
+    text: cleanedText,
+    tokenText: text,
+    tokenStart: span.cleanStart,
+    tokenEnd: span.cleanEnd,
+    postChainStart,
+    hasNominativeReporter: nominativeVolume !== undefined,
+  })
+  const pinciteInfo = postfix.pinciteInfo
+  const pincite = pinciteInfo?.page
+  const unpublished = postfix.unpublished
+  const metadataParenthetical = postfix.metadataParenthetical
+  const parentheticalChain = postfix.parentheticalChain
 
-    // Extract pincite from look-ahead independently of the parenthetical match.
-    // A citation can carry a pincite without a trailing court/year parenthetical,
-    // e.g. "2020 NY Slip Op 00001 at *2." — the second occurrence is classified
-    // as a full-case cite (because shortFormCase requires no page between reporter
-    // and "at"), but the pincite is still meaningful data. See #191.
-    if (pincite === undefined) {
-      const laPinciteMatch = LOOKAHEAD_PINCITE_REGEX.exec(afterToken)
-      if (laPinciteMatch) {
-        if (!pinciteInfo) {
-          pinciteInfo = parsePincite(laPinciteMatch[1]) ?? undefined
-        }
-        pincite = pinciteInfo?.page
-        // Pincite span: indices are relative to afterToken (which starts at span.cleanEnd)
-        if (laPinciteMatch.indices?.[1]) {
-          spans.pincite = spanFromGroupIndex(
-            span.cleanEnd,
-            laPinciteMatch.indices[1],
-            transformationMap,
-          )
-        }
-
-        // Multiple discrete pincites (#247): continue scanning for additional
-        // comma-separated pincites (`, 115, 153, 200`). Each entry is parsed
-        // through `parsePincite` so range / footnote / paragraph semantics
-        // inside the chain are preserved. The convenience `pincite` field
-        // continues to point at the primary; consumers walk `additionalPincites`.
-        if (pinciteInfo) {
-          const additionalPincites: PinciteInfo[] = []
-          let scanStart =
-            (laPinciteMatch.index ?? 0) + laPinciteMatch[0].length
-          while (scanStart < afterToken.length) {
-            const remainder = afterToken.substring(scanStart)
-            const addMatch = ADDITIONAL_PINCITE_REGEX.exec(remainder)
-            if (!addMatch) break
-            const addInfo = parsePincite(addMatch[1])
-            if (!addInfo) break
-            additionalPincites.push(addInfo)
-            scanStart += addMatch[0].length
-          }
-          if (additionalPincites.length > 0) {
-            pinciteInfo = { ...pinciteInfo, additionalPincites }
-          }
-        }
-      }
+  if (postfix.pinciteSpan) {
+    const pinciteOrig = resolveOriginalSpan(
+      {
+        cleanStart: postfix.pinciteSpan.start,
+        cleanEnd: postfix.pinciteSpan.end,
+      },
+      transformationMap,
+    )
+    spans.pincite = {
+      cleanStart: postfix.pinciteSpan.start,
+      cleanEnd: postfix.pinciteSpan.end,
+      originalStart: pinciteOrig.originalStart,
+      originalEnd: pinciteOrig.originalEnd,
     }
+  }
+
+  if (metadataParenthetical) {
+    year = metadataParenthetical.year
+    court = metadataParenthetical.court
+    date = metadataParenthetical.date
+    disposition = metadataParenthetical.disposition
+    justices = metadataParenthetical.justices
+    scope = metadataParenthetical.scope
   }
 
   // Classify chained parentheticals: extract disposition and explanatory content
   let parentheticals: Parenthetical[] | undefined
-  let parentheticalChain: CaseParentheticalChain | undefined
-  if (cleanedText) {
-    // Use postChainStart so fullSpan / chained-paren classification can see
-    // the shared trailing paren that sits past a parallel-cite chain.
-    parentheticalChain = parseCaseParentheticalChain(cleanedText, postChainStart)
-    // Skip first paren only if it yielded actual metadata (year/court/
-    // disposition/justices/scope). When the first paren is an explanatory
-    // parenthetical (`holding that...`, `emphasis added`), no metadata is
-    // extracted and the paren should fall through to be classified as
-    // explanatory and added to `parentheticals`. #431
-    const firstParenIsMetadata =
-      parentheticalContent &&
-      (year !== undefined ||
-        court !== undefined ||
-        disposition !== undefined ||
-        justices !== undefined ||
-        scope !== undefined)
-    const remaining = firstParenIsMetadata
-      ? parentheticalChain.parentheticals.slice(1)
-      : parentheticalChain.parentheticals
-    for (const node of remaining) {
-      if (node.kind === "metadata") {
-        // Accept court from later metadata parens if we don't have a real one.
-        // The primary parse can set court to the disposition text (e.g., "en banc")
-        // as a side effect of stripDateFromCourt, so treat that as unset.
-        if (node.court && (!court || court === disposition)) {
-          court = node.court
-        }
-        if (node.year && !year) {
-          year = node.year
-          date = node.date
-        }
-        if (node.disposition && !disposition) {
-          disposition = node.disposition
-        }
-        if (node.justices && !justices) {
-          justices = node.justices
-        }
-        if (node.scope && !scope) {
-          scope = node.scope
-        }
-      } else {
-        parentheticals ??= []
-        const parenOrig = resolveOriginalSpan(
-          { cleanStart: node.span.start, cleanEnd: node.span.end },
-          transformationMap,
-        )
-        parentheticals.push({
-          text: node.text,
-          type: node.type,
-          span: {
-            cleanStart: node.span.start,
-            cleanEnd: node.span.end,
-            originalStart: parenOrig.originalStart,
-            originalEnd: parenOrig.originalEnd,
-          },
-        })
+  for (const node of postfix.parentheticalsAfterPrimaryMetadata) {
+    if (node.kind === "metadata") {
+      // Accept court from later metadata parens if we don't have a real one.
+      // The primary parse can set court to the disposition text (e.g., "en banc")
+      // as a side effect of stripDateFromCourt, so treat that as unset.
+      if (node.court && (!court || court === disposition)) {
+        court = node.court
       }
+      if (node.year && !year) {
+        year = node.year
+        date = node.date
+      }
+      if (node.disposition && !disposition) {
+        disposition = node.disposition
+      }
+      if (node.justices && !justices) {
+        justices = node.justices
+      }
+      if (node.scope && !scope) {
+        scope = node.scope
+      }
+    } else {
+      parentheticals ??= []
+      const parenOrig = resolveOriginalSpan(
+        { cleanStart: node.span.start, cleanEnd: node.span.end },
+        transformationMap,
+      )
+      parentheticals.push({
+        text: node.text,
+        type: node.type,
+        span: {
+          cleanStart: node.span.start,
+          cleanEnd: node.span.end,
+          originalStart: parenOrig.originalStart,
+          originalEnd: parenOrig.originalEnd,
+        },
+      })
     }
   }
 
   // Metadata parenthetical span (the first paren that yielded court/year)
-  if (parentheticalChain && (court || year)) {
-    const metaParen = parentheticalContent
-      ? parentheticalChain.metadataParentheticals.find(
-          (node) => node.text === parentheticalContent,
-        )
-      : undefined
-    if (metaParen) {
-      const metaOrig = resolveOriginalSpan(
-        { cleanStart: metaParen.span.start, cleanEnd: metaParen.span.end },
+  if (metadataParenthetical && (court || year)) {
+    const metaOrig = resolveOriginalSpan(
+      {
+        cleanStart: metadataParenthetical.span.start,
+        cleanEnd: metadataParenthetical.span.end,
+      },
+      transformationMap,
+    )
+    spans.metadataParenthetical = {
+      cleanStart: metadataParenthetical.span.start,
+      cleanEnd: metadataParenthetical.span.end,
+      originalStart: metaOrig.originalStart,
+      originalEnd: metaOrig.originalEnd,
+    }
+
+    // Court and year spans from parseParenthetical content offsets.
+    // The content starts at metaParen.start + 1 (past the opening "(").
+    const contentStart = metadataParenthetical.span.start + 1
+    if (
+      metadataParenthetical.courtStart !== undefined &&
+      metadataParenthetical.courtEnd !== undefined
+    ) {
+      const courtCS = contentStart + metadataParenthetical.courtStart
+      const courtCE = contentStart + metadataParenthetical.courtEnd
+      const courtOrig = resolveOriginalSpan(
+        { cleanStart: courtCS, cleanEnd: courtCE },
         transformationMap,
       )
-      spans.metadataParenthetical = {
-        cleanStart: metaParen.span.start,
-        cleanEnd: metaParen.span.end,
-        originalStart: metaOrig.originalStart,
-        originalEnd: metaOrig.originalEnd,
+      spans.court = {
+        cleanStart: courtCS,
+        cleanEnd: courtCE,
+        originalStart: courtOrig.originalStart,
+        originalEnd: courtOrig.originalEnd,
       }
-
-      // Court and year spans from parseParenthetical content offsets.
-      // The content starts at metaParen.start + 1 (past the opening "(").
-      if (metaParenResult) {
-        const contentStart = metaParen.span.start + 1
-        if (metaParenResult.courtStart !== undefined) {
-          const courtCS = contentStart + metaParenResult.courtStart
-          const courtCE = contentStart + metaParenResult.courtEnd!
-          const courtOrig = resolveOriginalSpan(
-            { cleanStart: courtCS, cleanEnd: courtCE },
-            transformationMap,
-          )
-          spans.court = {
-            cleanStart: courtCS,
-            cleanEnd: courtCE,
-            originalStart: courtOrig.originalStart,
-            originalEnd: courtOrig.originalEnd,
-          }
-        }
-        if (metaParenResult.yearStart !== undefined) {
-          const yearCS = contentStart + metaParenResult.yearStart
-          const yearCE = contentStart + metaParenResult.yearEnd!
-          const yearOrig = resolveOriginalSpan(
-            { cleanStart: yearCS, cleanEnd: yearCE },
-            transformationMap,
-          )
-          spans.year = {
-            cleanStart: yearCS,
-            cleanEnd: yearCE,
-            originalStart: yearOrig.originalStart,
-            originalEnd: yearOrig.originalEnd,
-          }
-        }
+    }
+    if (
+      metadataParenthetical.yearStart !== undefined &&
+      metadataParenthetical.yearEnd !== undefined
+    ) {
+      const yearCS = contentStart + metadataParenthetical.yearStart
+      const yearCE = contentStart + metadataParenthetical.yearEnd
+      const yearOrig = resolveOriginalSpan(
+        { cleanStart: yearCS, cleanEnd: yearCE },
+        transformationMap,
+      )
+      spans.year = {
+        cleanStart: yearCS,
+        cleanEnd: yearCE,
+        originalStart: yearOrig.originalStart,
+        originalEnd: yearOrig.originalEnd,
       }
     }
   }
@@ -2542,38 +2310,30 @@ export function extractCase(
   // it first so it appears at order=0 in the chain — it semantically precedes
   // any later signals between separate parens.
   let subsequentHistoryEntries: SubsequentHistoryEntry[] | undefined
-  if (cleanedText && metaParenResult?.internalHistory && parentheticalChain) {
-    const metaParen = parentheticalContent
-      ? parentheticalChain.metadataParentheticals.find(
-          (node) => node.text === parentheticalContent,
-        )
-      : undefined
-    if (metaParen) {
-      const contentStart = metaParen.span.start + 1
-      const ih = metaParenResult.internalHistory
-      const sigCleanStart = contentStart + ih.span.start
-      const sigCleanEnd = contentStart + ih.span.end
-      const { originalStart: sigOrigStart, originalEnd: sigOrigEnd } =
-        resolveOriginalSpan(
-          { cleanStart: sigCleanStart, cleanEnd: sigCleanEnd },
-          transformationMap,
-        )
-      subsequentHistoryEntries ??= []
-      subsequentHistoryEntries.push({
-        signal: ih.signal,
-        rawSignal: ih.rawSignal,
-        signalSpan: {
-          cleanStart: sigCleanStart,
-          cleanEnd: sigCleanEnd,
-          originalStart: sigOrigStart,
-          originalEnd: sigOrigEnd,
-        },
-        order: 0,
-      })
-    }
+  if (metadataParenthetical?.internalHistory) {
+    const contentStart = metadataParenthetical.span.start + 1
+    const ih = metadataParenthetical.internalHistory
+    const sigCleanStart = contentStart + ih.span.start
+    const sigCleanEnd = contentStart + ih.span.end
+    const { originalStart: sigOrigStart, originalEnd: sigOrigEnd } = resolveOriginalSpan(
+      { cleanStart: sigCleanStart, cleanEnd: sigCleanEnd },
+      transformationMap,
+    )
+    subsequentHistoryEntries ??= []
+    subsequentHistoryEntries.push({
+      signal: ih.signal,
+      rawSignal: ih.rawSignal,
+      signalSpan: {
+        cleanStart: sigCleanStart,
+        cleanEnd: sigCleanEnd,
+        originalStart: sigOrigStart,
+        originalEnd: sigOrigEnd,
+      },
+      order: 0,
+    })
   }
-  const historyNodes = parentheticalChain?.historySignals ?? []
-  if (cleanedText && historyNodes.length > 0) {
+  const historyNodes = parentheticalChain.historySignals
+  if (historyNodes.length > 0) {
     for (const node of historyNodes) {
       subsequentHistoryEntries ??= []
       const { originalStart: sigOrigStart, originalEnd: sigOrigEnd } = resolveOriginalSpan(
@@ -2725,7 +2485,7 @@ export function extractCase(
 
       // Calculate fullSpan: case name start through parenthetical end
       // Reuse parentheticalChain from classify loop to avoid scanning twice
-      const parenEnd = parentheticalChain?.lastParenthetical?.span.end ?? span.cleanEnd
+      const parenEnd = postfix.lastParenthetical?.span.end ?? span.cleanEnd
       const fullCleanStart = caseNameResult.nameStart
       const fullCleanEnd = parenEnd
 
@@ -2766,25 +2526,17 @@ export function extractCase(
   // Cites without a preceding sibling (e.g., a standalone `500 F.2d 123 (2020)`
   // with no caption) intentionally do not get a fullSpan — that's existing
   // contract: "no case name → no fullSpan".
-  const hasCloseParallelPrev =
-    caseNameLookback !== undefined && caseNameLookback < 30
-  if (
-    !fullSpan &&
-    hasCloseParallelPrev &&
-    parentheticalChain?.lastParenthetical
-  ) {
-    const lastParen = parentheticalChain.lastParenthetical
+  const hasCloseParallelPrev = caseNameLookback !== undefined && caseNameLookback < 30
+  if (!fullSpan && hasCloseParallelPrev && postfix.lastParenthetical) {
+    const lastParen = postfix.lastParenthetical
     if (lastParen.span.end > span.cleanEnd) {
       const fullCleanStart = span.cleanStart
       const fullCleanEnd = lastParen.span.end
       fullSpan = {
         cleanStart: fullCleanStart,
         cleanEnd: fullCleanEnd,
-        originalStart:
-          transformationMap.cleanToOriginal.get(fullCleanStart) ??
-          fullCleanStart,
-        originalEnd:
-          transformationMap.cleanToOriginal.get(fullCleanEnd) ?? fullCleanEnd,
+        originalStart: transformationMap.cleanToOriginal.get(fullCleanStart) ?? fullCleanStart,
+        originalEnd: transformationMap.cleanToOriginal.get(fullCleanEnd) ?? fullCleanEnd,
       }
     }
   }
