@@ -28,6 +28,15 @@ const PLAUSIBLE_YEAR = String.raw`(?:1[789]\d{2}|2[01]\d{2})`
 // introduced as `held in No. 2010-NMSC-007`.
 const NOT_AFTER_DOCKET_PREFIX = String.raw`(?<!(?:Case|Cause|Docket)\s+No\.\s+[A-Za-z0-9-]{0,40})`
 
+// #831 — Slip Op / WL locator slots accept a bracketed blank placeholder
+// (`[____]`, `[--------]`) in addition to digits. Slip opinions are often
+// circulated before the official document number is assigned, with the number
+// left as a bracketed underscore/dash run. Requiring digits caused the whole
+// candidate to fail to tokenize and be dropped — orphaning its `(quoting …)`
+// parenthetical and de-resolving a following `Id.`. The single bounded char
+// class `[_-]{2,}` keeps the pattern ReDoS-safe (no nested quantifiers).
+const BLANK_LOCATOR = String.raw`\[[_-]{2,}\]`
+
 export const neutralPatterns: Pattern[] = [
   {
     // Mississippi 4-segment form: year-caseType-number-appellateTrack. Listed
@@ -86,17 +95,21 @@ export const neutralPatterns: Pattern[] = [
     // form is malformed and intentionally not matched).
     id: "ny-slip-op",
     regex: new RegExp(
-      `\\b(${PLAUSIBLE_YEAR})\\s+N\\.?Y\\.?\\s+Slip\\s+Op\\.?\\s+(\\d+)(\\((?:U|UV)\\)|\\[U\\])?`,
+      `\\b(${PLAUSIBLE_YEAR})\\s+N\\.?Y\\.?\\s+Slip\\s+Op\\.?\\s+(\\d+|${BLANK_LOCATOR})(\\((?:U|UV)\\)|\\[U\\])?`,
       "g",
     ),
     description:
-      'NY Slip Op vendor-neutral citations (e.g., "2024 NY Slip Op 51234", "2020 NY Slip Op 51234(U)", "2023 N.Y. Slip Op. 03165")',
+      'NY Slip Op vendor-neutral citations (e.g., "2024 NY Slip Op 51234", "2020 NY Slip Op 51234(U)", "2023 N.Y. Slip Op. 03165", "2021 N.Y. Slip Op. [____]" #831)',
     type: "neutral",
   },
   {
     id: "westlaw",
-    regex: /\b(\d{4})\s+WL\s+(\d+)\b/g,
-    description: 'WestLaw citations (e.g., "2021 WL 123456")',
+    // #831 — locator accepts a bracketed blank (`2024 WL [____]`) in addition
+    // to digits. The trailing `\b` lives on the numeric branch only: a `]`
+    // followed by whitespace/EOL is two non-word chars, so an outer `\b` would
+    // reject the bracketed form. `BLANK_LOCATOR` is self-delimited by its `]`.
+    regex: new RegExp(`\\b(\\d{4})\\s+WL\\s+(\\d+\\b|${BLANK_LOCATOR})`, "g"),
+    description: 'WestLaw citations (e.g., "2021 WL 123456", "2024 WL [____]" #831)',
     type: "neutral",
   },
   {
