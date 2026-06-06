@@ -1,6 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest"
 import { loadReporters } from "@/data/reporters"
 import {
+  applyCasePostfixSemantics,
+  createCaseCitationDraftFromCore,
   finalizeCaseCitationDraft,
   type CaseCitationDraft,
 } from "@/extract/caseCitationDraft"
@@ -73,5 +75,110 @@ describe("case citation draft finalization", () => {
     expect(citation.page).toBeUndefined()
     expect(citation.normalizedReporter).toBeUndefined()
     expect(citation.confidence).toBe(0.5)
+  })
+
+  it("creates a draft from parsed citation core syntax", () => {
+    const volumeSpan = { cleanStart: 10, cleanEnd: 13, originalStart: 10, originalEnd: 13 }
+    const draft = createCaseCitationDraftFromCore({
+      text: "500 F.2d 123",
+      tokenSpan: { cleanStart: 10, cleanEnd: 22 },
+      core: {
+        volume: 500,
+        reporter: "F.2d",
+        page: 123,
+        nominativeVolume: 2,
+        nominativeReporter: "Black",
+        spans: { volume: volumeSpan },
+      },
+    })
+
+    expect(draft).toEqual({
+      text: "500 F.2d 123",
+      tokenSpan: { cleanStart: 10, cleanEnd: 22 },
+      volume: 500,
+      reporter: "F.2d",
+      page: 123,
+      nominativeVolume: 2,
+      nominativeReporter: "Black",
+      spans: { volume: volumeSpan },
+    })
+  })
+
+  it("applies postfix semantics to a draft and merges component spans", () => {
+    const volumeSpan = { cleanStart: 0, cleanEnd: 3, originalStart: 0, originalEnd: 3 }
+    const pinciteSpan = { cleanStart: 14, cleanEnd: 17, originalStart: 14, originalEnd: 17 }
+    const yearSpan = { cleanStart: 28, cleanEnd: 32, originalStart: 28, originalEnd: 32 }
+    const draft: CaseCitationDraft = {
+      text: "500 F.2d 123, 125",
+      tokenSpan: { cleanStart: 0, cleanEnd: 18 },
+      volume: 500,
+      reporter: "F.2d",
+      page: 123,
+      spans: { volume: volumeSpan },
+    }
+
+    const next = applyCasePostfixSemantics(draft, {
+      pincite: 125,
+      pinciteInfo: { page: 125, raw: "125" },
+      unpublished: true,
+      court: "9th Cir.",
+      year: 2020,
+      date: { iso: "2020", parsed: { year: 2020 } },
+      disposition: "en banc",
+      justices: ["Smith"],
+      scope: "in_part",
+      parentheticals: [
+        {
+          text: "holding that X",
+          type: "holding",
+          span: { cleanStart: 34, cleanEnd: 50, originalStart: 34, originalEnd: 50 },
+        },
+      ],
+      subsequentHistoryEntries: [
+        {
+          signal: "affirmed",
+          rawSignal: "aff'd",
+          signalSpan: { cleanStart: 52, cleanEnd: 57, originalStart: 52, originalEnd: 57 },
+          order: 0,
+        },
+      ],
+      spans: {
+        pincite: pinciteSpan,
+        year: yearSpan,
+      },
+    })
+
+    expect(next).toEqual({
+      ...draft,
+      pincite: 125,
+      pinciteInfo: { page: 125, raw: "125" },
+      unpublished: true,
+      court: "9th Cir.",
+      year: 2020,
+      date: { iso: "2020", parsed: { year: 2020 } },
+      disposition: "en banc",
+      justices: ["Smith"],
+      scope: "in_part",
+      parentheticals: [
+        {
+          text: "holding that X",
+          type: "holding",
+          span: { cleanStart: 34, cleanEnd: 50, originalStart: 34, originalEnd: 50 },
+        },
+      ],
+      subsequentHistoryEntries: [
+        {
+          signal: "affirmed",
+          rawSignal: "aff'd",
+          signalSpan: { cleanStart: 52, cleanEnd: 57, originalStart: 52, originalEnd: 57 },
+          order: 0,
+        },
+      ],
+      spans: {
+        volume: volumeSpan,
+        pincite: pinciteSpan,
+        year: yearSpan,
+      },
+    })
   })
 })

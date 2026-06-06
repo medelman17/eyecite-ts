@@ -17,9 +17,12 @@
 import type { Token } from "@/tokenize"
 import type { FullCaseCitation } from "@/types/citation"
 import type { Span, TransformationMap } from "@/types/span"
-import type { CaseComponentSpans } from "@/types/componentSpans"
 import type { StructuredDate } from "./dates"
-import { finalizeCaseCitationDraft } from "./caseCitationDraft"
+import {
+  applyCasePostfixSemantics,
+  createCaseCitationDraftFromCore,
+  finalizeCaseCitationDraft,
+} from "./caseCitationDraft"
 import { parseCaseCitationCore } from "./caseCore"
 import { parseCaseCitationEnvelopeContext } from "./caseEnvelope"
 import { extractCaseName } from "./caseNameScanner"
@@ -106,13 +109,7 @@ export function extractCase(
   const { text, span } = token
 
   const core = parseCaseCitationCore({ token, transformationMap })
-  const volume = core.volume
-  const reporter = core.reporter
-  const page = core.page
-  const nominativeVolume = core.nominativeVolume
-  const nominativeReporter = core.nominativeReporter
-  const hasBlankPage = core.hasBlankPage
-  const spans: CaseComponentSpans = { ...core.spans }
+  let draft = createCaseCitationDraftFromCore({ text, tokenSpan: span, core })
 
   // Initialize Phase 6 fields
   let year: number | undefined
@@ -133,24 +130,16 @@ export function extractCase(
     tokenStart: span.cleanStart,
     tokenEnd: span.cleanEnd,
     postChainStart: envelopeContext.postChainStart,
-    hasNominativeReporter: nominativeVolume !== undefined,
+    hasNominativeReporter: draft.nominativeVolume !== undefined,
   })
   const postfixSemantics = interpretCaseCitationPostfix(postfix, transformationMap)
-  Object.assign(spans, postfixSemantics.spans)
+  draft = applyCasePostfixSemantics(draft, postfixSemantics)
 
-  const pinciteInfo = postfixSemantics.pinciteInfo
-  const pincite = postfixSemantics.pincite
-  const unpublished = postfixSemantics.unpublished
-  year = postfixSemantics.year
-  court = postfixSemantics.court
-  date = postfixSemantics.date
-  const disposition = postfixSemantics.disposition
-  const justices = postfixSemantics.justices
-  const scope = postfixSemantics.scope
-  const parentheticals = postfixSemantics.parentheticals
-  const subsequentHistoryEntries = postfixSemantics.subsequentHistoryEntries
+  year = draft.year
+  court = draft.court
+  date = draft.date
 
-  const initialReporterSemantics = interpretCaseReporterCourtSemantics(reporter, court)
+  const initialReporterSemantics = interpretCaseReporterCourtSemantics(draft.reporter, court)
   court = initialReporterSemantics.court
 
   // Phase 6: Extract case name via backward search.
@@ -173,7 +162,7 @@ export function extractCase(
         year,
         court,
         date,
-        hasExistingYearSpan: spans.year !== undefined,
+        hasExistingYearSpan: draft.spans.year !== undefined,
         transformationMap,
       })
       caseName = caseNameSemantics.caseName
@@ -181,7 +170,7 @@ export function extractCase(
       court = caseNameSemantics.court
       date = caseNameSemantics.date
       fullSpan = caseNameSemantics.fullSpan
-      Object.assign(spans, caseNameSemantics.spans)
+      Object.assign(draft.spans, caseNameSemantics.spans)
     }
   }
 
@@ -219,32 +208,19 @@ export function extractCase(
     proceduralPrefix = partySemantics.proceduralPrefix
     signal = partySemantics.signal
     adminParenthetical = partySemantics.adminParenthetical
-    Object.assign(spans, partySemantics.spans)
+    Object.assign(draft.spans, partySemantics.spans)
   }
 
   return finalizeCaseCitationDraft(
     {
+      ...draft,
       text,
       tokenSpan: span,
-      volume,
-      reporter,
-      page,
-      nominativeVolume,
-      nominativeReporter,
-      pincite,
-      pinciteInfo,
       court,
       year,
-      hasBlankPage,
       date,
       fullSpan,
       caseName,
-      disposition,
-      parentheticals,
-      subsequentHistoryEntries,
-      unpublished,
-      justices,
-      scope,
       adminParenthetical,
       plaintiff,
       plaintiffNormalized,
@@ -252,7 +228,6 @@ export function extractCase(
       defendantNormalized,
       proceduralPrefix,
       signal,
-      spans,
     },
     transformationMap,
   )

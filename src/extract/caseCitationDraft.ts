@@ -2,6 +2,8 @@ import type { Token } from "@/tokenize"
 import type { CaseComponentSpans } from "@/types/componentSpans"
 import type { FullCaseCitation } from "@/types/citation"
 import { resolveOriginalSpan, type Span, type TransformationMap } from "@/types/span"
+import type { CaseCitationCoreSyntax } from "./caseCore"
+import type { CasePostfixSemantics } from "./casePostfixSemantics"
 import type { StructuredDate } from "./dates"
 import { interpretCaseReporterSemantics } from "./caseReporterSemantics"
 
@@ -37,6 +39,58 @@ export interface CaseCitationDraft {
   proceduralPrefix?: string
   signal?: FullCaseCitation["signal"]
   spans: CaseComponentSpans
+}
+
+export interface CreateCaseCitationDraftFromCoreInput {
+  text: string
+  tokenSpan: CaseTokenSpan
+  core: CaseCitationCoreSyntax
+}
+
+export function createCaseCitationDraftFromCore({
+  text,
+  tokenSpan,
+  core,
+}: CreateCaseCitationDraftFromCoreInput): CaseCitationDraft {
+  return {
+    text,
+    tokenSpan,
+    volume: core.volume,
+    reporter: core.reporter,
+    ...(core.page !== undefined ? { page: core.page } : {}),
+    ...(core.nominativeVolume !== undefined ? { nominativeVolume: core.nominativeVolume } : {}),
+    ...(core.nominativeReporter !== undefined
+      ? { nominativeReporter: core.nominativeReporter }
+      : {}),
+    ...(core.hasBlankPage ? { hasBlankPage: true as const } : {}),
+    spans: { ...core.spans },
+  }
+}
+
+export function applyCasePostfixSemantics(
+  draft: CaseCitationDraft,
+  semantics: CasePostfixSemantics,
+): CaseCitationDraft {
+  return {
+    ...draft,
+    ...(semantics.pincite !== undefined ? { pincite: semantics.pincite } : {}),
+    ...(semantics.pinciteInfo !== undefined ? { pinciteInfo: semantics.pinciteInfo } : {}),
+    unpublished: semantics.unpublished,
+    ...(semantics.court !== undefined ? { court: semantics.court } : {}),
+    ...(semantics.year !== undefined ? { year: semantics.year } : {}),
+    ...(semantics.date !== undefined ? { date: semantics.date } : {}),
+    ...(semantics.disposition !== undefined ? { disposition: semantics.disposition } : {}),
+    ...(semantics.justices !== undefined ? { justices: semantics.justices } : {}),
+    ...(semantics.scope !== undefined ? { scope: semantics.scope } : {}),
+    ...(semantics.parentheticals !== undefined ? { parentheticals: semantics.parentheticals } : {}),
+    ...(semantics.subsequentHistoryEntries !== undefined
+      ? { subsequentHistoryEntries: semantics.subsequentHistoryEntries }
+      : {}),
+    spans: {
+      ...draft.spans,
+      ...semantics.spans,
+    },
+  }
 }
 
 export function finalizeCaseCitationDraft(
