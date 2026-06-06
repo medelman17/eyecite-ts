@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { extractCitations } from "@/extract"
-import type { Citation } from "@/types/citation"
+import type { Citation, FullCaseCitation } from "@/types/citation"
 import type { Span } from "@/types/span"
 import { toDurableLocator, toDurableLocators } from "@/utils/durableLocator"
 import { tokenBoundedIndexes } from "@/utils/tokenBounded"
@@ -115,6 +115,31 @@ describe("toDurableLocator", () => {
     const cite = extractCitations(text)[0]!
     const wrong = "z".repeat(text.length + 10)
     expect(() => toDurableLocator(cite, wrong)).toThrow(/does not equal/)
+  })
+
+  it("clamps the clean-space prefix at a real sentence boundary", () => {
+    // Clean-space path WITH a sentence terminator before the citation: the prefix
+    // must stop at the sentence start ("The "), not bleed into "Prior sent.".
+    const cite = fakeCitation(
+      { cleanStart: 16, cleanEnd: 19, originalStart: 16, originalEnd: 19 },
+      "XYZ",
+    )
+    const loc = toDurableLocator(cite, "Prior sent. The XYZ thing.", { space: "clean" })
+    expect(loc.quote.exact).toBe("XYZ")
+    expect(loc.quote.prefix).toBe("The ")
+    expect(loc.quote.prefix).not.toContain("Prior")
+  })
+
+  it("computes position and occurrence off the fullSpan when fullSpan:true", () => {
+    const text = "Smith v. Jones, 100 F.2d 50, 55 (1990)."
+    const cite = extractCitations(text)[0] as FullCaseCitation
+    expect(cite.fullSpan).toBeDefined()
+    const loc = toDurableLocator(cite, text, { fullSpan: true })
+    expect(loc.position).toEqual({
+      start: cite.fullSpan!.originalStart,
+      end: cite.fullSpan!.originalEnd,
+    })
+    expect(loc.occurrence).toBe(0)
   })
 })
 
