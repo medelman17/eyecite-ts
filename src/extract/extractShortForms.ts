@@ -163,9 +163,12 @@ function buildParentheticalNode(
 /**
  * Section-style pincite immediately after an `Id.` (`Id. § 1983(c)`), which the
  * `Id.` regex does not capture (#847). `^`-anchored, so it fires only when the
- * `§` directly follows the citation core — mirroring the resolver's former
- * 20-char §-peek; the 40-char slice just bounds the value scan. Returns the
- * locator after `§`/`§§` (e.g. `1983(c)`, `201`, `1-5`) or `undefined`.
+ * `§` directly follows the citation core. The 20-char slice matches the
+ * resolver's former §-peek window EXACTLY, so detection is byte-identical to
+ * the behavior this replaces; a real `§` lands within ~3 chars (the default
+ * cleaner collapses whitespace) and realistic section locators fit well inside
+ * 20. Returns the locator after `§`/`§§` (e.g. `1983(c)`, `201`, `1-5`) or
+ * `undefined`.
  */
 const TRAILING_SECTION_REGEX = /^\s*,?\s*§§?\s*(\d+(?:\([^)]*\))*(?:[-–—]\d+)?)/
 
@@ -174,7 +177,7 @@ function extractTrailingSectionPincite(
   fromCleanPos: number,
 ): string | undefined {
   if (!cleanedText) return undefined
-  const m = TRAILING_SECTION_REGEX.exec(cleanedText.slice(fromCleanPos, fromCleanPos + 40))
+  const m = TRAILING_SECTION_REGEX.exec(cleanedText.slice(fromCleanPos, fromCleanPos + 20))
   return m ? m[1] : undefined
 }
 

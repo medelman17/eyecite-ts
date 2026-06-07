@@ -34,4 +34,26 @@ describe("Issue #847: Id. sectionPincite terminal", () => {
     const id = cites.find((c) => c.type === "id")!
     expect(id.resolution?.resolvedTo).toBe(cites.indexOf(statute))
   })
+
+  // Section-shape variants — lock the regex branches against future drift.
+  it("captures a double-§ range: Id. §§ 1-5", () => {
+    const id = extractCitations("29 U.S.C. §§ 1-5. Id. §§ 1-5.").find(
+      (c) => c.type === "id",
+    ) as IdCitation
+    expect(id.sectionPincite).toBe("1-5")
+  })
+
+  it("captures through the post-period-comma branch: Id., § 5", () => {
+    const id = extractCitations("29 U.S.C. § 5. Id., § 5.").find(
+      (c) => c.type === "id",
+    ) as IdCitation
+    expect(id.sectionPincite).toBe("5")
+  })
+
+  it("captures a bare section number: Id. § 5", () => {
+    const id = extractCitations("29 U.S.C. § 5. Id. § 5.").find(
+      (c) => c.type === "id",
+    ) as IdCitation
+    expect(id.sectionPincite).toBe("5")
+  })
 })
