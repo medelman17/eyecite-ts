@@ -416,12 +416,9 @@ export class DocumentResolver {
     // → statute; `Id. at 27` → case).
     const hasPincite =
       citation.pincite !== undefined || citation.pinciteInfo !== undefined
-    const tailHasSection = /^\s*[,]?\s*§§?\s*\d/.test(
-      this.cleanedText.substring(
-        citation.span.cleanEnd,
-        Math.min(this.cleanedText.length, citation.span.cleanEnd + 20),
-      ),
-    )
+    // #847: read the section-pincite terminal emitted at extraction time
+    // rather than re-peeking raw text after `Id.`.
+    const tailHasSection = citation.sectionPincite !== undefined
     const preferredFamily =
       hasPincite || tailHasSection ? this.getIdPreferredFamily(citation) : null
     const idQuoteZone = isInZone(citation.span.originalStart, this.quoteZones)
@@ -627,18 +624,12 @@ export class DocumentResolver {
 
   /**
    * Determines whether `Id.`'s pincite shape implies a case or statute
-   * antecedent. We peek at the cleaned text immediately after `Id.`'s span
-   * end because the regex in `extractIdCitation` only captures page-style
-   * pincites (`at NNN`, `¶ NNN`); a section-style pincite (`§ NNN`) lives
-   * in the raw text but not on the IdCitation object.
+   * antecedent. A section-style pincite (`Id. § 1983`) is captured at
+   * extraction time as `sectionPincite` (#847), so we read that structured
+   * field instead of re-peeking raw text; page/paragraph/bare `Id.` → case.
    */
   private getIdPreferredFamily(citation: IdCitation): CitationFamily {
-    // Look at up to 20 chars after Id.'s span end for a `§` token.
-    const start = citation.span.cleanEnd
-    const end = Math.min(this.cleanedText.length, start + 20)
-    const tail = this.cleanedText.substring(start, end)
-    if (/^\s*[,]?\s*§§?\s*\d/.test(tail)) return "statute"
-    return "case"
+    return citation.sectionPincite !== undefined ? "statute" : "case"
   }
 
   /**
