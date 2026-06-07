@@ -38,24 +38,7 @@ import {
   extractTreatise,
   extractTreaty,
 } from "@/extract"
-import type { Pattern } from "@/patterns"
-import {
-  canonPatterns,
-  casePatterns,
-  constitutionalPatterns,
-  docketPatterns,
-  federalRulePatterns,
-  journalPatterns,
-  legislativeMaterialPatterns,
-  localOrdinancePatterns,
-  neutralPatterns,
-  secondaryAuthorityPatterns,
-  sessionLawPatterns,
-  shortFormPatterns,
-  stateRulePatterns,
-  statutePatterns,
-  treatyPatterns,
-} from "@/patterns"
+import { orderedPatterns, type Pattern } from "@/patterns"
 import { parseBody } from "./statutes/parseBody"
 import { tokenize } from "@/tokenize"
 import type {
@@ -297,35 +280,13 @@ export function extractCitations(
   }
 
   // Step 2: Tokenize (synchronous)
-  // Note: Pattern order matters for deduplication - more specific patterns first
-  // USC and CFR patterns are placed BEFORE casePatterns so the broad
-  // state-reporter regex (which matches `42 USC 1983` as vol-reporter-page)
-  // is subsumed by the more specific federal-statute match. Without this,
-  // `42 USC 1983` mis-types as `case`. #428
-  const federalStatutePatterns = statutePatterns.filter(
-    (p) => p.id === "usc" || p.id === "cfr" || p.id === "irc",
-  )
-  const otherStatutePatterns = statutePatterns.filter(
-    (p) => p.id !== "usc" && p.id !== "cfr" && p.id !== "irc",
-  )
-  const allPatterns = options?.patterns || [
-    ...neutralPatterns, // Most specific (year-based format)
-    ...sessionLawPatterns, // State session laws — anchored by "Stats." / "Nev. Stat." (#350, #779)
-    ...treatyPatterns, // Treaty series — anchored by "T.I.A.S."/"U.N.T.S."/"U.S.T." (#309)
-    ...legislativeMaterialPatterns, // Committee reports + Cong. Rec. — anchored by "Rep. No."/"Cong. Rec." (#308)
-    ...localOrdinancePatterns, // Municipal ordinances — anchored by "CCCO §" (#778)
-    ...canonPatterns, // Judicial-conduct canons — anchored by "Canon N" (#310)
-    ...docketPatterns, // Docket-number citations (anchored by "No. ")
-    ...shortFormPatterns, // Short-form (requires " at " keyword)
-    ...federalRulePatterns, // Fed. R. Civ. P. etc. — before casePatterns (#576, #582)
-    ...stateRulePatterns, // I.R.C.P., N.C. R. App. P., SCACR, RCFC — before casePatterns (#636)
-    ...secondaryAuthorityPatterns, // Restatement / treatise / A.L.R. — before casePatterns (#578, #579, #581)
-    ...federalStatutePatterns, // USC/CFR/IRC — before casePatterns (#428)
-    ...casePatterns, // Case citations (reporter-specific)
-    ...constitutionalPatterns, // Constitutional citations (more specific than statutes)
-    ...otherStatutePatterns, // State statutes (code-specific)
-    ...journalPatterns, // Least specific (broad pattern)
-  ]
+  // `orderedPatterns` is the single source of truth for the pattern set and its
+  // priority order (#844). The order is load-bearing: dedup below derives each
+  // pattern's priority from its first-occurrence index, so on an overlap the
+  // earliest-listed (most-specific) pattern wins — e.g. USC/CFR before the broad
+  // case-reporter regex so `42 USC 1983` doesn't mis-type as `case` (#428). See
+  // src/patterns/grammar.ts. Callers may override via `options.patterns`.
+  const allPatterns = options?.patterns || orderedPatterns
   const tokens = tokenize(cleaned, allPatterns)
 
   // Step 3: Deduplicate overlapping tokens via priority-aware subsumption.
