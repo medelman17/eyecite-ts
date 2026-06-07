@@ -201,9 +201,9 @@ export interface ExtractOptions {
    *   top-level peer, so a later case short form can still resolve to a case
    *   first cited in a parenthetical (Bluebook Rule 10.9(a)).
    * - `true`: the nested cite is REMOVED from the top-level array and reachable
-   *   only via its host's `Parenthetical.citations` (or `byId`) — the resolver
-   *   and the cross-citation groupers no longer treat it as a top-level
-   *   candidate.
+   *   only by traversing its host's `Parenthetical.citations` (it is then absent
+   *   from `byId(result)`) — the resolver and the cross-citation groupers no
+   *   longer treat it as a top-level candidate.
    *
    * Either way, `Id.`/`supra` never bind to a paren-child (Rule 4.1/4.2) — that
    * exclusion lives in the resolver and is independent of this flag.

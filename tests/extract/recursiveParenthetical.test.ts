@@ -115,5 +115,72 @@ describe("recursive Parenthetical (#851)", () => {
       expect(child?.reporter).toBe("F.2d")
       expect(child?.page).toBe(1)
     })
+
+    it("nests multiple children of one parenthetical in document order", () => {
+      const text =
+        "Smith v. Jones, 200 F.3d 100 (2d Cir. 2000) (citing Doe v. City, 100 F.2d 1, and Roe v. Town, 5 F.3d 9)."
+      const citations = extractCitations(text)
+      const smith = citations.find(
+        (c) => c.type === "case" && (c as FullCaseCitation).caseName === "Smith v. Jones",
+      ) as FullCaseCitation
+      const children = (smith.parentheticals?.[0]?.citations ?? []) as FullCaseCitation[]
+      expect(children.map((c) => c.caseName)).toEqual(["Doe v. City", "Roe v. Town"])
+    })
+
+    it("nests a non-case child (statute) and, under the flag, removes it from the top level", () => {
+      const text = "Smith v. State, 100 F.2d 50 (1990) (applying 42 U.S.C. § 1983)."
+
+      const additive = extractCitations(text)
+      expect(additive.some((c) => c.type === "statute")).toBe(true) // top-level by default
+      const host = additive.find((c) => c.type === "case") as FullCaseCitation
+      expect(host.parentheticals?.[0]?.citations?.[0]?.type).toBe("statute")
+
+      const strict = extractCitations(text, { excludeParentheticalChildren: true })
+      expect(strict.some((c) => c.type === "statute")).toBe(false) // removed from top level
+      expect((strict[0] as FullCaseCitation).parentheticals?.[0]?.citations?.[0]?.type).toBe(
+        "statute",
+      )
+    })
+  })
+
+  describe("doctrinal resolution (Bluebook Rules 4.1 / 10.9(a))", () => {
+    const QUOTE_THEN_ID =
+      "Smith v. Jones, 200 F.3d 100 (2d Cir. 2000) (quoting Doe v. City, 100 F.2d 1). Id. at 110."
+    const QUOTE_THEN_SHORTFORM =
+      "Smith v. Jones, 200 F.3d 100 (2d Cir. 2000) (quoting Doe v. City, 100 F.2d 1). Doe, 100 F.2d at 7."
+
+    it("Rule 4.1 — Id. binds to the host even when the paren-child is present (default)", () => {
+      const cites = extractCitations(QUOTE_THEN_ID, { resolve: true }) as ResolvedCitation[]
+      // Doe IS a top-level result in the default additive mode…
+      expect(
+        cites.some((c) => c.type === "case" && (c as FullCaseCitation).caseName === "Doe v. City"),
+      ).toBe(true)
+      // …yet Id. skips it and resolves to the host, not the buried cite.
+      const id = cites.find((c) => c.type === "id")
+      const smith = cites.find(
+        (c) => c.type === "case" && (c as FullCaseCitation).caseName === "Smith v. Jones",
+      )
+      expect(id?.resolution?.resolvedTo).toBe(cites.indexOf(smith as ResolvedCitation))
+    })
+
+    it("Rule 10.9(a) — a case short form resolves to a paren-first case (default), abstains under exclusion", () => {
+      const additive = extractCitations(QUOTE_THEN_SHORTFORM, {
+        resolve: true,
+      }) as ResolvedCitation[]
+      const doe = additive.find(
+        (c) => c.type === "case" && (c as FullCaseCitation).caseName === "Doe v. City",
+      )
+      const shortForm = additive.find((c) => c.type === "shortFormCase")
+      expect(doe).toBeDefined()
+      expect(shortForm?.resolution?.resolvedTo).toBe(additive.indexOf(doe as ResolvedCitation))
+
+      // Under the strict model the paren-first case is no longer a candidate.
+      const strict = extractCitations(QUOTE_THEN_SHORTFORM, {
+        resolve: true,
+        excludeParentheticalChildren: true,
+      }) as ResolvedCitation[]
+      const strictShortForm = strict.find((c) => c.type === "shortFormCase")
+      expect(strictShortForm?.resolution?.resolvedTo).toBeUndefined()
+    })
   })
 })
