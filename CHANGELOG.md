@@ -1,5 +1,27 @@
 # eyecite-ts
 
+## 0.31.0
+
+### Minor Changes
+
+- [#862](https://github.com/medelman17/eyecite-ts/pull/862) [`9fb3362`](https://github.com/medelman17/eyecite-ts/commit/9fb3362590da859a18897f3b4a8139695d35259a) Thanks [@medelman17](https://github.com/medelman17)! - feat(resolve)+refactor(extract): consolidated structuring pass + id-based resolution references (#860)
+
+  The cross-citation linking passes — subsequent-history chains, parallel-caption propagation, string-cite grouping, and leading-signal detection — now run in a single `runStructuringPass` **after** `assignCitationIds` and on the final filtered array, so the relationships they build are keyed by stable `CitationId` rather than array position (and `subsequentHistoryOf.index` is no longer stale when false-positive filtering drops a citation). Set-changing passes (synthesis + filtering) continue to run before id-assignment.
+
+  Additively, resolution now exposes **id-based references** alongside the existing numeric indices: `ResolutionResult.resolvedToId` / `antecedentId`, and `pinciteInheritedFromId` on `Id.`/`supra`/short-form-case citations. These survive a consumer `filter`/`sort`/`map` of the result array, unlike the positional indices. Behavior-preserving for existing fields; the new id fields are additive. Unblocks the inter-citation aggregate slices (#849/#850/#857).
+
+- [#864](https://github.com/medelman17/eyecite-ts/pull/864) [`c988839`](https://github.com/medelman17/eyecite-ts/commit/c988839fcdd88ac5826d74fad400d29ed9919a54) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): HistoryChain aggregate + id-based subsequent-history reference (#849)
+
+  Subsequent-history chains now expose an ordered `historyChain` aggregate (root → latest), shared by every member of the chain and keyed by stable `CitationId` — with new exported types `HistoryChain` / `HistoryLink`. The `subsequentHistoryOf` back-reference additionally carries `priorId` (the parent's stable id) alongside the retained numeric `index`. Built in the consolidated structuring pass (#860), so these relationships survive a consumer `filter`/`sort`/`map` of the result array. Additive — the flat `subsequentHistoryEntries` and `subsequentHistoryOf.index` fields are unchanged.
+
+- [#865](https://github.com/medelman17/eyecite-ts/pull/865) [`59f0b76`](https://github.com/medelman17/eyecite-ts/commit/59f0b768911414c0dd932ef77750bf89b174517c) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): ParallelGroup aggregate (#850)
+
+  Parallel citations (the same case reported in multiple reporters) now expose a `parallelGroup` aggregate (new exported `ParallelGroup` type) listing every member — including itself — by stable `CitationId` in document order. Combined with `byId()`, this resolves the full sibling citations rather than the lossy `{ volume, reporter, page }` value-copies on `parallelCitations`. Built in the consolidated structuring pass (#860), so it survives a consumer `filter`/`sort`/`map`. Additive — the flat `groupId` label and `parallelCitations` array are unchanged.
+
+- [#866](https://github.com/medelman17/eyecite-ts/pull/866) [`928953d`](https://github.com/medelman17/eyecite-ts/commit/928953d1e9d1fdd6aee93e41944ad44beb56b235) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): StringCitationGroup aggregate (#857)
+
+  String citations (citations chained for one proposition, `See A; B; C`) now expose a `stringCitationGroup` aggregate (new exported `StringCitationGroup` type) listing every member — including itself — by stable `CitationId` in document order, plus the group's leading signal. Built in the consolidated structuring pass (#860), so it survives a consumer `filter`/`sort`/`map`. Additive — the flat `stringCitationGroupId` / `stringCitationIndex` / `stringCitationGroupSize` fields are unchanged. Completes the inter-citation aggregates alongside HistoryChain (#849) and ParallelGroup (#850).
+
 ## 0.30.0
 
 ### Minor Changes
@@ -3150,7 +3172,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-                            275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+                              275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -3176,7 +3198,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-                            People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+                              People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
