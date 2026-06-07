@@ -1,5 +1,17 @@
 # eyecite-ts
 
+## 0.32.0
+
+### Minor Changes
+
+- [#867](https://github.com/medelman17/eyecite-ts/pull/867) [`e8977fb`](https://github.com/medelman17/eyecite-ts/commit/e8977fbc83d8415a757146eb8c47369f6d6ef423) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): nest citations inside explanatory parentheticals as child citations (#851)
+
+  A citation nested inside an explanatory parenthetical — e.g. the `Doe v. City, 100 F.2d 1` in `Smith v. Jones, 200 F.3d 100 (2d Cir. 2000) (quoting Doe v. City, 100 F.2d 1)` — is now linked onto its host parenthetical's new `Parenthetical.citations` array as a child citation, keyed by its own stable `CitationId` (the `in-parenthetical-of` edge). Per Bluebook Rule 1.5(b) such a cite is a subordinate component of the citing authority, not a separate authority.
+
+  This is **additive and non-breaking by default**: the nested cite is also kept as a top-level result, so a later case short form can still resolve to a case first cited in a parenthetical (Bluebook Rule 10.9(a)). A new `excludeParentheticalChildren` option opts into the strict subordinate model — `extractCitations(text, { excludeParentheticalChildren: true })` removes the nested cite from the top-level array, leaving it reachable only via its host's `parentheticals[].citations`, and hidden from the cross-citation groupers and the resolver. Children land on the smallest enclosing parenthetical, so genuinely nested asides like `(citing B (quoting C))` build a correct tree.
+
+  Either mode preserves the existing, doctrinally-correct resolver behavior: `Id.`/`supra` never bind to a parenthetical-nested citation (Bluebook Rule 4.1/4.2) — only the host authority.
+
 ## 0.31.0
 
 ### Minor Changes
@@ -3172,7 +3184,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-                              275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+                                275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -3198,7 +3210,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-                              People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+                                People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
