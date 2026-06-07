@@ -70,6 +70,7 @@ export type {
   StatuteComponentSpans,
   StatutesAtLargeCitation,
   StatutesAtLargeComponentSpans,
+  StringCitationGroup,
   SubsequentHistoryEntry,
   SupraCitation,
   TransformationMap,

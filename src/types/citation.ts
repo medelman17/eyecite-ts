@@ -102,6 +102,18 @@ export type CitationSignal =
   | "but cf., e.g."
 
 /**
+ * A string-citation group (#857): citations chained for one proposition
+ * (`See A; B; C`). Members reference all members (including self) by stable
+ * `CitationId` in document order; `signal` is the group's leading signal. Built
+ * in the structuring pass; the flat `stringCitationGroupId` / `stringCitationIndex`
+ * / `stringCitationGroupSize` fields are retained alongside it.
+ */
+export interface StringCitationGroup {
+  memberIds: CitationId[]
+  signal?: CitationSignal
+}
+
+/**
  * Base fields shared by all citation types.
  */
 export interface CitationBase {
@@ -151,6 +163,13 @@ export interface CitationBase {
 
   /** Total number of citations in this string citation group */
   stringCitationGroupSize?: number
+
+  /**
+   * String-citation group (#857): all members (incl. self) by stable id, in
+   * document order, plus the group's leading signal. Survives consumer
+   * `filter`/`sort`/`map`. See {@link StringCitationGroup}.
+   */
+  stringCitationGroup?: StringCitationGroup
 
   /** Whether this citation appears in a footnote (only populated when detectFootnotes enabled) */
   inFootnote?: boolean

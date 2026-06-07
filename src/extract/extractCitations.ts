@@ -61,10 +61,12 @@ import { tokenize } from "@/tokenize"
 import type {
   Citation,
   CitationId,
+  CitationSignal,
   HistoryChain,
   HistoryLink,
   HistorySignal,
   ParallelGroup,
+  StringCitationGroup,
 } from "@/types/citation"
 import { resolveCitations } from "../resolve"
 import type { ResolutionOptions, ResolvedCitation } from "../resolve/types"
@@ -875,6 +877,8 @@ function runStructuringPass(citations: Citation[], cleaned: string): void {
   inheritParallelCaseName(citations)
   // Group semicolon-separated string citations (excludes history-chain members).
   detectStringCitations(citations, cleaned)
+  // Build the StringCitationGroup aggregate (#857), keyed by stable id.
+  buildStringCitationGroups(citations)
   // Backward-scan a leading signal for citations that still lack one.
   detectLeadingSignals(citations, cleaned)
   // Propagate the `compare A with B` signal across the `with` connector (#702).
@@ -1031,6 +1035,43 @@ function buildParallelGroups(citations: Citation[]): void {
     for (const i of indices) {
       const c = citations[i]
       if (c.type === "case") c.parallelGroup = group
+    }
+  }
+}
+
+/**
+ * Build the StringCitationGroup aggregate (#857): group citations by their
+ * `stringCitationGroupId` (set by detectStringCitations) and attach a shared
+ * `stringCitationGroup` listing all member ids in document order (incl. self),
+ * plus the group's leading signal.
+ */
+function buildStringCitationGroups(citations: Citation[]): void {
+  const groups = new Map<string, number[]>()
+  for (let i = 0; i < citations.length; i++) {
+    const gid = citations[i].stringCitationGroupId
+    if (gid !== undefined) {
+      const arr = groups.get(gid)
+      if (arr) arr.push(i)
+      else groups.set(gid, [i])
+    }
+  }
+  for (const indices of groups.values()) {
+    if (indices.length < 2) continue
+    const memberIds = indices
+      .map((i) => citations[i].id)
+      .filter((id): id is CitationId => id !== undefined)
+    if (memberIds.length < 2) continue
+    let signal: CitationSignal | undefined
+    for (const i of indices) {
+      const s = citations[i].signal
+      if (s !== undefined) {
+        signal = s
+        break
+      }
+    }
+    const group: StringCitationGroup = signal ? { memberIds, signal } : { memberIds }
+    for (const i of indices) {
+      citations[i].stringCitationGroup = group
     }
   }
 }
