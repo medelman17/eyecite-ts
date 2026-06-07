@@ -6,7 +6,7 @@
  */
 
 import type { FootnoteMap } from "../footnotes/types"
-import type { Citation, ShortFormCitation } from "../types/citation"
+import type { Citation, CitationId, ShortFormCitation } from "../types/citation"
 
 /**
  * Scope boundary strategy for resolution.
@@ -104,6 +104,16 @@ export interface ResolutionResult {
    *   Same idiom as `ShortFormCaseCitation.pinciteInheritedFrom`.
    */
   antecedentIndex?: number
+
+  /**
+   * Stable id of the `resolvedTo` citation (#860). Mirrors `resolvedTo` but
+   * survives consumer `filter`/`sort`/`map` of the result array, since it keys
+   * on identity rather than array position. Undefined when `resolvedTo` is.
+   */
+  resolvedToId?: CitationId
+
+  /** Stable id of the `antecedentIndex` citation (#860). See `resolvedToId`. */
+  antecedentId?: CitationId
 
   /**
    * Reason for resolution failure (if any)
