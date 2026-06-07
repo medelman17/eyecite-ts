@@ -12,7 +12,6 @@
 
 import type {
   Citation,
-  FullCaseCitation,
   FullCitation,
   IdCitation,
   ShortFormCaseCitation,
@@ -87,10 +86,6 @@ function isInZone(
  */
 export class DocumentResolver {
   private readonly citations: Citation[]
-  /** Original document text — used for original-coordinate reads (quote zones,
-   *  paragraph boundaries, party-name lookback) that locate citations via
-   *  `span.originalStart`. */
-  private readonly text: string
   /** Cleaned document text — used for clean-coordinate reads (bracket scopes,
    *  trigger-anchored asides, family/name windows) that index by
    *  `span.cleanStart`/`cleanEnd`. Equals `text` when no length-changing cleaner
@@ -122,7 +117,8 @@ export class DocumentResolver {
    * Creates a new DocumentResolver.
    *
    * @param citations - All citations in document (in order of appearance)
-   * @param text - Original document text (original-coordinate reads index into it)
+   * @param text - Original document text; used as the cleaned text when
+   *   `cleanContext` is omitted (#830). The resolver no longer reads it directly.
    * @param options - Resolution options
    * @param cleanContext - Cleaned text + transformation map for clean-coordinate
    *   reads (#830). When omitted, `text` is treated as the cleaned text too,
@@ -136,7 +132,6 @@ export class DocumentResolver {
     cleanContext?: { cleanedText: string; transformationMap: TransformationMap },
   ) {
     this.citations = citations
-    this.text = text
     // #830: clean-coordinate reads must index into the cleaned text that the
     // citation `cleanStart`/`cleanEnd` offsets were computed against. Without a
     // clean context, fall back to `text` (clean==original) — unchanged behavior.
@@ -1362,44 +1357,11 @@ export class DocumentResolver {
       // Defendant name stored first (preferred for Bluebook-style supra matching)
       if (citation.defendantNormalized) track(citation.defendantNormalized)
       if (citation.plaintiffNormalized) track(citation.plaintiffNormalized)
-
-      // Fallback: backward search from text (pre-Phase 7 compatibility)
-      if (!citation.plaintiffNormalized && !citation.defendantNormalized) {
-        const partyName = this.extractPartyName(citation)
-        if (partyName) track(this.normalizePartyName(partyName))
-      }
+      // (#876) The pre-Phase-7 prose-scanning fallback (`extractPartyName`) was
+      // removed: extraction's structured party names subsume it — the full
+      // suite stays green without it. One of the resolver's three prose
+      // re-parsing sites eliminated rather than relocated.
     }
-  }
-
-  /**
-   * Extracts party name from full case citation text.
-   * Handles "Party v. Party" format by looking at text before citation span.
-   */
-  private extractPartyName(citation: FullCaseCitation): string | undefined {
-    // Look at text before citation span to find party names
-    // Case citations typically appear as: "Smith v. Jones, 100 F.2d 10"
-    // But tokenizer only captures "100 F.2d 10" - we need to look backwards in text
-
-    const citationStart = citation.span.originalStart
-    // Look backwards up to 100 characters for party name
-    const lookbackStart = Math.max(0, citationStart - 100)
-    const beforeText = this.text.substring(lookbackStart, citationStart)
-
-    // Match pattern: "FirstParty v. SecondParty, " before the citation
-    // Capture the first party name (handles single-letter party names like "A" or "B")
-    const vMatch = beforeText.match(
-      /([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*)\s+v\.?\s+[A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*,\s*$/,
-    )
-    if (vMatch) {
-      return this.stripSignalWords(vMatch[1].trim())
-    }
-
-    // Fallback: try to find any capitalized word(s) before comma
-    const beforeComma = beforeText.match(/([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*),\s*$/)
-    if (beforeComma) {
-      return this.stripSignalWords(beforeComma[1].trim())
-    }
-    return undefined
   }
 
   /**
