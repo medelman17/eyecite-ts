@@ -230,6 +230,15 @@ export interface Parenthetical {
   type: ParentheticalType
   /** Position of full parenthetical block including delimiters */
   span?: Span
+  /**
+   * Nested child citations parsed from the parenthetical's inner text — e.g.
+   * the `Doe v. City, 100 F.2d 1` in `(quoting Doe v. City, 100 F.2d 1)`. Each
+   * child carries its own stable {@link CitationId} and is EXCLUDED from the
+   * top-level resolvable `Citation[]` returned by `extractCitations` (#851);
+   * reach it here, or via `byId`. The resolver does not treat a paren-child as
+   * an antecedent candidate. Recursive — a child may itself carry parentheticals.
+   */
+  citations?: Citation[]
 }
 
 /**

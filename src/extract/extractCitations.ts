@@ -75,6 +75,7 @@ import { detectStringCitations, detectLeadingSignals } from "./detectStringCites
 import { extractId, extractShortFormCase, extractSupra } from "./extractShortForms"
 import { applyFalsePositiveFilters } from "./filterFalsePositives"
 import { assignCitationIds } from "./assignCitationIds"
+import { nestParentheticalCitations } from "./nestParentheticalCitations"
 import { parsePincite } from "./pincite"
 import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 
@@ -187,6 +188,27 @@ export interface ExtractOptions {
 
   /** Detect footnote zones and annotate citations with inFootnote/footnoteNumber (default: false) */
   detectFootnotes?: boolean
+
+  /**
+   * Strict subordinate model for citations nested inside explanatory
+   * parentheticals — e.g. the `Doe v. City, 100 F.2d 1` in
+   * `... (quoting Doe v. City, 100 F.2d 1)` (default: false; #851).
+   *
+   * Such nested citations are ALWAYS linked onto their host's
+   * `Parenthetical.citations` (the `in-parenthetical-of` edge). This flag
+   * controls whether they ALSO remain in the top-level result array:
+   * - `false` (default): additive and non-breaking — the nested cite stays a
+   *   top-level peer, so a later case short form can still resolve to a case
+   *   first cited in a parenthetical (Bluebook Rule 10.9(a)).
+   * - `true`: the nested cite is REMOVED from the top-level array and reachable
+   *   only via its host's `Parenthetical.citations` (or `byId`) — the resolver
+   *   and the cross-citation groupers no longer treat it as a top-level
+   *   candidate.
+   *
+   * Either way, `Id.`/`supra` never bind to a paren-child (Rule 4.1/4.2) — that
+   * exclusion lives in the resolver and is independent of this flag.
+   */
+  excludeParentheticalChildren?: boolean
 }
 
 /**
@@ -635,6 +657,17 @@ export function extractCitations(
   // dense and final, and before the structuring pass / footnote tagging /
   // resolution so every downstream reference is by a stable id, not array index.
   assignCitationIds(filtered)
+
+  // Step 4.955: Link citations nested inside explanatory parentheticals —
+  // e.g. `... (quoting Doe v. City, 100 F.2d 1)` — onto the enclosing
+  // `Parenthetical.citations` (#851). Additive by default (the child stays a
+  // top-level peer — Bluebook Rule 10.9(a)); `excludeParentheticalChildren`
+  // removes it from the top-level array. Runs after id assignment (children
+  // keep their stable ids) and before the structuring pass and resolution (so
+  // an excluded child is hidden from the groupers and the resolver).
+  nestParentheticalCitations(filtered, {
+    exclude: options?.excludeParentheticalChildren ?? false,
+  })
 
   // Step 4.96: Consolidated structuring pass (#860). The cross-citation LINKING
   // passes — subsequent-history chains, parallel-caption propagation, string-cite
