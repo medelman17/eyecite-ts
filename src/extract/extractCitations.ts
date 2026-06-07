@@ -65,6 +65,7 @@ import { detectParallelCitations } from "./detectParallel"
 import { detectStringCitations, detectLeadingSignals } from "./detectStringCites"
 import { extractId, extractShortFormCase, extractSupra } from "./extractShortForms"
 import { applyFalsePositiveFilters } from "./filterFalsePositives"
+import { assignCitationIds } from "./assignCitationIds"
 import { parsePincite } from "./pincite"
 import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 
@@ -651,7 +652,12 @@ export function extractCitations(
     text,
   )
 
-  // Step 4.95: Tag citations with footnote metadata
+  // Step 4.95: Assign stable, per-result citation identities (#856). Runs after
+  // false-positive filtering so ids are dense, and before footnote tagging and
+  // resolution so every downstream reference is by a stable id, not array index.
+  assignCitationIds(filtered)
+
+  // Step 4.96: Tag citations with footnote metadata
   if (cleanFootnoteMap) {
     tagCitationsWithFootnotes(filtered, cleanFootnoteMap)
   }
