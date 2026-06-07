@@ -50,7 +50,7 @@ jobs:
       - name: Run tests with coverage
         run: pnpm exec vitest run --coverage --exclude '**/publishedTarball.test.ts'
         if: matrix.node-version == 22
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: matrix.node-version == 22
         with:
           name: coverage
@@ -86,7 +86,7 @@ jobs:
           mkdir -p pack
           npm pack --pack-destination pack
       - name: Upload tarball artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: tarball
           path: pack/*.tgz
@@ -109,7 +109,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Download packed tarball
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: tarball
           path: pack
