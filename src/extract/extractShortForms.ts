@@ -8,13 +8,19 @@
  */
 
 import type { Token } from "@/tokenize"
-import type { IdCitation, ShortFormCaseCitation, SupraCitation } from "@/types/citation"
+import type {
+  IdCitation,
+  Parenthetical,
+  ShortFormCaseCitation,
+  SupraCitation,
+} from "@/types/citation"
 import type {
   IdComponentSpans,
   ShortFormCaseComponentSpans,
   SupraComponentSpans,
 } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
+import { classifyCaseParenthetical } from "./caseParentheticals"
 import { COMMON_REPORTERS } from "./caseReporterSemantics"
 import { parsePincite, type PinciteInfo } from "./pincite"
 
@@ -50,7 +56,7 @@ function stripSupraPartyPrefix(raw: string): string {
  * parens. Suitable for `Id. at N (Marsh)`, `Id. (citation omitted)`,
  * `Smith, supra (holding that ...)`, `Smith, 500 F.2d at 125 (citations omitted)`.
  */
-const TRAILING_PAREN_REGEX = /^[\s,]*\(([^()]*)\)/
+const TRAILING_PAREN_REGEX = /^[\s,]*\(([^()]*)\)/d
 
 /**
  * Additional pincite continuation (`, NNN`) after the primary pincite has been
@@ -90,21 +96,68 @@ const SHORTFORM_ADDITIONAL_PINCITE_REGEX =
 const SIGNAL_AT_END_REGEX =
   /(?<![A-Za-z])(?:but\s+cf\.,\s+e\.\s*g\.,?|see\s*,?\s+also,\s+e\.\s*g\.,?|but\s+see,\s+e\.\s*g\.,?|cf\.,\s+e\.\s*g\.,?|see,\s+e\.\s*g\.,?|see\s+generally|see\s*,?\s+also|but\s+see|but\s+cf\.?|compare|accord|contra|see|cf\.?|e\.\s*g\.,?)\s*$/i
 
+interface TrailingParenthetical {
+  /** Inner text, parens excluded (the flat `parenthetical` value). */
+  text: string
+  /** Clean-text span of the full `(...)` block, delimiters included. */
+  cleanStart: number
+  cleanEnd: number
+}
+
 /**
  * Scan the cleaned text after a short-form citation's span end for an
- * immediately-trailing `(...)` parenthetical. Returns the inner text
- * (excluding the parens) or `undefined` if none found. #303
+ * immediately-trailing `(...)` parenthetical. Returns the inner text plus the
+ * clean-text span of the full block (so a `parentheticalNode` can be built and
+ * nested citations located), or `undefined` if none found. #303 / #869
  */
 function extractTrailingParenthetical(
   cleanedText: string | undefined,
-  cleanEnd: number,
-): string | undefined {
+  fromCleanPos: number,
+): TrailingParenthetical | undefined {
   if (!cleanedText) return undefined
-  const after = cleanedText.slice(cleanEnd)
+  const after = cleanedText.slice(fromCleanPos)
   const m = TRAILING_PAREN_REGEX.exec(after)
-  if (!m) return undefined
+  if (!m?.indices) return undefined
   const content = m[1].trim()
-  return content.length > 0 ? content : undefined
+  if (content.length === 0) return undefined
+  // Group 1 is the inner content; the delimiters sit one char outside it.
+  const [innerStart, innerEnd] = m.indices[1]
+  return {
+    text: content,
+    cleanStart: fromCleanPos + innerStart - 1, // the "("
+    cleanEnd: fromCleanPos + innerEnd + 1, // just past the ")"
+  }
+}
+
+/**
+ * Build the structured `parentheticalNode` for a short-form citation (#869):
+ * the captured `(...)` text, classified by leading signal word (reusing the
+ * case-parenthetical classifier), with the block span mapped to original
+ * coordinates. Nested child citations are attached later by
+ * `nestParentheticalCitations`.
+ */
+function buildParentheticalNode(
+  paren: TrailingParenthetical,
+  transformationMap: TransformationMap,
+): Parenthetical {
+  const { originalStart, originalEnd } = resolveOriginalSpan(
+    { cleanStart: paren.cleanStart, cleanEnd: paren.cleanEnd },
+    transformationMap,
+  )
+  const classified = classifyCaseParenthetical({
+    text: paren.text,
+    span: { start: 0, end: paren.text.length },
+  })
+  return {
+    text: paren.text,
+    type: classified.kind === "explanatory" ? classified.type : "other",
+    span: {
+      cleanStart: paren.cleanStart,
+      cleanEnd: paren.cleanEnd,
+      originalStart,
+      originalEnd,
+    },
+  }
 }
 
 /**
@@ -254,7 +307,9 @@ export function extractId(
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
   // Trailing parenthetical (#303): `Id. at 770 (Marsh)`, `Id. (citation omitted)`.
-  const parenthetical = extractTrailingParenthetical(cleanedText, span.cleanEnd)
+  // Structured node (#869) carries the classified type, span, and nested cites.
+  const paren = extractTrailingParenthetical(cleanedText, span.cleanEnd)
+  const parentheticalNode = paren ? buildParentheticalNode(paren, transformationMap) : undefined
 
   return {
     type: "id",
@@ -271,7 +326,8 @@ export function extractId(
     patternsChecked: 1,
     pincite,
     pinciteInfo,
-    ...(parenthetical ? { parenthetical } : {}),
+    ...(paren ? { parenthetical: paren.text } : {}),
+    ...(parentheticalNode ? { parentheticalNode } : {}),
     spans,
   }
 }
@@ -403,8 +459,10 @@ export function extractSupra(
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-  // Trailing parenthetical (#303): `Smith, supra (holding ...)`.
-  const parenthetical = extractTrailingParenthetical(cleanedText, span.cleanEnd)
+  // Trailing parenthetical (#303): `Smith, supra (holding ...)`. Structured
+  // node (#869) carries the classified type, span, and nested cites.
+  const paren = extractTrailingParenthetical(cleanedText, span.cleanEnd)
+  const parentheticalNode = paren ? buildParentheticalNode(paren, transformationMap) : undefined
 
   return {
     type: "supra",
@@ -422,7 +480,8 @@ export function extractSupra(
     partyName,
     pincite,
     pinciteInfo,
-    ...(parenthetical ? { parenthetical } : {}),
+    ...(paren ? { parenthetical: paren.text } : {}),
+    ...(parentheticalNode ? { parentheticalNode } : {}),
     spans,
   }
 }
@@ -569,7 +628,8 @@ export function extractShortFormCase(
     }
     trailingParenStart = span.cleanEnd + scan
   }
-  const parenthetical = extractTrailingParenthetical(cleanedText, trailingParenStart)
+  const paren = extractTrailingParenthetical(cleanedText, trailingParenStart)
+  const parentheticalNode = paren ? buildParentheticalNode(paren, transformationMap) : undefined
 
   return {
     type: "shortFormCase",
@@ -590,7 +650,8 @@ export function extractShortFormCase(
     pinciteInfo,
     partyName,
     partyNameNormalized,
-    ...(parenthetical ? { parenthetical } : {}),
+    ...(paren ? { parenthetical: paren.text } : {}),
+    ...(parentheticalNode ? { parentheticalNode } : {}),
     spans,
   }
 }
