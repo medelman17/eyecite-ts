@@ -587,26 +587,6 @@ export function extractCitations(
   // antecedent (`§ X; see also § Y`). (#567)
   detectBareSectionShortForms(citations, cleaned, transformationMap)
 
-  // Step 4.5: Link subsequent history citations using Union-Find.
-  // Three-phase approach: match signals → union chains → aggregate entries.
-  // Invariant: citations are in text order (guaranteed by token-order processing above).
-  linkSubsequentHistory(citations)
-
-  // Step 4.55: Inherit case name from chain root for subsequent-history children (#224).
-  // Per Bluebook 10.7, all citations in a history chain reference one case.
-  // Without this, extractCaseName scans back from the child, captures the
-  // parent cite + connector ("Smith v. Doe, 100 F.3d 200 (...), aff'd"),
-  // and produces a nonsense caseName.
-  inheritSubsequentHistoryCaseName(citations)
-
-  // Step 4.6: Propagate caseName from the primary onto each parallel-cite
-  // secondary (#282). Detection in step 4 sets the shared `groupId` and
-  // populates `parallelCitations` on the primary; this pass fills in the
-  // shared caption fields on secondaries that have no caseName of their own.
-  // Runs AFTER 4.55 so a primary that inherited from a history chain root
-  // still propagates that inherited caption to its parallels.
-  inheritParallelCaseName(citations)
-
   // Step 4.65: Attach year-of-edition / publisher from a trailing parenthetical
   // to statute citations (#285). E.g. `HRS § 91-14(a) (1985)` →  year=1985;
   // `28 U.S.C. § 1331 (West 2018)` → publisher="West", year=2018.
@@ -626,21 +606,10 @@ export function extractCitations(
   reassignDcCodeJurisdiction(citations, cleaned)
 
   // Step 4.72: Detect bare-party shortform back-references (`Smith, at 12`)
-  // anchored to earlier full case citations. (#439)
+  // anchored to earlier full case citations (#439). SYNTHESIZES shortFormCase
+  // citations, so it must run before id assignment (#860) — the cross-citation
+  // LINKING that consumes these moved into the structuring pass below.
   detectBarePartyBackReferences(citations, cleaned, transformationMap)
-
-  // Step 4.75: Detect string citation groups (semicolon-separated)
-  detectStringCitations(citations, cleaned)
-
-  // Step 4.8: Detect leading introductory signals for all citations.
-  // Runs after string cite detection (which sets mid-group signals) so we
-  // only scan backward for citations that still lack a signal.
-  detectLeadingSignals(citations, cleaned)
-
-  // Step 4.85: Propagate `compare` signal across `with` connector (#702).
-  // Bluebook Rule 1.2(b) treats `compare A with B` as paired — B inherits
-  // the comparison signal from A.
-  propagateCompareWithSignal(citations, cleaned)
 
   // Step 4.9: Apply false positive filters (blocklist + year heuristic).
   // Passing `text` (the original pre-cleaning input) lets the filter detect
@@ -653,11 +622,20 @@ export function extractCitations(
   )
 
   // Step 4.95: Assign stable, per-result citation identities (#856). Runs after
-  // false-positive filtering so ids are dense, and before footnote tagging and
+  // all set-changing passes (synthesis + false-positive filtering) so ids are
+  // dense and final, and before the structuring pass / footnote tagging /
   // resolution so every downstream reference is by a stable id, not array index.
   assignCitationIds(filtered)
 
-  // Step 4.96: Tag citations with footnote metadata
+  // Step 4.96: Consolidated structuring pass (#860). The cross-citation LINKING
+  // passes — subsequent-history chains, parallel-caption propagation, string-cite
+  // grouping, and leading-signal detection — run here, after id assignment and on
+  // the final filtered array, so every relationship they build references
+  // citations by stable id and survives downstream filter/reorder. (Set-changing
+  // passes that add or remove citations ran before id assignment, above.)
+  runStructuringPass(filtered, cleaned)
+
+  // Step 4.97: Tag citations with footnote metadata
   if (cleanFootnoteMap) {
     tagCitationsWithFootnotes(filtered, cleanFootnoteMap)
   }
@@ -863,6 +841,33 @@ function parseChainNumeral(raw: string): number | undefined {
     return total > 0 ? total : undefined
   }
   return undefined
+}
+
+/**
+ * Consolidated structuring pass (#860). Runs the cross-citation linking and
+ * annotation passes that build inter-citation relationships — AFTER citation
+ * ids have been assigned and on the final filtered array — so every
+ * relationship is keyed by stable `CitationId` rather than fragile array
+ * position, and survives a consumer `filter`/`sort`/`map`.
+ *
+ * Order is load-bearing: history linking runs before string-cite grouping
+ * (which excludes history-chain members) and before leading-signal detection.
+ * The inter-citation aggregate builders (HistoryChain #849, ParallelGroup #850,
+ * StringCitationGroup #857) attach inside these passes.
+ */
+function runStructuringPass(citations: Citation[], cleaned: string): void {
+  // Subsequent-history chains (#527): match signals → link parent↔child.
+  linkSubsequentHistory(citations)
+  // Inherit the chain root's caption onto history children (#224).
+  inheritSubsequentHistoryCaseName(citations)
+  // Propagate the primary's caption onto parallel-cite secondaries (#282).
+  inheritParallelCaseName(citations)
+  // Group semicolon-separated string citations (excludes history-chain members).
+  detectStringCitations(citations, cleaned)
+  // Backward-scan a leading signal for citations that still lack one.
+  detectLeadingSignals(citations, cleaned)
+  // Propagate the `compare A with B` signal across the `with` connector (#702).
+  propagateCompareWithSignal(citations, cleaned)
 }
 
 /**
