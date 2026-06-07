@@ -161,6 +161,24 @@ function buildParentheticalNode(
 }
 
 /**
+ * Section-style pincite immediately after an `Id.` (`Id. § 1983(c)`), which the
+ * `Id.` regex does not capture (#847). `^`-anchored, so it fires only when the
+ * `§` directly follows the citation core — mirroring the resolver's former
+ * 20-char §-peek; the 40-char slice just bounds the value scan. Returns the
+ * locator after `§`/`§§` (e.g. `1983(c)`, `201`, `1-5`) or `undefined`.
+ */
+const TRAILING_SECTION_REGEX = /^\s*,?\s*§§?\s*(\d+(?:\([^)]*\))*(?:[-–—]\d+)?)/
+
+function extractTrailingSectionPincite(
+  cleanedText: string | undefined,
+  fromCleanPos: number,
+): string | undefined {
+  if (!cleanedText) return undefined
+  const m = TRAILING_SECTION_REGEX.exec(cleanedText.slice(fromCleanPos, fromCleanPos + 40))
+  return m ? m[1] : undefined
+}
+
+/**
  * Extracts Id. citation metadata from a tokenized citation.
  *
  * Parses token text to extract:
@@ -311,6 +329,11 @@ export function extractId(
   const paren = extractTrailingParenthetical(cleanedText, span.cleanEnd)
   const parentheticalNode = paren ? buildParentheticalNode(paren, transformationMap) : undefined
 
+  // Section-style pincite (#847): `Id. § 1983(c)`. Gathered by lookahead since
+  // the Id. regex above only handles page/paragraph shapes, so the resolver can
+  // read a structured field for family preference instead of peeking raw text.
+  const sectionPincite = extractTrailingSectionPincite(cleanedText, span.cleanEnd)
+
   return {
     type: "id",
     text,
@@ -326,6 +349,7 @@ export function extractId(
     patternsChecked: 1,
     pincite,
     pinciteInfo,
+    ...(sectionPincite ? { sectionPincite } : {}),
     ...(paren ? { parenthetical: paren.text } : {}),
     ...(parentheticalNode ? { parentheticalNode } : {}),
     spans,

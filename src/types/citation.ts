@@ -1246,6 +1246,14 @@ export interface IdCitation extends CitationBase {
    */
   pinciteInheritedFromId?: CitationId
   /**
+   * Section-style pincite locator captured from `Id. § 1983(c)` forms (#847) —
+   * the text after `§`/`§§` (e.g. `1983(c)`, `201`, `1-5`). The `Id.` regex
+   * captures only page/paragraph pincites, so this is gathered by lookahead.
+   * Its presence marks the `Id.` as statute-family for antecedent selection;
+   * undefined for page/paragraph/bare `Id.` forms.
+   */
+  sectionPincite?: string
+  /**
    * Trailing parenthetical content (text between the parens, excluding the
    * parens themselves) captured from `Id. at N (...)` forms. Common values
    * include drop-citation markers (`citation omitted`, `internal quotation
