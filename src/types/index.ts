@@ -31,6 +31,7 @@ export type {
   ShortFormCitationType,
   StatuteCitation,
   StatutesAtLargeCitation,
+  StringCitationGroup,
   SubsequentHistoryEntry,
   SupraCitation,
   TreatiseCitation,

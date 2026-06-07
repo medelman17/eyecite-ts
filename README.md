@@ -266,6 +266,8 @@ cite.signal // "see also"
 
 Recognized signals: `see`, `see also`, `see generally`, `cf`, `but see`, `but cf`, `compare`, `accord`, `contra`, `e.g.`, and combined forms (`see, e.g.`, `see also, e.g.`, `but see, e.g.`, `cf., e.g.`, `but cf., e.g.`).
 
+Citations chained for one proposition (`See A; B; C`) form a **string-citation group** — each member carries `stringCitationGroup` (all member ids in document order, incl. self, keyed by stable id) plus the group's leading signal.
+
 ### Court Inference
 
 Case citations carry a `inferredCourt` field derived from the reporter series:
