@@ -1365,6 +1365,52 @@ export type FullCitationType =
 export type ShortFormCitationType = "id" | "supra" | "shortFormCase"
 
 /**
+ * Runtime inventories of the type discriminators — the single source the
+ * `isFullCitation` / `isShortFormCitation` guards read.
+ *
+ * Each is `Object.keys` of a `Record<…Type, true>` map: the compiler forces the
+ * map to have an entry for EVERY union member (a missing one is a compile error)
+ * and rejects extras, so the runtime list is a compiler-enforced bijection with
+ * the type and can never silently omit a member — the omission that caused #843.
+ * (The type aliases stay literal unions because `scripts/generate-llms.ts`
+ * AST-parses them; deriving the type from the array would defeat that.)
+ */
+const FULL_CITATION_TYPE_PRESENCE: Record<FullCitationType, true> = {
+  case: true,
+  docket: true,
+  statute: true,
+  regulation: true,
+  journal: true,
+  neutral: true,
+  publicLaw: true,
+  federalRegister: true,
+  statutesAtLarge: true,
+  sessionLaw: true,
+  treaty: true,
+  legislativeMaterial: true,
+  localOrdinance: true,
+  canon: true,
+  constitutional: true,
+  federalRule: true,
+  stateRule: true,
+  restatement: true,
+  treatise: true,
+  annotation: true,
+}
+const SHORT_FORM_CITATION_TYPE_PRESENCE: Record<ShortFormCitationType, true> = {
+  id: true,
+  supra: true,
+  shortFormCase: true,
+}
+
+export const FULL_CITATION_TYPES: readonly FullCitationType[] = Object.keys(
+  FULL_CITATION_TYPE_PRESENCE,
+) as FullCitationType[]
+export const SHORT_FORM_CITATION_TYPES: readonly ShortFormCitationType[] = Object.keys(
+  SHORT_FORM_CITATION_TYPE_PRESENCE,
+) as ShortFormCitationType[]
+
+/**
  * Union of all full citation types (not short-form references).
  */
 export type FullCitation =
