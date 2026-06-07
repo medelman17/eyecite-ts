@@ -37,11 +37,17 @@ export function nestParentheticalCitations(
   // `parentheticals`, so a `(2d Cir. 2000)` never captures children.)
   const parens: Array<{ owner: Citation; paren: Parenthetical }> = []
   for (const citation of citations) {
+    // Full-case citations carry `parentheticals[]`…
     const owned = (citation as { parentheticals?: Parenthetical[] }).parentheticals
-    if (!owned) continue
-    for (const paren of owned) {
-      if (paren.span) parens.push({ owner: citation, paren })
+    if (owned) {
+      for (const paren of owned) {
+        if (paren.span) parens.push({ owner: citation, paren })
+      }
     }
+    // …short-form citations (Id./supra/shortFormCase) carry a single
+    // structured `parentheticalNode` instead (#869).
+    const node = (citation as { parentheticalNode?: Parenthetical }).parentheticalNode
+    if (node?.span) parens.push({ owner: citation, paren: node })
   }
   if (parens.length === 0) return
 

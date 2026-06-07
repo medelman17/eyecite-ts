@@ -236,6 +236,13 @@ extractCitations(text, { excludeParentheticalChildren: true }).length  // 1 (Smi
 
 Either way, `Id.`/`supra` never resolve to a parenthetical-nested citation (Bluebook Rule 4.1/4.2) — only the host authority.
 
+Short-form citations (`Id.`, `supra`, short-form case) expose the same structure on a `parentheticalNode` (the structured form of their flat `parenthetical` string), so `Id. at 5 (quoting Doe v. City, 100 F.2d 1)` carries the nested `Doe v. City` the same way — honoring `excludeParentheticalChildren` identically:
+
+```typescript
+const [, id] = extractCitations("Bd. v. FirstService, 193 A.D.3d 672 (2021). Id. at 673 (quoting Doe v. City, 100 F.2d 1).")
+id.parentheticalNode?.citations // [ FullCaseCitation { caseName: "Doe v. City", … } ]
+```
+
 ### Citation Annotation
 
 Mark up citations with HTML using template or callback modes:

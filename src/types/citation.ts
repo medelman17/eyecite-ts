@@ -1255,6 +1255,14 @@ export interface IdCitation extends CitationBase {
    */
   parenthetical?: string
   /**
+   * Structured form of {@link parenthetical} (#869) — same content, classified
+   * `type` and a `span`, plus any nested child citations in `citations` (e.g.
+   * the `Doe v. City, 100 F.2d 1` in `Id. (quoting Doe v. City, 100 F.2d 1)`).
+   * By default a nested child is also a top-level result; with
+   * `excludeParentheticalChildren` it lives only here. See {@link Parenthetical}.
+   */
+  parentheticalNode?: Parenthetical
+  /**
    * Case name inherited from the antecedent (full citation that the `Id.`
    * resolves to). Populated by the resolver when `resolve: true` and the
    * antecedent is a `case`-type citation. Undefined otherwise. Consumers
@@ -1316,6 +1324,14 @@ export interface SupraCitation extends CitationBase {
    * and rationale. #303
    */
   parenthetical?: string
+  /**
+   * Structured form of {@link parenthetical} (#869) — same content, classified
+   * `type` and a `span`, plus any nested child citations in `citations` (e.g.
+   * the `Doe v. City, 100 F.2d 1` in `Id. (quoting Doe v. City, 100 F.2d 1)`).
+   * By default a nested child is also a top-level result; with
+   * `excludeParentheticalChildren` it lives only here. See {@link Parenthetical}.
+   */
+  parentheticalNode?: Parenthetical
   /** Component-level spans (currently just `pincite`; extend when needed). */
   spans?: import("./componentSpans").SupraComponentSpans
 }
@@ -1386,6 +1402,14 @@ export interface ShortFormCaseCitation extends CitationBase {
    * and rationale. #303
    */
   parenthetical?: string
+  /**
+   * Structured form of {@link parenthetical} (#869) — same content, classified
+   * `type` and a `span`, plus any nested child citations in `citations` (e.g.
+   * the `Doe v. City, 100 F.2d 1` in `Id. (quoting Doe v. City, 100 F.2d 1)`).
+   * By default a nested child is also a top-level result; with
+   * `excludeParentheticalChildren` it lives only here. See {@link Parenthetical}.
+   */
+  parentheticalNode?: Parenthetical
 }
 
 /**
