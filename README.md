@@ -185,6 +185,12 @@ const [cite] = extractCitations(text)
 if (cite.type === "case") {
   cite.subsequentHistoryEntries
   // [{ signal: 'affirmed', rawSignal: "aff'd", signalSpan: { ... }, order: 0 }]
+
+  // Ordered chain (root → latest), shared by every member, keyed by stable id:
+  cite.historyChain
+  // { links: [{ citationId: 'c0' }, { citationId: 'c1', signal: 'affirmed' }] }
+  // The back-reference also carries the parent's id alongside the numeric index:
+  // cite.subsequentHistoryOf // { index, priorId, signal }
 }
 ```
 

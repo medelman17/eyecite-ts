@@ -58,7 +58,7 @@ import {
 } from "@/patterns"
 import { parseBody } from "./statutes/parseBody"
 import { tokenize } from "@/tokenize"
-import type { Citation, HistorySignal } from "@/types/citation"
+import type { Citation, HistoryChain, HistoryLink, HistorySignal } from "@/types/citation"
 import { resolveCitations } from "../resolve"
 import type { ResolutionOptions, ResolvedCitation } from "../resolve/types"
 import { detectParallelCitations } from "./detectParallel"
@@ -858,6 +858,8 @@ function parseChainNumeral(raw: string): number | undefined {
 function runStructuringPass(citations: Citation[], cleaned: string): void {
   // Subsequent-history chains (#527): match signals → link parent↔child.
   linkSubsequentHistory(citations)
+  // Build the ordered HistoryChain aggregate (#849), keyed by stable id.
+  buildHistoryChains(citations)
   // Inherit the chain root's caption onto history children (#224).
   inheritSubsequentHistoryCaseName(citations)
   // Propagate the primary's caption onto parallel-cite secondaries (#282).
@@ -932,7 +934,66 @@ function linkSubsequentHistory(citations: Citation[]): void {
   for (const [childIdx, { parentIdx, signal }] of bestParent) {
     const child = citations[childIdx]
     if (child.type !== "case") continue
-    child.subsequentHistoryOf = { index: parentIdx, signal }
+    // #849: priorId is the id-based parent reference (linking now runs after
+    // assignCitationIds, so the parent's id is available). Survives consumer
+    // filter/reorder, unlike `index`.
+    child.subsequentHistoryOf = { index: parentIdx, priorId: citations[parentIdx]?.id, signal }
+  }
+}
+
+/**
+ * Build the ordered subsequent-history chain aggregate (#849) and attach it
+ * (shared) to every member, keyed by stable `CitationId`. Runs after
+ * `linkSubsequentHistory` has set the `subsequentHistoryOf` back-pointers, so
+ * it can read each child's parent index and resolve member ids.
+ */
+function buildHistoryChains(citations: Citation[]): void {
+  // child index -> { parentIdx, signal } from the back-pointers.
+  const parentOf = new Map<number, { parentIdx: number; signal: HistorySignal }>()
+  for (let i = 0; i < citations.length; i++) {
+    const c = citations[i]
+    if (c.type === "case" && c.subsequentHistoryOf) {
+      parentOf.set(i, { parentIdx: c.subsequentHistoryOf.index, signal: c.subsequentHistoryOf.signal })
+    }
+  }
+  if (parentOf.size === 0) return
+
+  // parent index -> earliest child (linear chains: one parent per child).
+  const childOf = new Map<number, { childIdx: number; signal: HistorySignal }>()
+  for (const [childIdx, { parentIdx, signal }] of parentOf) {
+    const existing = childOf.get(parentIdx)
+    if (!existing || childIdx < existing.childIdx) childOf.set(parentIdx, { childIdx, signal })
+  }
+
+  // Members participating in any chain; roots are members that are not children.
+  const members = new Set<number>()
+  for (const [childIdx, { parentIdx }] of parentOf) {
+    members.add(childIdx)
+    members.add(parentIdx)
+  }
+  for (const rootIdx of members) {
+    if (parentOf.has(rootIdx)) continue // not a root
+    const links: HistoryLink[] = []
+    const memberIdxs: number[] = []
+    const seen = new Set<number>()
+    let idx: number | undefined = rootIdx
+    let inbound: HistorySignal | undefined
+    while (idx !== undefined && !seen.has(idx)) {
+      seen.add(idx)
+      const cit = citations[idx]
+      if (cit?.type !== "case" || cit.id === undefined) break
+      links.push(inbound ? { citationId: cit.id, signal: inbound } : { citationId: cit.id })
+      memberIdxs.push(idx)
+      const next = childOf.get(idx)
+      idx = next?.childIdx
+      inbound = next?.signal
+    }
+    if (links.length < 2) continue
+    const chain: HistoryChain = { links }
+    for (const m of memberIdxs) {
+      const cit = citations[m]
+      if (cit.type === "case") cit.historyChain = chain
+    }
   }
 }
 

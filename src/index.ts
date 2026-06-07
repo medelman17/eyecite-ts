@@ -47,6 +47,8 @@ export type {
   FullCaseCitation,
   FullCitation,
   FullCitationType,
+  HistoryChain,
+  HistoryLink,
   HistorySignal,
   IdCitation,
   JournalCitation,

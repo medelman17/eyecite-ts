@@ -293,6 +293,25 @@ export interface SubsequentHistoryEntry {
  * @example "500 F.2d 123"
  * @example "410 U.S. 113, 115"
  */
+/**
+ * One link in a subsequent-history chain (#849): the case at this position, plus
+ * the disposition signal that led TO it. The chain root has no inbound `signal`.
+ */
+export interface HistoryLink {
+  citationId: CitationId
+  signal?: HistorySignal
+}
+
+/**
+ * A subsequent-history chain (#849), ordered root → latest. Built post-id-assignment
+ * in the structuring pass and attached (shared) to every member, so a consumer can
+ * read the whole chain from any link. References members by stable `CitationId`,
+ * so it survives `filter`/`sort`/`map` of the result array.
+ */
+export interface HistoryChain {
+  links: HistoryLink[]
+}
+
 export interface FullCaseCitation extends CitationBase {
   type: "case"
   volume: number | string
@@ -355,12 +374,20 @@ export interface FullCaseCitation extends CitationBase {
   subsequentHistoryEntries?: SubsequentHistoryEntry[]
 
   /**
+   * Ordered subsequent-history chain (root → latest), shared by every member of
+   * the chain (#849). Built in the structuring pass; references members by stable
+   * id. The flat `subsequentHistoryOf` / `subsequentHistoryEntries` fields are
+   * retained alongside it. See {@link HistoryChain}.
+   */
+  historyChain?: HistoryChain
+
+  /**
    * Back-pointer indicating this citation is a subsequent history citation.
    * `index` is the parent's position in the results array returned by
    * `extractCitations()` — it becomes invalid if the array is filtered or reordered.
    * @example { index: 0, signal: "affirmed" }
    */
-  subsequentHistoryOf?: { index: number; signal: HistorySignal }
+  subsequentHistoryOf?: { index: number; priorId?: CitationId; signal: HistorySignal }
 
   /**
    * Date information in multiple formats.
