@@ -344,6 +344,23 @@ const ctx = getSurroundingContext(
 )
 ```
 
+### Citation Identity (`id` + `byId`)
+
+Every citation returned by `extractCitations()` carries a stable `id` (`"c0"`, `"c1"`, … in document order). The id is stable **within one result set** — it survives `filter`/`sort`/`map`, unlike array position — so you can reference and look up citations by id rather than by index.
+
+```typescript
+import { byId, extractCitations } from "eyecite-ts"
+
+const citations = extractCitations(text)
+citations[0].id // "c0"
+
+// Build a lookup keyed by stable id:
+const map = byId(citations) // Map<CitationId, Citation>
+const cite = map.get(citations[0].id!)
+```
+
+Because the key is the id and not the array position, `byId(citations.filter(...))` still resolves correctly after you have filtered or reordered the array. `id` is **not** durable across runs (the same text re-extracts to fresh ids each call) — for cross-run / cross-document identity use `toDurableLocator()` from `eyecite-ts/utils`.
+
 ## Type System
 
 All citation types use a [discriminated union](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions) on the `type` field:

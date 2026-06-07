@@ -15,6 +15,28 @@ import type {
 import type { Span } from "./span"
 
 /**
+ * Generic nominal-typing brand. Zero runtime cost — the value stays a plain `T`
+ * (so it survives `JSON.stringify`, `structuredClone`, and `{...spread}`); the
+ * brand only exists in the type system to prevent mixing unrelated string ids.
+ */
+export type Brand<T, B extends string> = T & { readonly __brand: B }
+
+/**
+ * Stable identity for a citation **within one `extractCitations()` result set**.
+ * Survives consumer `filter`/`sort`/`map` of the returned array, so aggregates
+ * (history chains, parallel groups, short-form references) reference members by
+ * id rather than by fragile positional array index.
+ *
+ * NOT durable across runs — the same logical citation re-extracts to a fresh id
+ * each call. For cross-run identity use `toDurableLocator()` (contentHash).
+ *
+ * Opaque token (currently `"c0"`, `"c1"`, …): compare it, key a `Map`/`Set` with
+ * it, store it as a reference — but never parse it or derive it from array
+ * position. See `docs/superpowers/specs/2026-06-06-inter-citation-grammar-design.md`.
+ */
+export type CitationId = Brand<string, "CitationId">
+
+/**
  * Citation type discriminator for type-safe pattern matching.
  */
 export type CitationType =
@@ -83,6 +105,14 @@ export type CitationSignal =
  * Base fields shared by all citation types.
  */
 export interface CitationBase {
+  /**
+   * Stable identity within one `extractCitations()` result set (see {@link CitationId}).
+   * Populated by `extractCitations()` for every citation in its output. Optional
+   * because the granular per-type extractors (`extractCase()`, etc.) do not assign
+   * one — it is targeted to become required in a future major (#858).
+   */
+  id?: CitationId
+
   /** Original matched text */
   text: string
 

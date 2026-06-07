@@ -31,6 +31,7 @@ export type {
   CaseComponentSpans,
   Citation,
   CitationBase,
+  CitationId,
   CitationOfType,
   CitationSignal,
   CitationType,
@@ -89,6 +90,7 @@ export {
 
 export type { ExtractOptions } from "./extract/extractCitations"
 export { extractCitations, extractCitationsAsync } from "./extract/extractCitations"
+export { byId } from "./extract/assignCitationIds"
 export { applyFalsePositiveFilters } from "./extract/filterFalsePositives"
 
 // ============================================================================

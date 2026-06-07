@@ -2,6 +2,7 @@ export type {
   AnnotationCitation,
   Citation,
   CitationBase,
+  CitationId,
   CitationOfType,
   CitationSignal,
   CitationType,
