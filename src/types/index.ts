@@ -21,6 +21,7 @@ export type {
   IdCitation,
   JournalCitation,
   NeutralCitation,
+  ParallelGroup,
   Parenthetical,
   ParentheticalType,
   PublicLawCitation,

@@ -55,6 +55,7 @@ export type {
   JournalComponentSpans,
   NeutralCitation,
   NeutralComponentSpans,
+  ParallelGroup,
   Parenthetical,
   ParentheticalType,
   PublicLawCitation,

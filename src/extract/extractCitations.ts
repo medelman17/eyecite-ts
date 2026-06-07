@@ -58,7 +58,14 @@ import {
 } from "@/patterns"
 import { parseBody } from "./statutes/parseBody"
 import { tokenize } from "@/tokenize"
-import type { Citation, HistoryChain, HistoryLink, HistorySignal } from "@/types/citation"
+import type {
+  Citation,
+  CitationId,
+  HistoryChain,
+  HistoryLink,
+  HistorySignal,
+  ParallelGroup,
+} from "@/types/citation"
 import { resolveCitations } from "../resolve"
 import type { ResolutionOptions, ResolvedCitation } from "../resolve/types"
 import { detectParallelCitations } from "./detectParallel"
@@ -862,6 +869,8 @@ function runStructuringPass(citations: Citation[], cleaned: string): void {
   buildHistoryChains(citations)
   // Inherit the chain root's caption onto history children (#224).
   inheritSubsequentHistoryCaseName(citations)
+  // Build the ParallelGroup aggregate (#850), keyed by stable id.
+  buildParallelGroups(citations)
   // Propagate the primary's caption onto parallel-cite secondaries (#282).
   inheritParallelCaseName(citations)
   // Group semicolon-separated string citations (excludes history-chain members).
@@ -993,6 +1002,35 @@ function buildHistoryChains(citations: Citation[]): void {
     for (const m of memberIdxs) {
       const cit = citations[m]
       if (cit.type === "case") cit.historyChain = chain
+    }
+  }
+}
+
+/**
+ * Build the ParallelGroup aggregate (#850): group case citations by their
+ * content-derived `groupId` (set during extraction) and attach a shared
+ * `parallelGroup` listing all member ids in document order (including self).
+ */
+function buildParallelGroups(citations: Citation[]): void {
+  const groups = new Map<string, number[]>()
+  for (let i = 0; i < citations.length; i++) {
+    const c = citations[i]
+    if (c.type === "case" && c.groupId !== undefined) {
+      const arr = groups.get(c.groupId)
+      if (arr) arr.push(i)
+      else groups.set(c.groupId, [i])
+    }
+  }
+  for (const indices of groups.values()) {
+    if (indices.length < 2) continue
+    const memberIds = indices
+      .map((i) => citations[i].id)
+      .filter((id): id is CitationId => id !== undefined)
+    if (memberIds.length < 2) continue
+    const group: ParallelGroup = { memberIds }
+    for (const i of indices) {
+      const c = citations[i]
+      if (c.type === "case") c.parallelGroup = group
     }
   }
 }
