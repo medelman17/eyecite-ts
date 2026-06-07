@@ -312,6 +312,16 @@ export interface HistoryChain {
   links: HistoryLink[]
 }
 
+/**
+ * A parallel-citation group (#850): the same case reported in multiple reporters.
+ * Every member references all members (including itself) by stable `CitationId`,
+ * in document order. Built in the structuring pass; the flat `groupId` label and
+ * `parallelCitations` array are retained alongside it.
+ */
+export interface ParallelGroup {
+  memberIds: CitationId[]
+}
+
 export interface FullCaseCitation extends CitationBase {
   type: "case"
   volume: number | string
@@ -343,6 +353,12 @@ export interface FullCaseCitation extends CitationBase {
    * @example "410-U.S.-113" for parallel group [410 U.S. 113, 93 S. Ct. 705]
    */
   groupId?: string
+
+  /**
+   * Parallel-citation group (#850): all members (incl. self) by stable id, in
+   * document order. Survives consumer `filter`/`sort`/`map`. See {@link ParallelGroup}.
+   */
+  parallelGroup?: ParallelGroup
 
   /** Parallel citations for same case in different reporters */
   parallelCitations?: Array<{

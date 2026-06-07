@@ -151,6 +151,10 @@ if (citations[0].type === "case") {
   citations[0].parallelCitations
   // [{ volume: 93, reporter: 'S. Ct.', page: 705 },
   //  { volume: 35, reporter: 'L. Ed. 2d', page: 147 }]
+
+  // Every member also carries the group by stable id (doc order, incl. self),
+  // so byId() resolves the full sibling citations (not lossy value-copies):
+  citations[0].parallelGroup // { memberIds: ['c0', 'c1', 'c2'] }
 }
 ```
 
