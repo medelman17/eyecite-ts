@@ -1164,6 +1164,11 @@ export interface IdCitation extends CitationBase {
    */
   pinciteInheritedFrom?: number
   /**
+   * Stable id of the `pinciteInheritedFrom` citation (#860). Survives consumer
+   * `filter`/`sort`/`map` (keys on identity, not array position).
+   */
+  pinciteInheritedFromId?: CitationId
+  /**
    * Trailing parenthetical content (text between the parens, excluding the
    * parens themselves) captured from `Id. at N (...)` forms. Common values
    * include drop-citation markers (`citation omitted`, `internal quotation
@@ -1224,6 +1229,11 @@ export interface SupraCitation extends CitationBase {
    */
   pinciteInheritedFrom?: number
   /**
+   * Stable id of the `pinciteInheritedFrom` citation (#860). Survives consumer
+   * `filter`/`sort`/`map` (keys on identity, not array position).
+   */
+  pinciteInheritedFromId?: CitationId
+  /**
    * Trailing parenthetical content (text between the parens, excluding the
    * parens themselves). See `IdCitation.parenthetical` for common shapes
    * and rationale. #303
@@ -1262,6 +1272,11 @@ export interface ShortFormCaseCitation extends CitationBase {
    * predecessor; follow transitively for the chain's originator.
    */
   pinciteInheritedFrom?: number
+  /**
+   * Stable id of the `pinciteInheritedFrom` citation (#860). Survives consumer
+   * `filter`/`sort`/`map` (keys on identity, not array position).
+   */
+  pinciteInheritedFromId?: CitationId
   /**
    * Case name inferred from prose preceding this short-form when no full
    * citation in `citations[]` matched its vol+reporter. Populated by the

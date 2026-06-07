@@ -231,6 +231,18 @@ export class DocumentResolver {
       // follow short-form chains (shortForm/supra/Id. → full antecedent).
       this.resolutions[i] = resolution
 
+      // #860: stamp id-based siblings on the numeric index references so a
+      // consumer can follow them after filtering/reordering the result array.
+      // Single derivation point — every resolution is recorded here.
+      if (resolution) {
+        if (resolution.resolvedTo !== undefined) {
+          resolution.resolvedToId = this.citations[resolution.resolvedTo]?.id
+        }
+        if (resolution.antecedentIndex !== undefined) {
+          resolution.antecedentId = this.citations[resolution.antecedentIndex]?.id
+        }
+      }
+
       // Bluebook Rule 4.1: when the antecedent is a case citation,
       // propagate its caption (caseName, plaintiff, defendant, procedural
       // prefix) onto the Id. so consumers can use it directly without
@@ -339,6 +351,8 @@ export class DocumentResolver {
         if (candPinciteInfo) target.pinciteInfo = candPinciteInfo
         target.pinciteInherited = true
         target.pinciteInheritedFrom = j
+        // #860: id-based sibling of pinciteInheritedFrom (survives filter/reorder).
+        target.pinciteInheritedFromId = this.citations[j]?.id
         break
       }
     }
