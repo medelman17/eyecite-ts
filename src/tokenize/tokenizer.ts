@@ -14,16 +14,7 @@
  * @module tokenize
  */
 
-import type { Pattern } from "@/patterns"
-import {
-  casePatterns,
-  federalRulePatterns,
-  journalPatterns,
-  neutralPatterns,
-  secondaryAuthorityPatterns,
-  statutePatterns,
-} from "@/patterns"
-import { shortFormPatterns } from "@/patterns/shortForm"
+import { orderedPatterns, type Pattern } from "@/patterns"
 import type { Span } from "@/types/span"
 
 /**
@@ -85,15 +76,10 @@ export interface Token {
  */
 export function tokenize(
   cleanedText: string,
-  patterns: Pattern[] = [
-    ...casePatterns,
-    ...statutePatterns,
-    ...federalRulePatterns,
-    ...secondaryAuthorityPatterns,
-    ...journalPatterns,
-    ...neutralPatterns,
-    ...shortFormPatterns,
-  ],
+  // Defaults to the authoritative grammar (#844). The main pipeline always
+  // passes patterns explicitly; this default just gives standalone callers the
+  // full, correctly-ordered set instead of a stale partial list.
+  patterns: Pattern[] = orderedPatterns,
 ): Token[] {
   const tokens: Token[] = []
 
