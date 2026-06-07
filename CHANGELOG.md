@@ -1,5 +1,29 @@
 # eyecite-ts
 
+## 0.30.0
+
+### Minor Changes
+
+- [#838](https://github.com/medelman17/eyecite-ts/pull/838) [`2674a6b`](https://github.com/medelman17/eyecite-ts/commit/2674a6b4fdeec5d86ce7e7419ad7fdfd88f7fcbe) Thanks [@medelman17](https://github.com/medelman17)! - Add `toDurableLocator` / `toDurableLocators` to `eyecite-ts/utils`. They turn each extracted citation into a portable, W3C-style durable locator (TextQuoteSelector + TextPositionSelector) — a quote plus sentence-bounded context, a document-order occurrence ordinal, and a content hash — that survives edits to the source document. eyecite produces the locator; resolving it back to a range is left to the consumer.
+
+- [#861](https://github.com/medelman17/eyecite-ts/pull/861) [`7b42f9b`](https://github.com/medelman17/eyecite-ts/commit/7b42f9bc1a66ed853a43f0286a3621de5e5893a1) Thanks [@medelman17](https://github.com/medelman17)! - feat(types): add a stable `CitationId` to every citation (#856)
+
+  `extractCitations()` now stamps each result citation with a stable `id` (`c0`, `c1`, … in document order) on `CitationBase`, and exports a `byId(citations)` helper mapping ids to citations. The id is stable **within a single result set** — it survives consumer `filter`/`sort`/`map`, unlike array position — and is the identity basis for the forthcoming inter-citation aggregates (parallel groups, history chains, short-form references). It is **not** durable across runs; use `toDurableLocator()` for cross-run identity. Additive and non-breaking: `id` is optional and is always populated by `extractCitations()`.
+
+- [#855](https://github.com/medelman17/eyecite-ts/pull/855) [`d1f008e`](https://github.com/medelman17/eyecite-ts/commit/d1f008e245362422260e65aa910f74f771abbba4) Thanks [@medelman17](https://github.com/medelman17)! - Add a built-in `stripMarkdownEmphasis` cleaner and an `additionalCleaners` option (#835). Markdown legal text — e.g. LLM-drafted briefs with emphasized case names like `*Leon v. Martinez*` — now has a ready-made, opt-in cleaner that strips `*`/`**`/`***` emphasis while preserving star-pagination pincites (`at *3`) and underscores (blank locators like `[____]`). The new `additionalCleaners` option appends cleaners to the default chain, so adding one no longer silently disables the defaults — unlike `cleaners`, which replaces them.
+
+### Patch Changes
+
+- [#839](https://github.com/medelman17/eyecite-ts/pull/839) [`470a3bf`](https://github.com/medelman17/eyecite-ts/commit/470a3bf6d22091bc8c30e9815bdeb0f327197b6d) Thanks [@medelman17](https://github.com/medelman17)! - Refactor case-citation extraction internals around explicit parser, semantic, and draft modules while preserving existing extraction behavior.
+
+- [#841](https://github.com/medelman17/eyecite-ts/pull/841) [`dc1ba6c`](https://github.com/medelman17/eyecite-ts/commit/dc1ba6c08302352b7d5074158eb62cb84a23d689) Thanks [@medelman17](https://github.com/medelman17)! - Fix short-form resolution binding to the wrong case when a length-changing `cleaner` is used (#830). The resolver assumed clean-text offsets equaled original-text offsets and read its bracket-scope / trigger-anchor / name-window analysis against the original text using clean offsets. A cleaner that shrinks the text (e.g. markdown-emphasis stripping) made those offsets diverge — accumulating drift with preceding removed content — so parenthetical-child detection misfired and a trailing `Id.` could bind to a `(quoting …)` child instead of the citation-sentence's main case. The resolver now reads clean-coordinate offsets against the cleaned text and maps derived spans back to original coordinates, so resolution via a cleaner matches resolution of pre-stripped text.
+
+- [#842](https://github.com/medelman17/eyecite-ts/pull/842) [`232d2d2`](https://github.com/medelman17/eyecite-ts/commit/232d2d2073fe666fe3c9ed7b6738d435bb4c0975) Thanks [@medelman17](https://github.com/medelman17)! - Recognize bracketed-blank (`[____]`) slip-op / WL locators instead of dropping the citation (#831)
+
+- [#859](https://github.com/medelman17/eyecite-ts/pull/859) [`1d5b30a`](https://github.com/medelman17/eyecite-ts/commit/1d5b30ae7b9be2acb585b41b1c3898ff48fa944d) Thanks [@medelman17](https://github.com/medelman17)! - Fix `isFullCitation` silently misclassifying `regulation` and `stateRule` (#843). The guard hand-listed only 18 of the 20 `FullCitationType` members, so any consumer routing on it (e.g. `groupByCase`, custom pipelines) dropped those two types. The guard now reads a runtime inventory (`FULL_CITATION_TYPES`) that the compiler proves is an exact bijection with `FullCitationType` — via a `Record<FullCitationType, true>` map whose keys must list every union member — so the guard can never again omit a full type. Adds an exhaustiveness test asserting `isFullCitation` accepts every `FullCitationType` literal and rejects every `ShortFormCitationType` literal.
+
+- [#838](https://github.com/medelman17/eyecite-ts/pull/838) [`2674a6b`](https://github.com/medelman17/eyecite-ts/commit/2674a6b4fdeec5d86ce7e7419ad7fdfd88f7fcbe) Thanks [@medelman17](https://github.com/medelman17)! - fix(types): classify regulation as a full citation. `RegulationCitation` is now part of the `FullCitation` union and `"regulation"` is included in `FullCitationType`, so consumers narrowing on full-citation types see regulations.
+
 ## 0.29.2
 
 ### Patch Changes
@@ -3126,7 +3150,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-                          275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+                            275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -3152,7 +3176,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-                          People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+                            People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
