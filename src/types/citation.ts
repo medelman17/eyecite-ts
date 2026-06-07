@@ -230,6 +230,21 @@ export interface Parenthetical {
   type: ParentheticalType
   /** Position of full parenthetical block including delimiters */
   span?: Span
+  /**
+   * Child citations nested within this explanatory parenthetical — e.g. the
+   * `Doe v. City, 100 F.2d 1` in `(quoting Doe v. City, 100 F.2d 1)` (#851).
+   * Each child carries its own stable {@link CitationId}, may be any citation
+   * type (not only cases), and may itself carry parentheticals (recursive). Per
+   * Bluebook Rule 1.5(b) such a cite is a subordinate component of the host
+   * citation, not a free-standing one.
+   *
+   * Populated additively by default: the child is ALSO a top-level result, so it
+   * stays reachable via `byId`. With `excludeParentheticalChildren`, the child
+   * is removed from the top-level array and reachable ONLY by traversing here
+   * (it is then absent from `byId(result)`). Either way, `Id.`/`supra` never
+   * resolve to a paren-child (Bluebook Rule 4.1/4.2).
+   */
+  citations?: Citation[]
 }
 
 /**

@@ -218,6 +218,24 @@ if (cite.type === "case") {
 
 Classification types: `holding`, `finding`, `stating`, `noting`, `explaining`, `quoting`, `citing`, `discussing`, `describing`, `recognizing`, `applying`, `rejecting`, `adopting`, `requiring`, `other`.
 
+A citation nested inside an explanatory parenthetical — e.g. the `Doe v. City, 100 F.2d 1` in `(quoting Doe v. City, 100 F.2d 1)` — is linked onto its host parenthetical's `citations` array as a child citation (with its own stable `id`):
+
+```typescript
+const text = "Smith v. Jones, 200 F.3d 100 (2d Cir. 2000) (quoting Doe v. City, 100 F.2d 1)."
+const [smith] = extractCitations(text)
+smith.parentheticals?.[0].citations
+// [ FullCaseCitation { caseName: "Doe v. City", reporter: "F.2d", page: 1, … } ]
+```
+
+By default this is **additive and non-breaking**: the nested cite is also kept as a top-level result, so a later case short form can still resolve to a case first cited in a parenthetical (Bluebook Rule 10.9(a)). Pass `{ excludeParentheticalChildren: true }` for the strict subordinate model — the nested cite is removed from the top-level array and reachable only via its host's `parentheticals[].citations`:
+
+```typescript
+extractCitations(text).length                                          // 2 (Smith + Doe)
+extractCitations(text, { excludeParentheticalChildren: true }).length  // 1 (Smith; Doe is a child)
+```
+
+Either way, `Id.`/`supra` never resolve to a parenthetical-nested citation (Bluebook Rule 4.1/4.2) — only the host authority.
+
 ### Citation Annotation
 
 Mark up citations with HTML using template or callback modes:
