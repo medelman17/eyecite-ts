@@ -1,5 +1,37 @@
 # eyecite-ts
 
+## 0.33.0
+
+### Minor Changes
+
+- [#883](https://github.com/medelman17/eyecite-ts/pull/883) [`19f6f4b`](https://github.com/medelman17/eyecite-ts/commit/19f6f4b3f8e8568f0150b378c0b238c18f7edb15) Thanks [@medelman17](https://github.com/medelman17)! - Fix `extractCitations` crashing on real input, and export a `CitationParseError` type.
+
+  Previously, when the tokenizer admitted a candidate that an extractor's stricter internal re-parse regex couldn't parse — a tokenizer/extractor regex divergence, e.g. a journal name containing an apostrophe (`KELLEY'S`), which the extractor's `[A-Za-z.\s]` name class rejects — the extractor threw an uncaught exception that propagated out of `extractCitations` and crashed the whole call. A single malformed match in one document lost every citation in it.
+
+  Now such a candidate is **declined** (its token skipped) and extraction continues, so `extractCitations` no longer throws on this class of input. Genuine (non-parse) errors still propagate so real bugs stay visible. The new `CitationParseError` is exported so callers of the individual extractors can catch it explicitly.
+
+  Closes #881.
+
+- [#875](https://github.com/medelman17/eyecite-ts/pull/875) [`2e0e006`](https://github.com/medelman17/eyecite-ts/commit/2e0e006cda525dfc93c2669a5213dc4de78cbfff) Thanks [@medelman17](https://github.com/medelman17)! - refactor(resolve) + feat(extract): thread the `Id.` section-pincite terminal forward (#847)
+
+  The resolver's `Id.` family preference (case vs statute) used to peek ~20 chars of raw text after `Id.` for a `§`, because `extractId`'s pincite regex captures only page/paragraph shapes. Extraction now emits a `sectionPincite` terminal on `IdCitation` (the locator after `§`/`§§`, e.g. `1983(c)`), and the resolver reads that structured field instead of re-scanning prose — collapsing two duplicate raw-text peeks (`tailHasSection` + `getIdPreferredFamily`) into one field read. Behavior-preserving; the short-form resolution suite is green.
+
+  First slice of #847 (CST→AST: stop re-parsing prose in the resolver). The remaining case-name-inference sites (the 80-char mismatch re-tokenize and the 400-char `Party v. Party` scans) are split into a follow-up, to land with the authoritative-grammar / capture-group-threading work (#844).
+
+- [#873](https://github.com/medelman17/eyecite-ts/pull/873) [`54b8ccd`](https://github.com/medelman17/eyecite-ts/commit/54b8ccdb5af6df143f693fd0b75f9e3be4fa0a9e) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): structured `parentheticalNode` on short-form citations (#869)
+
+  Short-form citations (`Id.`, `supra`, short-form case) now expose a structured `parentheticalNode` alongside their flat `parenthetical` string — the same `Parenthetical` shape full-case citations carry, with a classified `type`, a `span`, and any nested child citations in `citations`. So `Id. at 5 (quoting Doe v. City, 100 F.2d 1)` links the nested `Doe v. City` onto `id.parentheticalNode.citations`, completing the parenthetical-nesting work started for full-case citations in #867.
+
+  Additive and non-breaking: the nested cite stays a top-level result by default (Bluebook Rule 10.9(a)), and `excludeParentheticalChildren` removes it the same way it does for full-case parentheticals. `Id.`/`supra` resolution is unchanged — they still bind only to the host authority, never a paren-child (Rule 4.1/4.2). The flat `parenthetical` string is retained unchanged.
+
+### Patch Changes
+
+- [#877](https://github.com/medelman17/eyecite-ts/pull/877) [`d796c36`](https://github.com/medelman17/eyecite-ts/commit/d796c36c30dbe350f6aedc4335b92707aeee65bc) Thanks [@medelman17](https://github.com/medelman17)! - refactor(patterns): consolidate the citation pattern grammar into a single source of truth (#844)
+
+  The authoritative pattern set and its priority order (most-specific → least-specific) are now one exported definition — `orderedPatterns` in `src/patterns/grammar.ts` — consumed by both `extractCitations` and the `tokenize` default. Previously the ordered list lived inline in `extractCitations` while `tokenize` shipped its own incomplete, differently-ordered default that the main pipeline never used (effectively dead).
+
+  Behavior-preserving: the emitted token stream and the downstream dedup outcome are identical (full suite green). The order is load-bearing but was invisible — dedup keeps the earliest-listed (most-specific) pattern on an overlap — so a new ordering test (`tests/patterns/grammarOrder.test.ts`) guards it against accidental reordering.
+
 ## 0.32.0
 
 ### Minor Changes
@@ -3184,7 +3216,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-                                275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+                                  275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -3210,7 +3242,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-                                People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+                                  People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
