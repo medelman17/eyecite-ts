@@ -9,6 +9,7 @@
  * @module extract/statutes/extractBankruptcyCode
  */
 
+import { CitationParseError } from "../errors"
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
 import type { StatuteComponentSpans } from "@/types/componentSpans"
@@ -31,7 +32,7 @@ export function extractBankruptcyCode(
   const match = regex.exec(text)
 
   if (!match) {
-    throw new Error(`Failed to parse Bankruptcy Code citation: ${text}`)
+    throw new CitationParseError(`Failed to parse Bankruptcy Code citation: ${text}`)
   }
 
   const rawBody = match[1]

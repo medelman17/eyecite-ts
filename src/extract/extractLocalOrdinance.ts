@@ -7,6 +7,7 @@
  * @module extract/extractLocalOrdinance
  */
 
+import { CitationParseError } from "./errors"
 import { CCCO_ORDINANCE_RE } from "@/patterns/localOrdinancePatterns"
 import type { Token } from "@/tokenize/tokenizer"
 import type { LocalOrdinanceCitation } from "@/types/citation"
@@ -18,7 +19,7 @@ export function extractLocalOrdinance(
 ): LocalOrdinanceCitation {
   const { text, span } = token
   const m = CCCO_ORDINANCE_RE.exec(text)
-  if (!m) throw new Error(`Failed to parse local-ordinance citation: ${text}`)
+  if (!m) throw new CitationParseError(`Failed to parse local-ordinance citation: ${text}`)
 
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 

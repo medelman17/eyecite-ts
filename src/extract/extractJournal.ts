@@ -7,6 +7,7 @@
  * @module extract/extractJournal
  */
 
+import { CitationParseError } from "./errors"
 import type { Token } from "@/tokenize"
 import type { JournalCitation } from "@/types/citation"
 import type { JournalComponentSpans } from "@/types/componentSpans"
@@ -70,7 +71,7 @@ export function extractJournal(
   const match = journalRegex.exec(text)
 
   if (!match) {
-    throw new Error(`Failed to parse journal citation: ${text}`)
+    throw new CitationParseError(`Failed to parse journal citation: ${text}`)
   }
 
   const rawVolume = match[1]

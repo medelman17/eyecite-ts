@@ -10,6 +10,7 @@
  * @module extract/extractStatutesAtLarge
  */
 
+import { CitationParseError } from "./errors"
 import type { Token } from "@/tokenize/tokenizer"
 import type { StatutesAtLargeCitation } from "@/types/citation"
 import type { StatutesAtLargeComponentSpans } from "@/types/componentSpans"
@@ -46,7 +47,7 @@ export function extractStatutesAtLarge(
   const match = statRegex.exec(text)
 
   if (!match) {
-    throw new Error(`Failed to parse Statutes at Large citation: ${text}`)
+    throw new CitationParseError(`Failed to parse Statutes at Large citation: ${text}`)
   }
 
   const rawVolume = match[1]
