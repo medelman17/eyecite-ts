@@ -8,6 +8,7 @@
  * @module extract/extractTreaty
  */
 
+import { CitationParseError } from "./errors"
 import { TREATY_SERIES_NO_RE, TREATY_VOL_PAGE_RE } from "@/patterns/treatyPatterns"
 import type { Token } from "@/tokenize/tokenizer"
 import type { TreatyCitation } from "@/types/citation"
@@ -26,13 +27,13 @@ export function extractTreaty(token: Token, transformationMap: TransformationMap
 
   if (patternId === "treaty-volume-page") {
     const m = TREATY_VOL_PAGE_RE.exec(text)
-    if (!m) throw new Error(`Failed to parse treaty citation: ${text}`)
+    if (!m) throw new CitationParseError(`Failed to parse treaty citation: ${text}`)
     volume = Number.parseInt(m[1]!, 10)
     series = normalizeSeries(m[2]!)
     page = Number.parseInt(m[3]!, 10)
   } else {
     const m = TREATY_SERIES_NO_RE.exec(text)
-    if (!m) throw new Error(`Failed to parse treaty citation: ${text}`)
+    if (!m) throw new CitationParseError(`Failed to parse treaty citation: ${text}`)
     series = normalizeSeries(m[1]!)
     seriesNumber = m[2]!
   }

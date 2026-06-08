@@ -1,3 +1,4 @@
+import { CitationParseError } from "./errors"
 import type { Token } from "@/tokenize"
 import type { CaseComponentSpans } from "@/types/componentSpans"
 import { spanFromGroupIndex, type TransformationMap } from "@/types/span"
@@ -46,7 +47,7 @@ export function parseCaseCitationCore({
     VOLUME_REPORTER_PAGE_REGEX_COMMA.exec(text)
 
   if (!match) {
-    throw new Error(`Failed to parse case citation: ${text}`)
+    throw new CitationParseError(`Failed to parse case citation: ${text}`)
   }
 
   const volume = parseVolume(match[1])

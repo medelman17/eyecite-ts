@@ -7,6 +7,7 @@
  * @module extract/extractNeutral
  */
 
+import { CitationParseError } from "./errors"
 import type { Token } from "@/tokenize"
 import type { NeutralCitation } from "@/types/citation"
 import type { NeutralComponentSpans } from "@/types/componentSpans"
@@ -189,7 +190,7 @@ export function extractNeutral(
     const neutralRegex = /^(\d{4})[-\s]+(.+?)[-\s]+(\d+|\[[_-]{2,}\])(-U)?$/d
     const match = neutralRegex.exec(text)
     if (!match) {
-      throw new Error(`Failed to parse neutral citation: ${text}`)
+      throw new CitationParseError(`Failed to parse neutral citation: ${text}`)
     }
     year = Number.parseInt(match[1], 10)
     court = match[2]

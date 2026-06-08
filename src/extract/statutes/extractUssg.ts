@@ -8,6 +8,7 @@
  * @module extract/statutes/extractUssg
  */
 
+import { CitationParseError } from "../errors"
 import type { Token } from "@/tokenize"
 import type { StatuteCitation } from "@/types/citation"
 import type { StatuteComponentSpans } from "@/types/componentSpans"
@@ -22,7 +23,7 @@ export function extractUssg(token: Token, transformationMap: TransformationMap):
 
   const match = USSG_REGEX.exec(text)
   if (!match) {
-    throw new Error(`Failed to parse USSG citation: ${text}`)
+    throw new CitationParseError(`Failed to parse USSG citation: ${text}`)
   }
 
   const rawBody = match[2]

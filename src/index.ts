@@ -94,6 +94,7 @@ export {
 
 export type { ExtractOptions } from "./extract/extractCitations"
 export { extractCitations, extractCitationsAsync } from "./extract/extractCitations"
+export { CitationParseError } from "./extract/errors"
 export { byId } from "./extract/assignCitationIds"
 export { applyFalsePositiveFilters } from "./extract/filterFalsePositives"
 

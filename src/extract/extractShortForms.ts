@@ -7,6 +7,7 @@
  * @module extract/extractShortForms
  */
 
+import { CitationParseError } from "./errors"
 import type { Token } from "@/tokenize"
 import type {
   IdCitation,
@@ -260,7 +261,7 @@ export function extractId(
   const match = idRegex.exec(text)
 
   if (!match) {
-    throw new Error(`Failed to parse Id. citation: ${text}`)
+    throw new CitationParseError(`Failed to parse Id. citation: ${text}`)
   }
 
   const firstChar = match[1]
@@ -438,7 +439,7 @@ export function extractSupra(
   const match = bracketedMatch || partyMatch || standaloneRegex.exec(text)
 
   if (!match) {
-    throw new Error(`Failed to parse supra citation: ${text}`)
+    throw new CitationParseError(`Failed to parse supra citation: ${text}`)
   }
 
   let partyName: string | undefined
@@ -578,7 +579,7 @@ export function extractShortFormCase(
   const match = shortFormRegex.exec(text)
 
   if (!match) {
-    throw new Error(`Failed to parse short-form case citation: ${text}`)
+    throw new CitationParseError(`Failed to parse short-form case citation: ${text}`)
   }
 
   const rawPartyName = match[1]

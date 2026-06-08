@@ -56,6 +56,7 @@ import type { ResolutionOptions, ResolvedCitation } from "../resolve/types"
 import { detectParallelCitations } from "./detectParallel"
 import { detectStringCitations, detectLeadingSignals } from "./detectStringCites"
 import { extractId, extractShortFormCase, extractSupra } from "./extractShortForms"
+import { CitationParseError } from "./errors"
 import { applyFalsePositiveFilters } from "./filterFalsePositives"
 import { assignCitationIds } from "./assignCitationIds"
 import { nestParentheticalCitations } from "./nestParentheticalCitations"
@@ -418,6 +419,9 @@ export function extractCitations(
     const token = deduplicatedTokens[i]
     let citation: Citation
 
+    // #881: wrap per-token extraction so a candidate the extractor cannot
+    // re-parse declines (skips its token) instead of crashing the document.
+    try {
     switch (token.type) {
       case "case":
         // Check pattern ID to distinguish short-form from full citations
@@ -510,6 +514,15 @@ export function extractCitations(
       default:
         // Unknown type - skip
         continue
+    }
+    } catch (error) {
+      // The tokenizer admitted a candidate that the extractor's stricter
+      // re-parse regex cannot parse (a tokenizer/extractor divergence, #881).
+      // Decline this one candidate rather than letting a single malformed match
+      // crash the whole document. Any OTHER error is a genuine bug and
+      // propagates so it stays visible.
+      if (error instanceof CitationParseError) continue
+      throw error
     }
 
     // Attach cleaning warnings to citation if any
