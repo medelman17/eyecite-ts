@@ -22,7 +22,7 @@ Non-goals: measuring *accuracy* (correctness vs. ground truth) — that's a sepa
 2. **Grain:** **compact behavior projection** per citation (not full objects, not just a hash) — immune to additive-field churn, captures extraction + resolution.
 3. **Scale:** **tiered** — Phase 1 ships a ~1k committed core that gates PRs; Phase 2 (deferred) adds a ~10–50k extended tier on a nightly/manual job.
 4. **Sampling:** **stratified** across court level / era / opinion type / OCR-vs-clean, deterministic + reproducible (committed manifest).
-5. **Generation model:** **Claude-driven via the pgedge-flp MCP** for the replica-touching steps (no credential distribution). Replica-free steps are plain scripts.
+5. **Generation model:** ~~Claude-driven via the pgedge-flp MCP~~ → **REVISED at execution (2026-06-08):** a direct-DB `pg` fetch script (`corpus:fetch`, maintainer-run with `CL_DATABASE_URL`). The MCP returns query results *into the agent context*, and ~1k opinions ≈ 28 KB each ≈ **~7M tokens** of text — far beyond any context. The MCP can still *validate the selection* (ids + small strata), which it did (299 era-spread opinions); but the bulk text must stream DB→disk via a script. The deterministic `generate_series`+`LATERAL` selection query is the auditable "pick" (committed in `scripts/corpus/fetch.ts`). Replica-free steps (`corpus:regen`, the snapshot test) are unchanged.
 6. **Phase 1 scope:** core corpus + the PR-gating snapshot test + the `regen`/`sample` scripts + seeded long-tail guarantees. Phase 2 is a noted follow-up.
 
 ## 4. The load-bearing constraint

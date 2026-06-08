@@ -62,7 +62,7 @@
     "prebuild": "pnpm data:generate && pnpm llms:generate",
     "data:generate": "tsx scripts/generate-reporters-data.ts",
     "corpus:regen": "tsx scripts/corpus/regen.ts",
-    "corpus:sample": "tsx scripts/corpus/sample.ts",
+    "corpus:fetch": "tsx scripts/corpus/fetch.ts",
     "prepare": "pnpm data:generate",
     "test": "vitest",
     "pretest": "pnpm data:generate",
