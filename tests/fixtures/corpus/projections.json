@@ -1,0 +1,83 @@
+{
+  "-1": {
+    "id": -1,
+    "count": 2,
+    "citations": [
+      {
+        "type": "case",
+        "key": "384 U.S. 436",
+        "span": [
+          24,
+          36
+        ],
+        "resolvedTo": null
+      },
+      {
+        "type": "supra",
+        "key": "Miranda, supra, at 444",
+        "span": [
+          55,
+          77
+        ],
+        "resolvedTo": "384 U.S. 436"
+      }
+    ]
+  },
+  "-2": {
+    "id": -2,
+    "count": 3,
+    "citations": [
+      {
+        "type": "case",
+        "key": "200 F.3d 100",
+        "span": [
+          16,
+          28
+        ],
+        "resolvedTo": null
+      },
+      {
+        "type": "case",
+        "key": "100 F.2d 1",
+        "span": [
+          66,
+          76
+        ],
+        "resolvedTo": null
+      },
+      {
+        "type": "id",
+        "key": "Id. at 110",
+        "span": [
+          79,
+          89
+        ],
+        "resolvedTo": "200 F.3d 100"
+      }
+    ]
+  },
+  "-3": {
+    "id": -3,
+    "count": 2,
+    "citations": [
+      {
+        "type": "statute",
+        "key": "42 U.S.C. § 1983",
+        "span": [
+          4,
+          20
+        ],
+        "resolvedTo": null
+      },
+      {
+        "type": "id",
+        "key": "Id.",
+        "span": [
+          43,
+          46
+        ],
+        "resolvedTo": "42 U.S.C. § 1983"
+      }
+    ]
+  }
+}
