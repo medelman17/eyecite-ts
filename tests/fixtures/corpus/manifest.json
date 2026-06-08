@@ -19,5 +19,873 @@
     "era": "seed",
     "type": "seed",
     "ocr": false
+  },
+  {
+    "id": 1,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 22002,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 44001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 66001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 154001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 176001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 198001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 220001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 616001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 814001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 836001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 858001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 880001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 902001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 931036,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 946311,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 982964,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 990001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 1012001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 1034001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 1056001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 1078001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 2662002,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 2684001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 2706001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 2728001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 2750001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 2772015,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 2816001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 2926003,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 2948009,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 2970001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 2992012,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 3014001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 3036001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 3058008,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 3080001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 3102001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 3124004,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 3146002,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 3168002,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 3212001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4026002,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4048001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4070001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4092001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4114001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4136001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4158001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4180002,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4202021,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4224009,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4246001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4268001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4290001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4312001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4334001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4356015,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4378001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4400001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4422001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4444001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4466001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4510001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4532001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4554001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4576077,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4642033,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 4664001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": true
+  },
+  {
+    "id": 4686001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 5126001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 5236012,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 6336016,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 8206001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 8382001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 9350001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 9372001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 9394005,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 9900001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 9944001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 9988001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": false
+  },
+  {
+    "id": 10010001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": false
+  },
+  {
+    "id": 10032001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": false
+  },
+  {
+    "id": 10054001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": true
+  },
+  {
+    "id": 10076001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": true
+  },
+  {
+    "id": 10098001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": false
+  },
+  {
+    "id": 10120001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": true
+  },
+  {
+    "id": 10142001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": true
+  },
+  {
+    "id": 10164001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": false
+  },
+  {
+    "id": 10186001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": true
+  },
+  {
+    "id": 10208001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": false
+  },
+  {
+    "id": 10230001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": false
+  },
+  {
+    "id": 10252001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": true
+  },
+  {
+    "id": 10274001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": false
+  },
+  {
+    "id": 10296001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": true
+  },
+  {
+    "id": 10318002,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": true
+  },
+  {
+    "id": 10340003,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": false
+  },
+  {
+    "id": 10362001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": true
+  },
+  {
+    "id": 10384001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": false
+  },
+  {
+    "id": 10406001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": false
+  },
+  {
+    "id": 10428001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": false
+  },
+  {
+    "id": 10450001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": true
+  },
+  {
+    "id": 10472030,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10494017,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10516069,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10538235,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10560544,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10582021,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10626001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10648001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": true
+  },
+  {
+    "id": 10670001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": true
+  },
+  {
+    "id": 10692001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": false
+  },
+  {
+    "id": 10714001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": false
+  },
+  {
+    "id": 10736001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10758001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10780001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10802001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10824001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10846001,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "100trialcourt",
+    "ocr": true
+  },
+  {
+    "id": 10868631,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10890681,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10912033,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10934576,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
+  },
+  {
+    "id": 10979716,
+    "court": "unknown",
+    "era": "unknown",
+    "type": "010combined",
+    "ocr": false
   }
 ]

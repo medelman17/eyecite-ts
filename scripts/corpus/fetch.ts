@@ -1,97 +1,129 @@
 /**
- * scripts/corpus/fetch.ts — MAINTAINER-RUN, replica-REQUIRED. CI never runs this.
+ * scripts/corpus/fetch.ts — builds the committed corpus = seeds + a stratified,
+ * era-spread sample of real CourtListener opinions, fetched over the REST API.
  *
- * Deterministically selects a stratified, era-spread sample of real opinions
- * from the CourtListener replica and (re)builds the committed corpus = seeds +
- * the sample. The SELECTION query below is the auditable, reproducible "pick"
- * (same ids every run) — Claude validated it via the MCP (299 era-spread
- * opinions at STEP=22000); this script fetches the text the MCP can't carry.
+ * Self-contained + deterministic: the "selection" is the nearest opinion at/after
+ * each of N evenly-spaced points across the id space (`id__gte` + `order_by=id`
+ * is the API's `LATERAL` nearest-id). Only opinions whose plain_text falls in
+ * [MIN_LEN, MAX_LEN] are kept, so the realized yield is ~1/4 of the gid count
+ * (STEP=22000 → 500 gids → ~124 real opinions). Text streams API→disk, never
+ * through an agent context (a ~1k corpus is ~7M tokens of text).
  *
- * Why a script and not the MCP: ~1k opinions ≈ 28 KB each ≈ ~7M tokens of text,
- * far too much to flow through an agent/MCP context. A direct DB connection
- * streams text to disk instead.
+ * Resilient: requests retry on 429/5xx + thrown timeout/network errors, and an
+ * opinion that crashes extractCitations is skipped + logged (see #881) rather
+ * than aborting the whole build.
  *
  * Run:
- *   pnpm add -D pg                     # the corpus's only out-of-tree dep
- *   CL_DATABASE_URL='postgres://…/courtlistener?sslmode=require' \
- *   CORPUS_STEP=11000 pnpm corpus:fetch   # lower STEP → more opinions (~1k at 11000)
- *
- * Then review the projections.json diff and commit the regenerated corpus.
+ *   COURTLISTENER_API_TOKEN=… CORPUS_STEP=22000 pnpm corpus:fetch
+ * Lower STEP → more opinions (~0.25 real per gid): 22000→~124, 9000→~300,
+ * 2750→~1k. Then review the projections.json diff and commit.
  */
 import { join } from "node:path"
 import { type ManifestEntry, writeCorpus } from "./corpusIO"
 import { projectOpinion } from "./project"
 import { SEEDS } from "./seeds"
 
-// Lower STEP → more candidates → more opinions. 22000≈300, 11000≈600, 7000≈~1k.
-const STEP = Number(process.env.CORPUS_STEP ?? 11000)
+const BASE = "https://www.courtlistener.com/api/rest/v4"
+const ID_MAX = 11_000_000
+const STEP = Number(process.env.CORPUS_STEP ?? 22000)
+const MIN_LEN = 500
+const MAX_LEN = 60_000
+const DELAY_MS = 350
 
-// Deterministic, era-spread selection: the nearest valid opinion at/after each
-// of N evenly-spaced points across the id range (gap-tolerant via LATERAL).
-const SELECT_SQL = `
-SELECT o.id, o.type, o.extracted_by_ocr AS ocr,
-       (date_part('decade', c.date_filed) * 10)::int AS era,
-       o.plain_text AS text
-FROM generate_series(1, 11000000, $1) g(gid)
-CROSS JOIN LATERAL (
-  SELECT id, type, extracted_by_ocr, cluster_id, plain_text
-  FROM search_opinion
-  WHERE id >= g.gid AND plain_text <> '' AND length(plain_text) BETWEEN 500 AND 60000
-  ORDER BY id LIMIT 1
-) o
-JOIN search_opinioncluster c ON c.id = o.cluster_id
-ORDER BY o.id`
-
-interface Row {
+interface OpinionResult {
   id: number
+  plain_text: string | null
   type: string
-  ocr: boolean
-  era: number
-  text: string
+  extracted_by_ocr: boolean
 }
 
-/** Minimal `pg.Client` surface, self-typed so `@types/pg` isn't required. */
-interface PgClient {
-  connect(): Promise<void>
-  query(sql: string, params: unknown[]): Promise<{ rows: Row[] }>
-  end(): Promise<void>
-}
-interface PgModule {
-  Client: new (config: { connectionString: string }) => PgClient
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/** Fetch with retry on 429/5xx AND thrown timeout/network errors. Returns null
+ *  after exhausting attempts, so one bad request skips a gid (not the run). */
+async function clGet(path: string, token: string): Promise<{ results: OpinionResult[] } | null> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const res = await fetch(`${BASE}${path}`, {
+        headers: { Authorization: `Token ${token}` },
+        signal: AbortSignal.timeout(45_000),
+      })
+      if (res.status === 429 || res.status >= 500) {
+        await sleep(5000 * 2 ** attempt) // 5s, 10s, 20s, 40s, 80s
+        continue
+      }
+      if (!res.ok) throw new Error(`CL ${res.status}: ${res.statusText}`)
+      return (await res.json()) as { results: OpinionResult[] }
+    } catch (e) {
+      if (attempt >= 4) {
+        console.warn(`skip ${path}: ${e instanceof Error ? e.message : e}`)
+        return null
+      }
+      await sleep(2000 * 2 ** attempt) // 2s, 4s, 8s, 16s
+    }
+  }
+  return null
 }
 
 async function main(): Promise<void> {
-  const url = process.env.CL_DATABASE_URL
-  if (!url) throw new Error("Set CL_DATABASE_URL to the CourtListener replica connection string")
-  const pg = (await import("pg")) as unknown as PgModule
-  const client = new pg.Client({ connectionString: url })
-  await client.connect()
-  let rows: Row[]
-  try {
-    rows = (await client.query(SELECT_SQL, [STEP])).rows
-  } finally {
-    await client.end()
+  const token = process.env.COURTLISTENER_API_TOKEN
+  if (!token) throw new Error("Set COURTLISTENER_API_TOKEN (the CourtListener REST API token)")
+
+  const seen = new Set<number>()
+  const real: Array<{ entry: ManifestEntry; text: string }> = []
+  const fields = "id,plain_text,type,extracted_by_ocr"
+
+  for (let gid = 1; gid <= ID_MAX; gid += STEP) {
+    const page = await clGet(
+      `/opinions/?id__gte=${gid}&order_by=id&page_size=5&fields=${fields}`,
+      token,
+    )
+    if (!page) {
+      await sleep(DELAY_MS)
+      continue
+    }
+    // Nearest opinion at/after gid whose plain_text is within the length window.
+    const hit = page.results.find(
+      (r) => r.plain_text && r.plain_text.length >= MIN_LEN && r.plain_text.length <= MAX_LEN,
+    )
+    if (hit && !seen.has(hit.id)) {
+      seen.add(hit.id)
+      real.push({
+        entry: { id: hit.id, court: "unknown", era: "unknown", type: hit.type, ocr: hit.extracted_by_ocr },
+        text: hit.plain_text as string,
+      })
+    }
+    await sleep(DELAY_MS)
   }
 
-  // Dedupe: close candidates in sparse id regions can resolve to the same opinion.
-  const byId = new Map<number, Row>()
-  for (const r of rows) byId.set(r.id, r)
-  const real = [...byId.values()]
+  const records = [...SEEDS.map((s) => ({ entry: s.entry, text: s.text })), ...real]
 
-  const records = [
-    ...SEEDS.map((s) => ({ entry: s.entry, text: s.text })),
-    ...real.map((r) => ({
-      entry: { id: r.id, court: "unknown", era: `${r.era}s`, type: r.type, ocr: r.ocr },
-      text: r.text,
-    })),
-  ]
-  const manifest: ManifestEntry[] = records.map((r) => r.entry)
-  const texts = Object.fromEntries(records.map((r) => [r.entry.id, r.text]))
-  const projections = Object.fromEntries(
-    records.map((r) => [r.entry.id, projectOpinion(r.entry.id, r.text)]),
-  )
+  // Project per-opinion so one opinion that crashes extractCitations skips
+  // itself (logged for investigation) rather than killing the whole build —
+  // a crash on real input is itself a finding the corpus is meant to surface.
+  const manifest: ManifestEntry[] = []
+  const texts: Record<number, string> = {}
+  const projections: Record<number, ReturnType<typeof projectOpinion>> = {}
+  const crashed: Array<{ id: number; error: string }> = []
+  for (const r of records) {
+    try {
+      projections[r.entry.id] = projectOpinion(r.entry.id, r.text)
+      manifest.push(r.entry)
+      texts[r.entry.id] = r.text
+    } catch (e) {
+      crashed.push({ id: r.entry.id, error: e instanceof Error ? e.message : String(e) })
+    }
+  }
+
   writeCorpus(join(process.cwd(), "tests/fixtures/corpus"), { manifest, texts, projections })
-  console.log(`corpus:fetch — wrote ${manifest.length} opinions (${SEEDS.length} seeds + ${real.length} real)`)
+  const seedsKept = manifest.filter((e) => e.type === "seed").length
+  console.log(
+    `corpus:fetch — wrote ${manifest.length} opinions (${seedsKept} seeds + ${manifest.length - seedsKept} real)`,
+  )
+  if (crashed.length) {
+    console.warn(`\n⚠️  ${crashed.length} opinion(s) SKIPPED — extractCitations threw (library bug on real input):`)
+    for (const c of crashed) console.warn(`   id ${c.id}: ${c.error}`)
+  }
 }
 
 main().catch((e) => {
