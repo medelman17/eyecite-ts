@@ -1,0 +1,26 @@
+{
+  "name": "annotator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate": "tsx --env-file-if-exists=.env src/migrate.ts",
+    "ingest": "tsx --env-file-if-exists=.env src/ingest.ts",
+    "seed": "tsx --env-file-if-exists=.env src/seed.ts",
+    "dev": "tsx watch --env-file-if-exists=.env src/server.ts",
+    "start": "tsx --env-file-if-exists=.env src/server.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "eyecite-ts": "workspace:*",
+    "hono": "^4.6.0",
+    "@hono/node-server": "^1.13.0",
+    "postgres": "^3.4.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.0",
+    "@types/node": "^22.0.0"
+  }
+}

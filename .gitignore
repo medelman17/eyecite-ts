@@ -39,6 +39,9 @@ mise.local.toml
 .serena/
 playground.html
 
+# Annotator app local env (never commit credentials)
+apps/annotator/.env
+
 # One-off audit / repro scripts (use scripts/bughunt/ for committed harnesses)
 scripts/audit-*.ts
 scripts/repro-*.ts
