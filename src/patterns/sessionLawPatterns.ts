@@ -29,13 +29,13 @@ export const NV_SESSION_LAW_RE: RegExp = new RegExp(NV_SRC)
 export const sessionLawPatterns: Pattern[] = [
   {
     id: "ca-session-law",
-    regex: new RegExp(CA_SRC, "g"),
+    regex: new RegExp(CA_SRC, "gd"),
     description: 'California session laws (e.g. "Stats. 1992, ch. 726, § 2, p. 3523")',
     type: "sessionLaw",
   },
   {
     id: "nv-session-law",
-    regex: new RegExp(NV_SRC, "g"),
+    regex: new RegExp(NV_SRC, "gd"),
     description: 'Nevada session laws (e.g. "2003 Nev. Stat., ch. 427, §§ 25-26, at 2590-95")',
     type: "sessionLaw",
   },

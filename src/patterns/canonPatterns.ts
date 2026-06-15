@@ -17,7 +17,7 @@ export const CANON_RE: RegExp = new RegExp(CANON_SRC)
 export const canonPatterns: Pattern[] = [
   {
     id: "canon",
-    regex: new RegExp(CANON_SRC, "g"),
+    regex: new RegExp(CANON_SRC, "gd"),
     description: 'Code of Judicial Conduct canons (e.g. "Canon 7(B)(1)")',
     type: "canon",
   },

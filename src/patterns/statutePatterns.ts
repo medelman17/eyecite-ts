@@ -59,7 +59,7 @@ export const statutePatterns: Pattern[] = [
     // guard `(?![^)]*\d{4})` lives INSIDE the subsection body (after
     // the section digits) and is preserved intact by this fix. #587
     regex:
-      /\b(\d+)\s*,?\s+(?:U\.?S\.?C\.?[AS]?\.?|USC[AS]?|United\s+States\s+Code)\s*,?\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s*,?\s+(?:U\.?S\.?C\.?[AS]?\.?|USC[AS]?|United\s+States\s+Code)\s*,?\s*(?:§§?|[Ss]ections?|[Ss]ec\.?)?\s*(\d+[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/gd,
     description:
       'U.S. Code citations (U.S.C., USC, USCA, USCS, "United States Code") with optional §/Section connector — #428 #584 #586 #587',
     type: "statute",
@@ -81,7 +81,7 @@ export const statutePatterns: Pattern[] = [
     // § 226`) — symmetric to the USC fix for #586. The trailing letter
     // alternation is USC-only.
     regex:
-      /\b(\d+)\s*,?\s+C\.?F\.?R\.?\s*,?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s*,?\s+C\.?F\.?R\.?\s*,?\s*(?:(?:Part|pt\.)\s+|§§?\s*|[Ss]ections?\s+|[Ss]ec\.?\s+)?(\d+(?:\.\d+)?[A-Za-z0-9-]*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/gd,
     description:
       'Code of Federal Regulations with optional Part/§/Section connector — #428 #587',
     type: "statute",
@@ -99,7 +99,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) section body.
     id: "irc",
     regex:
-      /\b(?:I\.R\.C\.|IRC)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(?:I\.R\.C\.|IRC)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/gd,
     description: 'Internal Revenue Code: "I.R.C. § 1367", "IRC § 1341" — #376',
     type: "statute",
   },
@@ -114,7 +114,7 @@ export const statutePatterns: Pattern[] = [
     // excluded by the internal-`.` rule (dot only followed by alphanumeric).
     id: "ussg",
     regex:
-      /\b(?:U\.S\.S\.G\.|USSG)\s*§§?\s*(\d+(?:[A-Za-z0-9-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
+      /\b(?:U\.S\.S\.G\.|USSG)\s*§§?\s*(\d+(?:[A-Za-z0-9-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/gd,
     description: 'U.S. Sentencing Guidelines: "U.S.S.G. § 2K2.4(b)", "USSG § 3E1.1" — #577',
     type: "statute",
   },
@@ -129,13 +129,13 @@ export const statutePatterns: Pattern[] = [
     // specificity (postfix form) is listed first so it wins overlap dedup.
     id: "bankruptcy-code-postfix",
     regex:
-      /§§?\s*(\d+(?:[A-Za-z0-9-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)\s+of\s+the\s+Bankruptcy\s+Code/g,
+      /§§?\s*(\d+(?:[A-Za-z0-9-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)\s+of\s+the\s+Bankruptcy\s+Code/gd,
     description: 'Bankruptcy Code postfix alias: "§ 547 of the Bankruptcy Code" → 11 U.S.C. — #585',
     type: "statute",
   },
   {
     id: "bankruptcy-code-prefix",
-    regex: /\bBankruptcy\s+Code\s*§§?\s*(\d+(?:[A-Za-z0-9-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
+    regex: /\bBankruptcy\s+Code\s*§§?\s*(\d+(?:[A-Za-z0-9-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/gd,
     description:
       'Bankruptcy Code prefix alias: "Bankruptcy Code § 548(a)(1)(B)(i)" → 11 U.S.C. — #585',
     type: "statute",
@@ -152,7 +152,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) chapter body — digits + optional hyphen-letter suffix
     // (NH uses forms like `169-D`, `458-C`).
     id: "rsa-chapter",
-    regex: /\bRSA\s+(?:\[chapter\]|chapter|ch\.?)\s+(\d+(?:-[A-Z])?)/g,
+    regex: /\bRSA\s+(?:\[chapter\]|chapter|ch\.?)\s+(\d+(?:-[A-Z])?)/gd,
     description:
       'New Hampshire RSA chapter-only form: "RSA chapter 169-D" / "RSA ch. 458-C" — #378',
     type: "statute",
@@ -165,7 +165,7 @@ export const statutePatterns: Pattern[] = [
     //
     // Captures: (1) chapter number.
     id: "oh-chapter",
-    regex: /\bR\.?\s*C\.?\s+Chapter\s+(\d+)/g,
+    regex: /\bR\.?\s*C\.?\s+Chapter\s+(\d+)/gd,
     description:
       'Ohio Revised Code chapter-only form: "R.C. Chapter 4509" / "R. C. Chapter 1702" — #388',
     type: "statute",
@@ -178,13 +178,13 @@ export const statutePatterns: Pattern[] = [
     //
     // Captures: (1) chapter number.
     id: "ors-chapter",
-    regex: /\bORS\s+chapter\s+(\d+)/g,
+    regex: /\bORS\s+chapter\s+(\d+)/gd,
     description: 'Oregon Revised Statutes chapter-only form: "ORS chapter 34" — #387',
     type: "statute",
   },
   {
     id: "prose",
-    regex: /\b[Ss]ection\s+(\d+[A-Za-z0-9-]*(?:\([^)]*\))*)\s+of\s+title\s+(\d+)\b/g,
+    regex: /\b[Ss]ection\s+(\d+[A-Za-z0-9-]*(?:\([^)]*\))*)\s+of\s+title\s+(\d+)\b/gd,
     description:
       'Prose-form federal citations (e.g., "section 1983 of title 42"). Note: MD-style "section X of the Y Article" deferred to PR 3.',
     type: "statute",
@@ -211,7 +211,7 @@ export const statutePatterns: Pattern[] = [
     // (paren and/or bracket groups, possibly space-separated).
     id: "ny-cplr-bare",
     regex:
-      /\b(?:N\.\s*Y\.\s*)?C\.?\s*P\.?\s*L\.?\s*R\.?\s*(?:§§?\s*)?(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*)((?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)/g,
+      /\b(?:N\.\s*Y\.\s*)?C\.?\s*P\.?\s*L\.?\s*R\.?\s*(?:§§?\s*)?(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*)((?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)/gd,
     description:
       'New York CPLR bare/dotted/§ forms: "CPLR 3025 (b)", "C.P.L.R. § 3211", "N.Y. C.P.L.R. § 211" — #592',
     type: "statute",
@@ -234,7 +234,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) acronym, (2) section body, (3) optional subsection chain.
     id: "ny-acronym-bare",
     regex:
-      /\b(?:N\.\s*Y\.\s*)?(RPAPL|RPL|BCL|EPTL|SCPA|DRL|LLCL|VTL)\s*(?:§§?\s*)?(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*)((?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)/g,
+      /\b(?:N\.\s*Y\.\s*)?(RPAPL|RPL|BCL|EPTL|SCPA|DRL|LLCL|VTL)\s*(?:§§?\s*)?(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*)((?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)/gd,
     description:
       'New York acronymized codes (RPAPL/RPL/BCL/EPTL/SCPA/DRL/LLCL/VTL) with bracket-or-paren subdivisions: "RPAPL 711 [5]", "EPTL § 5-1.1" — #640',
     type: "statute",
@@ -250,7 +250,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) title, (2) code, (3) section body with subsection chain.
     id: "lpra",
     regex:
-      /\b(\d+)\s+(L\.P\.R\.A\.|LPRA)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
+      /\b(\d+)\s+(L\.P\.R\.A\.|LPRA)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/gd,
     description:
       'Puerto Rico statutes (Leyes de Puerto Rico Anotadas): "23 LPRA § 72", "21 L.P.R.A. § 4615" — #635',
     type: "statute",
@@ -280,7 +280,7 @@ export const statutePatterns: Pattern[] = [
     // field — symmetric to the federal USC pattern and the bare
     // abbreviated-code patterns.
     regex:
-      /\b(N\.?\s*Y\.?|Cal(?:ifornia)?\.?|Tex(?:as)?\.?|Md\.?|(?<!W\.?\s?)Va\.?|Ala(?:bama)?\.?)\s+([A-Z][A-Za-z.&']*(?:(?:\s+|,\s+)(?:&|[A-Z][A-Za-z.&']*))*)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:,?\s+(?:subd\.|subdivision|paragraphs?|pars?\.)\s+(?:\([^)]*\)|\[[^\]]*\])(?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)?(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/g,
+      /\b(N\.?\s*Y\.?|Cal(?:ifornia)?\.?|Tex(?:as)?\.?|Md\.?|(?<!W\.?\s?)Va\.?|Ala(?:bama)?\.?)\s+([A-Z][A-Za-z.&']*(?:(?:\s+|,\s+)(?:&|[A-Z][A-Za-z.&']*))*)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:,?\s+(?:subd\.|subdivision|paragraphs?|pars?\.)\s+(?:\([^)]*\)|\[[^\]]*\])(?:\s*(?:\([^)]*\)|\[[^\]]*\]))*)?(?:\s*[-–—]+\s*\([A-Za-z0-9]+\))?(?:\s*et\s+seq\.?)?)/gd,
     description:
       "Named-code state citations (NY, CA, TX, MD, VA, AL) with jurisdiction prefix + code name + §",
     type: "statute",
@@ -302,7 +302,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) code name, (2) section body with bracket/paren chain.
     id: "ny-bare-named-code",
     regex:
-      /\b(Penal|Labor|Real Property|General Business|General Obligations|General Municipal|Municipal Home Rule|Criminal Procedure|Insurance|Executive|Judiciary|Civil Practice|Civil Rights|Education|Public Health|Banking|Domestic Relations|Environmental Conservation|Election|Social Services|Estates Powers and Trusts|Vehicle and Traffic|Surrogate's Court Procedure|Family Court|Court of Claims|Workers' Compensation|Highway|Tax|Personal Property)\s+Law\s+§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\)|\[[^\]]*\])*(?:\s+(?:\([^)]*\)|\[[^\]]*\]))*)/g,
+      /\b(Penal|Labor|Real Property|General Business|General Obligations|General Municipal|Municipal Home Rule|Criminal Procedure|Insurance|Executive|Judiciary|Civil Practice|Civil Rights|Education|Public Health|Banking|Domestic Relations|Environmental Conservation|Election|Social Services|Estates Powers and Trusts|Vehicle and Traffic|Surrogate's Court Procedure|Family Court|Court of Claims|Workers' Compensation|Highway|Tax|Personal Property)\s+Law\s+§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\)|\[[^\]]*\])*(?:\s+(?:\([^)]*\)|\[[^\]]*\]))*)/gd,
     description:
       'New York bare named-code form: "Penal Law § 130.00 [3]", "Labor Law § 220 [3-a]" — #386',
     type: "statute",
@@ -323,7 +323,7 @@ export const statutePatterns: Pattern[] = [
     // section digits and subsection paren, with negative lookahead to
     // exclude year-of-edition parens (`(1976)`, `(West 2018)`).
     regex:
-      /\b(Mass\.?\s*Gen\.?\s*Laws|General\s+Laws|M\.?G\.?L\.?A?\.?|A\.?L\.?M\.?|G\.?\s*L\.?)\s*(?:ch\.?|c\.?)\s*(\w+)(?:,?\s*(?:§§?|[Ss]ec\.?|[Ss]ection)\s*(\w+(?:[\w/-]|\.(?=\w))*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*et\s+seq\.?)?))?/g,
+      /\b(Mass\.?\s*Gen\.?\s*Laws|General\s+Laws|M\.?G\.?L\.?A?\.?|A\.?L\.?M\.?|G\.?\s*L\.?)\s*(?:ch\.?|c\.?)\s*(\w+)(?:,?\s*(?:§§?|[Ss]ec\.?|[Ss]ection)\s*(\w+(?:[\w/-]|\.(?=\w))*(?:\s*\((?![^)]*\d{4})[^)]*\))*(?:\s*et\s+seq\.?)?))?/gd,
     description: 'Massachusetts chapter-based citations (e.g., "Mass. Gen. Laws ch. 93A, § 2")',
     type: "statute",
   },
@@ -338,7 +338,7 @@ export const statutePatterns: Pattern[] = [
     // the section field (`5 ILCS 100/1-1.` → section "1-1", not "1-1.";
     // #283 / #331).
     regex:
-      /\b(\d+)\s+(?:ILCS|Ill\.?\s*Comp\.?\s*Stat\.?)\s*(?:Ann\.?\s+)?(\d+)\/(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(\d+)\s+(?:ILCS|Ill\.?\s*Comp\.?\s*Stat\.?)\s*(?:Ann\.?\s+)?(\d+)\/(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/gd,
     description: 'Illinois Compiled Statutes chapter-act citations (e.g., "735 ILCS 5/2-1001")',
     type: "statute",
   },
@@ -356,7 +356,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) year-of-edition, (2) chapter (incl. letter suffix `110A`),
     //   (3) paragraph body (subparagraphs + et seq.).
     regex:
-      /\bIll\.?\s*Rev\.?\s*Stat\.?,?\s+(\d{4}),?\s+[Cc]h(?:ap)?\.\s+(\d+[A-Z]?),?\s+pars?\.\s+(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\bIll\.?\s*Rev\.?\s*Stat\.?,?\s+(\d{4}),?\s+[Cc]h(?:ap)?\.\s+(\d+[A-Z]?),?\s+pars?\.\s+(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/gd,
     description: "Illinois Revised Statutes (pre-1993): Ill. Rev. Stat. YYYY, ch. N, par. N",
     type: "statute",
   },
@@ -369,7 +369,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) edition year, (2) section body.
     id: "rlh",
     regex:
-      /\bRLH\s+(\d{4})\s+§\s+(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\bRLH\s+(\d{4})\s+§\s+(\d+(?:[A-Za-z0-9:-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/gd,
     description: 'Revised Laws of Hawaii (pre-1955): "RLH 1935 § 2545" — #359',
     type: "statute",
   },
@@ -389,7 +389,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) section body, (2) optional edition year (1963/1973).
     id: "colorado-prose",
     regex:
-      /\b[Ss]ection\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+Colo(?:rado)?\.?\s+Rev(?:ised)?\.?\s+Stat(?:utes)?\.?(?:\s+Ann(?:otated)?\.?)?(?:\s+(19\d{2}))?/g,
+      /\b[Ss]ection\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+Colo(?:rado)?\.?\s+Rev(?:ised)?\.?\s+Stat(?:utes)?\.?(?:\s+Ann(?:otated)?\.?)?(?:\s+(19\d{2}))?/gd,
     description:
       'Pre-1973 Colorado prose form: "Section 148-21-34, Colorado Revised Statutes 1963" — #352',
     type: "statute",
@@ -411,7 +411,7 @@ export const statutePatterns: Pattern[] = [
     // `\b` wouldn't anchor at end-of-string. The closed alternation
     // (`Florida Statutes | Fla. Stat.`) is specific enough on its own.
     regex:
-      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+(?:Florida\s+Statutes|Fla\.\s*Stat\.)/g,
+      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+(?:Florida\s+Statutes|Fla\.\s*Stat\.)/gd,
     description:
       'Florida postfix statute form: "section 812.035(7), Florida Statutes" / "§83.15, Florida Statutes" — #356',
     type: "statute",
@@ -425,7 +425,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) section body.
     id: "florida-prefix-spelled",
     regex:
-      /\bFlorida\s+Statutes?\s*§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?)/g,
+      /\bFlorida\s+Statutes?\s*§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?)/gd,
     description:
       'Florida spelled-out prefix form: "Florida Statute 679.504(3)" / "Florida Statutes §73.071" — #356',
     type: "statute",
@@ -440,7 +440,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) section body.
     id: "idaho-postfix",
     regex:
-      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+Idaho\s+Code(?:\s+Ann\.?)?/g,
+      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+Idaho\s+Code(?:\s+Ann\.?)?/gd,
     description: 'Idaho postfix statute form: "Section 23-908(4), Idaho Code" — #360',
     type: "statute",
   },
@@ -454,7 +454,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) section body.
     id: "mca-postfix",
     regex:
-      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+MCA/g,
+      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+MCA/gd,
     description: 'Montana Code Annotated postfix form: "§ 77-6-205(2), MCA" — #372',
     type: "statute",
   },
@@ -467,7 +467,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) section body.
     id: "tca-postfix",
     regex:
-      /(?<![A-Za-z])(?:[Ss]ections?|[Ss]ec\.?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+T\.?C\.?A\.?/g,
+      /(?<![A-Za-z])(?:[Ss]ections?|[Ss]ec\.?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s+et\s+seq\.?)?),?\s+T\.?C\.?A\.?/gd,
     description: 'Tennessee Code Annotated postfix form: "§ 39-904, T.C.A." — #398',
     type: "statute",
   },
@@ -481,7 +481,7 @@ export const statutePatterns: Pattern[] = [
     //
     // Captures: (1) chapter body in NN.NN form.
     id: "rcw-chapter-postfix",
-    regex: /\b[Cc]hapter\s+(\d+\.\d+)\s+RCW/g,
+    regex: /\b[Cc]hapter\s+(\d+\.\d+)\s+RCW/gd,
     description: 'Washington RCW chapter postfix form: "chapter 49.60 RCW" — #408',
     type: "statute",
   },
@@ -500,7 +500,7 @@ export const statutePatterns: Pattern[] = [
     // pattern only fires for real admin-code references.
     id: "state-admin-code",
     regex:
-      /\b(?:(NMAC)\s+(\d+\.\d+\.\d+\.\d+(?:\([A-Z]\))?)|(?<=^|[^A-Za-z])(\d+\.\d+\.\d+\.\d+(?:\([A-Z]\))?)\s+(NMAC)|(OAR)\s+(\d+-\d+-\d+)|(COMAR)\s+(\d+\.\d+\.\d+\.\d+[A-Z]?)|(IDAPA)\s+(\d+\.\d+\.\d+\.\d+\.\d+)|(?<=^|[^A-Za-z])(\d+\.\d+\.\d+(?:\(\d+\))?),\s+(ARM)\b)/g,
+      /\b(?:(NMAC)\s+(\d+\.\d+\.\d+\.\d+(?:\([A-Z]\))?)|(?<=^|[^A-Za-z])(\d+\.\d+\.\d+\.\d+(?:\([A-Z]\))?)\s+(NMAC)|(OAR)\s+(\d+-\d+-\d+)|(COMAR)\s+(\d+\.\d+\.\d+\.\d+[A-Z]?)|(IDAPA)\s+(\d+\.\d+\.\d+\.\d+\.\d+)|(?<=^|[^A-Za-z])(\d+\.\d+\.\d+(?:\(\d+\))?),\s+(ARM)\b)/gd,
     description: "State admin codes NMAC/OAR/COMAR/IDAPA/ARM — #438",
     type: "statute",
   },
@@ -516,7 +516,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) section body.
     id: "wi-stats-postfix",
     regex:
-      /(?<![A-Za-z])(?:§§?|[Ss]ections?|[Ss]ec\.?)\s*(\d+\.\d+(?:[A-Za-z0-9])?(?:\s*\([^)]*\))*[A-Za-z0-9]*(?:\s+et\s+seq\.?)?),?\s+(?:Stats\.|STATS\.)/g,
+      /(?<![A-Za-z])(?:§§?|[Ss]ections?|[Ss]ec\.?)\s*(\d+\.\d+(?:[A-Za-z0-9])?(?:\s*\([^)]*\))*[A-Za-z0-9]*(?:\s+et\s+seq\.?)?),?\s+(?:Stats\.|STATS\.)/gd,
     description:
       'Wisconsin Statutes postfix form: "§ 76.09, Stats." / "sec. 805.13(3), Stats." — #414',
     type: "statute",
@@ -533,7 +533,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) section body, (2) optional Reissue year.
     id: "rrs-1943",
     regex:
-      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+R\.?\s*R\.?\s*S\.?\s+1943(?:,\s+Reissue\s+(\d{4}))?/g,
+      /(?<![A-Za-z])(?:[Ss]ections?|§§?)\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+R\.?\s*R\.?\s*S\.?\s+1943(?:,\s+Reissue\s+(\d{4}))?/gd,
     description:
       'Nebraska Reissue Revised Statutes 1943: "§ 30-2806, R.R.S. 1943, Reissue 1975" — #373',
     type: "statute",
@@ -549,7 +549,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) optional reenactment year, (2) section body.
     id: "rigl-1956",
     regex:
-      /\bG\.?\s*L\.?\s+1956\s*(?:\((\d{4})\s+Reenactment\))?\s*,?\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
+      /\bG\.?\s*L\.?\s+1956\s*(?:\((\d{4})\s+Reenactment\))?\s*,?\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/gd,
     description: 'Rhode Island General Laws 1956: "G.L. 1956 (1969 Reenactment) §11-23-1" — #393',
     type: "statute",
   },
@@ -569,7 +569,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) code-letter prefix, (2) section body.
     id: "md-article-letter",
     regex:
-      /\b(AB|AG|BO|BR|CJ|CL|CP|CR|CS|EC|ED|EL|EN|ET|FI|FL|GP|HG|HO|HS|HU|IN|LE|LG|LU|NR|PS|PUC|R\.?P\.?|RP|SF|SG|TA|TG|TP|TR)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/g,
+      /\b(AB|AG|BO|BR|CJ|CL|CP|CR|CS|EC|ED|EL|EN|ET|FI|FL|GP|HG|HO|HS|HU|IN|LE|LG|LU|NR|PS|PUC|R\.?P\.?|RP|SF|SG|TA|TG|TP|TR)\s*§§?\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*(?:\s*et\s+seq\.?)?)/gd,
     description:
       'Maryland article-letter codes: "HG § 19-906", "CP § 10-105", "R.P. § 8-211" — #368',
     type: "statute",
@@ -585,7 +585,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) edition year, (2) section body.
     id: "minn-st-year-edition",
     regex:
-      /\bMinn\.?\s+(?:Stat|St)\.?\s+(19\d{2}),\s*§\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\)|\[[^\]]*\])*)/g,
+      /\bMinn\.?\s+(?:Stat|St)\.?\s+(19\d{2}),\s*§\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\)|\[[^\]]*\])*)/gd,
     description: 'Minnesota Statutes year-edition form: "Minn. St. 1971, § 176.66" — #371',
     type: "statute",
   },
@@ -602,7 +602,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) edition year, (2) optional Supp. marker, (3) section.
     id: "ksa-year-edition",
     regex:
-      /\bK\.?\s*S\.?\s*A\.?\s+(\d{4})(?:\s+(Supp\.?))?\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9])|,(?=\d))*(?:\([^)]*\))*)/g,
+      /\bK\.?\s*S\.?\s*A\.?\s+(\d{4})(?:\s+(Supp\.?))?\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9])|,(?=\d))*(?:\([^)]*\))*)/gd,
     description: 'Kansas Statutes Annotated year-edition: "K.S.A. 2009 Supp. 44-501(d)(2)" — #367',
     type: "statute",
   },
@@ -616,7 +616,7 @@ export const statutePatterns: Pattern[] = [
     //
     // Captures: (1) edition year, (2) section body.
     id: "ic-year-edition",
-    regex: /\bIC\s+(\d{4}),\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
+    regex: /\bIC\s+(\d{4}),\s*(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/gd,
     description: 'Indiana Code year-edition form: "IC 1971, 35-13-4-4" — #363',
     type: "statute",
   },
@@ -650,7 +650,7 @@ export const statutePatterns: Pattern[] = [
     //
     // Captures: (1) optional 1931 year, (2) section body.
     id: "wv-code-1931",
-    regex: /\bCode,?(?:\s+(1931))?,\s+(\d+-\d+[A-Z]?-\d+(?:[A-Za-z0-9])?(?:\([A-Za-z0-9]+\))*)/g,
+    regex: /\bCode,?(?:\s+(1931))?,\s+(\d+-\d+[A-Z]?-\d+(?:[A-Za-z0-9])?(?:\([A-Za-z0-9]+\))*)/gd,
     description:
       'West Virginia historical Code 1931: "Code 1931, 49-6-3, as amended" / "Code, 14-2-13" — #406',
     type: "statute",
@@ -674,7 +674,7 @@ export const statutePatterns: Pattern[] = [
     // to Georgia by the ga-pre-1983 fallback; this prefix-qualified
     // shape now wins span dedup. #594
     regex:
-      /\b(?:N\.\s*Y\.\s*C\.\s*Admin\.?\s+Code|NYC\s+Admin\.?\s+Code|New\s+York\s+City\s+Administrative\s+Code)\s+§§?\s*(\d+-\d+(?![\d-])(?!\.\d)(?:[A-Za-z0-9])?)((?:\([^)]*\))*)/g,
+      /\b(?:N\.\s*Y\.\s*C\.\s*Admin\.?\s+Code|NYC\s+Admin\.?\s+Code|New\s+York\s+City\s+Administrative\s+Code)\s+§§?\s*(\d+-\d+(?![\d-])(?!\.\d)(?:[A-Za-z0-9])?)((?:\([^)]*\))*)/gd,
     description:
       'New York City Administrative Code: "N.Y.C. Admin. Code § 8-107(1)(a)" / "New York City Administrative Code § 8-107(1)(a)" — #594',
     type: "statute",
@@ -682,7 +682,7 @@ export const statutePatterns: Pattern[] = [
   {
     id: "ga-pre-1983",
     regex:
-      /\b(Code(?:\s+Ann\.?)?)\s+§\s*(\d+-\d+(?![\d-])(?!\.\d)(?:[A-Za-z0-9])?(?:\([A-Za-z0-9]+\))*)/g,
+      /\b(Code(?:\s+Ann\.?)?)\s+§\s*(\d+-\d+(?![\d-])(?!\.\d)(?:[A-Za-z0-9])?(?:\([A-Za-z0-9]+\))*)/gd,
     description:
       'Georgia pre-1983 Code: "Code Ann. § 26-2101" / "Code § 27-2501" — #358 (#405 tightened)',
     type: "statute",
@@ -702,7 +702,7 @@ export const statutePatterns: Pattern[] = [
     // Captures: (1) "Virginia Code" or "Code", (2) section body.
     id: "va-bare-code",
     regex:
-      /\b(Virginia\s+Code|Code)\s+§\s*((?:\d+\.\d+-\d+(?:\.\d+)?|\d+-\d+\.\d+)(?:\([A-Za-z0-9]+\))*)/g,
+      /\b(Virginia\s+Code|Code)\s+§\s*((?:\d+\.\d+-\d+(?:\.\d+)?|\d+-\d+\.\d+)(?:\([A-Za-z0-9]+\))*)/gd,
     description:
       'Virginia bare Code form: "Code § 18.2-308.2" / "Virginia Code § 8.01-581.17" — #405',
     type: "statute",
@@ -725,7 +725,7 @@ export const statutePatterns: Pattern[] = [
     // (`[3]`) so `§ N-N-N(A)(1.5)` is captured in full. The dot inside
     // parens was missing previously, dropping decimal subsections. (#565)
     regex:
-      /(?<![A-Za-z])(?:§\s*|[Ss]ection\s+)(\d+[A-Z]?-\d+[A-Z]?-\d+[A-Z]?(?:\([A-Za-z0-9.]+\)|\[[A-Za-z0-9.]+\])*)/g,
+      /(?<![A-Za-z])(?:§\s*|[Ss]ection\s+)(\d+[A-Z]?-\d+[A-Z]?-\d+[A-Z]?(?:\([A-Za-z0-9.]+\)|\[[A-Za-z0-9.]+\])*)/gd,
     description:
       'New Mexico bare-section form: "Section 32A-2-7(A)" / "§ 41-2-2" — #382 (#565 decimal subsection)',
     type: "statute",
@@ -746,7 +746,7 @@ export const statutePatterns: Pattern[] = [
     // 1940 in the extractor (the prefix asserts 1940). #343
     id: "ala-code-prefix",
     regex:
-      /\bCode(?:\s+of\s+Alabama)?,?\s+1940,?\s+T(?:itle|it)?\.\s+(\d+),?\s+§\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/g,
+      /\bCode(?:\s+of\s+Alabama)?,?\s+1940,?\s+T(?:itle|it)?\.\s+(\d+),?\s+§\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)/gd,
     description:
       'Alabama Code 1940 (Code-prefix form, pre-1975): "Code 1940, T. 15, § 389" / "Code of Alabama 1940, T. NN, § NNN" — #343',
     type: "statute",
@@ -760,7 +760,7 @@ export const statutePatterns: Pattern[] = [
     // (4) optional recompilation year.
     id: "ala-title-trailer",
     regex:
-      /\bTitle\s+(\d+),?\s+(?:§|Sec(?:tion)?s?\.?)\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+Code(?:\s+of\s+Alabama)?,?\s+(\d{4})(?:,?\s+(?:as\s+)?[Rr]ecompiled\s+(\d{4}))?/g,
+      /\bTitle\s+(\d+),?\s+(?:§|Sec(?:tion)?s?\.?)\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*),?\s+Code(?:\s+of\s+Alabama)?,?\s+(\d{4})(?:,?\s+(?:as\s+)?[Rr]ecompiled\s+(\d{4}))?/gd,
     description:
       'Alabama Code (Title-first with Code trailer): "Title 26, Section 214, Code of Alabama 1940, as Recompiled 1958" — #343',
     type: "statute",
@@ -773,7 +773,7 @@ export const statutePatterns: Pattern[] = [
     // (3) optional edition year, (4) optional recompilation year.
     id: "ala-tit-bare",
     regex:
-      /\bTit\.\s+(\d+),?\s+§\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)(?:,?\s+Code(?:\s+of\s+Alabama)?,?\s+(\d{4})(?:,?\s+(?:as\s+)?[Rr]ecompiled\s+(\d{4}))?)?/g,
+      /\bTit\.\s+(\d+),?\s+§\s+(\d+(?:[A-Za-z0-9:/-]|\.(?=[A-Za-z0-9]))*(?:\([^)]*\))*)(?:,?\s+Code(?:\s+of\s+Alabama)?,?\s+(\d{4})(?:,?\s+(?:as\s+)?[Rr]ecompiled\s+(\d{4}))?)?/gd,
     description: 'Alabama Code (abbreviated `Tit.` form): "Tit. 52, § 361" — #343',
     type: "statute",
   },

@@ -109,7 +109,7 @@ export function buildAbbreviatedCodeRegex(): RegExp {
     // field. Dash class accepts multi-hyphen `---` (post `normalizeDashes`
     // rewrite of em-dash). #591
     `\\b(?:(\\d+)\\s+)?(${alternation})\\s*,?\\s*(?:§§?|[Ss]ections?|[Ss]ec\\.?)?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9])|,(?=\\d))*(?:\\s*\\((?![^)]*\\d{4})[A-Za-z0-9.-]+\\)|\\s*\\[[A-Za-z0-9.-]+\\])*(?:\\s*[-–—]+\\s*\\([A-Za-z0-9]+\\))?(?:\\s*et\\s+seq\\.?)?)`,
-    "g",
+    "gd",
   )
 }
 
