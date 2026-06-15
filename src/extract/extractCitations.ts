@@ -533,8 +533,10 @@ export function extractCitations(
     // Update processing time
     citation.processTimeMs = performance.now() - startTime
 
-    // Populate parallel citation metadata (Phase 8)
-    if (citation.type === "case") {
+    // Populate parallel citation metadata (Phase 8). A shortFormCase can anchor
+    // a parallel-reporter run (`Smith, 79 N.Y.2d at 552, 583 N.Y.S.2d 957`), so
+    // it participates here too (#884).
+    if (citation.type === "case" || citation.type === "shortFormCase") {
       const isPrimary = parallelGroups.has(i)
       const isSecondary = secondaryToGroup.has(i)
 
@@ -666,10 +668,13 @@ export function extractCitations(
     // backs clean-coordinate reads (bracket scopes, trigger asides). Without
     // this, clean-offset reads index the original text and desync once a
     // length-changing cleaner shrinks it.
-    return resolveCitations(filtered, text, resolutionOpts, {
+    const resolved = resolveCitations(filtered, text, resolutionOpts, {
       cleanedText: cleaned,
       transformationMap,
     })
+    // #884: trailing parallels of a resolved short-form inherit its antecedent.
+    propagateParallelResolution(resolved)
+    return resolved
   }
 
   return filtered
@@ -1026,7 +1031,7 @@ function buildParallelGroups(citations: Citation[]): void {
   const groups = new Map<string, number[]>()
   for (let i = 0; i < citations.length; i++) {
     const c = citations[i]
-    if (c.type === "case" && c.groupId !== undefined) {
+    if ((c.type === "case" || c.type === "shortFormCase") && c.groupId !== undefined) {
       const arr = groups.get(c.groupId)
       if (arr) arr.push(i)
       else groups.set(c.groupId, [i])
@@ -1041,7 +1046,44 @@ function buildParallelGroups(citations: Citation[]): void {
     const group: ParallelGroup = { memberIds }
     for (const i of indices) {
       const c = citations[i]
-      if (c.type === "case") c.parallelGroup = group
+      if (c.type === "case" || c.type === "shortFormCase") c.parallelGroup = group
+    }
+  }
+}
+
+/**
+ * #884: a parallel-reporter run can be anchored by a short-form that resolves to
+ * an antecedent (`Smith, 79 N.Y.2d 540 (1992). … Smith, 79 N.Y.2d at 552, 583
+ * N.Y.S.2d 957, 593 N.E.2d 1365.`). The trailing full parallels are the same
+ * case in other reporters, so they inherit the resolved antecedent of whichever
+ * group member resolved — otherwise they carry no link back to the case. Runs
+ * after resolution, reading the parallelGroup built in the structuring pass.
+ */
+function propagateParallelResolution(citations: ResolvedCitation[]): void {
+  const byId = new Map<CitationId, ResolvedCitation>()
+  for (const c of citations) if (c.id !== undefined) byId.set(c.id, c)
+  for (const c of citations) {
+    if (c.type !== "case" && c.type !== "shortFormCase") continue
+    const group = c.parallelGroup
+    // Only fill members that don't already resolve on their own.
+    if (!group || c.resolution?.resolvedToId !== undefined) continue
+    for (const memberId of group.memberIds) {
+      if (memberId === c.id) continue
+      const src = byId.get(memberId)?.resolution
+      if (src?.resolvedToId !== undefined && src.resolvedToId !== c.id) {
+        c.resolution = {
+          resolvedTo: src.resolvedTo,
+          resolvedToId: src.resolvedToId,
+          antecedentIndex: src.antecedentIndex,
+          antecedentId: src.antecedentId,
+          confidence: src.confidence,
+          warnings: [
+            ...(c.resolution?.warnings ?? []),
+            "Inherited antecedent via parallel-citation grouping (#884)",
+          ],
+        }
+        break
+      }
     }
   }
 }

@@ -1405,6 +1405,20 @@ export interface ShortFormCaseCitation extends CitationBase {
    *  `FullCaseCitation`. */
   partyNameNormalized?: string
   /**
+   * Parallel-reporter grouping (#884): a short-form can anchor a parallel run
+   * (`Smith, 79 N.Y.2d at 552, 583 N.Y.S.2d 957, 593 N.E.2d 1365`). These mirror
+   * the same-named fields on {@link FullCaseCitation} — `groupId` is the shared
+   * group key; `parallelGroup` lists all members (incl. self) by id, in document
+   * order; `parallelCitations` is the legacy flat copy on the primary.
+   */
+  groupId?: string
+  parallelGroup?: ParallelGroup
+  parallelCitations?: Array<{
+    volume: number | string
+    reporter: string
+    page: number
+  }>
+  /**
    * Trailing parenthetical content (text between the parens, excluding the
    * parens themselves). See `IdCitation.parenthetical` for common shapes
    * and rationale. #303
