@@ -68,3 +68,20 @@ describe("authoritative pattern grammar order (#844)", () => {
     expect(idx(journalPatterns[0].id)).toBeGreaterThan(caseIdx)
   })
 })
+
+describe("capture-group threading invariants (#844)", () => {
+  it("every pattern compiles on the minimum supported Node", () => {
+    for (const p of orderedPatterns) {
+      // Recompiling proves the source+flags are valid on THIS runtime (CI floor = Node 22),
+      // catching e.g. duplicate-named-group syntax that older engines reject.
+      expect(() => new RegExp(p.regex.source, p.regex.flags), p.id).not.toThrow()
+    }
+  })
+
+  it("every pattern carries the g and d flags", () => {
+    for (const p of orderedPatterns) {
+      expect(p.regex.flags, `${p.id} missing g`).toContain("g")
+      expect(p.regex.flags, `${p.id} missing d`).toContain("d")
+    }
+  })
+})
