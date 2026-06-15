@@ -82,6 +82,11 @@ export function detectParallelCitations(tokens: Token[], cleanedText = ""): Map<
     }
 
     const secondaryIndices: number[] = []
+    // A tight-linked run is a parallel group only once it CLOSES — its LAST
+    // member must be followed by a shared parenthetical or a sentence-end
+    // terminator. Validating per-link (the old behavior) orphaned the head of a
+    // no-trailing-paren chain `A, B, C.` because the `A→B` link saw `, C` (#884).
+    let closed = false
 
     // Look ahead for potential secondary citations
     // Chain detection: "A, B, C (year)" where A is primary, B and C are secondaries
@@ -116,7 +121,7 @@ export function detectParallelCitations(tokens: Token[], cleanedText = ""): Map<
         cleanedText[secondary.span.cleanEnd] === "]"
       if (inBracket) {
         secondaryIndices.push(j)
-        usedAsSecondary.add(j)
+        closed = true // CA bracket form is self-closing
         // CA brackets always close after a single parallel cite — chain ends here.
         break
       }
@@ -164,27 +169,28 @@ export function detectParallelCitations(tokens: Token[], cleanedText = ""): Map<
         break // Separate parentheticals = not parallel, stop looking
       }
 
-      // Check that there IS a parenthetical after the secondary citation
-      // OR that the chain ends at sentence end (`.` / `;` / EOF) (#653).
-      // Sentence-end terminator catches `Kauffman v. Griesemer, 26 Pa. 407,
-      // 67 Am. Dec. 437.` — common when courts omit the year-paren on
-      // older parallel reporters. The tight-gap and intervening-`)` checks
-      // above already prevent unrelated cites from being grouped.
-      if (
-        !hasSharedParenthetical(cleanedText, secondary.span.cleanEnd) &&
-        !isParallelChainTerminator(cleanedText, secondary.span.cleanEnd)
-      ) {
-        break
-      }
-
-      // All conditions met - this is a parallel citation
+      // Tight-linked candidate — collect it. Whether the run is a real parallel
+      // group is decided after the chain ends (the close-check below): an
+      // intermediate cite (`A→B` in `A, B, C.`) need not be a chain terminator
+      // itself — only the LAST member must close the run (#884).
       secondaryIndices.push(j)
-      usedAsSecondary.add(j)
     }
 
-    // If we found any secondary citations, record the group
+    // Record the run only if it CLOSED: the last collected member must be
+    // followed by a shared parenthetical or a sentence-end terminator (#653).
+    // (A CA bracket run already set `closed`.) An unterminated tight run is not
+    // a parallel group — its members stay available as their own primaries.
     if (secondaryIndices.length > 0) {
-      parallelGroups.set(i, secondaryIndices)
+      if (!closed) {
+        const last = tokens[secondaryIndices[secondaryIndices.length - 1]]
+        closed =
+          hasSharedParenthetical(cleanedText, last.span.cleanEnd) ||
+          isParallelChainTerminator(cleanedText, last.span.cleanEnd)
+      }
+      if (closed) {
+        parallelGroups.set(i, secondaryIndices)
+        for (const j of secondaryIndices) usedAsSecondary.add(j)
+      }
     }
   }
 
