@@ -36,6 +36,18 @@ export interface Token {
 
   /** Pattern ID that matched this token */
   patternId: string
+
+  /**
+   * Named capture groups of the matching pattern. Present only for patterns
+   * that declare named groups; non-participating groups are omitted. (#844)
+   */
+  groups?: Record<string, string>
+
+  /**
+   * Token-relative [start, end] offsets for each participating named group.
+   * Same key set as `groups`. (#844)
+   */
+  groupSpans?: Record<string, [number, number]>
 }
 
 /**
