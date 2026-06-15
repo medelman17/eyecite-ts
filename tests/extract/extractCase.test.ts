@@ -1,18 +1,35 @@
 import { describe, expect, it } from "vitest"
 import { extractCase, extractCitations } from "@/extract"
-import type { Token } from "@/tokenize"
+import { tokenize, type Token } from "@/tokenize"
+import { casePatterns } from "@/patterns/casePatterns"
 import type { FullCaseCitation } from "@/types/citation"
 import { createIdentityMap, createOffsetMap } from "../helpers/transformationMap"
+import type { TransformationMap } from "@/types/span"
+
+/**
+ * Add threaded named groups to a manually constructed token by running the
+ * real tokenizer on `token.text`. Preserves the original span/cleanStart so
+ * position-translation tests keep their existing assertions unchanged.
+ * The tokenizer is applied to the token text in isolation; the first match's
+ * groups are merged onto the token. If nothing matches, the token is returned
+ * as-is (no groups → requireGroup will throw the decline path).
+ */
+function withCaseGroups(token: Token): Token {
+  const tokens = tokenize(token.text, casePatterns)
+  if (tokens.length === 0) return token
+  const { groups, groupSpans } = tokens[0]
+  return { ...token, ...(groups ? { groups } : {}), ...(groupSpans ? { groupSpans } : {}) }
+}
 
 describe("extractCase", () => {
   describe("volume-reporter-page parsing", () => {
     it("should extract volume, reporter, and page from basic case citation", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "500 F.2d 123",
         span: { cleanStart: 10, cleanEnd: 22 },
         type: "case",
         patternId: "federal-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -27,12 +44,12 @@ describe("extractCase", () => {
     })
 
     it("should handle different reporter formats", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "410 U.S. 113",
         span: { cleanStart: 0, cleanEnd: 12 },
         type: "case",
         patternId: "us-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -43,12 +60,12 @@ describe("extractCase", () => {
     })
 
     it("should handle reporters with multiple spaces", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "123 So. 2d 456",
         span: { cleanStart: 0, cleanEnd: 14 },
         type: "case",
         patternId: "southern-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -59,12 +76,12 @@ describe("extractCase", () => {
     })
 
     it("should extract F.4th citations", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "50 F.4th 100",
         span: { cleanStart: 0, cleanEnd: 12 },
         type: "case",
         patternId: "federal-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -75,12 +92,12 @@ describe("extractCase", () => {
     })
 
     it("should extract Cal.App.4th citations", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "173 Cal.App.4th 655",
         span: { cleanStart: 0, cleanEnd: 19 },
         type: "case",
         patternId: "state-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -91,12 +108,12 @@ describe("extractCase", () => {
     })
 
     it("should extract A.4th citations", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "100 A.4th 200",
         span: { cleanStart: 0, cleanEnd: 13 },
         type: "case",
         patternId: "state-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -107,12 +124,12 @@ describe("extractCase", () => {
     })
 
     it("should extract Cal.App.5th citations", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "75 Cal.App.5th 123",
         span: { cleanStart: 0, cleanEnd: 18 },
         type: "case",
         patternId: "state-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -123,12 +140,12 @@ describe("extractCase", () => {
     })
 
     it("should extract F.Supp.4th citations", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "200 F.Supp.4th 500",
         span: { cleanStart: 0, cleanEnd: 18 },
         type: "case",
         patternId: "federal-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -141,12 +158,12 @@ describe("extractCase", () => {
 
   describe("optional metadata extraction", () => {
     it("should extract pincite from case citation with page reference", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "500 F.2d 123, 125",
         span: { cleanStart: 10, cleanEnd: 27 },
         type: "case",
         patternId: "federal-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -158,12 +175,12 @@ describe("extractCase", () => {
     })
 
     it("should extract court from parenthetical", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "500 F.2d 123 (9th Cir.)",
         span: { cleanStart: 0, cleanEnd: 23 },
         type: "case",
         patternId: "federal-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -172,12 +189,12 @@ describe("extractCase", () => {
     })
 
     it("should extract year from parenthetical", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "500 F.2d 123 (2020)",
         span: { cleanStart: 0, cleanEnd: 19 },
         type: "case",
         patternId: "federal-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -186,12 +203,12 @@ describe("extractCase", () => {
     })
 
     it("should extract both court and year from combined parenthetical", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "500 F.2d 123 (9th Cir. 2020)",
         span: { cleanStart: 0, cleanEnd: 28 },
         type: "case",
         patternId: "federal-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -203,12 +220,12 @@ describe("extractCase", () => {
 
   describe("position translation", () => {
     it("should translate clean positions to original positions using TransformationMap", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "500 F.2d 123",
         span: { cleanStart: 10, cleanEnd: 22 },
         type: "case",
         patternId: "federal-reporter",
-      }
+      })
       // Simulate HTML removal: clean position 10 → original position 15
       const transformationMap = createOffsetMap(5)
 
@@ -221,12 +238,12 @@ describe("extractCase", () => {
     })
 
     it("should handle identity mapping when no transformation", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "500 F.2d 123",
         span: { cleanStart: 10, cleanEnd: 22 },
         type: "case",
         patternId: "federal-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -236,12 +253,12 @@ describe("extractCase", () => {
     })
 
     it("should fallback to clean positions if mapping is missing", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "500 F.2d 123",
         span: { cleanStart: 10, cleanEnd: 22 },
         type: "case",
         patternId: "federal-reporter",
-      }
+      })
       // Empty transformation map
       const transformationMap: TransformationMap = {
         cleanToOriginal: new Map(),
@@ -262,12 +279,12 @@ describe("extractCase", () => {
       const transformationMap = createIdentityMap()
 
       for (const reporter of reporters) {
-        const token: Token = {
+        const token: Token = withCaseGroups({
           text: `500 ${reporter} 123`,
           span: { cleanStart: 0, cleanEnd: `500 ${reporter} 123`.length },
           type: "case",
           patternId: "test",
-        }
+        })
 
         const citation = extractCase(token, transformationMap)
 
@@ -277,12 +294,12 @@ describe("extractCase", () => {
     })
 
     it("should increase confidence for valid year", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "500 F.2d 123 (2020)",
         span: { cleanStart: 0, cleanEnd: 19 },
         type: "case",
         patternId: "federal-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -293,12 +310,12 @@ describe("extractCase", () => {
 
     it("should not boost confidence for future year", () => {
       const futureYear = new Date().getFullYear() + 10
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: `500 F.2d 123 (${futureYear})`,
         span: { cleanStart: 0, cleanEnd: `500 F.2d 123 (${futureYear})`.length },
         type: "case",
         patternId: "federal-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -308,12 +325,12 @@ describe("extractCase", () => {
     })
 
     it("should have lower confidence for unknown reporter", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "500 Unknown Rep. 123",
         span: { cleanStart: 0, cleanEnd: 21 },
         type: "case",
         patternId: "unknown",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -325,12 +342,12 @@ describe("extractCase", () => {
 
   describe("metadata fields", () => {
     it("should include all required CitationBase fields", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "500 F.2d 123",
         span: { cleanStart: 10, cleanEnd: 22 },
         type: "case",
         patternId: "federal-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -344,12 +361,12 @@ describe("extractCase", () => {
     })
 
     it("should set processTimeMs to 0 as placeholder", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "500 F.2d 123",
         span: { cleanStart: 10, cleanEnd: 22 },
         type: "case",
         patternId: "federal-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)
@@ -358,12 +375,12 @@ describe("extractCase", () => {
     })
 
     it("should set patternsChecked to 1", () => {
-      const token: Token = {
+      const token: Token = withCaseGroups({
         text: "500 F.2d 123",
         span: { cleanStart: 10, cleanEnd: 22 },
         type: "case",
         patternId: "federal-reporter",
-      }
+      })
       const transformationMap = createIdentityMap()
 
       const citation = extractCase(token, transformationMap)

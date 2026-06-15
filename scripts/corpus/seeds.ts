@@ -28,4 +28,18 @@ export const SEEDS: Seed[] = [
     entry: { id: -3, court: "seed", era: "seed", type: "seed", ocr: false },
     text: "See 42 U.S.C. § 1983. The statute applies. Id. § 1983(c).",
   },
+  {
+    // #844: SCOTUS nominative reporter. The corpus has zero of these (verified),
+    // so the case-pattern migration must not change this citation's matchedText/span.
+    entry: { id: -4, court: "seed", era: "seed", type: "seed", ocr: false },
+    text: "The rule traces to Marbury v. Madison, 5 U.S. (1 Cranch) 137 (1803).",
+  },
+  {
+    // #844/#570: comma-form case cite — exercises the comma alternation branch.
+    // (No court parenthetical: comma-form page + an immediately-following
+    // `(court year)` currently drops the cite — a separate pre-existing bug,
+    // not this PR's concern; this seed guards the comma branch the migration touches.)
+    entry: { id: -5, court: "seed", era: "seed", type: "seed", ocr: false },
+    text: "As held in Roe, 3 Den., 594, the rule is settled.",
+  },
 ]
