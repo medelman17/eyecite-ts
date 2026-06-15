@@ -45,7 +45,7 @@ export const neutralPatterns: Pattern[] = [
     id: "state-vendor-neutral-hyphenated-ms",
     regex: new RegExp(
       `${NOT_AFTER_DOCKET_PREFIX}\\b(${PLAUSIBLE_YEAR})-([A-Z]+)-(\\d+)-([A-Z]+)\\b`,
-      "g",
+      "gd",
     ),
     description:
       'Mississippi 4-segment vendor-neutral (e.g., "2010-CT-01234-SCT", "2015-CA-00567-COA")',
@@ -59,7 +59,7 @@ export const neutralPatterns: Pattern[] = [
     id: "state-vendor-neutral-hyphenated",
     regex: new RegExp(
       `${NOT_AFTER_DOCKET_PREFIX}\\b(${PLAUSIBLE_YEAR})-([A-Z][A-Za-z]+)-(\\d+)\\b`,
-      "g",
+      "gd",
     ),
     description:
       'Hyphenated vendor-neutral (e.g., "2010-NMSC-007", "2024-Ohio-764", "2020-NCSC-118")',
@@ -78,7 +78,7 @@ export const neutralPatterns: Pattern[] = [
     // `documentNumber`.
     id: "state-vendor-neutral",
     regex:
-      /\b(\d{4})\s+(IL\s+App\s+\(\d+(?:st|nd|rd|th|d)\)|OK\s+(?:CIV\s+APP|CR|AG)|[A-Z]{2}(?:\s+App\.?)?)\s+(\d+(?:-U)?)\b/g,
+      /\b(\d{4})\s+(IL\s+App\s+\(\d+(?:st|nd|rd|th|d)\)|OK\s+(?:CIV\s+APP|CR|AG)|[A-Z]{2}(?:\s+App\.?)?)\s+(\d+(?:-U)?)\b/gd,
     description:
       'State vendor-neutral citations (e.g., "2007 UT 49", "2017 WI 17", "2013 IL 112116", "2011 IL App (1st) 101234", "2020 OK CIV APP 67", "2020 IL App (2d) 190123-U")',
     type: "neutral",
@@ -96,7 +96,7 @@ export const neutralPatterns: Pattern[] = [
     id: "ny-slip-op",
     regex: new RegExp(
       `\\b(${PLAUSIBLE_YEAR})\\s+N\\.?Y\\.?\\s+Slip\\s+Op\\.?\\s+(\\d+|${BLANK_LOCATOR})(\\((?:U|UV)\\)|\\[U\\])?`,
-      "g",
+      "gd",
     ),
     description:
       'NY Slip Op vendor-neutral citations (e.g., "2024 NY Slip Op 51234", "2020 NY Slip Op 51234(U)", "2023 N.Y. Slip Op. 03165", "2021 N.Y. Slip Op. [____]" #831)',
@@ -108,7 +108,7 @@ export const neutralPatterns: Pattern[] = [
     // to digits. The trailing `\b` lives on the numeric branch only: a `]`
     // followed by whitespace/EOL is two non-word chars, so an outer `\b` would
     // reject the bracketed form. `BLANK_LOCATOR` is self-delimited by its `]`.
-    regex: new RegExp(`\\b(\\d{4})\\s+WL\\s+(\\d+\\b|${BLANK_LOCATOR})`, "g"),
+    regex: new RegExp(`\\b(\\d{4})\\s+WL\\s+(\\d+\\b|${BLANK_LOCATOR})`, "gd"),
     description: 'WestLaw citations (e.g., "2021 WL 123456", "2024 WL [____]" #831)',
     type: "neutral",
   },
@@ -118,7 +118,7 @@ export const neutralPatterns: Pattern[] = [
     // sequential decision number within that year. Treated as a neutral
     // citation because year acts as the volume identifier.
     id: "tc-memo",
-    regex: /\bT\.\s?C\.\s+Memo\.\s+(\d{4})-(\d+)\b/g,
+    regex: /\bT\.\s?C\.\s+Memo\.\s+(\d{4})-(\d+)\b/gd,
     description:
       'Tax Court Memorandum decisions (e.g., "T.C. Memo. 2002-89", "T.C. Memo. 1970-86") — #324',
     type: "neutral",
@@ -130,7 +130,7 @@ export const neutralPatterns: Pattern[] = [
     // The non-greedy `[A-Z][A-Za-z.\s]+?` is bounded by the literal `\s+LEXIS`
     // that follows it, so it can't run away.
     id: "lexis",
-    regex: /\b(\d{4})\s+[A-Z][A-Za-z.\s]+?\s+LEXIS\s+(\d+)\b/g,
+    regex: /\b(\d{4})\s+[A-Z][A-Za-z.\s]+?\s+LEXIS\s+(\d+)\b/gd,
     description:
       'LexisNexis citations (federal: "2021 U.S. LEXIS 5000", "2021 U.S. App. LEXIS 12345"; state: "2020 Cal. LEXIS 1000", "2020 Tex. App. LEXIS 5000")',
     type: "neutral",
@@ -140,7 +140,7 @@ export const neutralPatterns: Pattern[] = [
     // `Pub. L. 116-283`) and the spelled-out form (`Public Law 116-127`,
     // `Public Law No. 116-127`). #533
     id: "public-law",
-    regex: /\b(?:Pub\.\s?L\.|Public\s+Law)(?:\s?No\.)?\s?(\d+-\d+)\b/g,
+    regex: /\b(?:Pub\.\s?L\.|Public\s+Law)(?:\s?No\.)?\s?(\d+-\d+)\b/gd,
     description:
       'Public Law citations: "Pub. L. No. 117-58", "Pub. L. 116-283", "Public Law 116-127", "Public Law No. 116-127"',
     type: "publicLaw",
@@ -150,20 +150,20 @@ export const neutralPatterns: Pattern[] = [
     // Page accepts comma-grouped digits (`12,345` and `1,234,567`). The
     // Federal Register routinely surfaces pages above 10,000 so the
     // comma-grouped form is common. Bare-digit form remains supported.
-    regex: /\b(\d+(?:-\d+)?)\s+Fed\.\s?Reg\.\s+(\d{1,3}(?:,\d{3})+|\d+)\b/g,
+    regex: /\b(\d+(?:-\d+)?)\s+Fed\.\s?Reg\.\s+(\d{1,3}(?:,\d{3})+|\d+)\b/gd,
     description: 'Federal Register citations (e.g., "86 Fed. Reg. 12,345" or "86 Fed. Reg. 12345")',
     type: "federalRegister",
   },
   {
     id: "statutes-at-large",
     // Page accepts comma-grouped digits to match the federal-register fix.
-    regex: /\b(\d+(?:-\d+)?)\s+Stat\.\s+(\d{1,3}(?:,\d{3})+|\d+)\b/g,
+    regex: /\b(\d+(?:-\d+)?)\s+Stat\.\s+(\d{1,3}(?:,\d{3})+|\d+)\b/gd,
     description: 'Statutes at Large citations (e.g., "124 Stat. 1,119" or "124 Stat. 119")',
     type: "statutesAtLarge",
   },
   {
     id: "compact-law-review",
-    regex: /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.]+L\.(?:Rev|J|Q)\.)\s+(\d+)\b/g,
+    regex: /\b(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.]+L\.(?:Rev|J|Q)\.)\s+(\d+)\b/gd,
     description: 'Compact law review citations without spaces (e.g., "93 Harv.L.Rev. 752")',
     type: "journal",
   },

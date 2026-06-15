@@ -38,7 +38,7 @@ export const federalRulePatterns: Pattern[] = [
     // alongside the canonical abbreviations (#295).
     id: "fed-rule-abbreviated",
     regex:
-      /\bFed\.\s?(?:R\.|Rules?)\s?(Civ\.\s?(?:P\.|Proc\.)|Crim\.\s?(?:P\.|Proc\.)|Evid\.|App\.\s?(?:P\.|Proc\.)|Bankr\.\s?(?:P\.|Proc\.))\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/g,
+      /\bFed\.\s?(?:R\.|Rules?)\s?(Civ\.\s?(?:P\.|Proc\.)|Crim\.\s?(?:P\.|Proc\.)|Evid\.|App\.\s?(?:P\.|Proc\.)|Bankr\.\s?(?:P\.|Proc\.))\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/gd,
     description:
       'Abbreviated federal rules: "Fed. R. Civ. P. 56", "Fed. Rule Crim. Proc. 46(b)", "Fed.R.Bankr.P. 7001" — #576, #295',
     type: "federalRule",
@@ -52,7 +52,7 @@ export const federalRulePatterns: Pattern[] = [
     // never collides with prose; no negative lookbehind needed.
     id: "fed-rule-spelled",
     regex:
-      /\bFederal\s+Rules?\s+of\s+(?:the\s+)?(Civil\s+Procedure|Criminal\s+Procedure|Evidence|Appellate\s+Procedure|Bankruptcy\s+Procedure)\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/gi,
+      /\bFederal\s+Rules?\s+of\s+(?:the\s+)?(Civil\s+Procedure|Criminal\s+Procedure|Evidence|Appellate\s+Procedure|Bankruptcy\s+Procedure)\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/gid,
     description:
       'Spelled-out federal rules: "Federal Rule of Civil Procedure 56", "Federal Rules of Evidence 401" — #576',
     type: "federalRule",
@@ -63,7 +63,7 @@ export const federalRulePatterns: Pattern[] = [
     // Common in casual writing, court orders, and briefs. #696.
     id: "fed-rule-acronym",
     regex:
-      /\b(FRCP|FRE|FRAP|FRCrP|FRBP|F\.\s?R\.\s?C\.\s?P\.|F\.\s?R\.\s?E\.|F\.\s?R\.\s?A\.\s?P\.|F\.\s?R\.\s?Cr\.\s?P\.|F\.\s?R\.\s?B\.\s?P\.)\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/g,
+      /\b(FRCP|FRE|FRAP|FRCrP|FRBP|F\.\s?R\.\s?C\.\s?P\.|F\.\s?R\.\s?E\.|F\.\s?R\.\s?A\.\s?P\.|F\.\s?R\.\s?Cr\.\s?P\.|F\.\s?R\.\s?B\.\s?P\.)\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/gd,
     description:
       'Acronym federal rules: "FRCP 12(b)(6)", "FRE 401", "F.R.C.P. 12" — #696',
     type: "federalRule",

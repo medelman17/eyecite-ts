@@ -27,13 +27,13 @@ export const LEGMAT_CONG_REC_RE: RegExp = new RegExp(CONG_REC_SRC)
 export const legislativeMaterialPatterns: Pattern[] = [
   {
     id: "legmat-report",
-    regex: new RegExp(REPORT_SRC, "g"),
+    regex: new RegExp(REPORT_SRC, "gd"),
     description: 'Committee reports (e.g. "H.R. Rep. No. 94-1487, p. 16 (1976)", "S. Rep. No. 861, at 2")',
     type: "legislativeMaterial",
   },
   {
     id: "legmat-cong-rec",
-    regex: new RegExp(CONG_REC_SRC, "g"),
+    regex: new RegExp(CONG_REC_SRC, "gd"),
     description: 'Congressional Record citations (e.g. "112 Cong. Rec. 1234")',
     type: "legislativeMaterial",
   },

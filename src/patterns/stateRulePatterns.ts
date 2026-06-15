@@ -28,14 +28,14 @@ export const stateRulePatterns: Pattern[] = [
   {
     // Idaho Rule of Civil Procedure — abbreviated I.R.C.P.
     id: "id-rcp",
-    regex: /\bI\.R\.C\.P\.\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/g,
+    regex: /\bI\.R\.C\.P\.\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/gd,
     description: 'Idaho Rule of Civil Procedure: "I.R.C.P. 60(b)(6)" — #636',
     type: "stateRule",
   },
   {
     // Idaho Rule of Civil Procedure — spelled-out form.
     id: "id-rcp-spelled",
-    regex: /\bIdaho\s+Rules?\s+of\s+Civil\s+Procedure\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/gi,
+    regex: /\bIdaho\s+Rules?\s+of\s+Civil\s+Procedure\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/gid,
     description: 'Idaho Rule of Civil Procedure (spelled): "Idaho Rule of Civil Procedure 60(b)" — #636',
     type: "stateRule",
   },
@@ -44,14 +44,14 @@ export const stateRulePatterns: Pattern[] = [
     // N.C.R.App. P. (interior spaces are flexible). Both forms appear in
     // NC opinions.
     id: "nc-rap",
-    regex: /\bN\.\s?C\.\s?R\.\s?App\.\s?P\.\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/g,
+    regex: /\bN\.\s?C\.\s?R\.\s?App\.\s?P\.\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/gd,
     description: 'NC Rules of Appellate Procedure: "N.C. R. App. P. 10(b)(1)", "N.C.R.App. P. 37" — #636',
     type: "stateRule",
   },
   {
     // North Carolina Rules of Civil Procedure — N.C. R. Civ. P.
     id: "nc-rcp",
-    regex: /\bN\.\s?C\.\s?R\.\s?Civ\.\s?P\.\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/g,
+    regex: /\bN\.\s?C\.\s?R\.\s?Civ\.\s?P\.\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/gd,
     description: 'NC Rules of Civil Procedure: "N.C. R. Civ. P. 12(b)" — #636',
     type: "stateRule",
   },
@@ -64,14 +64,14 @@ export const stateRulePatterns: Pattern[] = [
     // is outside the capture group; extractor uses patternId to assign
     // jurisdiction + ruleSet).
     id: "sc-scacr-postfix",
-    regex: /\bRule\s+(\d+(?:\.\d+)?(?:\([^)]*\))*),\s*SCACR\b/g,
+    regex: /\bRule\s+(\d+(?:\.\d+)?(?:\([^)]*\))*),\s*SCACR\b/gd,
     description: 'SC Appellate Court Rule (postfix): "Rule 268(d)(2), SCACR" — #636',
     type: "stateRule",
   },
   {
     // U.S. Court of Federal Claims — RCFC.
     id: "rcfc",
-    regex: /\bRCFC\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/g,
+    regex: /\bRCFC\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/gd,
     description: 'Court of Federal Claims rule: "RCFC 56(c)" — #636',
     type: "stateRule",
   },
@@ -80,7 +80,7 @@ export const stateRulePatterns: Pattern[] = [
     // Tribal court citations have distinctive jurisdiction prefixes that
     // follow the same shape as state-rule patterns. #658
     id: "hcn-rcp",
-    regex: /\bHCN\s+R\.\s?Civ\.\s?P\.\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/g,
+    regex: /\bHCN\s+R\.\s?Civ\.\s?P\.\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/gd,
     description: 'Ho-Chunk Nation Rules of Civil Procedure: "HCN R. Civ. P. 5(C)(1)" — #658',
     type: "stateRule",
   },
@@ -88,7 +88,7 @@ export const stateRulePatterns: Pattern[] = [
     // Territorial Courts Rules of Civil Procedure — `T.C.R.C.P. 19(a)`.
     // Used by territorial / tribal courts (US Virgin Islands among others).
     id: "tcrcp",
-    regex: /\bT\.C\.R\.C\.P\.\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/g,
+    regex: /\bT\.C\.R\.C\.P\.\s+(\d+(?:\.\d+)?(?:\([^)]*\))*)/gd,
     description: 'Territorial Courts Rules of Civil Procedure: "T.C.R.C.P. 19(a)" — #658',
     type: "stateRule",
   },

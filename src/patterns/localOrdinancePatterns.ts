@@ -17,7 +17,7 @@ export const CCCO_ORDINANCE_RE: RegExp = new RegExp(CCCO_SRC)
 export const localOrdinancePatterns: Pattern[] = [
   {
     id: "ccco-ordinance",
-    regex: new RegExp(CCCO_SRC, "g"),
+    regex: new RegExp(CCCO_SRC, "gd"),
     description: 'Clark County ordinances (e.g. "CCCO § 2.12.010(1)")',
     type: "localOrdinance",
   },

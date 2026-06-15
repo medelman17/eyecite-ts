@@ -75,7 +75,7 @@ export const casePatterns: Pattern[] = [
     // from matching as `page=1-5` with stray `-7`.
     regex: new RegExp(
       String.raw`\b(\d+(?:-\d+)?)\s+(F\.\s?Supp\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?|F\.\s?App'x|F\.(?:\d+(?:st|nd|rd|th)|2d|3d)?)(?:\s+(\d+-\d+|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°])|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
-      "g",
+      "gd",
     ),
     description:
       "Federal Reporter (F., F.2d, F.3d, F.Nth, F.Supp., F.App'x, etc.)",
@@ -90,7 +90,7 @@ export const casePatterns: Pattern[] = [
     // (#509).
     regex: new RegExp(
       String.raw`\b(\d+(?:-\d+)?)\s+(U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?)(?:\s+(?:\(\d+\s+[A-Z][A-Za-z.]+\)\s+)?(\d+-\d+(?=\s+\(\d{4}\))|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
-      "g",
+      "gd",
     ),
     description:
       "U.S. Supreme Court reporters (with optional nominative reporter parenthetical)",
@@ -152,7 +152,7 @@ export const casePatterns: Pattern[] = [
     // journal-abbreviation guards (#332, #549).
     regex: new RegExp(
       String.raw`\b(\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)(?!(?:AND|OR)\s+\d)([A-Z][A-Za-z.\d&']*(?:(?! L\.[JQR\s])(?! R\.\s+\d)\s+[A-Z\d&][A-Za-z.\d&']*)*?)(?:\s+(\d+-\d+(?=\s+\(\d{4}\))|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?\[\]–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
-      "g",
+      "gd",
     ),
     description:
       'State reporters (broad pattern allowing multi-word reporters with & and \', excludes journal patterns with " L.J/Q/Rev", phantom matches across " v. "/" vs. ", CSM " at " short-form boundaries, Illinois " R. N" rule-marker boundaries, and Id./Ibid. short-form markers (#549), validated against reporters-db in Phase 3)',

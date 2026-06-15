@@ -101,7 +101,7 @@ export const constitutionalPatterns: Pattern[] = [
     // `gi`: lowercase prose forms (`former article …`) must match; the
     // `former` + `(now …)` adjacency is the false-positive guard.
     id: "constitutional-historical-reform",
-    regex: new RegExp(HISTORICAL_REFORM, "gi"),
+    regex: new RegExp(HISTORICAL_REFORM, "gid"),
     description:
       'Historical-reform constitutional citations: "former art. XX, § 21 (now art. XIV, § 4)" — #789',
     type: "constitutional",
@@ -110,7 +110,7 @@ export const constitutionalPatterns: Pattern[] = [
     id: "us-constitution",
     regex: new RegExp(
       String.raw`\b(?:United\s+States\s+Constitution|U\.?\s*S\.?\s+Const\.?),?\s+${BODY_TAIL}`,
-      "gi",
+      "gid",
     ),
     description:
       'U.S. Constitution citations (e.g., "U.S. Const. art. III, § 2", "U.S. Const. amend. XIV")',
@@ -125,7 +125,7 @@ export const constitutionalPatterns: Pattern[] = [
     // positives from words that happen to start with a state stem.
     regex: new RegExp(
       String.raw`\b(?:Ala|Alaska|Ariz|Ark|Cal(?:if)?|Colo|Conn|Del|Fla|Ga|Haw|Idaho|Ill|Ind|Iowa|Kan|Ky|La|Me|Md|Mass|Mich|Minn|Miss|Mo|Mont|Neb|Nev|N\.?\s*H|N\.?\s*J|N\.?\s*M|N\.?\s*Y|N\.?\s*C|N\.?\s*D|Ohio|Okla|Or(?:e)?|Pa|R\.?\s*I|S\.?\s*C|S\.?\s*D|Tenn|Tex|Utah|Vt|W\.?\s*Va|Va|Wash|Wis|Wyo)(?:\.\s*|\s+)Const\.?,?\s+${BODY_TAIL}`,
-      "gi",
+      "gid",
     ),
     description:
       'State constitution citations (e.g., "Cal. Const. art. I, § 7", "N.Y. Const. art. VI, § 20", "Pa.Const. art. VIII, § 4")',
@@ -138,7 +138,7 @@ export const constitutionalPatterns: Pattern[] = [
     // Consequence: all-caps preceding words like "THE Const." won't match due to [A-Z]\s lookbehind — rare, acceptable tradeoff.
     // Known limitation: multi-character state abbreviations ending in lowercase (Alaska, Idaho, etc.)
     // bypass the lookbehind and produce a second bare match — tokenizer span dedup handles this.
-    regex: new RegExp(String.raw`(?<!\.\s)(?<![A-Z]\s)\bConst\.?,?\s+${BODY_TAIL}`, "g"),
+    regex: new RegExp(String.raw`(?<!\.\s)(?<![A-Z]\s)\bConst\.?,?\s+${BODY_TAIL}`, "gd"),
     description:
       'Bare constitutional citations without jurisdiction prefix (e.g., "Const. art. I, § 8, cl. 3")',
     type: "constitutional",
@@ -154,7 +154,7 @@ export const constitutionalPatterns: Pattern[] = [
     // Confidence set to 0.5 in extractor.
     regex: new RegExp(
       String.raw`(?<!Const\.?,?\s)\bArt\.?\s+([IVX]+|\d+)[,;]\s*§\s*[\w-]+(?:[,;]\s*cl\.?\s*\d+)?`,
-      "g",
+      "gd",
     ),
     description:
       'Bare article references without "Const." prefix (e.g., "Art. I, §8, cl. 3", "Art. 1, § 10")',
@@ -177,7 +177,7 @@ export const constitutionalPatterns: Pattern[] = [
     id: "bare-article-section",
     regex: new RegExp(
       String.raw`(?<!Const\.?,?\s)\b(?:Article|Art\.?)\s+([IVX]+|\d+)\s*[,;]\s*(?:Section|§)\s*([\w()-]+)`,
-      "g",
+      "gd",
     ),
     description:
       'Bare spelled-out article+section prose: "Article I, Section 8", "Art. 1, Section 6" — #321',
@@ -215,7 +215,7 @@ export const constitutionalPatterns: Pattern[] = [
     id: "state-const-prose-declaration",
     regex: new RegExp(
       String.raw`\b(?:art(?:icle)?\.?)\s+(\d+)\s+of\s+the\s+(Massachusetts|Pennsylvania|Vermont|New\s+Hampshire|Maryland|North\s+Carolina|Delaware|New\s+Jersey)\s+(?:Declaration\s+of\s+Rights|Constitution)\b`,
-      "gi",
+      "gid",
     ),
     description:
       'Prose-form state constitutional citations: "art. 14 of the Massachusetts Declaration of Rights" — #656',
@@ -225,7 +225,7 @@ export const constitutionalPatterns: Pattern[] = [
     id: "state-const-prose-section-article",
     regex: new RegExp(
       String.raw`\bSection\s+([\w()-]+)\s*,\s*Article\s+([IVX]+|\d+)\s+of\s+the\s+(Massachusetts|Pennsylvania|Vermont|New\s+Hampshire|Maryland|North\s+Carolina|Delaware|New\s+Jersey|Ohio|California|Texas|Florida|Illinois|Michigan|New\s+York|Georgia|Virginia|Washington|Arizona|Colorado|Wisconsin|Minnesota|Indiana|Louisiana|Oregon|Tennessee|South\s+Carolina|Alabama|Missouri|Kentucky|Connecticut|Iowa|Mississippi|Arkansas|Kansas|Nevada|Utah|Hawaii|Alaska|Idaho|Maine|Montana|Nebraska|New\s+Mexico|North\s+Dakota|Oklahoma|Rhode\s+Island|South\s+Dakota|West\s+Virginia|Wyoming|Florida)\s+Constitution\b`,
-      "g",
+      "gd",
     ),
     description:
       'Prose-form state constitutional citations: "Section 5(B), Article IV of the Ohio Constitution" — #656',
@@ -243,7 +243,7 @@ export const constitutionalPatterns: Pattern[] = [
     id: "state-const-prose-article-first",
     regex: new RegExp(
       String.raw`\b(?:article|art\.?)\s+([IVX]+|\d+)[,\s]+section\s+([\w()-]+),?\s+of\s+the\s+(Massachusetts|Pennsylvania|Vermont|New\s+Hampshire|Maryland|North\s+Carolina|Delaware|New\s+Jersey|Ohio|California|Texas|Florida|Illinois|Michigan|New\s+York|Georgia|Virginia|Washington|Arizona|Colorado|Wisconsin|Minnesota|Indiana|Louisiana|Oregon|Tennessee|South\s+Carolina|Alabama|Missouri|Kentucky|Connecticut|Iowa|Mississippi|Arkansas|Kansas|Nevada|Utah|Hawaii|Alaska|Idaho|Maine|Montana|Nebraska|New\s+Mexico|North\s+Dakota|Oklahoma|Rhode\s+Island|South\s+Dakota|West\s+Virginia|Wyoming)\s+Constitution\b`,
-      "gi",
+      "gid",
     ),
     description:
       'Prose-form state constitutional citations, article-first: "article XII, section 5 of the California Constitution" — #321',
@@ -264,7 +264,7 @@ export const constitutionalPatterns: Pattern[] = [
     id: "state-const-prose-plural-section",
     regex: new RegExp(
       String.raw`\bSections\s+(\d+(?:[\s,]+(?:and\s+)?\d+)+)\s+of\s+Article\s+([IVX]+|\d+)\s+of\s+the\s+(Massachusetts|Pennsylvania|Vermont|New\s+Hampshire|Maryland|North\s+Carolina|Delaware|New\s+Jersey|Ohio|California|Texas|Florida|Illinois|Michigan|New\s+York|Georgia|Virginia|Washington|Arizona|Colorado|Wisconsin|Minnesota|Indiana|Louisiana|Oregon|Tennessee|South\s+Carolina|Alabama|Missouri|Kentucky|Connecticut|Iowa|Mississippi|Arkansas|Kansas|Nevada|Utah|Hawaii|Alaska|Idaho|Maine|Montana|Nebraska|New\s+Mexico|North\s+Dakota|Oklahoma|Rhode\s+Island|South\s+Dakota|West\s+Virginia|Wyoming)\s+Constitution\b`,
-      "g",
+      "gd",
     ),
     description:
       'Plural-section prose: "Sections 5 and 10 of Article I of the Ohio Constitution" — #321',
@@ -274,7 +274,7 @@ export const constitutionalPatterns: Pattern[] = [
     id: "bare-amendment-word",
     regex: new RegExp(
       `(?<!Const\\.?,?\\s)\\b(${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})\\s+(?:[Aa]mend(?:ment)?\\.?|[Aa]mdt\\.?)`,
-      "g",
+      "gd",
     ),
     description:
       'Bare word-form amendment references without "Const." prefix (e.g., "the Fifth Amendment", "the Fourteenth Amendment") — #534',
@@ -304,7 +304,7 @@ export const constitutionalPatterns: Pattern[] = [
     id: "bare-amendment-coord",
     regex: new RegExp(
       `(?<!Const\\.?,?\\s)\\b(${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})(?=,\\s+(?:(?:${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS}),?\\s+)*(?:and\\s+)?(?:${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})\\s+[Aa]mendments?|\\s+and\\s+(?:${AMEND_ORDINAL_ABBREV}|${AMEND_WORD_ORDINALS})\\s+[Aa]mendments?)`,
-      "g",
+      "gd",
     ),
     description:
       'Leading ordinals in coordinated amendment lists ("Fifth and Sixth Amendment" → Fifth + Sixth) — #657',
