@@ -91,7 +91,10 @@ describe("capture-group threading invariants (#844)", () => {
         [...p.regex.source.matchAll(/\(\?<([a-zA-Z]+)>/g)].map((m) => m[1]),
       )
       // Every case pattern must declare the core terminals caseCore reads.
-      for (const g of ["volume", "reporter", "page"]) {
+      // Page appears in two alternation branches under DISTINCT names (`page`
+      // for the space-form, `pageComma` for the comma-form) because CI's Node
+      // rejects duplicate named groups; caseCore coalesces them.
+      for (const g of ["volume", "reporter", "page", "pageComma"]) {
         expect(declared.has(g), `${p.id} missing group ${g}`).toBe(true)
       }
       // supreme-court additionally declares the nominative pair caseCore reads.

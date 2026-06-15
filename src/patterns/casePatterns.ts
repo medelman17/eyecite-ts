@@ -74,7 +74,7 @@ export const casePatterns: Pattern[] = [
     // whitespace, or a clause-ending punctuation. This prevents `1-5-7`
     // from matching as `page=1-5` with stray `-7`.
     regex: new RegExp(
-      String.raw`\b(?<volume>\d+(?:-\d+)?)\s+(?<reporter>F\.\s?Supp\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?|F\.\s?App'x|F\.(?:\d+(?:st|nd|rd|th)|2d|3d)?)(?:\s+(?<page>\d+-\d+|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°])|\s*,\s+(?<page>\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
+      String.raw`\b(?<volume>\d+(?:-\d+)?)\s+(?<reporter>F\.\s?Supp\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?|F\.\s?App'x|F\.(?:\d+(?:st|nd|rd|th)|2d|3d)?)(?:\s+(?<page>\d+-\d+|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°])|\s*,\s+(?<pageComma>\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
       "gd",
     ),
     description:
@@ -89,7 +89,7 @@ export const casePatterns: Pattern[] = [
     // Terminator accepts `)` for sentence-internal parenthetical citations
     // (#509).
     regex: new RegExp(
-      String.raw`\b(?<volume>\d+(?:-\d+)?)\s+(?<reporter>U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?)(?:\s+(?:\((?<nominativeVolume>\d+)\s+(?<nominativeReporter>[A-Z][A-Za-z.]+)\)\s+)?(?<page>\d+-\d+(?=\s+\(\d{4}\))|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(?<page>\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
+      String.raw`\b(?<volume>\d+(?:-\d+)?)\s+(?<reporter>U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?)(?:\s+(?:\((?<nominativeVolume>\d+)\s+(?<nominativeReporter>[A-Z][A-Za-z.]+)\)\s+)?(?<page>\d+-\d+(?=\s+\(\d{4}\))|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(?<pageComma>\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
       "gd",
     ),
     description:
@@ -151,7 +151,7 @@ export const casePatterns: Pattern[] = [
     // space to handle Illinois `R. <ruleNum>` and the `L.J./L.Q./L.R.`
     // journal-abbreviation guards (#332, #549).
     regex: new RegExp(
-      String.raw`\b(?<volume>\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)(?!(?:AND|OR)\s+\d)(?<reporter>[A-Z][A-Za-z.\d&']*(?:(?! L\.[JQR\s])(?! R\.\s+\d)\s+[A-Z\d&][A-Za-z.\d&']*)*?)(?:\s+(?<page>\d+-\d+(?=\s+\(\d{4}\))|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?\[\]–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(?<page>\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
+      String.raw`\b(?<volume>\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)(?!(?:AND|OR)\s+\d)(?<reporter>[A-Z][A-Za-z.\d&']*(?:(?! L\.[JQR\s])(?! R\.\s+\d)\s+[A-Z\d&][A-Za-z.\d&']*)*?)(?:\s+(?<page>\d+-\d+(?=\s+\(\d{4}\))|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?\[\]–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(?<pageComma>\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
       "gd",
     ),
     description:
