@@ -37091,5 +37091,35 @@
         "resolvedTo": "42 U.S.C. § 1983"
       }
     ]
+  },
+  "-4": {
+    "id": -4,
+    "count": 1,
+    "citations": [
+      {
+        "type": "case",
+        "key": "5 U.S. (1 Cranch) 137",
+        "span": [
+          39,
+          60
+        ],
+        "resolvedTo": null
+      }
+    ]
+  },
+  "-5": {
+    "id": -5,
+    "count": 1,
+    "citations": [
+      {
+        "type": "case",
+        "key": "3 Den., 594",
+        "span": [
+          16,
+          27
+        ],
+        "resolvedTo": null
+      }
+    ]
   }
 }
