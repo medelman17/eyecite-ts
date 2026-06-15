@@ -98,6 +98,19 @@ export function detectParallelCitations(tokens: Token[], cleanedText = ""): Map<
         break // Stop looking once we hit non-case citation
       }
 
+      // A parallel cite always leads with its volume number. A secondary that
+      // re-introduces a party name (e.g. `Smith, 79 N.Y.2d at 552`) is a NEW
+      // case reference — a second short-form, not a parallel of the current
+      // run — so stop here so it isn't absorbed and can anchor its own group.
+      // This keeps every parallel group anchored on a SINGLE short-form (#884):
+      // without it, `Doe, 100 F.3d at 7, 583 N.Y.S.2d 957, Smith, 79 N.Y.2d at
+      // 552` would pull the unrelated Smith reference into Doe's group and
+      // mis-resolve its members. Volume-first short-forms (`146 A.3d at 1202`)
+      // are genuine parallels and stay in the run.
+      if (!/^\s*\d/.test(secondary.text)) {
+        break
+      }
+
       // Check proximity: comma should be right after primary (or previous secondary in chain)
       const prevToken = j === i + 1 ? primary : tokens[j - 1]
       const gapStart = prevToken.span.cleanEnd
