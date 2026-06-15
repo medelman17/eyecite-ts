@@ -21,6 +21,7 @@ import { extractId, extractShortFormCase, extractSupra } from "@/extract/extract
 import { extractStatute } from "@/extract/extractStatute"
 import { validateAndScore } from "@/extract/validation"
 import type { Pattern } from "@/patterns"
+import { casePatterns } from "@/patterns/casePatterns"
 import type { Token } from "@/tokenize"
 import { tokenize } from "@/tokenize"
 import type { Citation, FullCaseCitation } from "@/types/citation"
@@ -32,6 +33,17 @@ const createEmptyMap = (): TransformationMap => ({
   cleanToOriginal: new Map<number, number>(),
   originalToClean: new Map<number, number>(),
 })
+
+/**
+ * Add threaded named groups to a manually constructed token. Preserves the
+ * original span so position-translation tests keep their existing assertions.
+ */
+function withCaseGroups(token: Token): Token {
+  const tokens = tokenize(token.text, casePatterns)
+  if (tokens.length === 0) return token
+  const { groups, groupSpans } = tokens[0]
+  return { ...token, ...(groups ? { groups } : {}), ...(groupSpans ? { groupSpans } : {}) }
+}
 
 describe("tokenizer.ts — catch block for throwing patterns", () => {
   it("should skip patterns that throw and continue with remaining", () => {
@@ -232,14 +244,16 @@ describe("extractStatute.ts — throw branch and known code branch", () => {
 })
 
 describe("extractCase.ts — throw branch", () => {
-  it("should throw on text that does not match case regex", () => {
+  it("should throw on a token with no threaded groups (decline path)", () => {
+    // A token with no groups (e.g., produced before group threading) causes
+    // requireGroup to throw CitationParseError — the #881 decline path.
     const token: Token = {
       text: "not a case citation",
       span: { cleanStart: 0, cleanEnd: 19 },
       type: "case",
       patternId: "test",
     }
-    expect(() => extractCase(token, createIdentityMap())).toThrow("Failed to parse case citation")
+    expect(() => extractCase(token, createIdentityMap())).toThrow("Missing required capture group")
   })
 })
 
@@ -475,12 +489,12 @@ describe("extractors — position fallback when map missing entries", () => {
   })
 
   it("extractCase falls back to cleanStart/End", () => {
-    const token: Token = {
+    const token: Token = withCaseGroups({
       text: "500 F.2d 123",
       span: { cleanStart: 10, cleanEnd: 22 },
       type: "case",
       patternId: "federal-reporter",
-    }
+    })
     const citation = extractCase(token, createEmptyMap())
     expect(citation.span.originalStart).toBe(10)
     expect(citation.span.originalEnd).toBe(22)

@@ -1,7 +1,7 @@
-import { CitationParseError } from "./errors"
 import type { Token } from "@/tokenize"
 import type { CaseComponentSpans } from "@/types/componentSpans"
 import { spanFromGroupIndex, type TransformationMap } from "@/types/span"
+import { groupSpan, optionalGroup, requireGroup } from "./groupAccessor"
 
 export interface ParseCaseCitationCoreInput {
   token: Token
@@ -26,14 +26,6 @@ function parseVolume(raw: string): number | string {
   return raw
 }
 
-/** Matches volume-reporter-page format in citation core, with optional nominative reporter. */
-const VOLUME_REPORTER_PAGE_REGEX =
-  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+)\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+-\d+|\d+|_{3,}|-{3,})(?=$|[\s.;,)\]])/d
-
-/** Comma-form variant for old typesetting shape `<vol> <Reporter>, <page>` (#570). */
-const VOLUME_REPORTER_PAGE_REGEX_COMMA =
-  /^(\d+(?:-\d+)?)\s+([A-Za-z0-9.\s'&]+?)\s*,\s+(?:\((\d+)\s+([A-Z][A-Za-z.]+)\)\s+)?(\d+-\d+|\d+|_{3,}|-{3,})(?=$|[.;)\]])/d
-
 /** Detects blank page placeholders (3+ underscores or dashes). */
 const BLANK_PAGE_REGEX = /^[_-]{3,}$/
 
@@ -41,43 +33,46 @@ export function parseCaseCitationCore({
   token,
   transformationMap,
 }: ParseCaseCitationCoreInput): CaseCitationCoreSyntax {
-  const { text, span } = token
-  const match =
-    VOLUME_REPORTER_PAGE_REGEX.exec(text) ??
-    VOLUME_REPORTER_PAGE_REGEX_COMMA.exec(text)
+  type CaseGroup = "volume" | "reporter" | "page" | "nominativeVolume" | "nominativeReporter"
 
-  if (!match) {
-    throw new CitationParseError(`Failed to parse case citation: ${text}`)
-  }
+  // Accept/reject gate: the case patterns guarantee volume+reporter+page when
+  // they match, so absence means the tokenizer admitted a shape this extractor
+  // can't parse — decline (the #881 path), preserving the old twin's
+  // match/no-match behavior.
+  const volumeRaw = requireGroup<CaseGroup>(token, "volume")
+  const reporterRaw = requireGroup<CaseGroup>(token, "reporter")
+  const pageStr = requireGroup<CaseGroup>(token, "page")
 
-  const volume = parseVolume(match[1])
-  const reporter = match[2].trim()
-  const nominativeVolume = match[3] ? Number.parseInt(match[3], 10) : undefined
-  const nominativeReporter = match[4] || undefined
-  const pageStr = match[5]
+  const volume = parseVolume(volumeRaw)
+  const reporter = reporterRaw.trim()
+  const nominativeVolumeRaw = optionalGroup<CaseGroup>(token, "nominativeVolume")
+  const nominativeVolume = nominativeVolumeRaw ? Number.parseInt(nominativeVolumeRaw, 10) : undefined
+  const nominativeReporter = optionalGroup<CaseGroup>(token, "nominativeReporter")
   const isBlankPage = BLANK_PAGE_REGEX.test(pageStr)
   const page = isBlankPage ? undefined : Number.parseInt(pageStr, 10)
   const spans: Pick<CaseComponentSpans, "volume" | "reporter" | "page"> = {}
 
-  if (match.indices) {
-    if (match.indices[1]) {
-      spans.volume = spanFromGroupIndex(span.cleanStart, match.indices[1], transformationMap)
-    }
-    if (match.indices[2]) {
-      const [reporterStart, reporterEnd] = match.indices[2]
-      const rawReporter = text.substring(reporterStart, reporterEnd)
-      const leadTrim = rawReporter.length - rawReporter.trimStart().length
-      const trailTrim = rawReporter.length - rawReporter.trimEnd().length
-      spans.reporter = spanFromGroupIndex(
-        span.cleanStart,
-        [reporterStart + leadTrim, reporterEnd - trailTrim],
-        transformationMap,
-      )
-    }
-    if (match.indices[5]) {
-      spans.page = spanFromGroupIndex(span.cleanStart, match.indices[5], transformationMap)
-    }
+  const volumeSpan = groupSpan<CaseGroup>(token, "volume")
+  if (volumeSpan) spans.volume = spanFromGroupIndex(token.span.cleanStart, volumeSpan, transformationMap)
+
+  const reporterSpan = groupSpan<CaseGroup>(token, "reporter")
+  if (reporterSpan) {
+    // Residual structuring: the reporter capture can include surrounding
+    // whitespace; trim it for the component span (load-bearing — the corpus
+    // projection and the characterization test assert reporter spans).
+    const [rStart, rEnd] = reporterSpan
+    const rawReporter = token.text.substring(rStart, rEnd)
+    const leadTrim = rawReporter.length - rawReporter.trimStart().length
+    const trailTrim = rawReporter.length - rawReporter.trimEnd().length
+    spans.reporter = spanFromGroupIndex(
+      token.span.cleanStart,
+      [rStart + leadTrim, rEnd - trailTrim],
+      transformationMap,
+    )
   }
+
+  const pageSpan = groupSpan<CaseGroup>(token, "page")
+  if (pageSpan) spans.page = spanFromGroupIndex(token.span.cleanStart, pageSpan, transformationMap)
 
   return {
     volume,

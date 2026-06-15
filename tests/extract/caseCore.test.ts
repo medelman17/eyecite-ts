@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { parseCaseCitationCore } from "@/extract/caseCore"
+import { tokenize } from "@/tokenize"
+import { casePatterns } from "@/patterns/casePatterns"
 import type { Token } from "@/tokenize"
 import type { TransformationMap } from "@/types/span"
 
@@ -8,19 +10,17 @@ const identityMap: TransformationMap = {
   originalToClean: new Map(),
 }
 
-function token(text: string, cleanStart = 0): Token {
-  return {
-    text,
-    span: { cleanStart, cleanEnd: cleanStart + text.length },
-    type: "case",
-    patternId: "test-case-core",
-  }
+/** Build the case token the tokenizer would produce for `text` (with threaded groups). */
+function caseToken(text: string): Token {
+  const t = tokenize(text, casePatterns)[0]
+  if (!t) throw new Error(`no case token for: ${text}`)
+  return t
 }
 
 describe("case citation core parser", () => {
   it("parses canonical volume reporter page cores with component spans", () => {
     const core = parseCaseCitationCore({
-      token: token("500 F.2d 123", 10),
+      token: caseToken("500 F.2d 123"),
       transformationMap: identityMap,
     })
 
@@ -29,9 +29,9 @@ describe("case citation core parser", () => {
       reporter: "F.2d",
       page: 123,
       spans: {
-        volume: { cleanStart: 10, cleanEnd: 13, originalStart: 10, originalEnd: 13 },
-        reporter: { cleanStart: 14, cleanEnd: 18, originalStart: 14, originalEnd: 18 },
-        page: { cleanStart: 19, cleanEnd: 22, originalStart: 19, originalEnd: 22 },
+        volume: { cleanStart: 0, cleanEnd: 3, originalStart: 0, originalEnd: 3 },
+        reporter: { cleanStart: 4, cleanEnd: 8, originalStart: 4, originalEnd: 8 },
+        page: { cleanStart: 9, cleanEnd: 12, originalStart: 9, originalEnd: 12 },
       },
     })
     expect(core.hasBlankPage).toBeUndefined()
@@ -39,7 +39,7 @@ describe("case citation core parser", () => {
 
   it("keeps hyphenated volumes as strings", () => {
     const core = parseCaseCitationCore({
-      token: token("1984-1 T.C. 10"),
+      token: caseToken("1984-1 T.C. 10"),
       transformationMap: identityMap,
     })
 
@@ -50,7 +50,7 @@ describe("case citation core parser", () => {
 
   it("parses nominative reporter parentheticals", () => {
     const core = parseCaseCitationCore({
-      token: token("67 U.S. (2 Black) 635"),
+      token: caseToken("67 U.S. (2 Black) 635"),
       transformationMap: identityMap,
     })
 
@@ -65,7 +65,7 @@ describe("case citation core parser", () => {
 
   it("parses blank page placeholders without a numeric page", () => {
     const core = parseCaseCitationCore({
-      token: token("500 F.2d ___"),
+      token: caseToken("500 F.2d ___"),
       transformationMap: identityMap,
     })
 
@@ -80,7 +80,7 @@ describe("case citation core parser", () => {
 
   it("falls back to comma-form volume reporter page cores", () => {
     const core = parseCaseCitationCore({
-      token: token("3 Den., 594"),
+      token: caseToken("3 Den., 594"),
       transformationMap: identityMap,
     })
 
@@ -91,12 +91,22 @@ describe("case citation core parser", () => {
     })
   })
 
-  it("throws on malformed case cores", () => {
+  it("throws on a token with no threaded groups (decline path)", () => {
+    // A token with no groups (e.g., produced by an older or positional-only
+    // pattern) causes requireGroup to throw CitationParseError — the #881
+    // decline path. "not a case core" produces no tokenizer match, so we
+    // construct the minimal no-groups token directly.
+    const noGroupsToken: Token = {
+      text: "not a case core",
+      span: { cleanStart: 0, cleanEnd: 15 },
+      type: "case",
+      patternId: "test-case-core",
+    }
     expect(() =>
       parseCaseCitationCore({
-        token: token("not a case core"),
+        token: noGroupsToken,
         transformationMap: identityMap,
       }),
-    ).toThrow("Failed to parse case citation: not a case core")
+    ).toThrow("Missing required capture group")
   })
 })
