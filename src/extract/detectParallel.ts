@@ -244,6 +244,15 @@ function hasSharedParenthetical(cleanedText: string, position: number): boolean 
   // Look ahead up to 200 characters for opening parenthesis
   const searchText = cleanedText.substring(position, position + 200)
 
+  // #890: a bracketed year `[1992]` / `[2d Dept 2012]` (New York Official
+  // Reports / Court of Appeals style) closes a parallel run exactly like a
+  // `(year)` parenthetical. Require the bracket to end in a plausible 4-digit
+  // year, so a bracketed parallel CITE (`[20 Cal.Rptr.2d 1]`, no year) or a
+  // marker (`[U]`) does not falsely close — those are handled elsewhere.
+  if (/\[[^\]]*(?:1[6-9]|20)\d{2}\s*\]/.test(searchText)) {
+    return true
+  }
+
   // Find opening parenthesis
   const openIndex = searchText.indexOf("(")
   if (openIndex === -1) {

@@ -354,7 +354,16 @@ function collectParentheticals(
       pos++
     }
 
-    if (pos >= endLimit || text[pos] !== "(") {
+    // #890: a bracketed year `[1992]` / `[2d Dept 2012]` (New York Official
+    // Reports / Court of Appeals style) is a year-bearing parenthetical, just
+    // like `(1992)`. Treat `[` as an opener ONLY when the bracket ends in a
+    // plausible 4-digit year; other bracket forms (`[U]`, `[sic]`, a bracketed
+    // parallel cite `[20 Cal.Rptr.2d 1]`) carry no year and fall through to the
+    // existing non-paren handling, exactly as before.
+    const isYearBracket =
+      text[pos] === "[" &&
+      /^\[[^\]]*(?:1[6-9]|20)\d{2}\s*\]/.test(text.substring(pos, pos + 60))
+    if (pos >= endLimit || (text[pos] !== "(" && !isYearBracket)) {
       const remainingText = text.substring(pos, endLimit)
       const normalized = normalizeSignal(remainingText)
       if (normalized) {
@@ -373,15 +382,17 @@ function collectParentheticals(
       break
     }
 
+    const openChar = text[pos]
+    const closeChar = openChar === "[" ? "]" : ")"
     const parenStart = pos
     let depth = 0
     const contentStart = pos + 1
 
     while (pos < hardEndLimit) {
       const char = text[pos]
-      if (char === "(") {
+      if (char === openChar) {
         depth++
-      } else if (char === ")") {
+      } else if (char === closeChar) {
         depth--
         if (depth === 0) {
           pos++
