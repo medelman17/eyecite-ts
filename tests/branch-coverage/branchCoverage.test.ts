@@ -22,6 +22,7 @@ import { extractStatute } from "@/extract/extractStatute"
 import { validateAndScore } from "@/extract/validation"
 import type { Pattern } from "@/patterns"
 import { casePatterns } from "@/patterns/casePatterns"
+import { shortFormPatterns } from "@/patterns/shortForm"
 import type { Token } from "@/tokenize"
 import { tokenize } from "@/tokenize"
 import type { Citation, FullCaseCitation } from "@/types/citation"
@@ -278,7 +279,11 @@ describe("extractShortForms.ts — throw branches and position fallbacks", () =>
     expect(() => extractSupra(token, createIdentityMap())).toThrow("Failed to parse supra citation")
   })
 
-  it("extractShortFormCase should throw on text without at-page pattern", () => {
+  it("extractShortFormCase should decline a token with no threaded groups", () => {
+    // After the capture-group-threading migration (#844) extractShortFormCase
+    // reads the named groups the tokenizer threads. A token with no groups
+    // (e.g., produced before group threading) causes requireGroup to throw
+    // CitationParseError — the #881 decline path.
     const token: Token = {
       text: "not a short form",
       span: { cleanStart: 0, cleanEnd: 16 },
@@ -286,7 +291,7 @@ describe("extractShortForms.ts — throw branches and position fallbacks", () =>
       patternId: "shortFormCase",
     }
     expect(() => extractShortFormCase(token, createIdentityMap())).toThrow(
-      "Failed to parse short-form case citation",
+      "Missing required capture group",
     )
   })
 
@@ -316,12 +321,14 @@ describe("extractShortForms.ts — throw branches and position fallbacks", () =>
   })
 
   it("extractShortFormCase should fallback positions when map has no entry", () => {
-    const token: Token = {
-      text: "500 F.2d at 125",
-      span: { cleanStart: 5, cleanEnd: 20 },
-      type: "case",
-      patternId: "shortFormCase",
-    }
+    // Build the token the tokenizer would produce (threaded groups) and re-base
+    // its span to cleanStart 5 so the position-fallback assertion is unchanged;
+    // token-relative groupSpans are preserved.
+    const base = tokenize("500 F.2d at 125", shortFormPatterns).find(
+      (t) => t.patternId === "shortFormCase",
+    )
+    if (!base) throw new Error("no shortFormCase token for: 500 F.2d at 125")
+    const token: Token = { ...base, span: { cleanStart: 5, cleanEnd: 20 } }
     const citation = extractShortFormCase(token, createEmptyMap())
     expect(citation.span.originalStart).toBe(5)
     expect(citation.span.originalEnd).toBe(20)
