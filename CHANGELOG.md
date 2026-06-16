@@ -1,5 +1,33 @@
 # eyecite-ts
 
+## 0.34.1
+
+### Patch Changes
+
+- [#892](https://github.com/medelman17/eyecite-ts/pull/892) [`58a3146`](https://github.com/medelman17/eyecite-ts/commit/58a314653c28e72e8d2f180fb4cc7b9a285745d2) Thanks [@medelman17](https://github.com/medelman17)! - Fix: a bracketed year `[1992]` / `[2d Dept 2012]` (New York Official Reports / Court of Appeals style, and a common Bluebook variant) is now treated like a parenthesized year `(1992)` — it contributes the decision `year` and closes a parallel-reporter run so the cites share a `groupId` (#890). Previously the bracketed form silently lost both the year and the parallel grouping, affecting the large class of NY official-style citations (`N.Y.2d` + `N.Y.S.2d` + `N.E.2d` with a `[year]`).
+
+  Recognition is restricted to a genuine year bracket — a `[…]` ending in a 1600–2099 year that is **not** a bracketed parallel cite — so `[U]` markers, the California `(year) [secondary cite]` form (including one whose page looks year-like, e.g. `[20 Cal.Rptr.2d 1995]`), and year-free editorial brackets like `[sic]` are unchanged. An editorial bracket that itself ends in a stray year (`[sic 1992]`) is read as a year exactly as the round-paren `(sic 1992)` already is — bracket/paren parity.
+
+## 0.34.0
+
+### Minor Changes
+
+- [#886](https://github.com/medelman17/eyecite-ts/pull/886) [`520ebcb`](https://github.com/medelman17/eyecite-ts/commit/520ebcb1c2d787577baa2d6e8f4977c3fe820283) Thanks [@medelman17](https://github.com/medelman17)! - Thread regex capture groups from tokenize→extract, and raise the Node floor to >=22.
+
+  **BREAKING (runtime floor):** the minimum supported Node is now 22 (was 18); the CI matrix is 22/24/26. This unlocks ES2025 duplicate named capturing groups, which the extraction refactor relies on.
+
+  Internally, `Token` now carries optional `groups`/`groupSpans` (the named capture groups of the matching pattern) so extractors can read structured terminals instead of re-running a second regex. This PR is the additive substrate; it changes no extraction output.
+
+### Patch Changes
+
+- [#888](https://github.com/medelman17/eyecite-ts/pull/888) [`129d3b8`](https://github.com/medelman17/eyecite-ts/commit/129d3b84c36e5d0857a4403f933d74cf19da027a) Thanks [@medelman17](https://github.com/medelman17)! - Internal: `parseCaseCitationCore` now reads the named capture groups threaded onto the token by the tokenizer (#844) instead of re-running a second volume-reporter-page regex. Behavior-preserving — identical volume/reporter/page/nominative/blank-page output and component spans, verified against the real-opinion corpus plus a dedicated characterization suite. First extractor migrated under the capture-group-threading design; the duplicate "twin" regex (a source of the #881 tokenizer/extractor drift) is gone for case citations.
+
+- [#889](https://github.com/medelman17/eyecite-ts/pull/889) [`a9c616f`](https://github.com/medelman17/eyecite-ts/commit/a9c616f7e69d25905d99dbadb86a69a209690202) Thanks [@medelman17](https://github.com/medelman17)! - Fix: parallel reporter citations trailing a short-form — or in any citation chain that omits the closing year-parenthetical — are now grouped with, and resolved to, the same case as their anchor, instead of being orphaned with a fresh group id and no resolution (#884).
+
+  A run like `Smith, 230 Md. at 236, 146 A.3d at 1202.` or `Neitzke, 490 U.S. at 324, 109 S.Ct. 1827.` now forms one parallel group anchored on the short-form, and the trailing parallels inherit the short-form's antecedent. The root cause was in parallel-chain detection: a tight-linked run was validated link-by-link, so an intermediate cite in a no-paren chain (`A, B, C.`) broke the chain and orphaned the head. Chains are now validated by their last member, so 3+-cite runs without a trailing paren group correctly.
+
+  Additive and non-breaking: short-form case citations may now carry `parallelGroup`/`parallelCitations`, and a full reporter citation that trails a short-form as a parallel reference may carry an inherited `resolution`.
+
 ## 0.33.0
 
 ### Minor Changes
@@ -3216,7 +3244,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-                                  275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+                                      275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -3242,7 +3270,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-                                  People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+                                      People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
