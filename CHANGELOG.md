@@ -1,5 +1,13 @@
 # eyecite-ts
 
+## 0.34.1
+
+### Patch Changes
+
+- [#892](https://github.com/medelman17/eyecite-ts/pull/892) [`58a3146`](https://github.com/medelman17/eyecite-ts/commit/58a314653c28e72e8d2f180fb4cc7b9a285745d2) Thanks [@medelman17](https://github.com/medelman17)! - Fix: a bracketed year `[1992]` / `[2d Dept 2012]` (New York Official Reports / Court of Appeals style, and a common Bluebook variant) is now treated like a parenthesized year `(1992)` — it contributes the decision `year` and closes a parallel-reporter run so the cites share a `groupId` (#890). Previously the bracketed form silently lost both the year and the parallel grouping, affecting the large class of NY official-style citations (`N.Y.2d` + `N.Y.S.2d` + `N.E.2d` with a `[year]`).
+
+  Recognition is restricted to a genuine year bracket — a `[…]` ending in a 1600–2099 year that is **not** a bracketed parallel cite — so `[U]` markers, the California `(year) [secondary cite]` form (including one whose page looks year-like, e.g. `[20 Cal.Rptr.2d 1995]`), and year-free editorial brackets like `[sic]` are unchanged. An editorial bracket that itself ends in a stray year (`[sic 1992]`) is read as a year exactly as the round-paren `(sic 1992)` already is — bracket/paren parity.
+
 ## 0.34.0
 
 ### Minor Changes
@@ -3236,7 +3244,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-                                    275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+                                      275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -3262,7 +3270,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-                                    People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+                                      People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
