@@ -60,4 +60,20 @@ describe("#890 bracketed year [1992] parity with (1992)", () => {
     // the bracketed secondary is a parallel CITE (no 4-digit year), still grouped
     expect(new Set(cs.map(groupId)).size).toBe(1)
   })
+
+  it("does not read a bracketed parallel cite's year-like PAGE as the year", () => {
+    // `[20 Cal.Rptr.2d 1995]` is a parallel CITE (page 1995), not a `[year]`.
+    // The real year is the leading `(1992)` and must survive — the secondary
+    // reporter's year-like page must not overwrite it (#890 review BLOCKER).
+    const lead = cases("People v. Brown (1992) 5 Cal.4th 1 [20 Cal.Rptr.2d 1995].")[0]
+    expect(lead?.year).toBe(1992)
+    expect((lead as { court?: string }).court).not.toBe("20 Cal.Rptr.2d")
+  })
+
+  it("does not fabricate a year from a bracketed cite whose page looks like a year", () => {
+    // `[123 N.Y.S.2d 1995]` — a bare volume + reporter, page 1995 — must not be
+    // read as `[1995]`; no year is invented on the primary.
+    const lead = cases("Smith v. Jones, 100 N.Y.2d 1 [123 N.Y.S.2d 1995].")[0]
+    expect(lead?.year).not.toBe(1995)
+  })
 })

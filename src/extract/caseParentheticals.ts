@@ -360,9 +360,16 @@ function collectParentheticals(
     // plausible 4-digit year; other bracket forms (`[U]`, `[sic]`, a bracketed
     // parallel cite `[20 Cal.Rptr.2d 1]`) carry no year and fall through to the
     // existing non-paren handling, exactly as before.
+    const bracketWindow = text.substring(pos, pos + 60)
     const isYearBracket =
       text[pos] === "[" &&
-      /^\[[^\]]*(?:1[6-9]|20)\d{2}\s*\]/.test(text.substring(pos, pos + 60))
+      /^\[[^\]]*(?:1[6-9]|20)\d{2}\s*\]/.test(bracketWindow) &&
+      // …but NOT a bracketed parallel CITE whose page merely looks like a year
+      // (`[20 Cal.Rptr.2d 1995]` → page 1995). A real year bracket leads with the
+      // year itself (`[1992]`) or a court ordinal (`[2d Dept 2012]`), never a bare
+      // volume followed by a reporter abbreviation. Without this, the secondary
+      // reporter's page overwrites the real `(year)` (#890 review).
+      !/^\[\s*\d+\s+[A-Z]/.test(bracketWindow)
     if (pos >= endLimit || (text[pos] !== "(" && !isYearBracket)) {
       const remainingText = text.substring(pos, endLimit)
       const normalized = normalizeSignal(remainingText)
