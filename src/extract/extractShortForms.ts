@@ -23,6 +23,7 @@ import type {
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
 import { classifyCaseParenthetical } from "./caseParentheticals"
 import { COMMON_REPORTERS } from "./caseReporterSemantics"
+import { groupSpan, optionalGroup, requireGroup } from "./groupAccessor"
 import { parsePincite, type PinciteInfo } from "./pincite"
 
 /**
@@ -555,38 +556,30 @@ export function extractShortFormCase(
 ): ShortFormCaseCitation {
   const { text, span } = token
 
-  // Parse [Party,] volume-reporter-[,]-at-page.
-  // Pattern: optional Party name then number space abbreviation [, ] at space number.
-  // Supports reporters with 1-2 letter ordinal suffixes (e.g., F.4th, Cal.4th).
-  // Handles comma-before-at: "597 U.S., at 721", "116 F.4th, at 1193".
-  // Pincite accepts optional "*" prefix for star-pagination (#191), an optional
-  // range end "462-65" / "462-*65" (#201), an optional trailing footnote
-  // suffix " n.14" / " nn.14-15" (#202), an optional `p.` / `pp.` prefix for
-  // CSM form (`18 Cal.4th at p. 717`; see #236), and `¶` / `¶¶` / `para.` /
-  // `paras.` paragraph markers (#204).
-  // Optional leading party-name group (#278) captures Bluebook back-references
-  // (`Smith, 500 F.2d at 125`). Group order:
-  //   1: party name (optional, undefined for bare form)
-  //   2: volume
-  //   3: reporter
-  //   4: pincite
-  // Party-name capture mirrors SHORT_FORM_CASE_PATTERN: `v.` / `&` / `,`
-  // continuations (#301). `In re` prefix intentionally omitted (see
-  // partySupraRegex above for rationale). Pincite-prefix alternation also
-  // accepts spelled-out `page` / `pages` (#344).
-  const shortFormRegex =
-    /(?:([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*),\s+)?(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*|pages?\s+)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)/d
-  const match = shortFormRegex.exec(text)
+  // Parse [Party,] volume-reporter-[,]-at-page from the named capture groups
+  // threaded onto the token by SHORT_FORM_CASE_PATTERN (#844). The pattern
+  // supports reporters with 1-2 letter ordinal suffixes (e.g., F.4th, Cal.4th),
+  // comma-before-at (`597 U.S., at 721`), a pincite with optional "*" prefix
+  // for star-pagination (#191), an optional range end "462-65" / "462-*65"
+  // (#201), an optional trailing footnote suffix " n.14" / " nn.14-15" (#202),
+  // an optional `p.` / `pp.` / spelled-out `page` / `pages` prefix (#236/#344),
+  // and `¶` / `¶¶` / `para.` / `paras.` paragraph markers (#204). The optional
+  // leading party-name group (#278) captures Bluebook back-references
+  // (`Smith, 500 F.2d at 125`).
+  type ShortFormGroup = "party" | "volume" | "reporter" | "pincite"
 
-  if (!match) {
-    throw new CitationParseError(`Failed to parse short-form case citation: ${text}`)
-  }
+  // Accept/reject gate: SHORT_FORM_CASE_PATTERN guarantees volume+reporter+
+  // pincite when it matches, so absence means the tokenizer admitted a shape
+  // this extractor can't parse — decline (the #881 path), preserving the old
+  // twin's `if (!match) throw` behavior. Party is optional (bare form).
+  const rawPartyName = optionalGroup<ShortFormGroup>(token, "party")
+  const rawVolume = requireGroup<ShortFormGroup>(token, "volume")
+  const reporterRaw = requireGroup<ShortFormGroup>(token, "reporter")
+  const pinciteRaw = requireGroup<ShortFormGroup>(token, "pincite")
 
-  const rawPartyName = match[1]
-  const rawVolume = match[2]
   const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
-  const reporter = match[3].trim() // Remove trailing spaces
-  let pinciteInfo: PinciteInfo | undefined = parsePincite(match[4]) ?? undefined
+  const reporter = reporterRaw.trim() // Remove trailing spaces
+  let pinciteInfo: PinciteInfo | undefined = parsePincite(pinciteRaw) ?? undefined
   const pincite = pinciteInfo?.page
 
   // Strip leading citation signals from the captured party name (#216 helper).
@@ -602,11 +595,14 @@ export function extractShortFormCase(
     partyNameNormalized = partyName.toLowerCase().replace(/\s+/g, " ").trim()
   }
 
-  // Component span for pincite (#210)
+  // Component span for pincite (#210). `groupSpan` returns the token-relative
+  // [start, end] the tokenizer threaded — same coordinate basis as the old
+  // `match.indices[4]`, so the resolved clean/original offsets are identical.
   let spans: ShortFormCaseComponentSpans | undefined
-  if (match.indices?.[4]) {
+  const pinciteSpan = groupSpan<ShortFormGroup>(token, "pincite")
+  if (pinciteSpan) {
     spans = {
-      pincite: spanFromGroupIndex(span.cleanStart, match.indices[4], transformationMap),
+      pincite: spanFromGroupIndex(span.cleanStart, pinciteSpan, transformationMap),
     }
   }
 
