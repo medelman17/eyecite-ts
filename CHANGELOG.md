@@ -1,5 +1,11 @@
 # eyecite-ts
 
+## 0.34.2
+
+### Patch Changes
+
+- [#891](https://github.com/medelman17/eyecite-ts/pull/891) [`c620168`](https://github.com/medelman17/eyecite-ts/commit/c6201686a5d65e69af804b00bbfe60359f3d0846) Thanks [@medelman17](https://github.com/medelman17)! - Internal: `extractShortFormCase` now reads the named capture groups (party/volume/reporter/pincite) threaded onto the token by the tokenizer (#844) instead of re-running a second short-form-case regex. Behavior-preserving — identical volume/reporter/pincite/partyName output, confidence scoring, and the pincite component span, verified against the real-opinion corpus plus a dedicated characterization suite. Second extractor migrated under the capture-group-threading design; the duplicate "twin" regex (a source of the #881 tokenizer/extractor drift) is gone for short-form case citations. The out-of-token lookaheads (additional pincites, trailing parenthetical, section pincite) are unchanged.
+
 ## 0.34.1
 
 ### Patch Changes
@@ -3244,7 +3250,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-                                      275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+                                        275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -3270,7 +3276,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-                                      People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+                                        People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
