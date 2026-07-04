@@ -10,7 +10,7 @@ Status: **framing grilled 2026-07-04; step order still draft.** Decided at the f
 
 ## Proposed order
 
-0. **Corpus tranche first (decided)**: extend `pnpm corpus:fetch` sampling with a batch of recent opinions whose text comes from PDF extraction (artifacts preserved, not hand-cleaned), committed as ordinary corpus fixtures. This is the stand-in for the eventual high-volume consumer's input shape; it exists before any rewrite code does.
+0. **Corpus tranche first (decided; composition specified in `2026-07-04-court-text-conventions.md`)**: ~40 docs across NY HTML slip opinions (raw, conventions preserved), federal CourtListener `plain_text` (PDF-extraction texture preserved), and pathological diagnostics — committed as ordinary corpus fixtures via `corpus:fetch` plus one small NY-HTML fetcher. Artifact-handling scope for the rewrite follows the bound-volume rule defined in that doc.
 1. **Schema first** (`eyecite-ts/schema`): the IR types, `SCHEMA_VERSION`, `validateDocument`, JSON Schema artifact. Pure types + validator — no pipeline changes. Everything else builds against this.
 2. **Coordinate hiding** (candidate 2): extractors emit clean-coordinate spans; one translation pass at the orchestrator. Mechanical, ~73 signatures shrink; corpus stays green (behavior-preserving). This shrinks every later diff.
 3. **Pass pipeline skeleton** (candidate 1): the 17 passes become an ordered `Pass[]`; dedup and dispatch become named modules; ordering prose becomes data + tests. Corpus green throughout (pure restructuring).

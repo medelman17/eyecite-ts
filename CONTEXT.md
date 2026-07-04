@@ -77,6 +77,16 @@ _Avoid_: diagnostic (reserved for extraction-quality issues)
 The Bluebook text produced from a citation's structured fields — the inverse of extraction.
 _Avoid_: serialization (that's JSON), formatting (ambiguous with code style)
 
+### Text provenance
+
+**Publication convention**:
+A textual artifact that appears in the official published text of an opinion — star pagination, slip-page markers, footnote markers, print line-wrap hyphenation. Inside the library's cleaning scope (the bound-volume rule).
+_Avoid_: noise, junk (for these — they are conventions, and some carry data)
+
+**Acquisition debris**:
+A textual artifact added by how a document was retrieved or containerized — cover sheets, e-filing stamps, PDF running heads, OCR noise. Outside the library; the caller's concern.
+_Avoid_: cleaning (as a name for removing these — cleaning is the library-side operation)
+
 ### Sources of knowledge
 
 **Reporter**:

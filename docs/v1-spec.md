@@ -343,7 +343,7 @@ export interface CitationGroup {
 
 ## 4. Behavior invariants (always on)
 
-- **Cleaning** is internal and single-pass. The caller passes raw text (including raw HTML); there is no cleaner configuration and no way to double-clean.
+- **Cleaning** is internal and single-pass. The caller passes raw text (including raw HTML); there is no cleaner configuration and no way to double-clean. Cleaning scope follows the **bound-volume rule** (docs/design/2026-07-04-court-text-conventions.md): publication conventions (star pagination, slip-page markers, footnote markers, print line-wrap/hyphenation) are handled internally and span-mapped; acquisition debris (cover sheets, filing stamps, PDF running heads, OCR noise) is the caller's concern.
 - **Resolution** always runs (pure, deterministic, cheap). Its output is resolution edges; "off" would only mean an emptier document.
 - **Footnote detection** defaults on. `footnotes: false` is the sole behavioral escape hatch, because a false-positive zone changes id. scoping (zone-strict) rather than merely adding data.
 - **False positives** surface as `level: "low"` with explanatory `reasons` (plus a citation-level diagnostic), never silently dropped. Filtering is the caller's one-liner on `level`. Confidence is assigned by a single scoring pass that runs after every set-mutating pass — levels can never be silently invalidated by later pipeline stages (the #556/#613 bug class).
