@@ -59,6 +59,16 @@ _Avoid_: target, referent
 **Resolution**:
 The process of connecting short forms to their antecedents. Always runs; its output is resolution edges.
 
+### Quality signals
+
+**Confidence level**:
+The categorical judgment (certain, high, medium, low) of how likely an extraction or resolution is correct. There is no numeric score in the model.
+_Avoid_: confidence score, probability
+
+**Reason code**:
+A machine-readable code explaining what raised or lowered a confidence level (e.g. known reporter, fuzzy party match).
+_Avoid_: warning (the 0.x free-text mechanism)
+
 ### Sources of knowledge
 
 **Reporter**:

@@ -56,7 +56,8 @@ export interface ExtractOptions {
  * - Insertion-only: output minus insertions === text, character for character.
  *   The library introduces no escaping and no XSS beyond the caller's markup.
  * - Overlaps resolve deterministically: nested spans nest; partial overlaps
- *   drop the lower-confidence wrap. Never emits malformed interleaving.
+ *   drop the lower-level wrap (level ties: the later-starting span).
+ *   Never emits malformed interleaving.
  * - Default renderer: <cite data-cite-id data-cite-kind>…</cite>.
  */
 export function annotate(text: string, doc: CitationDocument, render?: Renderer): string
@@ -141,6 +142,30 @@ export interface Pincite { raw: string; page?: string; pageEnd?: string; note?: 
 export type Signal =
   | "see" | "seeAlso" | "seeGenerally" | "cf" | "butSee" | "butCf"
   | "compare" | "accord" | "contra" | "eg" | "seeEg"
+
+export type ConfidenceLevel = "certain" | "high" | "medium" | "low"
+
+/** Closed per schema version; additions are minor (readers tolerate unknown codes
+ *  from newer minors). Codes explain what raised or lowered the level. */
+export type ReasonCode =
+  // positive extraction signals
+  | "known_reporter" | "year_plausible" | "case_name_present" | "court_identified"
+  // negative extraction signals
+  | "reporter_unknown" | "reporter_ambiguous" | "year_as_volume" | "blocked_reporter"
+  | "year_implausible" | "suspicious_volume" | "mid_sentence_id" | "typo_punctuation"
+  // metadata completeness
+  | "missing_pincite" | "missing_year" | "missing_court" | "missing_case_name" | "blank_page"
+  // resolution signals (edges)
+  | "exact_antecedent_match" | "fuzzy_party_match" | "ambiguous_id_window"
+  | "no_antecedent_in_scope" | "non_unique_party_key" | "paren_child_excluded"
+
+/** Categorical by design (ADR 0005). There is NO numeric score in v1:
+ *  `score?: number` is reserved and may arrive as a minor version only once it
+ *  is fit against a labeled corpus with a published calibration error — never before. */
+export interface Confidence {
+  level: ConfidenceLevel
+  reasons: ReasonCode[]
+}
 ```
 
 ### 3.1 Citations — four families × fine kinds
@@ -156,7 +181,7 @@ interface CitationCore {
   span: Span                   // citation core: "410 U.S. 113"
   fullSpan: Span               // case name → final parenthetical; === span when no envelope
   matchedText: string          // === text.slice(span.start, span.end)  (invariant 3)
-  confidence: number           // 0..1; suspected false positives score low, never vanish
+  confidence: Confidence       // categorical; suspected false positives go "low", never vanish
   /** Provenance: which original-text slice produced each extracted field. */
   components?: Partial<Record<string, Span>>  // "volume","reporter","page","pincite","court","year","section",…
   signal?: Signal
@@ -257,7 +282,7 @@ export interface ResolutionEdge {
   from: CitationId             // the short form
   to: CitationId | null        // antecedent; null = unresolved
   method: "id" | "supra" | "caseShort"
-  confidence: number
+  confidence: Confidence       // e.g. { level: "medium", reasons: ["fuzzy_party_match"] }
   /** Bluebook R4.1 immediate predecessor when `to` is null, so id. chains still cluster. */
   fallbackAntecedent?: CitationId
 }
@@ -286,7 +311,7 @@ export interface CitationGroup {
 - **Cleaning** is internal and single-pass. The caller passes raw text (including raw HTML); there is no cleaner configuration and no way to double-clean.
 - **Resolution** always runs (pure, deterministic, cheap). Its output is resolution edges; "off" would only mean an emptier document.
 - **Footnote detection** defaults on. `footnotes: false` is the sole behavioral escape hatch, because a false-positive zone changes id. scoping (zone-strict) rather than merely adding data.
-- **False positives** are down-scored via `confidence` (plus a citation-level diagnostic), never silently dropped. Filtering is the caller's one-liner.
+- **False positives** surface as `level: "low"` with explanatory `reasons` (plus a citation-level diagnostic), never silently dropped. Filtering is the caller's one-liner on `level`. Confidence is assigned by a single scoring pass that runs after every set-mutating pass — levels can never be silently invalidated by later pipeline stages (the #556/#613 bug class).
 - **Telemetry** (`processTimeMs`, `patternsChecked` in 0.x) does not exist in the data model. Callers who want timing wrap the call.
 
 ## 5. Error modes (complete list)
@@ -311,6 +336,7 @@ Everything else is defined out of existence: no parse errors, no resolution erro
 6. **refersTo mirror**: for every shortform citation, `refersTo` equals its resolution edge's `to` (both absent when `to` is null).
 7. **Id integrity**: `id === "cit_" + hash(kind | span.start | span.end | matchedText)`; unique within the document by construction.
 8. **textHash**: `textHash === "th_" + hash(text)` for the input that produced the document.
+9. **Reason codes**: every `confidence.reasons` entry belongs to the `ReasonCode` set published for the document's `schemaVersion`.
 
 ## 7. 0.x → v1 taxonomy map
 
@@ -337,10 +363,13 @@ Everything else is defined out of existence: no parse errors, no resolution erro
 
 0.x relationship fields deleted in favor of edges/groups: `resolvedTo` (index), `resolvedToId`, `groupId`, `stringCitationIndex/Size/Group`, `subsequentHistoryOf.index`, per-member `parallel` arrays.
 
+0.x quality fields remapped: `confidence: number` → `confidence: { level, reasons }` (ADR 0005); the resolver's separate `resolution.confidence`/`warnings` → `ResolutionEdge.confidence` (this is what closes the ergonomics gap in issue #832).
+
 ## 8. Versioning rules
 
 - `SCHEMA_VERSION` follows the package's semver **for the document schema**: any change to §3/§6 without a version bump **fails CI** — the corpus snapshot suite diffs projections against the declared schema version, so an undeclared IR change is a red build, not a surprise (this is what makes `schemaVersion` load-bearing rather than decorative).
 - Adding a `kind` within an existing family: **minor** (family-level switches unaffected; kind-level exhaustive switches should include a family-scoped default arm — documented in the README).
+- Adding a `ReasonCode`: **minor**. Adding the reserved `Confidence.score` field: **minor**, permitted only with a committed calibration artifact and published calibration error (ADR 0005).
 - Adding a family, changing any field's meaning, or tightening an invariant: **major**.
 - Reopening an extension seam (ADR 0001) is a **minor** addition, designed against the deferred blueprint in §10.
 
@@ -348,7 +377,7 @@ Everything else is defined out of existence: no parse errors, no resolution erro
 
 - **All-string `volume`/`page`/`section`**: "1984-1" volumes and "___" blank pages exist in the wild; `number | string` unions push a type test onto every consumer while pretending numbers are the norm. Numeric comparison is a consumer-side `Number()` where it's truly numeric.
 - **`markup` includes `"markdown"`**: the 0.x cleaner set already handles Markdown emphasis; the format enum should say so rather than hide it under "auto" only.
-- **No `minConfidence` option**: filtering is a one-line caller `filter`; an option that changes output membership but must not change ids adds an invariant for near-zero leverage.
+- **No minimum-confidence option**: filtering is a one-line caller `filter` on `level`; an option that changes output membership but must not change ids adds an invariant for near-zero leverage.
 - **`components` provenance is optional per citation**: present when captured; an empty object adds noise for kinds with no sub-fields.
 
 ## 10. Deferred: the extension layer (blueprint summary)
