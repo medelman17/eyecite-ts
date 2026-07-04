@@ -10,9 +10,10 @@ Design stance: the library is a compiler from text to a **citation document** �
 
 | Entry | Exports | Weight |
 |---|---|---|
-| `eyecite-ts` | `extract`, `annotate`, `antecedentOf`, `authorities`, `CitationView`, `TextMismatchError`, all types | Size-limited (CI `pnpm size` gate). Reporter knowledge = compact codegen'd matcher table |
+| `eyecite-ts` | `extract`, `annotate`, `format`, `lint`, `antecedentOf`, `authorities`, `CitationView`, `TextMismatchError`, all types | Size-limited (CI `pnpm size` gate). Reporter knowledge = compact codegen'd matcher table |
 | `eyecite-ts/reporters` | `fullReporters: ReporterSource` | The full Free Law reporter database; imported cost is explicit and never pulled by core |
-| `eyecite-ts/schema` | `SCHEMA_VERSION`, `validateDocument`, all types | Zero runtime weight beyond the validator; lets downstream tooling validate documents without importing the extractor |
+| `eyecite-ts/schema` | `SCHEMA_VERSION`, `validateDocument`, `citationDocumentSchema`, all types | Zero runtime weight beyond the validator. Also ships `citation-document.schema.json` — the IR as a language-agnostic interchange format; non-TS consumers validate against the artifact, not this package |
+| `eyecite` (bin) | CLI: `extract` \| `annotate` \| `lint` \| `format` subcommands | Thin shell over the public functions. stdin→stdout, results to stdout / status to stderr, `--ndjson` for pipelines, `lint` exits non-zero on findings at or above `--fail-on` severity |
 
 Zero runtime dependencies. Synchronous, pure, no I/O. ESM + CJS + DTS. `sideEffects: false`.
 
@@ -96,6 +97,40 @@ export class CitationView {
 }
 
 export class TextMismatchError extends Error {}  // annotate/view text ≠ doc.textHash
+
+/**
+ * Render a citation's canonical Bluebook text from its structured fields —
+ * the IR's inverse (ADR 0006).
+ * - Total: never throws on a schema-valid Citation; absent optional fields
+ *   are omitted per Bluebook form.
+ * - The semver-stable property is the ROUND-TRIP LAW (§11), not byte output:
+ *   extract(format(c)) recovers c's family, kind, and populated fields.
+ *   Canonical rendering may improve within minors.
+ */
+export function format(citation: Citation, opts?: { form?: "full" | "short" }): string
+
+/**
+ * Bluebook practice linting — a PURE CONSUMER of the citation document
+ * (ADR 0006: rules read only the IR, never the text; if a rule needs a fact,
+ * the IR grows to carry it). Deterministic; rule set versioned (§8).
+ */
+export function lint(doc: CitationDocument): LintFinding[]
+
+/** Closed per version; additions are minor. Initial rule set: */
+export type LintRule =
+  | "id-after-intervening-cite"          // Bluebook R4.1 — computed from resolution edges + document order
+  | "short-form-before-full"             // shortform with no in-scope antecedent candidate
+  | "string-cite-signal-order"           // R1.3 — signal ordering within a string group
+  | "missing-pincite-after-quote"        // quoting parenthetical / quote-adjacent cite lacks pincite
+  | "nonstandard-reporter-abbreviation"  // reporter.cited ≠ reporter.normalized
+
+export interface LintFinding {
+  rule: LintRule
+  severity: "error" | "warning"
+  message: string
+  citationId?: CitationId
+  span?: Span
+}
 
 export interface ReporterSource {
   lookup(abbreviation: string): ReporterInfo | undefined
@@ -370,6 +405,9 @@ Everything else is defined out of existence: no parse errors, no resolution erro
 - `SCHEMA_VERSION` follows the package's semver **for the document schema**: any change to §3/§6 without a version bump **fails CI** — the corpus snapshot suite diffs projections against the declared schema version, so an undeclared IR change is a red build, not a surprise (this is what makes `schemaVersion` load-bearing rather than decorative).
 - Adding a `kind` within an existing family: **minor** (family-level switches unaffected; kind-level exhaustive switches should include a family-scoped default arm — documented in the README).
 - Adding a `ReasonCode`: **minor**. Adding the reserved `Confidence.score` field: **minor**, permitted only with a committed calibration artifact and published calibration error (ADR 0005).
+- Adding a `LintRule`: **minor** (CI consumers pin `--fail-on` severity, not rule counts).
+- `format()` output: canonical rendering may change within **minors**; only the round-trip law is semver-guaranteed. Byte-stable output is a patch-level property.
+- `citation-document.schema.json` versions in lockstep with `SCHEMA_VERSION` and publishes as a release artifact.
 - Adding a family, changing any field's meaning, or tightening an invariant: **major**.
 - Reopening an extension seam (ADR 0001) is a **minor** addition, designed against the deferred blueprint in §10.
 
@@ -396,6 +434,8 @@ Config validation happens at construction (`ConfigError`), never during `extract
 
 ## 11. Rebuild consequences (internal, non-normative)
 
-This surface settles the internal architecture-review candidates: dual-coordinate spans become fully private (mandatory), the orchestrator pass pipeline / case-stage collapse / resolver split / statute registry become invisible internal refactors, and the pattern↔extractor contract is free to become `pattern.extract(token, ctx)` with no public trace. Corpus projections regenerate against `(kind, id, refersTo)` at the end of the rewrite; green corpus + this spec's `validateDocument` over the corpus outputs is the rewrite's definition of done.
+This surface settles the internal architecture-review candidates: dual-coordinate spans become fully private (mandatory), the orchestrator pass pipeline / case-stage collapse / resolver split / statute registry become invisible internal refactors, and the pattern↔extractor contract is free to become `pattern.extract(token, ctx)` with no public trace. Corpus projections regenerate against `(kind, id, refersTo)` at the end of the rewrite; the definition of done is all three nets green — regenerated corpus parity, the round-trip law over the generator, and `validateDocument` over every corpus output.
+
+**The round-trip net.** `format()` existing makes the rewrite's strongest property test possible: an internal generator produces random schema-valid citation IRs across the full taxonomy, and CI asserts the round-trip law — `extract(format(c))` recovers `c`'s family, kind, and populated fields. Corpus projections prove parity with the past; gold labels prove resolution truth; the generator proves coverage of shapes no corpus contains (hyphenated volumes, blank pages, deep subsection ranges, every kind × optional-field combination). The generator is internal test infrastructure, not public API.
 
 **Resolver rewrite measurement.** Regenerated corpus projections prove parity, not improvement — they lock in current resolution behavior, mistakes included. The antecedent annotator (#829) merges *before* the rewrite as v1 infrastructure: it becomes the first 0.x→v1 migration consumer (its engine-guess/candidates/confidence payload maps 1:1 onto `ResolutionEdge` + `Confidence`), and the gold Id./supra labels it produces are the resolver rewrite's accuracy scoreboard. Target label count is set by available expert hours; if that is zero, the resolver rewrite is measured by parity plus the seeded hard cases, explicitly. Calibration (and the reserved `score` field) stays post-1.0 (ADR 0005).

@@ -69,6 +69,14 @@ _Avoid_: confidence score, probability
 A machine-readable code explaining what raised or lowered a confidence level (e.g. known reporter, fuzzy party match).
 _Avoid_: warning (the 0.x free-text mechanism)
 
+**Lint finding**:
+A Bluebook-practice violation detected in a citation document (e.g. id. after an intervening cite, short form before any full cite). About the writing, not the extraction.
+_Avoid_: diagnostic (reserved for extraction-quality issues)
+
+**Canonical rendering**:
+The Bluebook text produced from a citation's structured fields — the inverse of extraction.
+_Avoid_: serialization (that's JSON), formatting (ambiguous with code style)
+
 ### Sources of knowledge
 
 **Reporter**:
