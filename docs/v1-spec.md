@@ -432,6 +432,12 @@ Recorded so the next design session doesn't start from zero (full rationale: ADR
 
 Config validation happens at construction (`ConfigError`), never during `extract` — extraction stays total.
 
+## 10a. Deferred beyond v1 (recorded so scope doesn't drift back)
+
+- **Incremental / editor mode** (re-extraction on edit, LSP-style hover-to-antecedent): requires an incremental seam this spec deliberately omits; a future `eyecite-ts/pipeline`-style addition, purchasable without disturbing this interface.
+- **Treatment detection** ("overruled by" / "abrogated" classification from history edges + parentheticals): research-grade; builds on the IR, ships as its own consumer when it exists.
+- **Cross-document identity**: out of scope by ADR 0004 — an entity-resolution layer above this library.
+
 ## 11. Rebuild consequences (internal, non-normative)
 
 This surface settles the internal architecture-review candidates: dual-coordinate spans become fully private (mandatory), the orchestrator pass pipeline / case-stage collapse / resolver split / statute registry become invisible internal refactors, and the pattern↔extractor contract is free to become `pattern.extract(token, ctx)` with no public trace. Corpus projections regenerate against `(kind, id, refersTo)` at the end of the rewrite; the definition of done is all three nets green — regenerated corpus parity, the round-trip law over the generator, and `validateDocument` over every corpus output.
