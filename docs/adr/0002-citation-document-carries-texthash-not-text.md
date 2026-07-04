@@ -1,0 +1,3 @@
+# The citation document carries a text hash, not the text
+
+The citation document does not embed the input text; it carries a `textHash` of it. `annotate(text, doc)` re-verifies the hash and throws `TextMismatchError` before touching offsets, so wrong-text mistakes fail loudly instead of silently corrupting positions. Embedding the text (the self-contained alternative) was rejected because persisted documents would duplicate a potentially multi-megabyte opinion in every stored row/payload, and callers who persist citation documents invariably already store the source text. Consequence: any API that needs the text (`annotate`, the annotating half of `CitationView`) takes it as an explicit parameter — that is by design, not an oversight.
