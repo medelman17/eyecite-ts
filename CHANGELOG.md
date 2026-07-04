@@ -1,5 +1,11 @@
 # eyecite-ts
 
+## 0.34.3
+
+### Patch Changes
+
+- [#896](https://github.com/medelman17/eyecite-ts/pull/896) [`34133d0`](https://github.com/medelman17/eyecite-ts/commit/34133d03143ea65861f48a5ed0eb32c931581666) Thanks [@medelman17](https://github.com/medelman17)! - Add agent skills configuration: `docs/agents/` (issue tracker, triage labels, domain docs) and an `## Agent skills` section in CLAUDE.md. Documentation/tooling only — no runtime changes.
+
 ## 0.34.2
 
 ### Patch Changes
@@ -3250,7 +3256,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-                                        275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+                                          275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -3276,7 +3282,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-                                        People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+                                          People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the
