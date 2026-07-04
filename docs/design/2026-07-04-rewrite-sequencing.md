@@ -1,6 +1,6 @@
 # v1 rewrite — sequencing plan (draft)
 
-Status: **draft for discussion — not yet grilled.** The order below is the current best proposal for building toward docs/v1-spec.md; each step names its verification net. Related: `2026-07-04-architecture-review.md` (the internal candidates), `2026-07-04-v1-interface-alternatives.md` (decision log).
+Status: **framing grilled 2026-07-04; step order still draft.** Decided at the framing level: (a) **v1 completes before new downstream consumers are built on it** — no interim consumers on 0.x; the verification nets carry the full weight during the rewrite; (b) **full committed scope stands** — format(), lint(), CLI, and the schema artifact all ship in v1, not deferred; (c) **step 0 added below** — the corpus grows a tranche of real, freshly-fetched opinion text (PDF-extracted, artifacts included) *before* rewrite work starts, so extraction is continuously tested against production-shaped input. The numbered step order and the remaining open questions are still to be grilled. Related: `2026-07-04-architecture-review.md`, `2026-07-04-v1-interface-alternatives.md`.
 
 ## Principles
 
@@ -10,6 +10,7 @@ Status: **draft for discussion — not yet grilled.** The order below is the cur
 
 ## Proposed order
 
+0. **Corpus tranche first (decided)**: extend `pnpm corpus:fetch` sampling with a batch of recent opinions whose text comes from PDF extraction (artifacts preserved, not hand-cleaned), committed as ordinary corpus fixtures. This is the stand-in for the eventual high-volume consumer's input shape; it exists before any rewrite code does.
 1. **Schema first** (`eyecite-ts/schema`): the IR types, `SCHEMA_VERSION`, `validateDocument`, JSON Schema artifact. Pure types + validator — no pipeline changes. Everything else builds against this.
 2. **Coordinate hiding** (candidate 2): extractors emit clean-coordinate spans; one translation pass at the orchestrator. Mechanical, ~73 signatures shrink; corpus stays green (behavior-preserving). This shrinks every later diff.
 3. **Pass pipeline skeleton** (candidate 1): the 17 passes become an ordered `Pass[]`; dedup and dispatch become named modules; ordering prose becomes data + tests. Corpus green throughout (pure restructuring).
