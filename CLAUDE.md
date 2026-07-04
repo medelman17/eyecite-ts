@@ -91,3 +91,17 @@ Tests mirror source in `tests/` with the same directory structure. Integration t
 - **Releases**: Changesets — `pnpm changeset` to add, merge to main creates "Version Packages" PR, merging that publishes to npm with provenance
 - **Package manager**: pnpm 10 via corepack. Build script allowlist in `pnpm-workspace.yaml`.
 - Each fix/feature branch needs a changeset: `pnpm changeset` → select patch/minor/major → write summary
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues (medelman17/eyecite-ts) via the `gh` CLI; external PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage labels are used verbatim: needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root (created lazily as skills run). See `docs/agents/domain.md`.
