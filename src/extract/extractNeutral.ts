@@ -7,6 +7,7 @@
  * @module extract/extractNeutral
  */
 
+import { CitationParseError } from "./errors"
 import type { Token } from "@/tokenize"
 import type { NeutralCitation } from "@/types/citation"
 import type { NeutralComponentSpans } from "@/types/componentSpans"
@@ -47,6 +48,18 @@ const NEUTRAL_PAREN_LOOKAHEAD =
 function isDatabaseIdentifier(s: string): boolean {
   if (s === "WL" || s === "BL" || s === "NY Slip Op") return true
   return /\bLEXIS\b/.test(s)
+}
+
+/** Matches a bracketed blank locator placeholder (`[____]`, `[--------]`) used
+ *  on slip-op / WL cites whose document number is not yet assigned. #831 */
+const BLANK_LOCATOR_RE = /^\[[_-]{2,}\]$/
+
+/** Normalizes a captured slip-op / WL locator. A bracketed blank placeholder
+ *  collapses to an empty-string sentinel so the citation still extracts (with
+ *  caseName/court/year populated) instead of being dropped or emitting the
+ *  bracket run as a bogus document number. #831 */
+function normalizeLocator(raw: string): string {
+  return BLANK_LOCATOR_RE.test(raw) ? "" : raw
 }
 
 /**
@@ -126,12 +139,14 @@ export function extractNeutral(
   // period variant. Recognized before the generic regex because the marker and
   // multi-word identifier would otherwise misparse. "NY Slip Op" is routed to
   // `database` (not `court`) by isDatabaseIdentifier below.
+  // #831 — locator group accepts a bracketed blank (`[____]`) in addition to
+  // digits; `normalizeLocator` collapses the placeholder to an empty sentinel.
   const slipOpMatch =
-    /^(\d{4})\s+N\.?Y\.?\s+Slip\s+Op\.?\s+(\d+)(\((?:U|UV)\)|\[U\])?$/d.exec(text)
+    /^(\d{4})\s+N\.?Y\.?\s+Slip\s+Op\.?\s+(\d+|\[[_-]{2,}\])(\((?:U|UV)\)|\[U\])?$/d.exec(text)
   if (slipOpMatch) {
     year = Number.parseInt(slipOpMatch[1], 10)
     court = "NY Slip Op"
-    documentNumber = slipOpMatch[2]
+    documentNumber = normalizeLocator(slipOpMatch[2])
     unpublished = slipOpMatch[3] !== undefined
     if (slipOpMatch.indices) {
       spans = {
@@ -168,15 +183,18 @@ export function extractNeutral(
   } else {
     // 3-segment forms: hyphenated (NM/Ohio/NC) or whitespace (UT/WI/IL/WL).
     // Trailing `(-U)?` captures Illinois Rule 23 unpublished marker (#230);
-    // the suffix is consumed but excluded from `documentNumber`.
-    const neutralRegex = /^(\d{4})[-\s]+(.+?)[-\s]+(\d+)(-U)?$/d
+    // the suffix is consumed but excluded from `documentNumber`. The document
+    // number also accepts a bracketed blank placeholder (`2024 WL [____]`) so
+    // WL blanks parse instead of throwing; `normalizeLocator` collapses it to
+    // an empty sentinel. #831
+    const neutralRegex = /^(\d{4})[-\s]+(.+?)[-\s]+(\d+|\[[_-]{2,}\])(-U)?$/d
     const match = neutralRegex.exec(text)
     if (!match) {
-      throw new Error(`Failed to parse neutral citation: ${text}`)
+      throw new CitationParseError(`Failed to parse neutral citation: ${text}`)
     }
     year = Number.parseInt(match[1], 10)
     court = match[2]
-    documentNumber = match[3]
+    documentNumber = normalizeLocator(match[3])
     if (match[4] === "-U") {
       unpublished = true
     }

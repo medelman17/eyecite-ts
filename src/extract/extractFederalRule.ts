@@ -9,6 +9,7 @@
  * @module extract/extractFederalRule
  */
 
+import { CitationParseError } from "./errors"
 import type { Token } from "@/tokenize"
 import type { FederalRuleCitation } from "@/types/citation"
 import type { FederalRuleComponentSpans } from "@/types/componentSpans"
@@ -103,7 +104,7 @@ export function extractFederalRule(
   const match =
     abbreviatedRegex.exec(text) ?? spelledRegex.exec(text) ?? acronymRegex.exec(text)
   if (!match) {
-    throw new Error(`Failed to parse federal rule citation: ${text}`)
+    throw new CitationParseError(`Failed to parse federal rule citation: ${text}`)
   }
 
   const rawRuleSet = match[1]

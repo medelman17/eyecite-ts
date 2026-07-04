@@ -6,7 +6,12 @@
  */
 
 import type { FootnoteMap } from "../footnotes/types"
-import type { Citation, ShortFormCitation } from "../types/citation"
+import type {
+  Citation,
+  CitationId,
+  FullCaseCitation,
+  ShortFormCitation,
+} from "../types/citation"
 
 /**
  * Scope boundary strategy for resolution.
@@ -106,6 +111,16 @@ export interface ResolutionResult {
   antecedentIndex?: number
 
   /**
+   * Stable id of the `resolvedTo` citation (#860). Mirrors `resolvedTo` but
+   * survives consumer `filter`/`sort`/`map` of the result array, since it keys
+   * on identity rather than array position. Undefined when `resolvedTo` is.
+   */
+  resolvedToId?: CitationId
+
+  /** Stable id of the `antecedentIndex` citation (#860). See `resolvedToId`. */
+  antecedentId?: CitationId
+
+  /**
    * Reason for resolution failure (if any)
    */
   failureReason?: string
@@ -126,12 +141,20 @@ export interface ResolutionResult {
  * Citation with resolution metadata.
  *
  * Uses a distributive conditional type so that `resolution` is only
- * meaningfully present on short-form citations (Id., supra, short-form case).
- * On full citations, `resolution` is typed as `undefined`.
+ * meaningfully present on citations that can reference an antecedent:
+ * - Short-form citations (Id., supra, short-form case) always carry the field
+ *   (possibly `undefined` when resolution failed).
+ * - Full case citations carry it *optionally*: normally a full cite is an
+ *   antecedent (no resolution), but a full reporter cite trailing a short-form
+ *   as a parallel reference inherits that short-form's antecedent (#884), so it
+ *   becomes reference-like and may carry a `resolution`.
+ * - All other full citations have `resolution` typed as `undefined`.
  */
 export type ResolvedCitation<C extends Citation = Citation> = C extends ShortFormCitation
   ? C & { resolution: ResolutionResult | undefined }
-  : C & { resolution?: undefined }
+  : C extends FullCaseCitation
+    ? C & { resolution?: ResolutionResult }
+    : C & { resolution?: undefined }
 
 /**
  * Internal context for resolution process.

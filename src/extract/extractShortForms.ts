@@ -7,15 +7,23 @@
  * @module extract/extractShortForms
  */
 
+import { CitationParseError } from "./errors"
 import type { Token } from "@/tokenize"
-import type { IdCitation, ShortFormCaseCitation, SupraCitation } from "@/types/citation"
+import type {
+  IdCitation,
+  Parenthetical,
+  ShortFormCaseCitation,
+  SupraCitation,
+} from "@/types/citation"
 import type {
   IdComponentSpans,
   ShortFormCaseComponentSpans,
   SupraComponentSpans,
 } from "@/types/componentSpans"
 import { resolveOriginalSpan, spanFromGroupIndex, type TransformationMap } from "@/types/span"
-import { COMMON_REPORTERS } from "./extractCase"
+import { classifyCaseParenthetical } from "./caseParentheticals"
+import { COMMON_REPORTERS } from "./caseReporterSemantics"
+import { groupSpan, optionalGroup, requireGroup } from "./groupAccessor"
 import { parsePincite, type PinciteInfo } from "./pincite"
 
 /**
@@ -50,7 +58,7 @@ function stripSupraPartyPrefix(raw: string): string {
  * parens. Suitable for `Id. at N (Marsh)`, `Id. (citation omitted)`,
  * `Smith, supra (holding that ...)`, `Smith, 500 F.2d at 125 (citations omitted)`.
  */
-const TRAILING_PAREN_REGEX = /^[\s,]*\(([^()]*)\)/
+const TRAILING_PAREN_REGEX = /^[\s,]*\(([^()]*)\)/d
 
 /**
  * Additional pincite continuation (`, NNN`) after the primary pincite has been
@@ -90,21 +98,89 @@ const SHORTFORM_ADDITIONAL_PINCITE_REGEX =
 const SIGNAL_AT_END_REGEX =
   /(?<![A-Za-z])(?:but\s+cf\.,\s+e\.\s*g\.,?|see\s*,?\s+also,\s+e\.\s*g\.,?|but\s+see,\s+e\.\s*g\.,?|cf\.,\s+e\.\s*g\.,?|see,\s+e\.\s*g\.,?|see\s+generally|see\s*,?\s+also|but\s+see|but\s+cf\.?|compare|accord|contra|see|cf\.?|e\.\s*g\.,?)\s*$/i
 
+interface TrailingParenthetical {
+  /** Inner text, parens excluded (the flat `parenthetical` value). */
+  text: string
+  /** Clean-text span of the full `(...)` block, delimiters included. */
+  cleanStart: number
+  cleanEnd: number
+}
+
 /**
  * Scan the cleaned text after a short-form citation's span end for an
- * immediately-trailing `(...)` parenthetical. Returns the inner text
- * (excluding the parens) or `undefined` if none found. #303
+ * immediately-trailing `(...)` parenthetical. Returns the inner text plus the
+ * clean-text span of the full block (so a `parentheticalNode` can be built and
+ * nested citations located), or `undefined` if none found. #303 / #869
  */
 function extractTrailingParenthetical(
   cleanedText: string | undefined,
-  cleanEnd: number,
+  fromCleanPos: number,
+): TrailingParenthetical | undefined {
+  if (!cleanedText) return undefined
+  const after = cleanedText.slice(fromCleanPos)
+  const m = TRAILING_PAREN_REGEX.exec(after)
+  if (!m?.indices) return undefined
+  const content = m[1].trim()
+  if (content.length === 0) return undefined
+  // Group 1 is the inner content; the delimiters sit one char outside it.
+  const [innerStart, innerEnd] = m.indices[1]
+  return {
+    text: content,
+    cleanStart: fromCleanPos + innerStart - 1, // the "("
+    cleanEnd: fromCleanPos + innerEnd + 1, // just past the ")"
+  }
+}
+
+/**
+ * Build the structured `parentheticalNode` for a short-form citation (#869):
+ * the captured `(...)` text, classified by leading signal word (reusing the
+ * case-parenthetical classifier), with the block span mapped to original
+ * coordinates. Nested child citations are attached later by
+ * `nestParentheticalCitations`.
+ */
+function buildParentheticalNode(
+  paren: TrailingParenthetical,
+  transformationMap: TransformationMap,
+): Parenthetical {
+  const { originalStart, originalEnd } = resolveOriginalSpan(
+    { cleanStart: paren.cleanStart, cleanEnd: paren.cleanEnd },
+    transformationMap,
+  )
+  const classified = classifyCaseParenthetical({
+    text: paren.text,
+    span: { start: 0, end: paren.text.length },
+  })
+  return {
+    text: paren.text,
+    type: classified.kind === "explanatory" ? classified.type : "other",
+    span: {
+      cleanStart: paren.cleanStart,
+      cleanEnd: paren.cleanEnd,
+      originalStart,
+      originalEnd,
+    },
+  }
+}
+
+/**
+ * Section-style pincite immediately after an `Id.` (`Id. § 1983(c)`), which the
+ * `Id.` regex does not capture (#847). `^`-anchored, so it fires only when the
+ * `§` directly follows the citation core. The 20-char slice matches the
+ * resolver's former §-peek window EXACTLY, so detection is byte-identical to
+ * the behavior this replaces; a real `§` lands within ~3 chars (the default
+ * cleaner collapses whitespace) and realistic section locators fit well inside
+ * 20. Returns the locator after `§`/`§§` (e.g. `1983(c)`, `201`, `1-5`) or
+ * `undefined`.
+ */
+const TRAILING_SECTION_REGEX = /^\s*,?\s*§§?\s*(\d+(?:\([^)]*\))*(?:[-–—]\d+)?)/
+
+function extractTrailingSectionPincite(
+  cleanedText: string | undefined,
+  fromCleanPos: number,
 ): string | undefined {
   if (!cleanedText) return undefined
-  const after = cleanedText.slice(cleanEnd)
-  const m = TRAILING_PAREN_REGEX.exec(after)
-  if (!m) return undefined
-  const content = m[1].trim()
-  return content.length > 0 ? content : undefined
+  const m = TRAILING_SECTION_REGEX.exec(cleanedText.slice(fromCleanPos, fromCleanPos + 20))
+  return m ? m[1] : undefined
 }
 
 /**
@@ -186,7 +262,7 @@ export function extractId(
   const match = idRegex.exec(text)
 
   if (!match) {
-    throw new Error(`Failed to parse Id. citation: ${text}`)
+    throw new CitationParseError(`Failed to parse Id. citation: ${text}`)
   }
 
   const firstChar = match[1]
@@ -254,7 +330,14 @@ export function extractId(
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
   // Trailing parenthetical (#303): `Id. at 770 (Marsh)`, `Id. (citation omitted)`.
-  const parenthetical = extractTrailingParenthetical(cleanedText, span.cleanEnd)
+  // Structured node (#869) carries the classified type, span, and nested cites.
+  const paren = extractTrailingParenthetical(cleanedText, span.cleanEnd)
+  const parentheticalNode = paren ? buildParentheticalNode(paren, transformationMap) : undefined
+
+  // Section-style pincite (#847): `Id. § 1983(c)`. Gathered by lookahead since
+  // the Id. regex above only handles page/paragraph shapes, so the resolver can
+  // read a structured field for family preference instead of peeking raw text.
+  const sectionPincite = extractTrailingSectionPincite(cleanedText, span.cleanEnd)
 
   return {
     type: "id",
@@ -271,7 +354,9 @@ export function extractId(
     patternsChecked: 1,
     pincite,
     pinciteInfo,
-    ...(parenthetical ? { parenthetical } : {}),
+    ...(sectionPincite ? { sectionPincite } : {}),
+    ...(paren ? { parenthetical: paren.text } : {}),
+    ...(parentheticalNode ? { parentheticalNode } : {}),
     spans,
   }
 }
@@ -355,7 +440,7 @@ export function extractSupra(
   const match = bracketedMatch || partyMatch || standaloneRegex.exec(text)
 
   if (!match) {
-    throw new Error(`Failed to parse supra citation: ${text}`)
+    throw new CitationParseError(`Failed to parse supra citation: ${text}`)
   }
 
   let partyName: string | undefined
@@ -403,8 +488,10 @@ export function extractSupra(
   // Translate positions from clean → original
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 
-  // Trailing parenthetical (#303): `Smith, supra (holding ...)`.
-  const parenthetical = extractTrailingParenthetical(cleanedText, span.cleanEnd)
+  // Trailing parenthetical (#303): `Smith, supra (holding ...)`. Structured
+  // node (#869) carries the classified type, span, and nested cites.
+  const paren = extractTrailingParenthetical(cleanedText, span.cleanEnd)
+  const parentheticalNode = paren ? buildParentheticalNode(paren, transformationMap) : undefined
 
   return {
     type: "supra",
@@ -422,7 +509,8 @@ export function extractSupra(
     partyName,
     pincite,
     pinciteInfo,
-    ...(parenthetical ? { parenthetical } : {}),
+    ...(paren ? { parenthetical: paren.text } : {}),
+    ...(parentheticalNode ? { parentheticalNode } : {}),
     spans,
   }
 }
@@ -468,38 +556,30 @@ export function extractShortFormCase(
 ): ShortFormCaseCitation {
   const { text, span } = token
 
-  // Parse [Party,] volume-reporter-[,]-at-page.
-  // Pattern: optional Party name then number space abbreviation [, ] at space number.
-  // Supports reporters with 1-2 letter ordinal suffixes (e.g., F.4th, Cal.4th).
-  // Handles comma-before-at: "597 U.S., at 721", "116 F.4th, at 1193".
-  // Pincite accepts optional "*" prefix for star-pagination (#191), an optional
-  // range end "462-65" / "462-*65" (#201), an optional trailing footnote
-  // suffix " n.14" / " nn.14-15" (#202), an optional `p.` / `pp.` prefix for
-  // CSM form (`18 Cal.4th at p. 717`; see #236), and `¶` / `¶¶` / `para.` /
-  // `paras.` paragraph markers (#204).
-  // Optional leading party-name group (#278) captures Bluebook back-references
-  // (`Smith, 500 F.2d at 125`). Group order:
-  //   1: party name (optional, undefined for bare form)
-  //   2: volume
-  //   3: reporter
-  //   4: pincite
-  // Party-name capture mirrors SHORT_FORM_CASE_PATTERN: `v.` / `&` / `,`
-  // continuations (#301). `In re` prefix intentionally omitted (see
-  // partySupraRegex above for rationale). Pincite-prefix alternation also
-  // accepts spelled-out `page` / `pages` (#344).
-  const shortFormRegex =
-    /(?:([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*),\s+)?(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*|pages?\s+)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)/d
-  const match = shortFormRegex.exec(text)
+  // Parse [Party,] volume-reporter-[,]-at-page from the named capture groups
+  // threaded onto the token by SHORT_FORM_CASE_PATTERN (#844). The pattern
+  // supports reporters with 1-2 letter ordinal suffixes (e.g., F.4th, Cal.4th),
+  // comma-before-at (`597 U.S., at 721`), a pincite with optional "*" prefix
+  // for star-pagination (#191), an optional range end "462-65" / "462-*65"
+  // (#201), an optional trailing footnote suffix " n.14" / " nn.14-15" (#202),
+  // an optional `p.` / `pp.` / spelled-out `page` / `pages` prefix (#236/#344),
+  // and `¶` / `¶¶` / `para.` / `paras.` paragraph markers (#204). The optional
+  // leading party-name group (#278) captures Bluebook back-references
+  // (`Smith, 500 F.2d at 125`).
+  type ShortFormGroup = "party" | "volume" | "reporter" | "pincite"
 
-  if (!match) {
-    throw new Error(`Failed to parse short-form case citation: ${text}`)
-  }
+  // Accept/reject gate: SHORT_FORM_CASE_PATTERN guarantees volume+reporter+
+  // pincite when it matches, so absence means the tokenizer admitted a shape
+  // this extractor can't parse — decline (the #881 path), preserving the old
+  // twin's `if (!match) throw` behavior. Party is optional (bare form).
+  const rawPartyName = optionalGroup<ShortFormGroup>(token, "party")
+  const rawVolume = requireGroup<ShortFormGroup>(token, "volume")
+  const reporterRaw = requireGroup<ShortFormGroup>(token, "reporter")
+  const pinciteRaw = requireGroup<ShortFormGroup>(token, "pincite")
 
-  const rawPartyName = match[1]
-  const rawVolume = match[2]
   const volume = /^\d+$/.test(rawVolume) ? Number.parseInt(rawVolume, 10) : rawVolume
-  const reporter = match[3].trim() // Remove trailing spaces
-  let pinciteInfo: PinciteInfo | undefined = parsePincite(match[4]) ?? undefined
+  const reporter = reporterRaw.trim() // Remove trailing spaces
+  let pinciteInfo: PinciteInfo | undefined = parsePincite(pinciteRaw) ?? undefined
   const pincite = pinciteInfo?.page
 
   // Strip leading citation signals from the captured party name (#216 helper).
@@ -515,11 +595,14 @@ export function extractShortFormCase(
     partyNameNormalized = partyName.toLowerCase().replace(/\s+/g, " ").trim()
   }
 
-  // Component span for pincite (#210)
+  // Component span for pincite (#210). `groupSpan` returns the token-relative
+  // [start, end] the tokenizer threaded — same coordinate basis as the old
+  // `match.indices[4]`, so the resolved clean/original offsets are identical.
   let spans: ShortFormCaseComponentSpans | undefined
-  if (match.indices?.[4]) {
+  const pinciteSpan = groupSpan<ShortFormGroup>(token, "pincite")
+  if (pinciteSpan) {
     spans = {
-      pincite: spanFromGroupIndex(span.cleanStart, match.indices[4], transformationMap),
+      pincite: spanFromGroupIndex(span.cleanStart, pinciteSpan, transformationMap),
     }
   }
 
@@ -569,7 +652,8 @@ export function extractShortFormCase(
     }
     trailingParenStart = span.cleanEnd + scan
   }
-  const parenthetical = extractTrailingParenthetical(cleanedText, trailingParenStart)
+  const paren = extractTrailingParenthetical(cleanedText, trailingParenStart)
+  const parentheticalNode = paren ? buildParentheticalNode(paren, transformationMap) : undefined
 
   return {
     type: "shortFormCase",
@@ -590,7 +674,8 @@ export function extractShortFormCase(
     pinciteInfo,
     partyName,
     partyNameNormalized,
-    ...(parenthetical ? { parenthetical } : {}),
+    ...(paren ? { parenthetical: paren.text } : {}),
+    ...(parentheticalNode ? { parentheticalNode } : {}),
     spans,
   }
 }

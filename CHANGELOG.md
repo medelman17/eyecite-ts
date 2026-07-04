@@ -1,5 +1,182 @@
 # eyecite-ts
 
+## 0.34.2
+
+### Patch Changes
+
+- [#891](https://github.com/medelman17/eyecite-ts/pull/891) [`c620168`](https://github.com/medelman17/eyecite-ts/commit/c6201686a5d65e69af804b00bbfe60359f3d0846) Thanks [@medelman17](https://github.com/medelman17)! - Internal: `extractShortFormCase` now reads the named capture groups (party/volume/reporter/pincite) threaded onto the token by the tokenizer (#844) instead of re-running a second short-form-case regex. Behavior-preserving — identical volume/reporter/pincite/partyName output, confidence scoring, and the pincite component span, verified against the real-opinion corpus plus a dedicated characterization suite. Second extractor migrated under the capture-group-threading design; the duplicate "twin" regex (a source of the #881 tokenizer/extractor drift) is gone for short-form case citations. The out-of-token lookaheads (additional pincites, trailing parenthetical, section pincite) are unchanged.
+
+## 0.34.1
+
+### Patch Changes
+
+- [#892](https://github.com/medelman17/eyecite-ts/pull/892) [`58a3146`](https://github.com/medelman17/eyecite-ts/commit/58a314653c28e72e8d2f180fb4cc7b9a285745d2) Thanks [@medelman17](https://github.com/medelman17)! - Fix: a bracketed year `[1992]` / `[2d Dept 2012]` (New York Official Reports / Court of Appeals style, and a common Bluebook variant) is now treated like a parenthesized year `(1992)` — it contributes the decision `year` and closes a parallel-reporter run so the cites share a `groupId` (#890). Previously the bracketed form silently lost both the year and the parallel grouping, affecting the large class of NY official-style citations (`N.Y.2d` + `N.Y.S.2d` + `N.E.2d` with a `[year]`).
+
+  Recognition is restricted to a genuine year bracket — a `[…]` ending in a 1600–2099 year that is **not** a bracketed parallel cite — so `[U]` markers, the California `(year) [secondary cite]` form (including one whose page looks year-like, e.g. `[20 Cal.Rptr.2d 1995]`), and year-free editorial brackets like `[sic]` are unchanged. An editorial bracket that itself ends in a stray year (`[sic 1992]`) is read as a year exactly as the round-paren `(sic 1992)` already is — bracket/paren parity.
+
+## 0.34.0
+
+### Minor Changes
+
+- [#886](https://github.com/medelman17/eyecite-ts/pull/886) [`520ebcb`](https://github.com/medelman17/eyecite-ts/commit/520ebcb1c2d787577baa2d6e8f4977c3fe820283) Thanks [@medelman17](https://github.com/medelman17)! - Thread regex capture groups from tokenize→extract, and raise the Node floor to >=22.
+
+  **BREAKING (runtime floor):** the minimum supported Node is now 22 (was 18); the CI matrix is 22/24/26. This unlocks ES2025 duplicate named capturing groups, which the extraction refactor relies on.
+
+  Internally, `Token` now carries optional `groups`/`groupSpans` (the named capture groups of the matching pattern) so extractors can read structured terminals instead of re-running a second regex. This PR is the additive substrate; it changes no extraction output.
+
+### Patch Changes
+
+- [#888](https://github.com/medelman17/eyecite-ts/pull/888) [`129d3b8`](https://github.com/medelman17/eyecite-ts/commit/129d3b84c36e5d0857a4403f933d74cf19da027a) Thanks [@medelman17](https://github.com/medelman17)! - Internal: `parseCaseCitationCore` now reads the named capture groups threaded onto the token by the tokenizer (#844) instead of re-running a second volume-reporter-page regex. Behavior-preserving — identical volume/reporter/page/nominative/blank-page output and component spans, verified against the real-opinion corpus plus a dedicated characterization suite. First extractor migrated under the capture-group-threading design; the duplicate "twin" regex (a source of the #881 tokenizer/extractor drift) is gone for case citations.
+
+- [#889](https://github.com/medelman17/eyecite-ts/pull/889) [`a9c616f`](https://github.com/medelman17/eyecite-ts/commit/a9c616f7e69d25905d99dbadb86a69a209690202) Thanks [@medelman17](https://github.com/medelman17)! - Fix: parallel reporter citations trailing a short-form — or in any citation chain that omits the closing year-parenthetical — are now grouped with, and resolved to, the same case as their anchor, instead of being orphaned with a fresh group id and no resolution (#884).
+
+  A run like `Smith, 230 Md. at 236, 146 A.3d at 1202.` or `Neitzke, 490 U.S. at 324, 109 S.Ct. 1827.` now forms one parallel group anchored on the short-form, and the trailing parallels inherit the short-form's antecedent. The root cause was in parallel-chain detection: a tight-linked run was validated link-by-link, so an intermediate cite in a no-paren chain (`A, B, C.`) broke the chain and orphaned the head. Chains are now validated by their last member, so 3+-cite runs without a trailing paren group correctly.
+
+  Additive and non-breaking: short-form case citations may now carry `parallelGroup`/`parallelCitations`, and a full reporter citation that trails a short-form as a parallel reference may carry an inherited `resolution`.
+
+## 0.33.0
+
+### Minor Changes
+
+- [#883](https://github.com/medelman17/eyecite-ts/pull/883) [`19f6f4b`](https://github.com/medelman17/eyecite-ts/commit/19f6f4b3f8e8568f0150b378c0b238c18f7edb15) Thanks [@medelman17](https://github.com/medelman17)! - Fix `extractCitations` crashing on real input, and export a `CitationParseError` type.
+
+  Previously, when the tokenizer admitted a candidate that an extractor's stricter internal re-parse regex couldn't parse — a tokenizer/extractor regex divergence, e.g. a journal name containing an apostrophe (`KELLEY'S`), which the extractor's `[A-Za-z.\s]` name class rejects — the extractor threw an uncaught exception that propagated out of `extractCitations` and crashed the whole call. A single malformed match in one document lost every citation in it.
+
+  Now such a candidate is **declined** (its token skipped) and extraction continues, so `extractCitations` no longer throws on this class of input. Genuine (non-parse) errors still propagate so real bugs stay visible. The new `CitationParseError` is exported so callers of the individual extractors can catch it explicitly.
+
+  Closes #881.
+
+- [#875](https://github.com/medelman17/eyecite-ts/pull/875) [`2e0e006`](https://github.com/medelman17/eyecite-ts/commit/2e0e006cda525dfc93c2669a5213dc4de78cbfff) Thanks [@medelman17](https://github.com/medelman17)! - refactor(resolve) + feat(extract): thread the `Id.` section-pincite terminal forward (#847)
+
+  The resolver's `Id.` family preference (case vs statute) used to peek ~20 chars of raw text after `Id.` for a `§`, because `extractId`'s pincite regex captures only page/paragraph shapes. Extraction now emits a `sectionPincite` terminal on `IdCitation` (the locator after `§`/`§§`, e.g. `1983(c)`), and the resolver reads that structured field instead of re-scanning prose — collapsing two duplicate raw-text peeks (`tailHasSection` + `getIdPreferredFamily`) into one field read. Behavior-preserving; the short-form resolution suite is green.
+
+  First slice of #847 (CST→AST: stop re-parsing prose in the resolver). The remaining case-name-inference sites (the 80-char mismatch re-tokenize and the 400-char `Party v. Party` scans) are split into a follow-up, to land with the authoritative-grammar / capture-group-threading work (#844).
+
+- [#873](https://github.com/medelman17/eyecite-ts/pull/873) [`54b8ccd`](https://github.com/medelman17/eyecite-ts/commit/54b8ccdb5af6df143f693fd0b75f9e3be4fa0a9e) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): structured `parentheticalNode` on short-form citations (#869)
+
+  Short-form citations (`Id.`, `supra`, short-form case) now expose a structured `parentheticalNode` alongside their flat `parenthetical` string — the same `Parenthetical` shape full-case citations carry, with a classified `type`, a `span`, and any nested child citations in `citations`. So `Id. at 5 (quoting Doe v. City, 100 F.2d 1)` links the nested `Doe v. City` onto `id.parentheticalNode.citations`, completing the parenthetical-nesting work started for full-case citations in #867.
+
+  Additive and non-breaking: the nested cite stays a top-level result by default (Bluebook Rule 10.9(a)), and `excludeParentheticalChildren` removes it the same way it does for full-case parentheticals. `Id.`/`supra` resolution is unchanged — they still bind only to the host authority, never a paren-child (Rule 4.1/4.2). The flat `parenthetical` string is retained unchanged.
+
+### Patch Changes
+
+- [#877](https://github.com/medelman17/eyecite-ts/pull/877) [`d796c36`](https://github.com/medelman17/eyecite-ts/commit/d796c36c30dbe350f6aedc4335b92707aeee65bc) Thanks [@medelman17](https://github.com/medelman17)! - refactor(patterns): consolidate the citation pattern grammar into a single source of truth (#844)
+
+  The authoritative pattern set and its priority order (most-specific → least-specific) are now one exported definition — `orderedPatterns` in `src/patterns/grammar.ts` — consumed by both `extractCitations` and the `tokenize` default. Previously the ordered list lived inline in `extractCitations` while `tokenize` shipped its own incomplete, differently-ordered default that the main pipeline never used (effectively dead).
+
+  Behavior-preserving: the emitted token stream and the downstream dedup outcome are identical (full suite green). The order is load-bearing but was invisible — dedup keeps the earliest-listed (most-specific) pattern on an overlap — so a new ordering test (`tests/patterns/grammarOrder.test.ts`) guards it against accidental reordering.
+
+## 0.32.0
+
+### Minor Changes
+
+- [#867](https://github.com/medelman17/eyecite-ts/pull/867) [`e8977fb`](https://github.com/medelman17/eyecite-ts/commit/e8977fbc83d8415a757146eb8c47369f6d6ef423) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): nest citations inside explanatory parentheticals as child citations (#851)
+
+  A citation nested inside an explanatory parenthetical — e.g. the `Doe v. City, 100 F.2d 1` in `Smith v. Jones, 200 F.3d 100 (2d Cir. 2000) (quoting Doe v. City, 100 F.2d 1)` — is now linked onto its host parenthetical's new `Parenthetical.citations` array as a child citation, keyed by its own stable `CitationId` (the `in-parenthetical-of` edge). Per Bluebook Rule 1.5(b) such a cite is a subordinate component of the citing authority, not a separate authority.
+
+  This is **additive and non-breaking by default**: the nested cite is also kept as a top-level result, so a later case short form can still resolve to a case first cited in a parenthetical (Bluebook Rule 10.9(a)). A new `excludeParentheticalChildren` option opts into the strict subordinate model — `extractCitations(text, { excludeParentheticalChildren: true })` removes the nested cite from the top-level array, leaving it reachable only via its host's `parentheticals[].citations`, and hidden from the cross-citation groupers and the resolver. Children land on the smallest enclosing parenthetical, so genuinely nested asides like `(citing B (quoting C))` build a correct tree.
+
+  Either mode preserves the existing, doctrinally-correct resolver behavior: `Id.`/`supra` never bind to a parenthetical-nested citation (Bluebook Rule 4.1/4.2) — only the host authority.
+
+## 0.31.0
+
+### Minor Changes
+
+- [#862](https://github.com/medelman17/eyecite-ts/pull/862) [`9fb3362`](https://github.com/medelman17/eyecite-ts/commit/9fb3362590da859a18897f3b4a8139695d35259a) Thanks [@medelman17](https://github.com/medelman17)! - feat(resolve)+refactor(extract): consolidated structuring pass + id-based resolution references (#860)
+
+  The cross-citation linking passes — subsequent-history chains, parallel-caption propagation, string-cite grouping, and leading-signal detection — now run in a single `runStructuringPass` **after** `assignCitationIds` and on the final filtered array, so the relationships they build are keyed by stable `CitationId` rather than array position (and `subsequentHistoryOf.index` is no longer stale when false-positive filtering drops a citation). Set-changing passes (synthesis + filtering) continue to run before id-assignment.
+
+  Additively, resolution now exposes **id-based references** alongside the existing numeric indices: `ResolutionResult.resolvedToId` / `antecedentId`, and `pinciteInheritedFromId` on `Id.`/`supra`/short-form-case citations. These survive a consumer `filter`/`sort`/`map` of the result array, unlike the positional indices. Behavior-preserving for existing fields; the new id fields are additive. Unblocks the inter-citation aggregate slices (#849/#850/#857).
+
+- [#864](https://github.com/medelman17/eyecite-ts/pull/864) [`c988839`](https://github.com/medelman17/eyecite-ts/commit/c988839fcdd88ac5826d74fad400d29ed9919a54) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): HistoryChain aggregate + id-based subsequent-history reference (#849)
+
+  Subsequent-history chains now expose an ordered `historyChain` aggregate (root → latest), shared by every member of the chain and keyed by stable `CitationId` — with new exported types `HistoryChain` / `HistoryLink`. The `subsequentHistoryOf` back-reference additionally carries `priorId` (the parent's stable id) alongside the retained numeric `index`. Built in the consolidated structuring pass (#860), so these relationships survive a consumer `filter`/`sort`/`map` of the result array. Additive — the flat `subsequentHistoryEntries` and `subsequentHistoryOf.index` fields are unchanged.
+
+- [#865](https://github.com/medelman17/eyecite-ts/pull/865) [`59f0b76`](https://github.com/medelman17/eyecite-ts/commit/59f0b768911414c0dd932ef77750bf89b174517c) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): ParallelGroup aggregate (#850)
+
+  Parallel citations (the same case reported in multiple reporters) now expose a `parallelGroup` aggregate (new exported `ParallelGroup` type) listing every member — including itself — by stable `CitationId` in document order. Combined with `byId()`, this resolves the full sibling citations rather than the lossy `{ volume, reporter, page }` value-copies on `parallelCitations`. Built in the consolidated structuring pass (#860), so it survives a consumer `filter`/`sort`/`map`. Additive — the flat `groupId` label and `parallelCitations` array are unchanged.
+
+- [#866](https://github.com/medelman17/eyecite-ts/pull/866) [`928953d`](https://github.com/medelman17/eyecite-ts/commit/928953d1e9d1fdd6aee93e41944ad44beb56b235) Thanks [@medelman17](https://github.com/medelman17)! - feat(extract): StringCitationGroup aggregate (#857)
+
+  String citations (citations chained for one proposition, `See A; B; C`) now expose a `stringCitationGroup` aggregate (new exported `StringCitationGroup` type) listing every member — including itself — by stable `CitationId` in document order, plus the group's leading signal. Built in the consolidated structuring pass (#860), so it survives a consumer `filter`/`sort`/`map`. Additive — the flat `stringCitationGroupId` / `stringCitationIndex` / `stringCitationGroupSize` fields are unchanged. Completes the inter-citation aggregates alongside HistoryChain (#849) and ParallelGroup (#850).
+
+## 0.30.0
+
+### Minor Changes
+
+- [#838](https://github.com/medelman17/eyecite-ts/pull/838) [`2674a6b`](https://github.com/medelman17/eyecite-ts/commit/2674a6b4fdeec5d86ce7e7419ad7fdfd88f7fcbe) Thanks [@medelman17](https://github.com/medelman17)! - Add `toDurableLocator` / `toDurableLocators` to `eyecite-ts/utils`. They turn each extracted citation into a portable, W3C-style durable locator (TextQuoteSelector + TextPositionSelector) — a quote plus sentence-bounded context, a document-order occurrence ordinal, and a content hash — that survives edits to the source document. eyecite produces the locator; resolving it back to a range is left to the consumer.
+
+- [#861](https://github.com/medelman17/eyecite-ts/pull/861) [`7b42f9b`](https://github.com/medelman17/eyecite-ts/commit/7b42f9bc1a66ed853a43f0286a3621de5e5893a1) Thanks [@medelman17](https://github.com/medelman17)! - feat(types): add a stable `CitationId` to every citation (#856)
+
+  `extractCitations()` now stamps each result citation with a stable `id` (`c0`, `c1`, … in document order) on `CitationBase`, and exports a `byId(citations)` helper mapping ids to citations. The id is stable **within a single result set** — it survives consumer `filter`/`sort`/`map`, unlike array position — and is the identity basis for the forthcoming inter-citation aggregates (parallel groups, history chains, short-form references). It is **not** durable across runs; use `toDurableLocator()` for cross-run identity. Additive and non-breaking: `id` is optional and is always populated by `extractCitations()`.
+
+- [#855](https://github.com/medelman17/eyecite-ts/pull/855) [`d1f008e`](https://github.com/medelman17/eyecite-ts/commit/d1f008e245362422260e65aa910f74f771abbba4) Thanks [@medelman17](https://github.com/medelman17)! - Add a built-in `stripMarkdownEmphasis` cleaner and an `additionalCleaners` option (#835). Markdown legal text — e.g. LLM-drafted briefs with emphasized case names like `*Leon v. Martinez*` — now has a ready-made, opt-in cleaner that strips `*`/`**`/`***` emphasis while preserving star-pagination pincites (`at *3`) and underscores (blank locators like `[____]`). The new `additionalCleaners` option appends cleaners to the default chain, so adding one no longer silently disables the defaults — unlike `cleaners`, which replaces them.
+
+### Patch Changes
+
+- [#839](https://github.com/medelman17/eyecite-ts/pull/839) [`470a3bf`](https://github.com/medelman17/eyecite-ts/commit/470a3bf6d22091bc8c30e9815bdeb0f327197b6d) Thanks [@medelman17](https://github.com/medelman17)! - Refactor case-citation extraction internals around explicit parser, semantic, and draft modules while preserving existing extraction behavior.
+
+- [#841](https://github.com/medelman17/eyecite-ts/pull/841) [`dc1ba6c`](https://github.com/medelman17/eyecite-ts/commit/dc1ba6c08302352b7d5074158eb62cb84a23d689) Thanks [@medelman17](https://github.com/medelman17)! - Fix short-form resolution binding to the wrong case when a length-changing `cleaner` is used (#830). The resolver assumed clean-text offsets equaled original-text offsets and read its bracket-scope / trigger-anchor / name-window analysis against the original text using clean offsets. A cleaner that shrinks the text (e.g. markdown-emphasis stripping) made those offsets diverge — accumulating drift with preceding removed content — so parenthetical-child detection misfired and a trailing `Id.` could bind to a `(quoting …)` child instead of the citation-sentence's main case. The resolver now reads clean-coordinate offsets against the cleaned text and maps derived spans back to original coordinates, so resolution via a cleaner matches resolution of pre-stripped text.
+
+- [#842](https://github.com/medelman17/eyecite-ts/pull/842) [`232d2d2`](https://github.com/medelman17/eyecite-ts/commit/232d2d2073fe666fe3c9ed7b6738d435bb4c0975) Thanks [@medelman17](https://github.com/medelman17)! - Recognize bracketed-blank (`[____]`) slip-op / WL locators instead of dropping the citation (#831)
+
+- [#859](https://github.com/medelman17/eyecite-ts/pull/859) [`1d5b30a`](https://github.com/medelman17/eyecite-ts/commit/1d5b30ae7b9be2acb585b41b1c3898ff48fa944d) Thanks [@medelman17](https://github.com/medelman17)! - Fix `isFullCitation` silently misclassifying `regulation` and `stateRule` (#843). The guard hand-listed only 18 of the 20 `FullCitationType` members, so any consumer routing on it (e.g. `groupByCase`, custom pipelines) dropped those two types. The guard now reads a runtime inventory (`FULL_CITATION_TYPES`) that the compiler proves is an exact bijection with `FullCitationType` — via a `Record<FullCitationType, true>` map whose keys must list every union member — so the guard can never again omit a full type. Adds an exhaustiveness test asserting `isFullCitation` accepts every `FullCitationType` literal and rejects every `ShortFormCitationType` literal.
+
+- [#838](https://github.com/medelman17/eyecite-ts/pull/838) [`2674a6b`](https://github.com/medelman17/eyecite-ts/commit/2674a6b4fdeec5d86ce7e7419ad7fdfd88f7fcbe) Thanks [@medelman17](https://github.com/medelman17)! - fix(types): classify regulation as a full citation. `RegulationCitation` is now part of the `FullCitation` union and `"regulation"` is included in `FullCitationType`, so consumers narrowing on full-citation types see regulations.
+
+## 0.29.2
+
+### Patch Changes
+
+- [#825](https://github.com/medelman17/eyecite-ts/pull/825) [`1c61809`](https://github.com/medelman17/eyecite-ts/commit/1c61809d75514fd31f0fa6e3496d97aa93b94389) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): degrade `Id.` parenthetical-child exclusion to soft on bracket-balance failure (#820)
+
+  `resolveId` hard-dropped a candidate antecedent whenever its bracket depth said
+  "nested", even when that depth came from a clause whose brackets did not balance
+  (`balanceOk=false` — e.g. a dropped/garbled paren from OCR/PDF) — silently
+  resolving to a farther cite at confidence 1.0. The #809 `balanceOk` signal is now
+  consumed: a depth-only paren-child exclusion in a balance-failed clause is
+  degraded to **soft** — the candidate is kept, confidence is capped, and a warning
+  is emitted, so `idConfidenceFloor` (#800) can abstain. Trigger-anchored asides and
+  `fullSpan`-contained cites stay hard exclusions (they don't depend on the fragile
+  depth count), and balanced clauses are unchanged.
+
+- [#826](https://github.com/medelman17/eyecite-ts/pull/826) [`fe29f46`](https://github.com/medelman17/eyecite-ts/commit/fe29f469d11759b8747afaea2031fa280dcbd2be) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): `supra` abstains / degrades on non-unique party-name keys (#818)
+
+  `resolveSupra` silently committed to one authority at confidence 1.0 when a
+  `supra`'s party-name key matched **>1 distinct in-scope authority** (the
+  name-keyed history collapsed them via last-write-wins, hiding the ambiguity).
+  `fullCitationHistory` is now a `Map<string, number[]>`, and `resolveSupra` applies
+  a hybrid policy: exactly one authority resolves as before; a **true tie** (same
+  name + same year, indistinguishable by the key) **abstains**; otherwise it picks
+  the most-recent-within-name but **caps confidence and warns**, with
+  `idConfidenceFloor` able to fail it closed — mirroring the `Id.` path (#800/#820).
+  Parallel-cite siblings and re-citations (shared `groupId`, or volume-reporter-page)
+  collapse to a single authority, so they never trigger false ambiguity.
+
+- [#823](https://github.com/medelman17/eyecite-ts/pull/823) [`8e89979`](https://github.com/medelman17/eyecite-ts/commit/8e89979f0e6a3f7c33be2edd83fd4e50bcb3d772) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): `supra` no longer leaks into string-cite parenthetical members (#819)
+
+  `computeBracketScopes` treated the `;` separator in a `(citing A; B; C)` string
+  cite as a clause boundary even while the outer `(` was still open, resetting its
+  bounded bracket stack so 2nd-and-later members read depth 0 (and
+  `balanceOk=false`) and escaped the #799 parenthetical-aside filter — `resolveSupra`
+  could then accept a string-cite-internal authority as a named antecedent. A `;`
+  inside an open paren is now treated as a string-cite separator, not a clause
+  boundary, so every member reads the enclosing paren depth and is excluded like the
+  first. The `.`/newline reset that confines genuinely-dangling parens (#809) is
+  unchanged. This also de-pollutes the `balanceOk` structure-trust signal.
+
+- [#827](https://github.com/medelman17/eyecite-ts/pull/827) [`e866472`](https://github.com/medelman17/eyecite-ts/commit/e866472c39fc11b365fa4eacd0bbf54acdd03ac8) Thanks [@medelman17](https://github.com/medelman17)! - fix(resolve): recognize prior-/subsequent-history subordinators in the trigger lexicon (#821)
+
+  The resolver-shared parenthetical-aside detector recognized only `quoting` /
+  `citing` / `quoted in` / `cited in`. Under a dropped or garbled opening paren
+  (OCR/PDF), a citation introduced by a history subordinator (`overruled by`,
+  `abrogated by`, `superseded by`, `cited with approval in`, `as recognized in`) was
+  not seen as an aside, so the #214/#799 exclusion never fired and recency
+  mis-resolved `Id.`/`supra` to the subordinated cite. These tokens are now in the
+  lexicon. It is a **soft** signal: it only changes resolution on dropped/garbled-paren
+  input (balanced asides are already caught by bracket depth), and the regex stays
+  ReDoS-safe (flat alternation, `\s+`-joined multi-word tokens).
+
 ## 0.29.1
 
 ### Patch Changes
@@ -3073,7 +3250,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   In Georgia opinions (and a handful of other state systems), a parallel
   citation is wrapped in parens:
 
-                        275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
+                                        275 Ga. 486, 488-489 (2) (569 SE2d 502) (2002)
 
   The inner cite `569 SE2d 502` is the parenthesized parallel; the
   trailing `(2002)` is the shared year for both members. Before this fix,
@@ -3099,7 +3276,7 @@ Administrative Code`) prefixes plus the two-part hyphen section
   Michigan (and a handful of other states) write parallel citations with
   `;` instead of `,`:
 
-                        People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
+                                        People v Bobo, 390 Mich 355, 359; 212 NW2d 190 (1973)
 
   Before this fix, the Mich cite got `year=undefined` and the two members
   were not grouped. This was the single highest-volume year defect in the

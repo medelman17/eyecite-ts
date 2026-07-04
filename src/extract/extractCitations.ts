@@ -38,33 +38,28 @@ import {
   extractTreatise,
   extractTreaty,
 } from "@/extract"
-import type { Pattern } from "@/patterns"
-import {
-  canonPatterns,
-  casePatterns,
-  constitutionalPatterns,
-  docketPatterns,
-  federalRulePatterns,
-  journalPatterns,
-  legislativeMaterialPatterns,
-  localOrdinancePatterns,
-  neutralPatterns,
-  secondaryAuthorityPatterns,
-  sessionLawPatterns,
-  shortFormPatterns,
-  stateRulePatterns,
-  statutePatterns,
-  treatyPatterns,
-} from "@/patterns"
+import { orderedPatterns, type Pattern } from "@/patterns"
 import { parseBody } from "./statutes/parseBody"
 import { tokenize } from "@/tokenize"
-import type { Citation, HistorySignal } from "@/types/citation"
+import type {
+  Citation,
+  CitationId,
+  CitationSignal,
+  HistoryChain,
+  HistoryLink,
+  HistorySignal,
+  ParallelGroup,
+  StringCitationGroup,
+} from "@/types/citation"
 import { resolveCitations } from "../resolve"
 import type { ResolutionOptions, ResolvedCitation } from "../resolve/types"
 import { detectParallelCitations } from "./detectParallel"
 import { detectStringCitations, detectLeadingSignals } from "./detectStringCites"
 import { extractId, extractShortFormCase, extractSupra } from "./extractShortForms"
+import { CitationParseError } from "./errors"
 import { applyFalsePositiveFilters } from "./filterFalsePositives"
+import { assignCitationIds } from "./assignCitationIds"
+import { nestParentheticalCitations } from "./nestParentheticalCitations"
 import { parsePincite } from "./pincite"
 import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 
@@ -93,6 +88,22 @@ export interface ExtractOptions {
    * ```
    */
   cleaners?: Array<(text: string) => string>
+
+  /**
+   * Extra cleaners appended AFTER the effective base chain (the defaults, or a
+   * custom `cleaners` array). Unlike `cleaners` — which REPLACES the defaults —
+   * `additionalCleaners` keeps them, so you can add e.g. `stripMarkdownEmphasis`
+   * without silently dropping HTML stripping, whitespace/Unicode normalization,
+   * smart-quote fixing, reporter spacing, etc. (#835)
+   *
+   * @example
+   * ```typescript
+   * import { extractCitations, stripMarkdownEmphasis } from "eyecite-ts"
+   * // markdown legal text: keep all defaults, also strip *emphasis*
+   * extractCitations(markdownText, { additionalCleaners: [stripMarkdownEmphasis] })
+   * ```
+   */
+  additionalCleaners?: Array<(text: string) => string>
 
   /**
    * Custom regex patterns (overrides defaults).
@@ -161,6 +172,27 @@ export interface ExtractOptions {
 
   /** Detect footnote zones and annotate citations with inFootnote/footnoteNumber (default: false) */
   detectFootnotes?: boolean
+
+  /**
+   * Strict subordinate model for citations nested inside explanatory
+   * parentheticals — e.g. the `Doe v. City, 100 F.2d 1` in
+   * `... (quoting Doe v. City, 100 F.2d 1)` (default: false; #851).
+   *
+   * Such nested citations are ALWAYS linked onto their host's
+   * `Parenthetical.citations` (the `in-parenthetical-of` edge). This flag
+   * controls whether they ALSO remain in the top-level result array:
+   * - `false` (default): additive and non-breaking — the nested cite stays a
+   *   top-level peer, so a later case short form can still resolve to a case
+   *   first cited in a parenthetical (Bluebook Rule 10.9(a)).
+   * - `true`: the nested cite is REMOVED from the top-level array and reachable
+   *   only by traversing its host's `Parenthetical.citations` (it is then absent
+   *   from `byId(result)`) — the resolver and the cross-citation groupers no
+   *   longer treat it as a top-level candidate.
+   *
+   * Either way, `Id.`/`supra` never bind to a paren-child (Rule 4.1/4.2) — that
+   * exclusion lives in the resolver and is independent of this flag.
+   */
+  excludeParentheticalChildren?: boolean
 }
 
 /**
@@ -233,7 +265,11 @@ export function extractCitations(
   const startTime = performance.now()
 
   // Step 1: Clean text
-  const { cleaned, transformationMap, warnings } = cleanText(text, options?.cleaners)
+  const { cleaned, transformationMap, warnings } = cleanText(
+    text,
+    options?.cleaners,
+    options?.additionalCleaners,
+  )
 
   // Step 1.5: Detect footnote zones (opt-in)
   let cleanFootnoteMap: FootnoteMap | undefined
@@ -245,35 +281,13 @@ export function extractCitations(
   }
 
   // Step 2: Tokenize (synchronous)
-  // Note: Pattern order matters for deduplication - more specific patterns first
-  // USC and CFR patterns are placed BEFORE casePatterns so the broad
-  // state-reporter regex (which matches `42 USC 1983` as vol-reporter-page)
-  // is subsumed by the more specific federal-statute match. Without this,
-  // `42 USC 1983` mis-types as `case`. #428
-  const federalStatutePatterns = statutePatterns.filter(
-    (p) => p.id === "usc" || p.id === "cfr" || p.id === "irc",
-  )
-  const otherStatutePatterns = statutePatterns.filter(
-    (p) => p.id !== "usc" && p.id !== "cfr" && p.id !== "irc",
-  )
-  const allPatterns = options?.patterns || [
-    ...neutralPatterns, // Most specific (year-based format)
-    ...sessionLawPatterns, // State session laws — anchored by "Stats." / "Nev. Stat." (#350, #779)
-    ...treatyPatterns, // Treaty series — anchored by "T.I.A.S."/"U.N.T.S."/"U.S.T." (#309)
-    ...legislativeMaterialPatterns, // Committee reports + Cong. Rec. — anchored by "Rep. No."/"Cong. Rec." (#308)
-    ...localOrdinancePatterns, // Municipal ordinances — anchored by "CCCO §" (#778)
-    ...canonPatterns, // Judicial-conduct canons — anchored by "Canon N" (#310)
-    ...docketPatterns, // Docket-number citations (anchored by "No. ")
-    ...shortFormPatterns, // Short-form (requires " at " keyword)
-    ...federalRulePatterns, // Fed. R. Civ. P. etc. — before casePatterns (#576, #582)
-    ...stateRulePatterns, // I.R.C.P., N.C. R. App. P., SCACR, RCFC — before casePatterns (#636)
-    ...secondaryAuthorityPatterns, // Restatement / treatise / A.L.R. — before casePatterns (#578, #579, #581)
-    ...federalStatutePatterns, // USC/CFR/IRC — before casePatterns (#428)
-    ...casePatterns, // Case citations (reporter-specific)
-    ...constitutionalPatterns, // Constitutional citations (more specific than statutes)
-    ...otherStatutePatterns, // State statutes (code-specific)
-    ...journalPatterns, // Least specific (broad pattern)
-  ]
+  // `orderedPatterns` is the single source of truth for the pattern set and its
+  // priority order (#844). The order is load-bearing: dedup below derives each
+  // pattern's priority from its first-occurrence index, so on an overlap the
+  // earliest-listed (most-specific) pattern wins — e.g. USC/CFR before the broad
+  // case-reporter regex so `42 USC 1983` doesn't mis-type as `case` (#428). See
+  // src/patterns/grammar.ts. Callers may override via `options.patterns`.
+  const allPatterns = options?.patterns || orderedPatterns
   const tokens = tokenize(cleaned, allPatterns)
 
   // Step 3: Deduplicate overlapping tokens via priority-aware subsumption.
@@ -405,6 +419,9 @@ export function extractCitations(
     const token = deduplicatedTokens[i]
     let citation: Citation
 
+    // #881: wrap per-token extraction so a candidate the extractor cannot
+    // re-parse declines (skips its token) instead of crashing the document.
+    try {
     switch (token.type) {
       case "case":
         // Check pattern ID to distinguish short-form from full citations
@@ -498,6 +515,15 @@ export function extractCitations(
         // Unknown type - skip
         continue
     }
+    } catch (error) {
+      // The tokenizer admitted a candidate that the extractor's stricter
+      // re-parse regex cannot parse (a tokenizer/extractor divergence, #881).
+      // Decline this one candidate rather than letting a single malformed match
+      // crash the whole document. Any OTHER error is a genuine bug and
+      // propagates so it stays visible.
+      if (error instanceof CitationParseError) continue
+      throw error
+    }
 
     // Attach cleaning warnings to citation if any
     if (warnings.length > 0) {
@@ -507,8 +533,10 @@ export function extractCitations(
     // Update processing time
     citation.processTimeMs = performance.now() - startTime
 
-    // Populate parallel citation metadata (Phase 8)
-    if (citation.type === "case") {
+    // Populate parallel citation metadata (Phase 8). A shortFormCase can anchor
+    // a parallel-reporter run (`Smith, 79 N.Y.2d at 552, 583 N.Y.S.2d 957`), so
+    // it participates here too (#884).
+    if (citation.type === "case" || citation.type === "shortFormCase") {
       const isPrimary = parallelGroups.has(i)
       const isSecondary = secondaryToGroup.has(i)
 
@@ -566,26 +594,6 @@ export function extractCitations(
   // antecedent (`§ X; see also § Y`). (#567)
   detectBareSectionShortForms(citations, cleaned, transformationMap)
 
-  // Step 4.5: Link subsequent history citations using Union-Find.
-  // Three-phase approach: match signals → union chains → aggregate entries.
-  // Invariant: citations are in text order (guaranteed by token-order processing above).
-  linkSubsequentHistory(citations)
-
-  // Step 4.55: Inherit case name from chain root for subsequent-history children (#224).
-  // Per Bluebook 10.7, all citations in a history chain reference one case.
-  // Without this, extractCaseName scans back from the child, captures the
-  // parent cite + connector ("Smith v. Doe, 100 F.3d 200 (...), aff'd"),
-  // and produces a nonsense caseName.
-  inheritSubsequentHistoryCaseName(citations)
-
-  // Step 4.6: Propagate caseName from the primary onto each parallel-cite
-  // secondary (#282). Detection in step 4 sets the shared `groupId` and
-  // populates `parallelCitations` on the primary; this pass fills in the
-  // shared caption fields on secondaries that have no caseName of their own.
-  // Runs AFTER 4.55 so a primary that inherited from a history chain root
-  // still propagates that inherited caption to its parallels.
-  inheritParallelCaseName(citations)
-
   // Step 4.65: Attach year-of-edition / publisher from a trailing parenthetical
   // to statute citations (#285). E.g. `HRS § 91-14(a) (1985)` →  year=1985;
   // `28 U.S.C. § 1331 (West 2018)` → publisher="West", year=2018.
@@ -605,21 +613,10 @@ export function extractCitations(
   reassignDcCodeJurisdiction(citations, cleaned)
 
   // Step 4.72: Detect bare-party shortform back-references (`Smith, at 12`)
-  // anchored to earlier full case citations. (#439)
+  // anchored to earlier full case citations (#439). SYNTHESIZES shortFormCase
+  // citations, so it must run before id assignment (#860) — the cross-citation
+  // LINKING that consumes these moved into the structuring pass below.
   detectBarePartyBackReferences(citations, cleaned, transformationMap)
-
-  // Step 4.75: Detect string citation groups (semicolon-separated)
-  detectStringCitations(citations, cleaned)
-
-  // Step 4.8: Detect leading introductory signals for all citations.
-  // Runs after string cite detection (which sets mid-group signals) so we
-  // only scan backward for citations that still lack a signal.
-  detectLeadingSignals(citations, cleaned)
-
-  // Step 4.85: Propagate `compare` signal across `with` connector (#702).
-  // Bluebook Rule 1.2(b) treats `compare A with B` as paired — B inherits
-  // the comparison signal from A.
-  propagateCompareWithSignal(citations, cleaned)
 
   // Step 4.9: Apply false positive filters (blocklist + year heuristic).
   // Passing `text` (the original pre-cleaning input) lets the filter detect
@@ -631,7 +628,32 @@ export function extractCitations(
     text,
   )
 
-  // Step 4.95: Tag citations with footnote metadata
+  // Step 4.95: Assign stable, per-result citation identities (#856). Runs after
+  // all set-changing passes (synthesis + false-positive filtering) so ids are
+  // dense and final, and before the structuring pass / footnote tagging /
+  // resolution so every downstream reference is by a stable id, not array index.
+  assignCitationIds(filtered)
+
+  // Step 4.955: Link citations nested inside explanatory parentheticals —
+  // e.g. `... (quoting Doe v. City, 100 F.2d 1)` — onto the enclosing
+  // `Parenthetical.citations` (#851). Additive by default (the child stays a
+  // top-level peer — Bluebook Rule 10.9(a)); `excludeParentheticalChildren`
+  // removes it from the top-level array. Runs after id assignment (children
+  // keep their stable ids) and before the structuring pass and resolution (so
+  // an excluded child is hidden from the groupers and the resolver).
+  nestParentheticalCitations(filtered, {
+    exclude: options?.excludeParentheticalChildren ?? false,
+  })
+
+  // Step 4.96: Consolidated structuring pass (#860). The cross-citation LINKING
+  // passes — subsequent-history chains, parallel-caption propagation, string-cite
+  // grouping, and leading-signal detection — run here, after id assignment and on
+  // the final filtered array, so every relationship they build references
+  // citations by stable id and survives downstream filter/reorder. (Set-changing
+  // passes that add or remove citations ran before id assignment, above.)
+  runStructuringPass(filtered, cleaned)
+
+  // Step 4.97: Tag citations with footnote metadata
   if (cleanFootnoteMap) {
     tagCitationsWithFootnotes(filtered, cleanFootnoteMap)
   }
@@ -641,7 +663,18 @@ export function extractCitations(
     const resolutionOpts = cleanFootnoteMap
       ? { ...options.resolutionOptions, footnoteMap: cleanFootnoteMap }
       : options.resolutionOptions
-    return resolveCitations(filtered, text, resolutionOpts)
+    // #830: hand the resolver BOTH texts. `text` (original) backs original-
+    // coordinate reads (quote zones, paragraph scope, party lookback); `cleaned`
+    // backs clean-coordinate reads (bracket scopes, trigger asides). Without
+    // this, clean-offset reads index the original text and desync once a
+    // length-changing cleaner shrinks it.
+    const resolved = resolveCitations(filtered, text, resolutionOpts, {
+      cleanedText: cleaned,
+      transformationMap,
+    })
+    // #884: trailing parallels of a resolved short-form inherit its antecedent.
+    propagateParallelResolution(resolved)
+    return resolved
   }
 
   return filtered
@@ -832,6 +865,39 @@ function parseChainNumeral(raw: string): number | undefined {
 }
 
 /**
+ * Consolidated structuring pass (#860). Runs the cross-citation linking and
+ * annotation passes that build inter-citation relationships — AFTER citation
+ * ids have been assigned and on the final filtered array — so every
+ * relationship is keyed by stable `CitationId` rather than fragile array
+ * position, and survives a consumer `filter`/`sort`/`map`.
+ *
+ * Order is load-bearing: history linking runs before string-cite grouping
+ * (which excludes history-chain members) and before leading-signal detection.
+ * The inter-citation aggregate builders (HistoryChain #849, ParallelGroup #850,
+ * StringCitationGroup #857) attach inside these passes.
+ */
+function runStructuringPass(citations: Citation[], cleaned: string): void {
+  // Subsequent-history chains (#527): match signals → link parent↔child.
+  linkSubsequentHistory(citations)
+  // Build the ordered HistoryChain aggregate (#849), keyed by stable id.
+  buildHistoryChains(citations)
+  // Inherit the chain root's caption onto history children (#224).
+  inheritSubsequentHistoryCaseName(citations)
+  // Build the ParallelGroup aggregate (#850), keyed by stable id.
+  buildParallelGroups(citations)
+  // Propagate the primary's caption onto parallel-cite secondaries (#282).
+  inheritParallelCaseName(citations)
+  // Group semicolon-separated string citations (excludes history-chain members).
+  detectStringCitations(citations, cleaned)
+  // Build the StringCitationGroup aggregate (#857), keyed by stable id.
+  buildStringCitationGroups(citations)
+  // Backward-scan a leading signal for citations that still lack one.
+  detectLeadingSignals(citations, cleaned)
+  // Propagate the `compare A with B` signal across the `with` connector (#702).
+  propagateCompareWithSignal(citations, cleaned)
+}
+
+/**
  * Link subsequent history citations using a three-phase Union-Find approach.
  * Replaces the old mutation-during-iteration pattern with cleanly separated phases.
  */
@@ -893,7 +959,169 @@ function linkSubsequentHistory(citations: Citation[]): void {
   for (const [childIdx, { parentIdx, signal }] of bestParent) {
     const child = citations[childIdx]
     if (child.type !== "case") continue
-    child.subsequentHistoryOf = { index: parentIdx, signal }
+    // #849: priorId is the id-based parent reference (linking now runs after
+    // assignCitationIds, so the parent's id is available). Survives consumer
+    // filter/reorder, unlike `index`.
+    child.subsequentHistoryOf = { index: parentIdx, priorId: citations[parentIdx]?.id, signal }
+  }
+}
+
+/**
+ * Build the ordered subsequent-history chain aggregate (#849) and attach it
+ * (shared) to every member, keyed by stable `CitationId`. Runs after
+ * `linkSubsequentHistory` has set the `subsequentHistoryOf` back-pointers, so
+ * it can read each child's parent index and resolve member ids.
+ */
+function buildHistoryChains(citations: Citation[]): void {
+  // child index -> { parentIdx, signal } from the back-pointers.
+  const parentOf = new Map<number, { parentIdx: number; signal: HistorySignal }>()
+  for (let i = 0; i < citations.length; i++) {
+    const c = citations[i]
+    if (c.type === "case" && c.subsequentHistoryOf) {
+      parentOf.set(i, { parentIdx: c.subsequentHistoryOf.index, signal: c.subsequentHistoryOf.signal })
+    }
+  }
+  if (parentOf.size === 0) return
+
+  // parent index -> earliest child (linear chains: one parent per child).
+  const childOf = new Map<number, { childIdx: number; signal: HistorySignal }>()
+  for (const [childIdx, { parentIdx, signal }] of parentOf) {
+    const existing = childOf.get(parentIdx)
+    if (!existing || childIdx < existing.childIdx) childOf.set(parentIdx, { childIdx, signal })
+  }
+
+  // Members participating in any chain; roots are members that are not children.
+  const members = new Set<number>()
+  for (const [childIdx, { parentIdx }] of parentOf) {
+    members.add(childIdx)
+    members.add(parentIdx)
+  }
+  for (const rootIdx of members) {
+    if (parentOf.has(rootIdx)) continue // not a root
+    const links: HistoryLink[] = []
+    const memberIdxs: number[] = []
+    const seen = new Set<number>()
+    let idx: number | undefined = rootIdx
+    let inbound: HistorySignal | undefined
+    while (idx !== undefined && !seen.has(idx)) {
+      seen.add(idx)
+      const cit = citations[idx]
+      if (cit?.type !== "case" || cit.id === undefined) break
+      links.push(inbound ? { citationId: cit.id, signal: inbound } : { citationId: cit.id })
+      memberIdxs.push(idx)
+      const next = childOf.get(idx)
+      idx = next?.childIdx
+      inbound = next?.signal
+    }
+    if (links.length < 2) continue
+    const chain: HistoryChain = { links }
+    for (const m of memberIdxs) {
+      const cit = citations[m]
+      if (cit.type === "case") cit.historyChain = chain
+    }
+  }
+}
+
+/**
+ * Build the ParallelGroup aggregate (#850): group case citations by their
+ * content-derived `groupId` (set during extraction) and attach a shared
+ * `parallelGroup` listing all member ids in document order (including self).
+ */
+function buildParallelGroups(citations: Citation[]): void {
+  const groups = new Map<string, number[]>()
+  for (let i = 0; i < citations.length; i++) {
+    const c = citations[i]
+    if ((c.type === "case" || c.type === "shortFormCase") && c.groupId !== undefined) {
+      const arr = groups.get(c.groupId)
+      if (arr) arr.push(i)
+      else groups.set(c.groupId, [i])
+    }
+  }
+  for (const indices of groups.values()) {
+    if (indices.length < 2) continue
+    const memberIds = indices
+      .map((i) => citations[i].id)
+      .filter((id): id is CitationId => id !== undefined)
+    if (memberIds.length < 2) continue
+    const group: ParallelGroup = { memberIds }
+    for (const i of indices) {
+      const c = citations[i]
+      if (c.type === "case" || c.type === "shortFormCase") c.parallelGroup = group
+    }
+  }
+}
+
+/**
+ * #884: a parallel-reporter run can be anchored by a short-form that resolves to
+ * an antecedent (`Smith, 79 N.Y.2d 540 (1992). … Smith, 79 N.Y.2d at 552, 583
+ * N.Y.S.2d 957, 593 N.E.2d 1365.`). The trailing full parallels are the same
+ * case in other reporters, so they inherit the resolved antecedent of whichever
+ * group member resolved — otherwise they carry no link back to the case. Runs
+ * after resolution, reading the parallelGroup built in the structuring pass.
+ */
+function propagateParallelResolution(citations: ResolvedCitation[]): void {
+  const byId = new Map<CitationId, ResolvedCitation>()
+  for (const c of citations) if (c.id !== undefined) byId.set(c.id, c)
+  for (const c of citations) {
+    if (c.type !== "case" && c.type !== "shortFormCase") continue
+    const group = c.parallelGroup
+    // Only fill members that don't already resolve on their own.
+    if (!group || c.resolution?.resolvedToId !== undefined) continue
+    for (const memberId of group.memberIds) {
+      if (memberId === c.id) continue
+      const src = byId.get(memberId)?.resolution
+      if (src?.resolvedToId !== undefined && src.resolvedToId !== c.id) {
+        c.resolution = {
+          resolvedTo: src.resolvedTo,
+          resolvedToId: src.resolvedToId,
+          antecedentIndex: src.antecedentIndex,
+          antecedentId: src.antecedentId,
+          confidence: src.confidence,
+          warnings: [
+            ...(c.resolution?.warnings ?? []),
+            "Inherited antecedent via parallel-citation grouping (#884)",
+          ],
+        }
+        break
+      }
+    }
+  }
+}
+
+/**
+ * Build the StringCitationGroup aggregate (#857): group citations by their
+ * `stringCitationGroupId` (set by detectStringCitations) and attach a shared
+ * `stringCitationGroup` listing all member ids in document order (incl. self),
+ * plus the group's leading signal.
+ */
+function buildStringCitationGroups(citations: Citation[]): void {
+  const groups = new Map<string, number[]>()
+  for (let i = 0; i < citations.length; i++) {
+    const gid = citations[i].stringCitationGroupId
+    if (gid !== undefined) {
+      const arr = groups.get(gid)
+      if (arr) arr.push(i)
+      else groups.set(gid, [i])
+    }
+  }
+  for (const indices of groups.values()) {
+    if (indices.length < 2) continue
+    const memberIds = indices
+      .map((i) => citations[i].id)
+      .filter((id): id is CitationId => id !== undefined)
+    if (memberIds.length < 2) continue
+    let signal: CitationSignal | undefined
+    for (const i of indices) {
+      const s = citations[i].signal
+      if (s !== undefined) {
+        signal = s
+        break
+      }
+    }
+    const group: StringCitationGroup = signal ? { memberIds, signal } : { memberIds }
+    for (const i of indices) {
+      citations[i].stringCitationGroup = group
+    }
   }
 }
 

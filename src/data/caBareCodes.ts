@@ -101,7 +101,7 @@ export function buildCaBareCodeRegex(): RegExp {
   // symmetric to the abbreviated-code and USC patterns.
   return new RegExp(
     `\\b(${alternation})\\s*,?\\s*§§?\\s*(\\d+(?:[A-Za-z0-9:/-]|\\.(?=[A-Za-z0-9]))*(?:\\([^)]*\\))*(?:,?\\s+(?:subd\\.|subdivision|paragraph|par\\.)\\s+(?:\\([^)]*\\)|\\[[^\\]]*\\])(?:\\s*(?:\\([^)]*\\)|\\[[^\\]]*\\]))*)?(?:\\s*[-–—]+\\s*\\([A-Za-z0-9]+\\))?(?:\\s*et\\s+seq\\.?)?)`,
-    "g",
+    "gd",
   )
 }
 

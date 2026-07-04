@@ -14,16 +14,7 @@
  * @module tokenize
  */
 
-import type { Pattern } from "@/patterns"
-import {
-  casePatterns,
-  federalRulePatterns,
-  journalPatterns,
-  neutralPatterns,
-  secondaryAuthorityPatterns,
-  statutePatterns,
-} from "@/patterns"
-import { shortFormPatterns } from "@/patterns/shortForm"
+import { orderedPatterns, type Pattern } from "@/patterns"
 import type { Span } from "@/types/span"
 
 /**
@@ -45,6 +36,18 @@ export interface Token {
 
   /** Pattern ID that matched this token */
   patternId: string
+
+  /**
+   * Named capture groups of the matching pattern. Present only for patterns
+   * that declare named groups; non-participating groups are omitted. (#844)
+   */
+  groups?: Record<string, string>
+
+  /**
+   * Token-relative [start, end] offsets for each participating named group.
+   * Same key set as `groups`. (#844)
+   */
+  groupSpans?: Record<string, [number, number]>
 }
 
 /**
@@ -85,15 +88,10 @@ export interface Token {
  */
 export function tokenize(
   cleanedText: string,
-  patterns: Pattern[] = [
-    ...casePatterns,
-    ...statutePatterns,
-    ...federalRulePatterns,
-    ...secondaryAuthorityPatterns,
-    ...journalPatterns,
-    ...neutralPatterns,
-    ...shortFormPatterns,
-  ],
+  // Defaults to the authoritative grammar (#844). The main pipeline always
+  // passes patterns explicitly; this default just gives standalone callers the
+  // full, correctly-ordered set instead of a stale partial list.
+  patterns: Pattern[] = orderedPatterns,
 ): Token[] {
   const tokens: Token[] = []
 
@@ -104,7 +102,7 @@ export function tokenize(
 
       for (const match of matches) {
         // Create token from match
-        tokens.push({
+        const token: Token = {
           text: match[0],
           span: {
             cleanStart: match.index!,
@@ -112,7 +110,32 @@ export function tokenize(
           },
           type: pattern.type,
           patternId: pattern.id,
-        })
+        }
+
+        // Thread named groups (#844). Only patterns with named groups populate
+        // `match.groups`; positional patterns thread nothing.
+        if (match.groups) {
+          const groups: Record<string, string> = {}
+          const groupSpans: Record<string, [number, number]> = {}
+          // NOTE: lib types `indices.groups` as non-optional [number,number];
+          // at runtime a non-participating named group is `undefined`. Guard it.
+          const indices = match.indices?.groups as
+            | Record<string, [number, number] | undefined>
+            | undefined
+          for (const name of Object.keys(match.groups)) {
+            const value = match.groups[name]
+            if (value === undefined) continue
+            groups[name] = value
+            const gi = indices?.[name]
+            if (gi) groupSpans[name] = [gi[0] - match.index!, gi[1] - match.index!]
+          }
+          if (Object.keys(groups).length > 0) {
+            token.groups = groups
+            token.groupSpans = groupSpans
+          }
+        }
+
+        tokens.push(token)
       }
     } catch (error) {
       // Timeout protection: If pattern throws (ReDoS, etc.), skip it

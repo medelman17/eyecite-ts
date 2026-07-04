@@ -160,7 +160,7 @@ export const secondaryAuthorityPatterns: Pattern[] = [
     // immediately followed by another alphanumeric. This stops greedy
     // capture at the trailing sentence period (`187.`).
     regex:
-      /\bRestatement\s+\((First|Second|Third|Fourth|1st|2d|3d|4th)\)\s+(?:of\s+)?([A-Za-z][A-Za-z\s,.&'-]+?)\s+§§?\s*(\d+(?:[A-Za-z0-9-]|\.[A-Za-z0-9])*(?:\([^)]*\))*)/g,
+      /\bRestatement\s+\((First|Second|Third|Fourth|1st|2d|3d|4th)\)\s+(?:of\s+)?([A-Za-z][A-Za-z\s,.&'-]+?)\s+§§?\s*(\d+(?:[A-Za-z0-9-]|\.[A-Za-z0-9])*(?:\([^)]*\))*)/gd,
     description:
       'Restatement: "Restatement (Second) of Torts § 402A", "Restatement (Third) of the Law Governing Lawyers § 1" — #578',
     type: "restatement",
@@ -177,7 +177,7 @@ export const secondaryAuthorityPatterns: Pattern[] = [
     // Captures: (1) volume, (2) journal name, (3) page — matches
     // extractJournal's parsing shape exactly.
     id: "bare-journal",
-    regex: new RegExp(`\\b(\\d+)\\s+(${BARE_JOURNAL_ALTERNATION})\\s+(\\d+)\\b`, "g"),
+    regex: new RegExp(`\\b(\\d+)\\s+(${BARE_JOURNAL_ALTERNATION})\\s+(\\d+)\\b`, "gd"),
     description:
       'Bare-abbreviation journals (scientific journals + period-stripped law reviews): "53 Neurology 1107", "70 Brook L Rev 1045" — #638',
     type: "journal",
@@ -195,7 +195,7 @@ export const secondaryAuthorityPatterns: Pattern[] = [
     // fell through to the broad state-reporter regex and emitted as
     // `type: "case"`. #638
     regex:
-      /\b(\d+)\s+(A\.\s?L\.\s?R\.(?:\s?(?:Fed\.(?:\s?\d(?:d|nd|rd|th))?|\d(?:d|nd|rd|th)))?|ALR(?:\s?(?:Fed(?:\s?\d(?:d|nd|rd|th))?|\d(?:d|nd|rd|th)))?)\s+(\d+)\b/g,
+      /\b(\d+)\s+(A\.\s?L\.\s?R\.(?:\s?(?:Fed\.(?:\s?\d(?:d|nd|rd|th))?|\d(?:d|nd|rd|th)))?|ALR(?:\s?(?:Fed(?:\s?\d(?:d|nd|rd|th))?|\d(?:d|nd|rd|th)))?)\s+(\d+)\b/gd,
     description:
       'A.L.R. annotation citations (periodized + bare): "100 A.L.R.2d 1234", "48 ALR 749", "23 A.L.R. Fed. 3d 456" — #581 #638',
     type: "annotation",
@@ -235,7 +235,7 @@ export const secondaryAuthorityPatterns: Pattern[] = [
         `(${TREATISE_ALTERNATION})` +
         `|(?:[A-Z][A-Za-z.]*(?:\\s+[A-Z][A-Za-z.]*)*(?:\\s*&\\s*[A-Z][A-Za-z.]*(?:\\s+[A-Z][A-Za-z.]*)*)?,\\s+)(${TREATISE_BARE_TITLE_ALTERNATION})` +
         `)(?:\\s+\\(([^)]+)\\))?\\s+§§?\\s*(\\d+(?:[.:][A-Za-z0-9]+)*(?:\\[[A-Za-z0-9]+\\])?(?:\\([^)]*\\))*)`,
-      "g",
+      "gd",
     ),
     description:
       'Treatise: "5 Wright & Miller, Federal Practice and Procedure § 1290", "5A Charles Alan Wright & Arthur R. Miller, Federal Practice and Procedure § 1357" (#643), "1 Nimmer on Copyright § 5.05[A]" — #579',

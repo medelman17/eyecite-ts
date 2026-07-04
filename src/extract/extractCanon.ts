@@ -7,6 +7,7 @@
  * @module extract/extractCanon
  */
 
+import { CitationParseError } from "./errors"
 import { CANON_RE } from "@/patterns/canonPatterns"
 import type { Token } from "@/tokenize/tokenizer"
 import type { CanonCitation } from "@/types/citation"
@@ -15,7 +16,7 @@ import { resolveOriginalSpan, type TransformationMap } from "@/types/span"
 export function extractCanon(token: Token, transformationMap: TransformationMap): CanonCitation {
   const { text, span } = token
   const m = CANON_RE.exec(text)
-  if (!m) throw new Error(`Failed to parse canon citation: ${text}`)
+  if (!m) throw new CitationParseError(`Failed to parse canon citation: ${text}`)
 
   const { originalStart, originalEnd } = resolveOriginalSpan(span, transformationMap)
 

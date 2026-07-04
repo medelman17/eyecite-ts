@@ -9,6 +9,7 @@
  * @module extract/extractSessionLaw
  */
 
+import { CitationParseError } from "./errors"
 import { CA_SESSION_LAW_RE, NV_SESSION_LAW_RE } from "@/patterns/sessionLawPatterns"
 import type { Token } from "@/tokenize/tokenizer"
 import type { SessionLawCitation } from "@/types/citation"
@@ -52,7 +53,7 @@ export function extractSessionLaw(
   const isNv = patternId === "nv-session-law"
   const match = (isNv ? NV_SESSION_LAW_RE : CA_SESSION_LAW_RE).exec(text)
   if (!match) {
-    throw new Error(`Failed to parse session-law citation: ${text}`)
+    throw new CitationParseError(`Failed to parse session-law citation: ${text}`)
   }
 
   const year = Number.parseInt(match[1]!, 10)

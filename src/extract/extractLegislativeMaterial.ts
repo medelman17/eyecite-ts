@@ -7,6 +7,7 @@
  * @module extract/extractLegislativeMaterial
  */
 
+import { CitationParseError } from "./errors"
 import {
   LEGMAT_CONG_REC_RE,
   LEGMAT_REPORT_RE,
@@ -37,7 +38,7 @@ export function extractLegislativeMaterial(
 
   if (patternId === "legmat-cong-rec") {
     const m = LEGMAT_CONG_REC_RE.exec(text)
-    if (!m) throw new Error(`Failed to parse Congressional Record citation: ${text}`)
+    if (!m) throw new CitationParseError(`Failed to parse Congressional Record citation: ${text}`)
     return {
       ...base,
       type: "legislativeMaterial",
@@ -48,7 +49,7 @@ export function extractLegislativeMaterial(
   }
 
   const m = LEGMAT_REPORT_RE.exec(text)
-  if (!m) throw new Error(`Failed to parse legislative-material citation: ${text}`)
+  if (!m) throw new CitationParseError(`Failed to parse legislative-material citation: ${text}`)
   const chamber: "House" | "Senate" = m[1]!.startsWith("H") ? "House" : "Senate"
   const congress = m[3] ? Number.parseInt(m[3], 10) : undefined
   const page = m[5] ? Number.parseInt(m[5], 10) : undefined

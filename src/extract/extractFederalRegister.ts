@@ -7,6 +7,7 @@
  * @module extract/extractFederalRegister
  */
 
+import { CitationParseError } from "./errors"
 import type { Token } from "@/tokenize"
 import type { FederalRegisterCitation } from "@/types/citation"
 import type { FederalRegisterComponentSpans } from "@/types/componentSpans"
@@ -61,7 +62,7 @@ export function extractFederalRegister(
   const match = federalRegisterRegex.exec(text)
 
   if (!match) {
-    throw new Error(`Failed to parse Federal Register citation: ${text}`)
+    throw new CitationParseError(`Failed to parse Federal Register citation: ${text}`)
   }
 
   const rawVolume = match[1]

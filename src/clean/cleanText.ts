@@ -37,7 +37,8 @@ export interface CleanTextResult {
  * cleaned text while reporting positions in the original text.
  *
  * @param original - Original input text
- * @param cleaners - Array of cleaner functions to apply (default: stripHtmlTags, decodeHtmlEntities, normalizeWhitespace, normalizeUnicode, normalizeDashes, fixSmartQuotes, normalizeTypography, normalizeReporterSpacing)
+ * @param cleaners - Array of cleaner functions to apply (default: stripHtmlTags, decodeHtmlEntities, normalizeWhitespace, normalizeUnicode, normalizeDashes, fixSmartQuotes, normalizeTypography, normalizeReporterSpacing). Passing a custom array REPLACES the defaults.
+ * @param additionalCleaners - Cleaners appended AFTER the effective base chain (the defaults, or a custom `cleaners` array). Use this to add a cleaner — e.g. `stripMarkdownEmphasis` — without dropping the defaults (#835).
  * @returns Cleaned text with position mappings and warnings
  *
  * @example
@@ -60,6 +61,7 @@ export function cleanText(
     normalizeTypography,
     normalizeReporterSpacing,
   ],
+  additionalCleaners: Array<(text: string) => string> = [],
 ): CleanTextResult {
   // Initialize 1:1 position mapping
   let currentText = original
@@ -72,8 +74,9 @@ export function cleanText(
     originalToClean.set(i, i)
   }
 
-  // Apply each cleaner sequentially, rebuilding position maps
-  for (const cleaner of cleaners) {
+  // Apply each cleaner sequentially, rebuilding position maps. Additional
+  // cleaners run after the base chain so adding one keeps the defaults (#835).
+  for (const cleaner of [...cleaners, ...additionalCleaners]) {
     const beforeText = currentText
     const afterText = cleaner(currentText)
 

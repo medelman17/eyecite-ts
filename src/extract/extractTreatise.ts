@@ -9,6 +9,7 @@
  * @module extract/extractTreatise
  */
 
+import { CitationParseError } from "./errors"
 import type { Token } from "@/tokenize"
 import type { TreatiseCitation } from "@/types/citation"
 import type { TreatiseComponentSpans } from "@/types/componentSpans"
@@ -87,7 +88,7 @@ export function extractTreatise(
 
   const match = TREATISE_REGEX.exec(text)
   if (!match) {
-    throw new Error(`Failed to parse treatise citation: ${text}`)
+    throw new CitationParseError(`Failed to parse treatise citation: ${text}`)
   }
 
   // Volume now admits an optional letter suffix (`5A`). Parse only the

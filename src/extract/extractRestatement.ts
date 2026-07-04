@@ -9,6 +9,7 @@
  * @module extract/extractRestatement
  */
 
+import { CitationParseError } from "./errors"
 import type { Token } from "@/tokenize"
 import type { RestatementCitation } from "@/types/citation"
 import type { RestatementComponentSpans } from "@/types/componentSpans"
@@ -50,7 +51,7 @@ export function extractRestatement(
   const match = restatementRegex.exec(text)
 
   if (!match) {
-    throw new Error(`Failed to parse Restatement citation: ${text}`)
+    throw new CitationParseError(`Failed to parse Restatement citation: ${text}`)
   }
 
   const editionRaw = match[1]

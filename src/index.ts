@@ -31,6 +31,7 @@ export type {
   CaseComponentSpans,
   Citation,
   CitationBase,
+  CitationId,
   CitationOfType,
   CitationSignal,
   CitationType,
@@ -46,12 +47,15 @@ export type {
   FullCaseCitation,
   FullCitation,
   FullCitationType,
+  HistoryChain,
+  HistoryLink,
   HistorySignal,
   IdCitation,
   JournalCitation,
   JournalComponentSpans,
   NeutralCitation,
   NeutralComponentSpans,
+  ParallelGroup,
   Parenthetical,
   ParentheticalType,
   PublicLawCitation,
@@ -66,6 +70,7 @@ export type {
   StatuteComponentSpans,
   StatutesAtLargeCitation,
   StatutesAtLargeComponentSpans,
+  StringCitationGroup,
   SubsequentHistoryEntry,
   SupraCitation,
   TransformationMap,
@@ -89,6 +94,8 @@ export {
 
 export type { ExtractOptions } from "./extract/extractCitations"
 export { extractCitations, extractCitationsAsync } from "./extract/extractCitations"
+export { CitationParseError } from "./extract/errors"
+export { byId } from "./extract/assignCitationIds"
 export { applyFalsePositiveFilters } from "./extract/filterFalsePositives"
 
 // ============================================================================
@@ -96,7 +103,7 @@ export { applyFalsePositiveFilters } from "./extract/filterFalsePositives"
 // ============================================================================
 
 // Text Cleaning Layer
-export { cleanText } from "./clean"
+export { cleanText, stripMarkdownEmphasis } from "./clean"
 export type { CleanTextResult } from "./clean/cleanText"
 // Extraction Functions (for advanced use cases)
 export {

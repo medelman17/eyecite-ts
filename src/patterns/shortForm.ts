@@ -36,13 +36,13 @@ import type { Pattern } from "./casePatterns"
  *  (`Id., 6.`) keeps working because its digits are not followed by a
  *  capital-letter reporter shape. */
 export const ID_PATTERN: RegExp =
-  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]d(?:\s*\.|\s*,(?=\s+at\s))(?:(?:,\s+(?!\d+\s+[A-Z])|,?\s*(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
+  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]d(?:\s*\.|\s*,(?=\s+at\s))(?:(?:,\s+(?!\d+\s+[A-Z])|,?\s*(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/gd
 
 /** Ibid. with optional pincite (less common variant). Paragraph forms (#204)
  *  follow the same convention as Id. Optional space before the period (#305).
  *  Comma-pincite guard (#549) mirrors ID_PATTERN — see comment there. */
 export const IBID_PATTERN: RegExp =
-  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]bid\s*\.(?:(?:,\s+(?!\d+\s+[A-Z])|,?\s*(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
+  /(?:^|(?<=\s)|(?<=["'(\[—]))\b[Ii]bid\s*\.(?:(?:,\s+(?!\d+\s+[A-Z])|,?\s*(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:\s*[-–]\s*\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/gd
 
 /**
  * Supra with party name and optional pincite.
@@ -85,7 +85,7 @@ export const IBID_PATTERN: RegExp =
  * overlapping core spans (~4-5% of CAP opinions).
  */
 export const SUPRA_PATTERN: RegExp =
-  /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:(?:,\s+(?!\d+\s+[A-Z])|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/g
+  /\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+supra(?:\s+note\s+(\d+))?(?:(?:,\s+(?!\d+\s+[A-Z])|,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b)))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?/gd
 
 /**
  * Standalone supra without party name (common in footnotes).
@@ -97,7 +97,7 @@ export const SUPRA_PATTERN: RegExp =
  * footnote suffix #202, and `¶`/`para.` paragraph markers #204).
  */
 export const STANDALONE_SUPRA_PATTERN: RegExp =
-  /(?:^|(?<=\s)|(?<=[;.]))supra(?:\s+note\s+(\d+)(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?|\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)|\s+(?:§+|Part|p\.)\s*\S+)/g
+  /(?:^|(?<=\s)|(?<=[;.]))supra(?:\s+note\s+(\d+)(?:,?\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?))?|\s+(?:at\s+(?:pp?\.\s*)?|(?=¶|paras?\.?\b))(¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?|\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?)|\s+(?:§+|Part|p\.)\s*\S+)/gd
 
 /**
  * Bracketed supra forms (#306) — `[supra]`, `[supra, 705]`, `[supra at 78-82]`,
@@ -111,7 +111,7 @@ export const STANDALONE_SUPRA_PATTERN: RegExp =
  *   optional range `N-M`).
  */
 export const BRACKETED_SUPRA_PATTERN: RegExp =
-  /(?:\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+)?\[supra(?:(?:,\s+|\s+at\s+(?:pp?\.\s*)?)(\d+(?:[-–—]\d+)?))?\]/g
+  /(?:\b([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*)\s*,?\s+)?\[supra(?:(?:,\s+|\s+at\s+(?:pp?\.\s*)?)(\d+(?:[-–—]\d+)?))?\]/gd
 
 /**
  * Short-form case: [Party,] volume reporter [,] at page
@@ -140,7 +140,7 @@ export const BRACKETED_SUPRA_PATTERN: RegExp =
  * a later pattern.
  */
 export const SHORT_FORM_CASE_PATTERN: RegExp =
-  /\b(?:([A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*),\s+)?(\d+(?:-\d+)?)\s+([A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*|pages?\s+)?(\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)\b/g
+  /\b(?:(?<party>[A-Z][a-zA-Z''\-]+\.?(?:(?:\s+v\.?\s+|\s+&\s+|,\s+|\s+)[A-Z][a-zA-Z''\-]+\.?)*),\s+)?(?<volume>\d+(?:-\d+)?)\s+(?<reporter>[A-Z][A-Za-z.''\s]+?(?:\d[a-z]{1,2})?)\s*,?\s+at\s+(?:pp?\.\s*|pages?\s+)?(?<pincite>\*?\d+(?:[-–—]\*?\d+)?(?:\s+(?:nn?|note)\s*\.?\s*\d+(?:[-–—]\d+)?)?|¶¶?\s*\d+(?:[-–—]\d+)?|paras?\.?\s*\d+(?:[-–—]\d+)?)\b/gd
 
 /** All short-form patterns for tokenization */
 export const SHORT_FORM_PATTERNS: readonly RegExp[] = [

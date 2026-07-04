@@ -7,6 +7,7 @@
  * @module extract/extractPublicLaw
  */
 
+import { CitationParseError } from "./errors"
 import type { Token } from "@/tokenize"
 import type { PublicLawCitation } from "@/types/citation"
 import type { PublicLawComponentSpans } from "@/types/componentSpans"
@@ -60,7 +61,7 @@ export function extractPublicLaw(
   const match = publicLawRegex.exec(text)
 
   if (!match) {
-    throw new Error(`Failed to parse public law citation: ${text}`)
+    throw new CitationParseError(`Failed to parse public law citation: ${text}`)
   }
 
   const congress = Number.parseInt(match[1], 10)

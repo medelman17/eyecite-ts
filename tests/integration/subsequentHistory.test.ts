@@ -13,8 +13,9 @@ describe("subsequent history linking (#73)", () => {
       // Parent has entries
       expect(citations[0].subsequentHistoryEntries).toHaveLength(1)
       expect(citations[0].subsequentHistoryEntries?.[0].signal).toBe("affirmed")
-      // Child points back to parent
-      expect(citations[1].subsequentHistoryOf).toEqual({ index: 0, signal: "affirmed" })
+      // Child points back to parent (index retained; #849 adds id-based priorId)
+      expect(citations[1].subsequentHistoryOf).toMatchObject({ index: 0, signal: "affirmed" })
+      expect(citations[1].subsequentHistoryOf?.priorId).toBe(citations[0].id)
     }
   })
 
@@ -39,7 +40,8 @@ describe("subsequent history linking (#73)", () => {
     // the downstream `cert. denied`.
     expect(citations[1].type).toBe("case")
     if (citations[1].type === "case") {
-      expect(citations[1].subsequentHistoryOf).toEqual({ index: 0, signal: "affirmed" })
+      expect(citations[1].subsequentHistoryOf).toMatchObject({ index: 0, signal: "affirmed" })
+      expect(citations[1].subsequentHistoryOf?.priorId).toBe(citations[0].id)
       expect(citations[1].subsequentHistoryEntries).toHaveLength(1)
       expect(citations[1].subsequentHistoryEntries?.[0].signal).toBe("cert_denied")
     }
@@ -47,7 +49,8 @@ describe("subsequent history linking (#73)", () => {
     // not the original root (0).
     expect(citations[2].type).toBe("case")
     if (citations[2].type === "case") {
-      expect(citations[2].subsequentHistoryOf).toEqual({ index: 1, signal: "cert_denied" })
+      expect(citations[2].subsequentHistoryOf).toMatchObject({ index: 1, signal: "cert_denied" })
+      expect(citations[2].subsequentHistoryOf?.priorId).toBe(citations[1].id)
     }
   })
 

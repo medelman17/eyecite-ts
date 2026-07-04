@@ -30,7 +30,8 @@ Citations flow through a 4-stage pipeline: **clean → tokenize → extract → 
 1. **Clean** (`src/clean/`): Strip HTML, normalize whitespace/Unicode, fix smart quotes. Builds a `TransformationMap` to track position shifts.
 2. **Tokenize** (`src/tokenize/`): Apply regex patterns from `src/patterns/` to find citation candidates. Intentionally broad — captures potential matches without validation.
 3. **Extract** (`src/extract/`): Parse metadata from tokens (volume, reporter, page, court, year). Each citation type has its own extractor (`extractCase.ts`, `extractStatute.ts`, etc.). The main orchestrator is `extractCitations.ts`.
-   - `extractCase.ts` also handles case name backward search (`extractCaseName`), full span calculation (`findParentheticalEnd`), unified parenthetical parsing (`parseParenthetical`), and disposition extraction.
+   - Case extraction is split into parser/semantic modules (`caseCore`, `caseEnvelope`, `casePostfix`, `caseParentheticals`, `caseNameScanner`, `caseNameSemantics`, `casePartySemantics`, `caseReporterSemantics`, `caseCitationDraft`). `extractCase.ts` should stay an orchestrator:
+     parse syntax, interpret semantics, apply semantics to the draft, then finalize.
    - `dates.ts` provides date parsing utilities (`parseMonth`, `parseDate`, `toIsoDate`) for structured date extraction from parentheticals.
    - New state statutory/regulatory codes (e.g. NRS, NAC) are data entries in `stateStatuteEntries` (`src/data/stateStatutes.ts`), not new patterns — they extract as `type: "statute"`.
 4. **Resolve** (`src/resolve/`): Link short-form citations (Id., supra, short-form case) to their full antecedents. `DocumentResolver` uses scope boundaries and Levenshtein matching.
@@ -81,6 +82,8 @@ Three package entry points configured in `tsdown.config.ts` and `package.json`:
 
 Tests mirror source in `tests/` with the same directory structure. Integration tests live in `tests/integration/`. Vitest 4 is used — test options go as the second argument: `it(name, { timeout }, fn)`.
 
+**Real-opinion snapshot corpus** (`tests/fixtures/corpus/`, `tests/integration/corpus.test.ts`): a committed, replica-free regression net — each opinion reduced to a compact behavior projection (`scripts/corpus/project.ts`: type · matchedText key · span · resolvedTo); the test re-runs extraction and diffs vs. the committed projection, so green = behavior unchanged. The projection ignores additive fields, so adding a field never churns it. After an *intended* behavior change, run `pnpm corpus:regen` (replica-free), review the `projections.json` diff (intended improvement vs. regression), and commit. `pnpm corpus:fetch` (needs `COURTLISTENER_API_TOKEN`; selects + fetches opinion text via the CourtListener REST API — deterministic, self-contained) grows/refreshes the real-opinion sample; CI never touches the network. Seeds (`scripts/corpus/seeds.ts`, negative ids) permanently guard long-tail shapes like the prose-led single-party `supra` from #878.
+
 ## CI & Releases
 
 - **CI**: GitHub Actions — lint, typecheck, test (Node 18/20/22 matrix), build + size check
@@ -88,3 +91,17 @@ Tests mirror source in `tests/` with the same directory structure. Integration t
 - **Releases**: Changesets — `pnpm changeset` to add, merge to main creates "Version Packages" PR, merging that publishes to npm with provenance
 - **Package manager**: pnpm 10 via corepack. Build script allowlist in `pnpm-workspace.yaml`.
 - Each fix/feature branch needs a changeset: `pnpm changeset` → select patch/minor/major → write summary
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues (medelman17/eyecite-ts) via the `gh` CLI; external PRs are not a triage surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage labels are used verbatim: needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root (created lazily as skills run). See `docs/agents/domain.md`.

@@ -10,6 +10,7 @@
  * @module extract/extractAnnotation
  */
 
+import { CitationParseError } from "./errors"
 import type { Token } from "@/tokenize"
 import type { AnnotationCitation } from "@/types/citation"
 import type { AnnotationComponentSpans } from "@/types/componentSpans"
@@ -36,7 +37,7 @@ export function extractAnnotation(
     /\b(\d+)\s+(A\.\s?L\.\s?R\.(?:\s?(?:Fed\.(?:\s?\d(?:d|nd|rd|th))?|\d(?:d|nd|rd|th)))?|ALR(?:\s?(?:Fed(?:\s?\d(?:d|nd|rd|th))?|\d(?:d|nd|rd|th)))?)\s+(\d+)\b/d
   const match = annotationRegex.exec(text)
   if (!match) {
-    throw new Error(`Failed to parse A.L.R. annotation citation: ${text}`)
+    throw new CitationParseError(`Failed to parse A.L.R. annotation citation: ${text}`)
   }
 
   const volume = Number.parseInt(match[1], 10)

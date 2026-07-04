@@ -26,13 +26,13 @@ export const TREATY_VOL_PAGE_RE: RegExp = new RegExp(VOL_PAGE_SRC)
 export const treatyPatterns: Pattern[] = [
   {
     id: "treaty-series-no",
-    regex: new RegExp(SERIES_NO_SRC, "g"),
+    regex: new RegExp(SERIES_NO_SRC, "gd"),
     description: 'Treaty series citations (e.g. "T.I.A.S. No. 1502")',
     type: "treaty",
   },
   {
     id: "treaty-volume-page",
-    regex: new RegExp(VOL_PAGE_SRC, "g"),
+    regex: new RegExp(VOL_PAGE_SRC, "gd"),
     description: 'Treaty volume-series-page citations (e.g. "1155 U.N.T.S. 331", "123 U.S.T. 456")',
     type: "treaty",
   },

@@ -151,6 +151,10 @@ if (citations[0].type === "case") {
   citations[0].parallelCitations
   // [{ volume: 93, reporter: 'S. Ct.', page: 705 },
   //  { volume: 35, reporter: 'L. Ed. 2d', page: 147 }]
+
+  // Every member also carries the group by stable id (doc order, incl. self),
+  // so byId() resolves the full sibling citations (not lossy value-copies):
+  citations[0].parallelGroup // { memberIds: ['c0', 'c1', 'c2'] }
 }
 ```
 
@@ -185,6 +189,12 @@ const [cite] = extractCitations(text)
 if (cite.type === "case") {
   cite.subsequentHistoryEntries
   // [{ signal: 'affirmed', rawSignal: "aff'd", signalSpan: { ... }, order: 0 }]
+
+  // Ordered chain (root → latest), shared by every member, keyed by stable id:
+  cite.historyChain
+  // { links: [{ citationId: 'c0' }, { citationId: 'c1', signal: 'affirmed' }] }
+  // The back-reference also carries the parent's id alongside the numeric index:
+  // cite.subsequentHistoryOf // { index, priorId, signal }
 }
 ```
 
@@ -207,6 +217,31 @@ if (cite.type === "case") {
 ```
 
 Classification types: `holding`, `finding`, `stating`, `noting`, `explaining`, `quoting`, `citing`, `discussing`, `describing`, `recognizing`, `applying`, `rejecting`, `adopting`, `requiring`, `other`.
+
+A citation nested inside an explanatory parenthetical — e.g. the `Doe v. City, 100 F.2d 1` in `(quoting Doe v. City, 100 F.2d 1)` — is linked onto its host parenthetical's `citations` array as a child citation (with its own stable `id`):
+
+```typescript
+const text = "Smith v. Jones, 200 F.3d 100 (2d Cir. 2000) (quoting Doe v. City, 100 F.2d 1)."
+const [smith] = extractCitations(text)
+smith.parentheticals?.[0].citations
+// [ FullCaseCitation { caseName: "Doe v. City", reporter: "F.2d", page: 1, … } ]
+```
+
+By default this is **additive and non-breaking**: the nested cite is also kept as a top-level result, so a later case short form can still resolve to a case first cited in a parenthetical (Bluebook Rule 10.9(a)). Pass `{ excludeParentheticalChildren: true }` for the strict subordinate model — the nested cite is removed from the top-level array and reachable only via its host's `parentheticals[].citations`:
+
+```typescript
+extractCitations(text).length                                          // 2 (Smith + Doe)
+extractCitations(text, { excludeParentheticalChildren: true }).length  // 1 (Smith; Doe is a child)
+```
+
+Either way, `Id.`/`supra` never resolve to a parenthetical-nested citation (Bluebook Rule 4.1/4.2) — only the host authority.
+
+Short-form citations (`Id.`, `supra`, short-form case) expose the same structure on a `parentheticalNode` (the structured form of their flat `parenthetical` string), so `Id. at 5 (quoting Doe v. City, 100 F.2d 1)` carries the nested `Doe v. City` the same way — honoring `excludeParentheticalChildren` identically:
+
+```typescript
+const [, id] = extractCitations("Bd. v. FirstService, 193 A.D.3d 672 (2021). Id. at 673 (quoting Doe v. City, 100 F.2d 1).")
+id.parentheticalNode?.citations // [ FullCaseCitation { caseName: "Doe v. City", … } ]
+```
 
 ### Citation Annotation
 
@@ -255,6 +290,8 @@ cite.signal // "see also"
 ```
 
 Recognized signals: `see`, `see also`, `see generally`, `cf`, `but see`, `but cf`, `compare`, `accord`, `contra`, `e.g.`, and combined forms (`see, e.g.`, `see also, e.g.`, `but see, e.g.`, `cf., e.g.`, `but cf., e.g.`).
+
+Citations chained for one proposition (`See A; B; C`) form a **string-citation group** — each member carries `stringCitationGroup` (all member ids in document order, incl. self, keyed by stable id) plus the group's leading signal.
 
 ### Court Inference
 
@@ -343,6 +380,23 @@ const ctx = getSurroundingContext(
   { maxLength: 100 },
 )
 ```
+
+### Citation Identity (`id` + `byId`)
+
+Every citation returned by `extractCitations()` carries a stable `id` (`"c0"`, `"c1"`, … in document order). The id is stable **within one result set** — it survives `filter`/`sort`/`map`, unlike array position — so you can reference and look up citations by id rather than by index.
+
+```typescript
+import { byId, extractCitations } from "eyecite-ts"
+
+const citations = extractCitations(text)
+citations[0].id // "c0"
+
+// Build a lookup keyed by stable id:
+const map = byId(citations) // Map<CitationId, Citation>
+const cite = map.get(citations[0].id!)
+```
+
+Because the key is the id and not the array position, `byId(citations.filter(...))` still resolves correctly after you have filtered or reordered the array. `id` is **not** durable across runs (the same text re-extracts to fresh ids each call) — for cross-run / cross-document identity use `toDurableLocator()` from `eyecite-ts/utils`.
 
 ## Type System
 

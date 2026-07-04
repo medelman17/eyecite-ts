@@ -15,6 +15,28 @@ import type {
 import type { Span } from "./span"
 
 /**
+ * Generic nominal-typing brand. Zero runtime cost — the value stays a plain `T`
+ * (so it survives `JSON.stringify`, `structuredClone`, and `{...spread}`); the
+ * brand only exists in the type system to prevent mixing unrelated string ids.
+ */
+export type Brand<T, B extends string> = T & { readonly __brand: B }
+
+/**
+ * Stable identity for a citation **within one `extractCitations()` result set**.
+ * Survives consumer `filter`/`sort`/`map` of the returned array, so aggregates
+ * (history chains, parallel groups, short-form references) reference members by
+ * id rather than by fragile positional array index.
+ *
+ * NOT durable across runs — the same logical citation re-extracts to a fresh id
+ * each call. For cross-run identity use `toDurableLocator()` (contentHash).
+ *
+ * Opaque token (currently `"c0"`, `"c1"`, …): compare it, key a `Map`/`Set` with
+ * it, store it as a reference — but never parse it or derive it from array
+ * position. See `docs/superpowers/specs/2026-06-06-inter-citation-grammar-design.md`.
+ */
+export type CitationId = Brand<string, "CitationId">
+
+/**
  * Citation type discriminator for type-safe pattern matching.
  */
 export type CitationType =
@@ -80,9 +102,29 @@ export type CitationSignal =
   | "but cf., e.g."
 
 /**
+ * A string-citation group (#857): citations chained for one proposition
+ * (`See A; B; C`). Members reference all members (including self) by stable
+ * `CitationId` in document order; `signal` is the group's leading signal. Built
+ * in the structuring pass; the flat `stringCitationGroupId` / `stringCitationIndex`
+ * / `stringCitationGroupSize` fields are retained alongside it.
+ */
+export interface StringCitationGroup {
+  memberIds: CitationId[]
+  signal?: CitationSignal
+}
+
+/**
  * Base fields shared by all citation types.
  */
 export interface CitationBase {
+  /**
+   * Stable identity within one `extractCitations()` result set (see {@link CitationId}).
+   * Populated by `extractCitations()` for every citation in its output. Optional
+   * because the granular per-type extractors (`extractCase()`, etc.) do not assign
+   * one — it is targeted to become required in a future major (#858).
+   */
+  id?: CitationId
+
   /** Original matched text */
   text: string
 
@@ -121,6 +163,13 @@ export interface CitationBase {
 
   /** Total number of citations in this string citation group */
   stringCitationGroupSize?: number
+
+  /**
+   * String-citation group (#857): all members (incl. self) by stable id, in
+   * document order, plus the group's leading signal. Survives consumer
+   * `filter`/`sort`/`map`. See {@link StringCitationGroup}.
+   */
+  stringCitationGroup?: StringCitationGroup
 
   /** Whether this citation appears in a footnote (only populated when detectFootnotes enabled) */
   inFootnote?: boolean
@@ -181,6 +230,21 @@ export interface Parenthetical {
   type: ParentheticalType
   /** Position of full parenthetical block including delimiters */
   span?: Span
+  /**
+   * Child citations nested within this explanatory parenthetical — e.g. the
+   * `Doe v. City, 100 F.2d 1` in `(quoting Doe v. City, 100 F.2d 1)` (#851).
+   * Each child carries its own stable {@link CitationId}, may be any citation
+   * type (not only cases), and may itself carry parentheticals (recursive). Per
+   * Bluebook Rule 1.5(b) such a cite is a subordinate component of the host
+   * citation, not a free-standing one.
+   *
+   * Populated additively by default: the child is ALSO a top-level result, so it
+   * stays reachable via `byId`. With `excludeParentheticalChildren`, the child
+   * is removed from the top-level array and reachable ONLY by traversing here
+   * (it is then absent from `byId(result)`). Either way, `Id.`/`supra` never
+   * resolve to a paren-child (Bluebook Rule 4.1/4.2).
+   */
+  citations?: Citation[]
 }
 
 /**
@@ -263,6 +327,35 @@ export interface SubsequentHistoryEntry {
  * @example "500 F.2d 123"
  * @example "410 U.S. 113, 115"
  */
+/**
+ * One link in a subsequent-history chain (#849): the case at this position, plus
+ * the disposition signal that led TO it. The chain root has no inbound `signal`.
+ */
+export interface HistoryLink {
+  citationId: CitationId
+  signal?: HistorySignal
+}
+
+/**
+ * A subsequent-history chain (#849), ordered root → latest. Built post-id-assignment
+ * in the structuring pass and attached (shared) to every member, so a consumer can
+ * read the whole chain from any link. References members by stable `CitationId`,
+ * so it survives `filter`/`sort`/`map` of the result array.
+ */
+export interface HistoryChain {
+  links: HistoryLink[]
+}
+
+/**
+ * A parallel-citation group (#850): the same case reported in multiple reporters.
+ * Every member references all members (including itself) by stable `CitationId`,
+ * in document order. Built in the structuring pass; the flat `groupId` label and
+ * `parallelCitations` array are retained alongside it.
+ */
+export interface ParallelGroup {
+  memberIds: CitationId[]
+}
+
 export interface FullCaseCitation extends CitationBase {
   type: "case"
   volume: number | string
@@ -295,6 +388,12 @@ export interface FullCaseCitation extends CitationBase {
    */
   groupId?: string
 
+  /**
+   * Parallel-citation group (#850): all members (incl. self) by stable id, in
+   * document order. Survives consumer `filter`/`sort`/`map`. See {@link ParallelGroup}.
+   */
+  parallelGroup?: ParallelGroup
+
   /** Parallel citations for same case in different reporters */
   parallelCitations?: Array<{
     volume: number | string
@@ -325,12 +424,20 @@ export interface FullCaseCitation extends CitationBase {
   subsequentHistoryEntries?: SubsequentHistoryEntry[]
 
   /**
+   * Ordered subsequent-history chain (root → latest), shared by every member of
+   * the chain (#849). Built in the structuring pass; references members by stable
+   * id. The flat `subsequentHistoryOf` / `subsequentHistoryEntries` fields are
+   * retained alongside it. See {@link HistoryChain}.
+   */
+  historyChain?: HistoryChain
+
+  /**
    * Back-pointer indicating this citation is a subsequent history citation.
    * `index` is the parent's position in the results array returned by
    * `extractCitations()` — it becomes invalid if the array is filtered or reordered.
    * @example { index: 0, signal: "affirmed" }
    */
-  subsequentHistoryOf?: { index: number; signal: HistorySignal }
+  subsequentHistoryOf?: { index: number; priorId?: CitationId; signal: HistorySignal }
 
   /**
    * Date information in multiple formats.
@@ -1134,6 +1241,19 @@ export interface IdCitation extends CitationBase {
    */
   pinciteInheritedFrom?: number
   /**
+   * Stable id of the `pinciteInheritedFrom` citation (#860). Survives consumer
+   * `filter`/`sort`/`map` (keys on identity, not array position).
+   */
+  pinciteInheritedFromId?: CitationId
+  /**
+   * Section-style pincite locator captured from `Id. § 1983(c)` forms (#847) —
+   * the text after `§`/`§§` (e.g. `1983(c)`, `201`, `1-5`). The `Id.` regex
+   * captures only page/paragraph pincites, so this is gathered by lookahead.
+   * Its presence marks the `Id.` as statute-family for antecedent selection;
+   * undefined for page/paragraph/bare `Id.` forms.
+   */
+  sectionPincite?: string
+  /**
    * Trailing parenthetical content (text between the parens, excluding the
    * parens themselves) captured from `Id. at N (...)` forms. Common values
    * include drop-citation markers (`citation omitted`, `internal quotation
@@ -1142,6 +1262,14 @@ export interface IdCitation extends CitationBase {
    * can post-classify if needed. #303
    */
   parenthetical?: string
+  /**
+   * Structured form of {@link parenthetical} (#869) — same content, classified
+   * `type` and a `span`, plus any nested child citations in `citations` (e.g.
+   * the `Doe v. City, 100 F.2d 1` in `Id. (quoting Doe v. City, 100 F.2d 1)`).
+   * By default a nested child is also a top-level result; with
+   * `excludeParentheticalChildren` it lives only here. See {@link Parenthetical}.
+   */
+  parentheticalNode?: Parenthetical
   /**
    * Case name inherited from the antecedent (full citation that the `Id.`
    * resolves to). Populated by the resolver when `resolve: true` and the
@@ -1194,11 +1322,24 @@ export interface SupraCitation extends CitationBase {
    */
   pinciteInheritedFrom?: number
   /**
+   * Stable id of the `pinciteInheritedFrom` citation (#860). Survives consumer
+   * `filter`/`sort`/`map` (keys on identity, not array position).
+   */
+  pinciteInheritedFromId?: CitationId
+  /**
    * Trailing parenthetical content (text between the parens, excluding the
    * parens themselves). See `IdCitation.parenthetical` for common shapes
    * and rationale. #303
    */
   parenthetical?: string
+  /**
+   * Structured form of {@link parenthetical} (#869) — same content, classified
+   * `type` and a `span`, plus any nested child citations in `citations` (e.g.
+   * the `Doe v. City, 100 F.2d 1` in `Id. (quoting Doe v. City, 100 F.2d 1)`).
+   * By default a nested child is also a top-level result; with
+   * `excludeParentheticalChildren` it lives only here. See {@link Parenthetical}.
+   */
+  parentheticalNode?: Parenthetical
   /** Component-level spans (currently just `pincite`; extend when needed). */
   spans?: import("./componentSpans").SupraComponentSpans
 }
@@ -1233,6 +1374,11 @@ export interface ShortFormCaseCitation extends CitationBase {
    */
   pinciteInheritedFrom?: number
   /**
+   * Stable id of the `pinciteInheritedFrom` citation (#860). Survives consumer
+   * `filter`/`sort`/`map` (keys on identity, not array position).
+   */
+  pinciteInheritedFromId?: CitationId
+  /**
    * Case name inferred from prose preceding this short-form when no full
    * citation in `citations[]` matched its vol+reporter. Populated by the
    * resolver fallback for the "In Smith v. Jones... Smith, 100 F.2d at 200"
@@ -1259,11 +1405,33 @@ export interface ShortFormCaseCitation extends CitationBase {
    *  `FullCaseCitation`. */
   partyNameNormalized?: string
   /**
+   * Parallel-reporter grouping (#884): a short-form can anchor a parallel run
+   * (`Smith, 79 N.Y.2d at 552, 583 N.Y.S.2d 957, 593 N.E.2d 1365`). These mirror
+   * the same-named fields on {@link FullCaseCitation} — `groupId` is the shared
+   * group key; `parallelGroup` lists all members (incl. self) by id, in document
+   * order; `parallelCitations` is the legacy flat copy on the primary.
+   */
+  groupId?: string
+  parallelGroup?: ParallelGroup
+  parallelCitations?: Array<{
+    volume: number | string
+    reporter: string
+    page: number
+  }>
+  /**
    * Trailing parenthetical content (text between the parens, excluding the
    * parens themselves). See `IdCitation.parenthetical` for common shapes
    * and rationale. #303
    */
   parenthetical?: string
+  /**
+   * Structured form of {@link parenthetical} (#869) — same content, classified
+   * `type` and a `span`, plus any nested child citations in `citations` (e.g.
+   * the `Doe v. City, 100 F.2d 1` in `Id. (quoting Doe v. City, 100 F.2d 1)`).
+   * By default a nested child is also a top-level result; with
+   * `excludeParentheticalChildren` it lives only here. See {@link Parenthetical}.
+   */
+  parentheticalNode?: Parenthetical
 }
 
 /**
@@ -1315,6 +1483,7 @@ export type FullCitationType =
   | "case"
   | "docket"
   | "statute"
+  | "regulation"
   | "journal"
   | "neutral"
   | "publicLaw"
@@ -1334,6 +1503,52 @@ export type FullCitationType =
 export type ShortFormCitationType = "id" | "supra" | "shortFormCase"
 
 /**
+ * Runtime inventories of the type discriminators — the single source the
+ * `isFullCitation` / `isShortFormCitation` guards read.
+ *
+ * Each is `Object.keys` of a `Record<…Type, true>` map: the compiler forces the
+ * map to have an entry for EVERY union member (a missing one is a compile error)
+ * and rejects extras, so the runtime list is a compiler-enforced bijection with
+ * the type and can never silently omit a member — the omission that caused #843.
+ * (The type aliases stay literal unions because `scripts/generate-llms.ts`
+ * AST-parses them; deriving the type from the array would defeat that.)
+ */
+const FULL_CITATION_TYPE_PRESENCE: Record<FullCitationType, true> = {
+  case: true,
+  docket: true,
+  statute: true,
+  regulation: true,
+  journal: true,
+  neutral: true,
+  publicLaw: true,
+  federalRegister: true,
+  statutesAtLarge: true,
+  sessionLaw: true,
+  treaty: true,
+  legislativeMaterial: true,
+  localOrdinance: true,
+  canon: true,
+  constitutional: true,
+  federalRule: true,
+  stateRule: true,
+  restatement: true,
+  treatise: true,
+  annotation: true,
+}
+const SHORT_FORM_CITATION_TYPE_PRESENCE: Record<ShortFormCitationType, true> = {
+  id: true,
+  supra: true,
+  shortFormCase: true,
+}
+
+export const FULL_CITATION_TYPES: readonly FullCitationType[] = Object.keys(
+  FULL_CITATION_TYPE_PRESENCE,
+) as FullCitationType[]
+export const SHORT_FORM_CITATION_TYPES: readonly ShortFormCitationType[] = Object.keys(
+  SHORT_FORM_CITATION_TYPE_PRESENCE,
+) as ShortFormCitationType[]
+
+/**
  * Union of all full citation types (not short-form references).
  */
 export type FullCitation =
@@ -1345,6 +1560,7 @@ export type FullCitation =
   | CanonCitation
   | DocketCitation
   | StatuteCitation
+  | RegulationCitation
   | JournalCitation
   | NeutralCitation
   | PublicLawCitation

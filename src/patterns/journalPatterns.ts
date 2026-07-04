@@ -29,7 +29,7 @@ export const journalPatterns: Pattern[] = [
     // Real journal abbreviations (`Harv. L. Rev.`, `Yale L.J.`) and
     // single-word forms (`Neurology`) still match.
     regex:
-      /\b(\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)([A-Z][A-Za-z.&']*(?:\s+[A-Z\d&][A-Za-z.&']*)*?)\s+(\d+)\b/g,
+      /\b(\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)([A-Z][A-Za-z.&']*(?:\s+[A-Z\d&][A-Za-z.&']*)*?)\s+(\d+)\b/gd,
     description:
       'Law review citations (e.g., "120 Harv. L. Rev. 500"), validated against journals-db in Phase 3. Each post-space token must start with uppercase/digit/& to reject prose phantoms.',
     type: "journal",

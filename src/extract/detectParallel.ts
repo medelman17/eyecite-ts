@@ -82,6 +82,11 @@ export function detectParallelCitations(tokens: Token[], cleanedText = ""): Map<
     }
 
     const secondaryIndices: number[] = []
+    // A tight-linked run is a parallel group only once it CLOSES — its LAST
+    // member must be followed by a shared parenthetical or a sentence-end
+    // terminator. Validating per-link (the old behavior) orphaned the head of a
+    // no-trailing-paren chain `A, B, C.` because the `A→B` link saw `, C` (#884).
+    let closed = false
 
     // Look ahead for potential secondary citations
     // Chain detection: "A, B, C (year)" where A is primary, B and C are secondaries
@@ -91,6 +96,19 @@ export function detectParallelCitations(tokens: Token[], cleanedText = ""): Map<
       // Only case citations can be parallel
       if (secondary.type !== "case") {
         break // Stop looking once we hit non-case citation
+      }
+
+      // A parallel cite always leads with its volume number. A secondary that
+      // re-introduces a party name (e.g. `Smith, 79 N.Y.2d at 552`) is a NEW
+      // case reference — a second short-form, not a parallel of the current
+      // run — so stop here so it isn't absorbed and can anchor its own group.
+      // This keeps every parallel group anchored on a SINGLE short-form (#884):
+      // without it, `Doe, 100 F.3d at 7, 583 N.Y.S.2d 957, Smith, 79 N.Y.2d at
+      // 552` would pull the unrelated Smith reference into Doe's group and
+      // mis-resolve its members. Volume-first short-forms (`146 A.3d at 1202`)
+      // are genuine parallels and stay in the run.
+      if (!/^\s*\d/.test(secondary.text)) {
+        break
       }
 
       // Check proximity: comma should be right after primary (or previous secondary in chain)
@@ -116,7 +134,7 @@ export function detectParallelCitations(tokens: Token[], cleanedText = ""): Map<
         cleanedText[secondary.span.cleanEnd] === "]"
       if (inBracket) {
         secondaryIndices.push(j)
-        usedAsSecondary.add(j)
+        closed = true // CA bracket form is self-closing
         // CA brackets always close after a single parallel cite — chain ends here.
         break
       }
@@ -164,27 +182,28 @@ export function detectParallelCitations(tokens: Token[], cleanedText = ""): Map<
         break // Separate parentheticals = not parallel, stop looking
       }
 
-      // Check that there IS a parenthetical after the secondary citation
-      // OR that the chain ends at sentence end (`.` / `;` / EOF) (#653).
-      // Sentence-end terminator catches `Kauffman v. Griesemer, 26 Pa. 407,
-      // 67 Am. Dec. 437.` — common when courts omit the year-paren on
-      // older parallel reporters. The tight-gap and intervening-`)` checks
-      // above already prevent unrelated cites from being grouped.
-      if (
-        !hasSharedParenthetical(cleanedText, secondary.span.cleanEnd) &&
-        !isParallelChainTerminator(cleanedText, secondary.span.cleanEnd)
-      ) {
-        break
-      }
-
-      // All conditions met - this is a parallel citation
+      // Tight-linked candidate — collect it. Whether the run is a real parallel
+      // group is decided after the chain ends (the close-check below): an
+      // intermediate cite (`A→B` in `A, B, C.`) need not be a chain terminator
+      // itself — only the LAST member must close the run (#884).
       secondaryIndices.push(j)
-      usedAsSecondary.add(j)
     }
 
-    // If we found any secondary citations, record the group
+    // Record the run only if it CLOSED: the last collected member must be
+    // followed by a shared parenthetical or a sentence-end terminator (#653).
+    // (A CA bracket run already set `closed`.) An unterminated tight run is not
+    // a parallel group — its members stay available as their own primaries.
     if (secondaryIndices.length > 0) {
-      parallelGroups.set(i, secondaryIndices)
+      if (!closed) {
+        const last = tokens[secondaryIndices[secondaryIndices.length - 1]]
+        closed =
+          hasSharedParenthetical(cleanedText, last.span.cleanEnd) ||
+          isParallelChainTerminator(cleanedText, last.span.cleanEnd)
+      }
+      if (closed) {
+        parallelGroups.set(i, secondaryIndices)
+        for (const j of secondaryIndices) usedAsSecondary.add(j)
+      }
     }
   }
 
@@ -224,6 +243,16 @@ function isParallelChainTerminator(cleanedText: string, position: number): boole
 function hasSharedParenthetical(cleanedText: string, position: number): boolean {
   // Look ahead up to 200 characters for opening parenthesis
   const searchText = cleanedText.substring(position, position + 200)
+
+  // #890: a bracketed year `[1992]` / `[2d Dept 2012]` (New York Official
+  // Reports / Court of Appeals style) closes a parallel run exactly like a
+  // `(year)` parenthetical. Require the bracket to end in a plausible 4-digit
+  // year, and reject a bracketed parallel CITE whose page merely looks year-like
+  // (`[20 Cal.Rptr.2d 1995]` — a bare volume + reporter) or a marker (`[U]`).
+  const bracketYear = searchText.match(/\[([^\]]*(?:1[6-9]|20)\d{2})\s*\]/)
+  if (bracketYear && !/^\s*\d+\s+[A-Z]/.test(bracketYear[1])) {
+    return true
+  }
 
   // Find opening parenthesis
   const openIndex = searchText.indexOf("(")

@@ -18,6 +18,7 @@
  */
 
 import type { Citation } from "../types/citation"
+import type { TransformationMap } from "../types/span"
 import { DocumentResolver } from "./DocumentResolver"
 import type { ResolutionOptions, ResolvedCitation } from "./types"
 
@@ -29,14 +30,19 @@ import type { ResolutionOptions, ResolvedCitation } from "./types"
  * @param citations - Extracted citations in order of appearance
  * @param text - Original document text
  * @param options - Resolution options
+ * @param cleanContext - Optional cleaned text + transformation map. Pass when a
+ *   length-changing cleaner was applied so clean-coordinate reads index the
+ *   cleaned text and derived spans map back to original coordinates (#830). When
+ *   omitted, `text` is treated as the cleaned text too (clean == original).
  * @returns Citations with resolution metadata
  */
 export function resolveCitations(
   citations: Citation[],
   text: string,
   options?: ResolutionOptions,
+  cleanContext?: { cleanedText: string; transformationMap: TransformationMap },
 ): ResolvedCitation[] {
-  const resolver = new DocumentResolver(citations, text, options)
+  const resolver = new DocumentResolver(citations, text, options, cleanContext)
   return resolver.resolve()
 }
 

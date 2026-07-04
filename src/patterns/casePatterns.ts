@@ -74,8 +74,8 @@ export const casePatterns: Pattern[] = [
     // whitespace, or a clause-ending punctuation. This prevents `1-5-7`
     // from matching as `page=1-5` with stray `-7`.
     regex: new RegExp(
-      String.raw`\b(\d+(?:-\d+)?)\s+(F\.\s?Supp\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?|F\.\s?App'x|F\.(?:\d+(?:st|nd|rd|th)|2d|3d)?)(?:\s+(\d+-\d+|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°])|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
-      "g",
+      String.raw`\b(?<volume>\d+(?:-\d+)?)\s+(?<reporter>F\.\s?Supp\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?|F\.\s?App'x|F\.(?:\d+(?:st|nd|rd|th)|2d|3d)?)(?:\s+(?<page>\d+-\d+|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°])|\s*,\s+(?<pageComma>\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
+      "gd",
     ),
     description:
       "Federal Reporter (F., F.2d, F.3d, F.Nth, F.Supp., F.App'x, etc.)",
@@ -89,8 +89,8 @@ export const casePatterns: Pattern[] = [
     // Terminator accepts `)` for sentence-internal parenthetical citations
     // (#509).
     regex: new RegExp(
-      String.raw`\b(\d+(?:-\d+)?)\s+(U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?)(?:\s+(?:\(\d+\s+[A-Z][A-Za-z.]+\)\s+)?(\d+-\d+(?=\s+\(\d{4}\))|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
-      "g",
+      String.raw`\b(?<volume>\d+(?:-\d+)?)\s+(?<reporter>U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?(?:\d+(?:st|nd|rd|th)|2d|3d))?)(?:\s+(?:\((?<nominativeVolume>\d+)\s+(?<nominativeReporter>[A-Z][A-Za-z.]+)\)\s+)?(?<page>\d+-\d+(?=\s+\(\d{4}\))|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(?<pageComma>\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
+      "gd",
     ),
     description:
       "U.S. Supreme Court reporters (with optional nominative reporter parenthetical)",
@@ -151,8 +151,8 @@ export const casePatterns: Pattern[] = [
     // space to handle Illinois `R. <ruleNum>` and the `L.J./L.Q./L.R.`
     // journal-abbreviation guards (#332, #549).
     regex: new RegExp(
-      String.raw`\b(\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)(?!(?:AND|OR)\s+\d)([A-Z][A-Za-z.\d&']*(?:(?! L\.[JQR\s])(?! R\.\s+\d)\s+[A-Z\d&][A-Za-z.\d&']*)*?)(?:\s+(\d+-\d+(?=\s+\(\d{4}\))|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?\[\]–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
-      "g",
+      String.raw`\b(?<volume>\d+(?:-\d+)?)\s+(?!(?:Ibid|Id)\.?\s+\d)(?!(?:AND|OR)\s+\d)(?<reporter>[A-Z][A-Za-z.\d&']*(?:(?! L\.[JQR\s])(?! R\.\s+\d)\s+[A-Z\d&][A-Za-z.\d&']*)*?)(?:\s+(?<page>\d+-\d+(?=\s+\(\d{4}\))|\d+|_{3,}|-{3,})(?=\s|$|[().,;!?\[\]–—'"“”*<>†‡§¶©°]|-\D)|\s*,\s+(?<pageComma>\d+|_{3,}|-{3,})${COMMA_PAGE_TERMINATOR})`,
+      "gd",
     ),
     description:
       'State reporters (broad pattern allowing multi-word reporters with & and \', excludes journal patterns with " L.J/Q/Rev", phantom matches across " v. "/" vs. ", CSM " at " short-form boundaries, Illinois " R. N" rule-marker boundaries, and Id./Ibid. short-form markers (#549), validated against reporters-db in Phase 3)',

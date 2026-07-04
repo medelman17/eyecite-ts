@@ -1,7 +1,28 @@
 import { describe, expect, it } from "vitest"
 import { extractCitations, extractId, extractShortFormCase, extractSupra } from "@/extract"
+import { shortFormPatterns } from "@/patterns/shortForm"
+import { tokenize } from "@/tokenize"
 import type { Token } from "@/tokenize"
 import { createIdentityMap, createOffsetMap } from "../helpers/transformationMap"
+
+/**
+ * Build the short-form-case token the tokenizer would produce for `text`, with
+ * its named capture groups threaded (#844 — `extractShortFormCase` reads
+ * `token.groups`). Optionally re-base the token's `span` to `cleanStart`
+ * (shifting `cleanEnd` by the same delta) so the position-translation
+ * assertions below keep their non-zero / offset-map intent; the token-relative
+ * `groupSpans` are unaffected.
+ */
+function shortFormCaseToken(text: string, cleanStart?: number): Token {
+  const t = tokenize(text, shortFormPatterns).find((tok) => tok.patternId === "shortFormCase")
+  if (!t) throw new Error(`no shortFormCase token for: ${text}`)
+  if (cleanStart === undefined || cleanStart === t.span.cleanStart) return t
+  const delta = cleanStart - t.span.cleanStart
+  return {
+    ...t,
+    span: { cleanStart, cleanEnd: t.span.cleanEnd + delta },
+  }
+}
 
 describe("extractShortForms", () => {
   describe("extractId", () => {
@@ -325,12 +346,7 @@ describe("extractShortForms", () => {
 
   describe("extractShortFormCase", () => {
     it("should extract short-form case with volume, reporter, and pincite", () => {
-      const token: Token = {
-        text: "500 F.2d at 125",
-        span: { cleanStart: 10, cleanEnd: 25 },
-        type: "case",
-        patternId: "short-form-case",
-      }
+      const token = shortFormCaseToken("500 F.2d at 125", 10)
       const transformationMap = createIdentityMap()
 
       const citation = extractShortFormCase(token, transformationMap)
@@ -347,12 +363,7 @@ describe("extractShortForms", () => {
     })
 
     it("should handle different reporter formats", () => {
-      const token: Token = {
-        text: "410 U.S. at 115",
-        span: { cleanStart: 0, cleanEnd: 15 },
-        type: "case",
-        patternId: "short-form-case",
-      }
+      const token = shortFormCaseToken("410 U.S. at 115")
       const transformationMap = createIdentityMap()
 
       const citation = extractShortFormCase(token, transformationMap)
@@ -363,12 +374,7 @@ describe("extractShortForms", () => {
     })
 
     it("should handle reporters with spaces", () => {
-      const token: Token = {
-        text: "123 So. 2d at 456",
-        span: { cleanStart: 0, cleanEnd: 17 },
-        type: "case",
-        patternId: "short-form-case",
-      }
+      const token = shortFormCaseToken("123 So. 2d at 456")
       const transformationMap = createIdentityMap()
 
       const citation = extractShortFormCase(token, transformationMap)
@@ -379,12 +385,7 @@ describe("extractShortForms", () => {
     })
 
     it("should handle reporters with edition numbers", () => {
-      const token: Token = {
-        text: "789 F.3d at 200",
-        span: { cleanStart: 5, cleanEnd: 20 },
-        type: "case",
-        patternId: "short-form-case",
-      }
+      const token = shortFormCaseToken("789 F.3d at 200", 5)
       const transformationMap = createIdentityMap()
 
       const citation = extractShortFormCase(token, transformationMap)
@@ -395,12 +396,7 @@ describe("extractShortForms", () => {
     })
 
     it("should translate positions with offset transformation map", () => {
-      const token: Token = {
-        text: "500 F.2d at 125",
-        span: { cleanStart: 10, cleanEnd: 25 },
-        type: "case",
-        patternId: "short-form-case",
-      }
+      const token = shortFormCaseToken("500 F.2d at 125", 10)
       const transformationMap = createOffsetMap(7)
 
       const citation = extractShortFormCase(token, transformationMap)
@@ -411,8 +407,14 @@ describe("extractShortForms", () => {
       expect(citation.span.originalEnd).toBe(32) // +7 offset
     })
 
-    it("should throw error on non-short-form text", () => {
-      const token: Token = {
+    it("should decline a token with no threaded groups (decline path)", () => {
+      // After the capture-group-threading migration (#844) extractShortFormCase
+      // reads the named groups the tokenizer threads. A token with no groups
+      // (e.g., produced by an older or positional-only pattern) causes
+      // requireGroup to throw CitationParseError — the #881 decline path.
+      // "Not a short form" produces no tokenizer match, so we construct the
+      // minimal no-groups token directly.
+      const noGroupsToken: Token = {
         text: "Not a short form",
         span: { cleanStart: 0, cleanEnd: 16 },
         type: "case",
@@ -420,8 +422,8 @@ describe("extractShortForms", () => {
       }
       const transformationMap = createIdentityMap()
 
-      expect(() => extractShortFormCase(token, transformationMap)).toThrow(
-        "Failed to parse short-form case citation",
+      expect(() => extractShortFormCase(noGroupsToken, transformationMap)).toThrow(
+        "Missing required capture group",
       )
     })
   })
@@ -686,12 +688,7 @@ describe("extractShortForms", () => {
 
   describe("shortFormCase with 4th-series reporters", () => {
     it("should extract F.4th short-form", () => {
-      const token: Token = {
-        text: "74 F.4th at 30",
-        span: { cleanStart: 0, cleanEnd: 14 },
-        type: "case",
-        patternId: "shortFormCase",
-      }
+      const token = shortFormCaseToken("74 F.4th at 30")
       const citation = extractShortFormCase(token, createIdentityMap())
 
       expect(citation.type).toBe("shortFormCase")
@@ -701,12 +698,7 @@ describe("extractShortForms", () => {
     })
 
     it("should extract Cal.4th short-form", () => {
-      const token: Token = {
-        text: "500 Cal.4th at 120",
-        span: { cleanStart: 0, cleanEnd: 18 },
-        type: "case",
-        patternId: "shortFormCase",
-      }
+      const token = shortFormCaseToken("500 Cal.4th at 120")
       const citation = extractShortFormCase(token, createIdentityMap())
 
       expect(citation.volume).toBe(500)
@@ -739,12 +731,7 @@ describe("extractShortForms", () => {
     })
 
     it("should assign confidence 0.7 to short-form case citations", () => {
-      const token: Token = {
-        text: "500 F.2d at 125",
-        span: { cleanStart: 0, cleanEnd: 15 },
-        type: "case",
-        patternId: "short-form-case",
-      }
+      const token = shortFormCaseToken("500 F.2d at 125")
       const citation = extractShortFormCase(token, createIdentityMap())
       expect(citation.confidence).toBe(0.7)
     })
@@ -774,12 +761,11 @@ describe("extractShortForms", () => {
     })
 
     it("should trim whitespace from reporter in short-form", () => {
-      const token: Token = {
-        text: "100 F.   at 200",
-        span: { cleanStart: 0, cleanEnd: 15 },
-        type: "case",
-        patternId: "short-form-case",
-      }
+      // `\s*` before `at` already excludes the trailing spaces from the
+      // reporter capture, so the threaded group is "F." — the extractor's
+      // `.trim()` residual is a belt-and-suspenders no-op here, matching the
+      // old twin (the regexes are identical).
+      const token = shortFormCaseToken("100 F.   at 200")
       const citation = extractShortFormCase(token, createIdentityMap())
       expect(citation.reporter).toBe("F.")
     })
